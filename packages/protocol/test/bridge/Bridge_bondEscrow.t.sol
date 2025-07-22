@@ -141,7 +141,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         vm.warp(block.timestamp + 1 days);
         umaBridge.executeWithdrawal(address(bondCurrency));
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
-        vm.expectRevert("Withdrawal already executed");
+        vm.expectRevert("No withdrawal intent");
         umaBridge.executeWithdrawal(address(bondCurrency));
         vm.stopPrank();
     }
@@ -323,6 +323,43 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
             "Message is propagated through LZ (intent)"
         );
     }
+
+    function test_newIntentCanBeSetAfterWithdrawalExecuted() public {
+        _depositBond(umaUser, 1 ether);
+        
+        // Set initial withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.5 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Wait for withdrawal intent to expire and execute it
+        vm.warp(block.timestamp + 1 days);
+        vm.startPrank(umaUser);
+        umaBridge.executeWithdrawal(address(bondCurrency));
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Verify that the withdrawal intent is cleared
+        (uint256 pendingWithdrawal, uint256 pendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
+        assertEq(pendingWithdrawal, 0, "Pending withdrawal should be cleared after execution");
+        assertEq(pendingWithdrawalTimestamp, 0, "Pending withdrawal timestamp should be cleared after execution");
+        
+        // Set a new withdrawal intent for the remaining balance
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.3 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Verify that the new intent is set correctly
+        (pendingWithdrawal, pendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
+        assertEq(pendingWithdrawal, 0.3 ether, "New withdrawal intent should be set");
+        assertEq(pendingWithdrawalTimestamp, block.timestamp, "New withdrawal intent timestamp should be set");
+        
+        // Verify remote bridge also has the new intent
+        uint256 remoteWithdrawalIntent = marketBridge.getRemoteSubmitterWithdrawalIntent(address(umaUser), address(bondCurrency));
+        assertEq(remoteWithdrawalIntent, 0.3 ether, "Remote bridge should have the new withdrawal intent");
+    }    
 
     function _depositBond(address _user, uint256 _amount) internal {
         bondCurrency.mint(_amount, _user);

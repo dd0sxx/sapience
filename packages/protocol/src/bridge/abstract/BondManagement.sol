@@ -103,20 +103,27 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         require(block.timestamp >= intent.timestamp + WITHDRAWAL_DELAY, "Waiting period not over");
         require(submitterBondBalances[msg.sender][bondToken] >= intent.amount, "Insufficient balance");
 
+        uint256 amount = intent.amount;
         MessagingReceipt memory receipt = _sendBalanceUpdate(
             _getWithdrawCommandType(),
             msg.sender,
             bondToken,
             submitterBondBalances[msg.sender][bondToken],
-            intent.amount
+            amount
         );
 
+        // Clear intent
         intent.executed = true;
-        submitterBondBalances[msg.sender][bondToken] -= intent.amount;
+        intent.amount = 0;
+        intent.timestamp = 0;
 
-        emit WithdrawalExecuted(msg.sender, bondToken, intent.amount);
+        submitterBondBalances[msg.sender][bondToken] -= amount;
 
-        IERC20(bondToken).safeTransfer(msg.sender, intent.amount);
+        emit WithdrawalExecuted(msg.sender, bondToken, amount);
+
+
+        IERC20(bondToken).safeTransfer(msg.sender, amount);
+
 
         return receipt;
     }
