@@ -1,8 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
+import { useAccount } from 'wagmi';
 
 // Import existing components
 import PredictForm from '~/components/forecasting/forms/PredictForm';
@@ -11,6 +12,11 @@ import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import Slider from '@sapience/ui/components/ui/slider';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
+import { SpecialTab } from '../../components/shared/Comments';
+import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
+import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
+import { MarketGroupClassification } from '~/lib/types';
+import { Input as UiInput } from '@sapience/ui';
 
 // Dynamically import components to avoid SSR issues
 const QuestionSelect = dynamic(() => import('../../components/shared/QuestionSelect'), {
@@ -24,14 +30,89 @@ const Comments = dynamic(() => import('../../components/shared/Comments'), {
 });
 
 const ForecastPage = () => {
+  const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] = useState<string | null>('selected');
   const [activeTab, setActiveTab] = useState<'forecasts' | 'ask'>('forecasts');
   const [predictionValue, setPredictionValue] = useState([50]);
   const [comment, setComment] = useState('');
+  const [selectedMarketGroup, setSelectedMarketGroup] = useState<any | undefined>(undefined);
+  const [selectedQuestion, setSelectedQuestion] = useState<string | undefined>(undefined); // For compatibility, but not used for group selection
+
+  // State for market selection within a group
+  const [selectedMarketId, setSelectedMarketId] = useState<string>('');
+  const [marketSearchQuery, setMarketSearchQuery] = useState('');
+
+  // Reset market selection when group changes
+  useEffect(() => {
+    setSelectedMarketId('');
+    setMarketSearchQuery('');
+  }, [selectedMarketGroup]);
+
+  // Fetch all market groups
+  const { data: marketGroups } = useEnrichedMarketGroups();
+
+  // Use selectedMarketGroup directly
+  let selectedMarket, marketId, marketAddress, marketClassification, targetChainId;
+  console.log("selectedMarket", selectedMarket, "selectedQuestion", selectedQuestion, "selectedMarketGroup", selectedMarketGroup);
+  console.log("marketGroups", marketGroups);
+  if (selectedMarketGroup) {
+    selectedMarket = selectedMarketGroup.markets.find((m: any) => m.id.toString() === selectedMarketId);
+    marketId = selectedMarket?.marketId;
+    marketAddress = selectedMarketGroup.address;
+    marketClassification = selectedMarketGroup.marketClassification;
+    targetChainId = selectedMarketGroup.chainId;
+  }
+
+  // Filter markets in the selected group by search query
+  let filteredMarkets: any[] = [];
+  if (selectedMarketGroup) {
+    filteredMarkets = selectedMarketGroup.markets.filter((market: any) => {
+      if (!marketSearchQuery) return true;
+      const q = marketSearchQuery.toLowerCase();
+      return (
+        (market.question?.toLowerCase() || '').includes(q) ||
+        (market.optionName?.toLowerCase() || '').includes(q)
+      );
+    });
+  }
+
+  // If a market is selected by id, use it for prediction
+  if (selectedMarketGroup && selectedMarketId) {
+    selectedMarket = selectedMarketGroup.markets.find((m: any) => m.id.toString() === selectedMarketId);
+    marketId = selectedMarket?.marketId;
+    // (marketAddress, marketClassification, targetChainId remain as before)
+  }
+
+  // Prepare submission value for attestation (confidence as string)
+  const submissionValue = String(predictionValue[0]);
+
+  // Use the attestation hook
+  const { submitPrediction, isAttesting, attestationError, attestationSuccess } = useSubmitPrediction({
+    marketAddress: marketAddress || '',
+    marketClassification: marketClassification || MarketGroupClassification.YES_NO,
+    submissionValue,
+    marketId: marketId || 0,
+    targetChainId: targetChainId || 8453, // Default to Base chain if not found
+    comment,
+  });
+
+  // Deselect question when switching tabs or category
+  useEffect(() => {
+    setSelectedQuestion(undefined);
+  }, [activeTab, selectedCategory]);
+
+  // Refetch comments after successful attestation
+  useEffect(() => {
+    if (attestationSuccess) {
+      setRefetchCommentsTrigger((t) => t + 1);
+    }
+  }, [attestationSuccess]);
 
   // Style classes for category buttons
   const selectedStatusClass = "bg-primary/10 text-primary";
   const hoverStatusClass = "hover:bg-muted/50 text-muted-foreground hover:text-foreground";
+
+  const [refetchCommentsTrigger, setRefetchCommentsTrigger] = useState(0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,56 +158,86 @@ const ForecastPage = () => {
             <div className="sticky top-[65px] bg-background/80 backdrop-blur-sm z-10">
               <div className="px-4 pb-2 pt-6">
                 <QuestionSelect 
-                  selectedQuestion={selectedCategory === 'selected' ? "Will ETH reach $5,000 by the end of 2025?" : undefined}
+                  selectedMarketGroup={selectedMarketGroup}
+                  selectedCategory={selectedCategory}
+                  onMarketGroupSelect={(group) => {
+                    setSelectedMarketGroup(group);
+                  }}
                 />
               </div>
             </div>
             
             {/* Forecast Form */}
             <div className="border-b border-border bg-background">
-              <div className="p-6">
+              <div className="px-4 pb-2 pt-6">
+                {/* Market dropdown if a group is selected */}
+                {selectedMarketGroup && (
+                  <div className="mb-4">
+                    <QuestionSelect
+                      className="mb-2"
+                      selectedMarketGroup={selectedMarketGroup}
+                      selectedCategory={selectedCategory}
+                      // For market selection, we pass a custom onMarketGroupSelect that sets selectedMarketId
+                      onMarketGroupSelect={(market) => {
+                        setSelectedMarketId(market ? market.id.toString() : '');
+                      }}
+                      // Custom prop to indicate market mode (not group mode)
+                      marketMode={true}
+                      markets={selectedMarketGroup.markets}
+                      selectedMarketId={selectedMarketId}
+                    />
+                  </div>
+                )}
                 {selectedCategory === 'selected' ? (
                   <div className="space-y-4">
-                    {/* Prediction Slider */}
-                    <div className="space-y-6">
-                      <div className="flex gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                            <span>No</span>
-                            <span>Yes</span>
+                    {/* Only show prediction form if a market is selected */}
+                    {selectedMarketGroup && !selectedMarketId && (
+                      <div className="text-muted-foreground text-sm">Select a market to submit a prediction.</div>
+                    )}
+                    {selectedMarketGroup && selectedMarketId && (
+                      <>
+                        {/* Prediction Slider */}
+                        <div className="space-y-6">
+                          <div className="flex gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                                <span>No</span>
+                                <span>Yes</span>
+                              </div>
+                              <Slider
+                                value={predictionValue}
+                                onValueChange={setPredictionValue}
+                                max={100}
+                                min={0}
+                                step={1}
+                                className="w-full"
+                              />
+                            </div>
+                            <div className="flex items-end justify-center text-center text-lg font-medium text-foreground w-[120px] pt-1.5">
+                              {predictionValue[0]}% Chance
+                            </div>
                           </div>
-                          <Slider
-                            value={predictionValue}
-                            onValueChange={setPredictionValue}
-                            max={100}
-                            min={0}
-                            step={1}
-                            className="w-full"
-                          />
+                          {/* Comment and Submit */}
+                          <div className="flex gap-4">
+                            <Input
+                              value={comment}
+                              onChange={(e) => setComment(e.target.value)}
+                              placeholder="What's the rationale for your prediction?"
+                              className="flex-1"
+                            />
+                            <Button className="px-6 py-3 w-[140px]"
+                              onClick={submitPrediction}
+                              disabled={isAttesting || !selectedMarket || !selectedMarketGroup || !selectedMarketId}
+                            >
+                              {isAttesting ? 'Submitting...' : 'Predict'}
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-end justify-center text-center text-lg font-medium text-foreground w-[120px] pt-1.5">
-                          {predictionValue[0]}% Chance
-                        </div>
-                      </div>
-                      
-                      {/* Comment and Submit */}
-                      <div className="flex gap-4">
-                        <Input
-                          value={comment}
-                          onChange={(e) => setComment(e.target.value)}
-                          placeholder="What's the rationale for your prediction?"
-                          className="flex-1"
-                        />
-                        <Button className="px-6 py-3 w-[140px]">
-                          Predict
-                        </Button>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>Select a question above to start forecasting</p>
-                  </div>
+                  <></>
                 )}
                 {/* 
                 <PredictForm 
@@ -140,7 +251,15 @@ const ForecastPage = () => {
             
             {/* Category Selection Section */}
             <div className="bg-background border-b border-border">
-              <div className="flex overflow-x-auto">
+              <div
+                className="flex overflow-x-auto"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+                onWheel={e => {
+                  if (e.deltaY === 0) return;
+                  e.currentTarget.scrollLeft += e.deltaY;
+                  e.preventDefault();
+                }}
+              >
                 {/* Selected Question option */}
                 <button
                   type="button"
@@ -217,7 +336,13 @@ const ForecastPage = () => {
             {/* Comments Section */}
             <div className="bg-background">
               <div className="divide-y divide-border">
-                <Comments showAllForecasts={selectedCategory !== 'selected' && selectedCategory !== 'my-predictions'} />
+                <Comments 
+                  showAllForecasts={selectedCategory !== SpecialTab.Selected && selectedCategory !== SpecialTab.MyPredictions} 
+                  selectedCategory={selectedCategory}
+                  question={selectedQuestion}
+                  address={address}
+                  refetchTrigger={refetchCommentsTrigger}
+                />
               </div>
             </div>
           </>
