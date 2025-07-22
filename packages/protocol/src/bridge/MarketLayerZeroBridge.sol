@@ -70,18 +70,22 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         (uint16 commandType, bytes memory data) = _message.decodeType();
 
         if (commandType == Encoder.CMD_FROM_ESCROW_DEPOSIT) {
-            (address submitter, address bondToken,, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
             emit BondDeposited(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW) {
-            (address submitter, address bondToken,, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
             remoteSubmitterWithdrawalIntent[submitter][bondToken] = deltaAmount; // Only one intent per pair submitter/bond allowed at a time
-            emit BondWithdrawn(submitter, bondToken, deltaAmount);
+            emit BondIntentToWithdraw(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_ESCROW_WITHDRAW) {
-            (address submitter, address bondToken,, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
             remoteSubmitterWithdrawalIntent[submitter][bondToken] -= deltaAmount;
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
+        } else if (commandType == Encoder.CMD_FROM_ESCROW_REMOVE_WITHDRAWAL_INTENT) {
+            (address submitter, address bondToken, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
+            remoteSubmitterWithdrawalIntent[submitter][bondToken] -= deltaAmount;
+            emit BondIntentToWithdrawRemoved(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
             (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
             address marketGroup = assertionIdToMarketGroup[assertionId];
@@ -119,11 +123,11 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         // Check if contract has enough ETH
         _requireSufficientETH(fee.nativeFee);
 
-        // Check gas thresholds and emit alerts before sending
-        _checkGasThresholds();
-
         // Send the message using the external send function with ETH from contract
         receipt = this._sendMessageWithETH{value: fee.nativeFee}(bridgeConfig.remoteEid, message, options, fee);
+
+        // Check gas thresholds and emit alerts before sending
+        _checkGasThresholds();
 
         return (receipt, fee);
     }

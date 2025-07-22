@@ -7,6 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {IBondManagement} from "../interfaces/ILayerZeroBridge.sol";
 import {BridgeTypes} from "../BridgeTypes.sol";
+import {Encoder} from "../cmdEncoder.sol";
 
 /**
  * @title BondManagement
@@ -47,7 +48,7 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
 
         MessagingReceipt memory receipt = _sendBalanceUpdate(
-            _getDepositCommandType(), msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], amount
+            _getDepositCommandType(), msg.sender, bondToken, amount
         );
 
         submitterBondBalances[msg.sender][bondToken] += amount;
@@ -78,7 +79,6 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
             _getIntentToWithdrawCommandType(),
             msg.sender,
             bondToken,
-            submitterBondBalances[msg.sender][bondToken],
             amount
         );
 
@@ -108,7 +108,6 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
             _getWithdrawCommandType(),
             msg.sender,
             bondToken,
-            submitterBondBalances[msg.sender][bondToken],
             amount
         );
 
@@ -127,6 +126,26 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
 
         return receipt;
     }
+
+
+    /**
+     * @notice Remove withdrawal intent
+     * @dev This function is callable only after the withdrawal delay period has passed
+     * @param bondToken The bond token address
+     * @return receipt The messaging receipt
+     */
+    function removeWithdrawalIntent(address bondToken) external virtual nonReentrant returns (MessagingReceipt memory) {
+        require(bondToken != address(0), "Bond token cannot be zero address");
+        require(block.timestamp >= withdrawalIntents[msg.sender][bondToken].timestamp + WITHDRAWAL_DELAY, "Waiting period not over");
+        require(withdrawalIntents[msg.sender][bondToken].amount > 0, "No withdrawal intent");
+        uint256 amount = withdrawalIntents[msg.sender][bondToken].amount;
+        withdrawalIntents[msg.sender][bondToken].amount = 0;
+        withdrawalIntents[msg.sender][bondToken].timestamp = 0;
+        withdrawalIntents[msg.sender][bondToken].executed = false;
+
+        return _sendBalanceUpdate(_getRemoveWithdrawalIntentCommandType(), msg.sender, bondToken, amount);
+    }
+
 
     /**
      * @notice Get bond balance for a submitter and token
@@ -194,7 +213,6 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @param commandType The command type
      * @param submitter The submitter address
      * @param bondToken The bond token address
-     * @param finalAmount The final balance amount
      * @param deltaAmount The change in amount
      * @return receipt The messaging receipt
      */
@@ -202,7 +220,6 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         uint16 commandType,
         address submitter,
         address bondToken,
-        uint256 finalAmount,
         uint256 deltaAmount
     ) internal virtual returns (MessagingReceipt memory);
 
@@ -210,17 +227,34 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @notice Get deposit command type
      * @return The command type for deposit
      */
-    function _getDepositCommandType() internal pure virtual returns (uint16);
+    function _getDepositCommandType() internal pure returns (uint16) {
+        return Encoder.CMD_FROM_ESCROW_DEPOSIT;
+    }
 
     /**
      * @notice Get intent to withdraw command type
      * @return The command type for intent to withdraw
      */
-    function _getIntentToWithdrawCommandType() internal pure virtual returns (uint16);
+    function _getIntentToWithdrawCommandType() internal pure returns (uint16) {
+        return Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW;
+    }
 
     /**
      * @notice Get withdraw command type
      * @return The command type for withdraw
      */
-    function _getWithdrawCommandType() internal pure virtual returns (uint16);
+    function _getWithdrawCommandType() internal pure returns (uint16) {
+        return Encoder.CMD_FROM_ESCROW_WITHDRAW;
+    }
+
+    /**
+     * @notice Get remove withdrawal intent command type
+     * @return The command type for remove withdrawal intent
+     */
+    function _getRemoveWithdrawalIntentCommandType() internal pure returns (uint16) {
+        return Encoder.CMD_FROM_ESCROW_REMOVE_WITHDRAWAL_INTENT;
+    }
+
+
+
 }

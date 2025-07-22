@@ -49,6 +49,7 @@ interface IBondManagement {
     // Functions
     function depositBond(address bondToken, uint256 amount) external returns (MessagingReceipt memory);
     function intentToWithdrawBond(address bondToken, uint256 amount) external returns (MessagingReceipt memory);
+    function removeWithdrawalIntent(address bondToken) external returns (MessagingReceipt memory);
     function executeWithdrawal(address bondToken) external returns (MessagingReceipt memory);
     function getBondBalance(address submitter, address bondToken) external view returns (uint256);
     function getPendingWithdrawal(address submitter, address bondToken) external view returns (uint256, uint256);
@@ -81,6 +82,8 @@ interface IMarketLayerZeroBridge is ILayerZeroBridge {
     // Events
     event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
     event BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount);
+    event BondIntentToWithdraw(address indexed submitter, address indexed bondToken, uint256 amount);
+    event BondIntentToWithdrawRemoved(address indexed submitter, address indexed bondToken, uint256 amount);
     event BondWithdrawn(address indexed submitter, address indexed bondToken, uint256 amount);
     event AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId);
 

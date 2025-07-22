@@ -9,10 +9,7 @@ library Encoder {
     uint16 constant CMD_FROM_ESCROW_DEPOSIT = 4;
     uint16 constant CMD_FROM_ESCROW_INTENT_TO_WITHDRAW = 5;
     uint16 constant CMD_FROM_ESCROW_WITHDRAW = 6;
-
-    function encodeType(uint16 commandType, bytes memory data) internal pure returns (bytes memory) {
-        return abi.encodePacked(commandType, data);
-    }
+    uint16 constant CMD_FROM_ESCROW_REMOVE_WITHDRAWAL_INTENT = 7;
 
     function decodeType(bytes memory data) internal pure returns (uint16, bytes memory) {
         return abi.decode(data, (uint16, bytes));
@@ -56,15 +53,15 @@ library Encoder {
     }
 
     // Forward from Bridge Bond Balance commands
-    function encodeFromBalanceUpdate(address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount)
+    function encodeFromBalanceUpdate(address submitter, address bondToken, uint256 deltaAmount)
         internal
         pure
         returns (bytes memory)
     {
-        return abi.encode(submitter, bondToken, finalAmount, deltaAmount);
+        return abi.encode(submitter, bondToken, deltaAmount);
     }
 
-    function decodeFromBalanceUpdate(bytes memory data) internal pure returns (address, address, uint256, uint256) {
-        return abi.decode(data, (address, address, uint256, uint256));
+    function decodeFromBalanceUpdate(bytes memory data) internal pure returns (address, address, uint256) {
+        return abi.decode(data, (address, address, uint256));
     }
 }

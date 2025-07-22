@@ -13,7 +13,6 @@ import {BridgeTypes} from "./BridgeTypes.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import {ETHManagement} from "./abstract/ETHManagement.sol";
 import {BondManagement} from "./abstract/BondManagement.sol";
-// import {console2} from "forge-std/console2.sol";
 
 struct AssertionMarketData {
     bytes32 assertionId;
@@ -229,28 +228,14 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         uint16 commandType,
         address submitter,
         address bondToken,
-        uint256 finalAmount,
         uint256 deltaAmount
     ) internal override returns (MessagingReceipt memory) {
         // Make balance update data for UMA side via LayerZero
-        bytes memory commandPayload = Encoder.encodeFromBalanceUpdate(submitter, bondToken, finalAmount, deltaAmount);
+        bytes memory commandPayload = Encoder.encodeFromBalanceUpdate(submitter, bondToken, deltaAmount);
 
         // Send message using contract's ETH balance
         (MessagingReceipt memory receipt,) = _sendLayerZeroMessageWithQuote(commandType, commandPayload, false);
 
         return receipt;
-    }
-
-    // Implementation of command type functions
-    function _getDepositCommandType() internal pure override returns (uint16) {
-        return Encoder.CMD_FROM_ESCROW_DEPOSIT;
-    }
-
-    function _getIntentToWithdrawCommandType() internal pure override returns (uint16) {
-        return Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW;
-    }
-
-    function _getWithdrawCommandType() internal pure override returns (uint16) {
-        return Encoder.CMD_FROM_ESCROW_WITHDRAW;
     }
 }

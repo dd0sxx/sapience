@@ -10,7 +10,7 @@ import {IFeeManagement} from "../interfaces/ILayerZeroBridge.sol";
  * @dev This contract provides common functionality for:
  * - Setting and getting gas thresholds (warning and critical)
  * - Setting and getting max execution gas
- * - Checking gas thresholds and revert if necessary
+ * - Checking gas thresholds
  */
 abstract contract FeeManagement is
     Ownable,
