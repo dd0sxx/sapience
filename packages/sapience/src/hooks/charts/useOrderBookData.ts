@@ -149,13 +149,21 @@ export function useOrderBookData({
     const tickRange: number[] = [];
     // Align min/max ticks to the tick spacing grid
     const alignedMinTick = Math.ceil(baseAssetMinPriceTick / spacing) * spacing;
-    const alignedMaxTick =
-      Math.floor(baseAssetMaxPriceTick / spacing) * spacing;
+    const alignedMaxTick = Math.floor(baseAssetMaxPriceTick / spacing) * spacing;
+
+    let tickCount = 0;
+    const maxTicks = 50;
 
     for (let i = alignedMinTick; i <= alignedMaxTick; i += spacing) {
+      if (tickCount >= maxTicks) {
+        console.warn(`Tick limit reached (${maxTicks}), stopping to prevent excessive RPC calls`);
+        break;
+      }
+      
       // Basic check against Uniswap V3 theoretical min/max ticks
       if (i >= -887272 && i <= 887272) {
         tickRange.push(i);
+        tickCount++;
       }
     }
     // Log using the actual spacing determined
