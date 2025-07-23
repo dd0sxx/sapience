@@ -188,7 +188,7 @@ const ForecastContent = () => {
     tickSpacing,
     quoteTokenName,
     baseTokenName,
-    enabled: chartType === ChartType.ORDER_BOOK, // Only fetch when order book is selected
+    enabled: chartType === ChartType.ORDER_BOOK,
   });
   // ---- End: Hoisted OrderBook Data Fetching ----
 
