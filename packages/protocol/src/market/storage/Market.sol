@@ -37,7 +37,6 @@ library Market {
         IUniswapV3Pool pool;
         bool settled;
         uint256 settlementPriceD18;
-        mapping(uint256 => Debt.Data) lpDebtPositions;
         bytes32 assertionId;
         Settlement settlement;
         ISapienceStructs.MarketParams marketParams; // snapshotting market params
