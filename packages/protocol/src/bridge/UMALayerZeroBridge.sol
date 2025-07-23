@@ -40,11 +40,16 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
     // State variables
     BridgeTypes.BridgeConfig private bridgeConfig;
     address private optimisticOracleV3Address;
+    address private enabledBondToken;
+    uint256 private minimumDepositAmount;
 
     mapping(bytes32 => AssertionMarketData) private assertionIdToMarketData; // assertionId => marketData
 
     // Constructor and initialization
-    constructor(address _endpoint, address _owner) OApp(_endpoint, _owner) ETHManagement(_owner) {}
+    constructor(address _endpoint, address _owner, address _enabledBondToken, uint256 _minimumDepositAmount) OApp(_endpoint, _owner) ETHManagement(_owner) {
+        enabledBondToken = _enabledBondToken;
+        minimumDepositAmount = _minimumDepositAmount;
+    }
 
     // Configuration functions
     function setBridgeConfig(BridgeTypes.BridgeConfig calldata newConfig) external override onlyOwner {
@@ -237,5 +242,13 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         (MessagingReceipt memory receipt,) = _sendLayerZeroMessageWithQuote(commandType, commandPayload, false);
 
         return receipt;
+    }
+
+    function _getMinimumDepositAmount() internal view override returns (uint256) {
+        return minimumDepositAmount;
+    }
+
+    function _isValidToken(address _bondToken) internal view override returns (bool) {
+        return _bondToken == enabledBondToken;
     }
 }

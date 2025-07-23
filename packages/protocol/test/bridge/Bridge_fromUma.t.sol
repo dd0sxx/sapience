@@ -54,6 +54,7 @@ contract BridgeTestFromUma is TestHelperOz5 {
 
         super.setUp();
         setUpEndpoints(2, LibraryType.UltraLightNode);
+        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
         marketBridge = MarketLayerZeroBridge(
             payable(
@@ -66,7 +67,7 @@ contract BridgeTestFromUma is TestHelperOz5 {
         umaBridge = UMALayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
+                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this), address(bondCurrency), 500000000)
                 )
             )
         );
@@ -84,8 +85,6 @@ contract BridgeTestFromUma is TestHelperOz5 {
 
         mockOptimisticOracleV3 = new MockOptimisticOracleV3(address(umaBridge));
         mockMarketGroup = new MockMarketGroup(address(marketBridge));
-
-        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
         umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
 

@@ -41,9 +41,8 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         nonReentrant
         returns (MessagingReceipt memory)
     {
-        require(bondToken != address(0), "Bond token cannot be zero address");
-
-        require(amount > 0, "Amount must be greater than 0");
+        require(amount >= _getMinimumDepositAmount(), "Amount must be greater than minimum deposit amount");
+        require(_isValidToken(bondToken), "Invalid bond token");
 
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -168,6 +167,19 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[submitter][bondToken];
         return (intent.amount, intent.timestamp);
     }
+
+    /**
+     * @notice Get minimum deposit amount (internal)
+     * @return The minimum deposit amount
+     */
+    function _getMinimumDepositAmount() internal virtual view returns (uint256);
+
+    /**
+     * @notice Check if token is valid (internal)
+     * @param bondToken The bond token address
+     * @return True if token is valid, false otherwise
+     */
+    function _isValidToken(address bondToken) internal virtual view returns (bool);
 
     /**
      * @notice Get bond balance (internal)

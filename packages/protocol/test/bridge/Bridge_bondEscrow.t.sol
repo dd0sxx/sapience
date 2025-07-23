@@ -8,12 +8,19 @@ import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 
+// Simple ERC20 token for testing
+contract TestToken is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+}
+
 contract BridgeTestBondEscrow is TestHelperOz5 {
     using Cannon for Vm;
+
 
     // Users
     address private umaUser = address(0x1);
@@ -43,6 +50,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
 
         super.setUp();
         setUpEndpoints(2, LibraryType.UltraLightNode);
+        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
         marketBridge = MarketLayerZeroBridge(
             payable(
@@ -55,7 +63,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         umaBridge = UMALayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
+                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this), address(bondCurrency), 500000000)
                 )
             )
         );
@@ -77,7 +85,6 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         vm.deal(address(umaBridge), 100 ether);
         vm.deal(address(marketBridge), 100 ether);
 
-        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
@@ -87,8 +94,17 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
 
     function test_failsIfWrongDepositAmount() public {
         vm.startPrank(umaUser);
-        vm.expectRevert("Amount must be greater than 0");
-        umaBridge.depositBond(address(bondCurrency), 0);
+        vm.expectRevert("Amount must be greater than minimum deposit amount");
+        umaBridge.depositBond(address(bondCurrency), 499999999);
+        vm.stopPrank();
+    }
+
+    function test_failsIfWrongDepositToken() public {
+        // Deploy a different token to test wrong deposit token
+        TestToken wrongToken = new TestToken("Wrong Token", "WRONG");
+        vm.startPrank(umaUser);
+        vm.expectRevert("Invalid bond token");
+        umaBridge.depositBond(address(wrongToken), 1 ether);
         vm.stopPrank();
     }
 

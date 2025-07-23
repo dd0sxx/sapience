@@ -16,6 +16,9 @@ interface ILayerZeroBridge {
 }
 
 interface IETHManagement {
+    // Custom errors
+    error ETHTransferFailed(address recipient, uint256 amount);
+
     // Events
     event ETHDeposited(address indexed depositor, uint256 amount);
     event ETHWithdrawn(address indexed recipient, uint256 amount);

@@ -14,6 +14,17 @@ import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 
+// Contract that will revert when receiving ETH
+contract RevertingReceiver {
+    receive() external payable {
+        revert("ETH transfer not allowed");
+    }
+
+    function callWithdrawETH(address bridge, uint256 amount) external {
+        IETHManagement(bridge).withdrawETH(amount);
+    }
+}
+
 contract BridgeTestEthBalance is TestHelperOz5 {
     using Cannon for Vm;
 
@@ -53,6 +64,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
         super.setUp();
         setUpEndpoints(2, LibraryType.UltraLightNode);
+        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
         marketBridge = MarketLayerZeroBridge(
             payable(
@@ -65,7 +77,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         umaBridge = UMALayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
+                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this), address(bondCurrency), 500000000)
                 )
             )
         );
@@ -83,8 +95,6 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
         mockOptimisticOracleV3 = new MockOptimisticOracleV3(address(umaBridge));
         mockMarketGroup = new MockMarketGroup(address(marketBridge));
-
-        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
         umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
 
@@ -442,5 +452,58 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.stopPrank();
 
         assertEq(address(umaBridge).balance, initialBalance);
+    }
+
+    // Test for new ETH transfer error handling
+    function test_MarketBridge_withdrawETH_transferFailure() public {
+        // Deploy a contract that will revert when receiving ETH
+        RevertingReceiver receiver = new RevertingReceiver();
+        
+        // Create a temporary bridge with the reverting receiver as owner
+        MarketLayerZeroBridge tempBridge = MarketLayerZeroBridge(
+            payable(
+                _deployOApp(
+                    type(MarketLayerZeroBridge).creationCode, 
+                    abi.encode(address(endpoints[marketEiD]), address(receiver))
+                )
+            )
+        );
+        
+        // Fund the temporary bridge
+        vm.deal(address(tempBridge), 10 ether);
+        
+        // Try to withdraw ETH - this should fail because the receiver will revert
+        vm.expectRevert(abi.encodeWithSelector(
+            IETHManagement.ETHTransferFailed.selector,
+            address(receiver),
+            5 ether
+        ));
+        receiver.callWithdrawETH(address(tempBridge), 5 ether);
+    }
+
+    function test_UMABridge_withdrawETH_transferFailure() public {
+        // Deploy a contract that will revert when receiving ETH
+        RevertingReceiver receiver = new RevertingReceiver();
+        
+        // Create a temporary bridge with the reverting receiver as owner
+        UMALayerZeroBridge tempBridge = UMALayerZeroBridge(
+            payable(
+                _deployOApp(
+                    type(UMALayerZeroBridge).creationCode, 
+                    abi.encode(address(endpoints[umaEiD]), address(receiver), address(bondCurrency), 500000000)
+                )
+            )
+        );
+        
+        // Fund the temporary bridge
+        vm.deal(address(tempBridge), 10 ether);
+        
+        // Try to withdraw ETH - this should fail because the receiver will revert
+        vm.expectRevert(abi.encodeWithSelector(
+            IETHManagement.ETHTransferFailed.selector,
+            address(receiver),
+            5 ether
+        ));
+        receiver.callWithdrawETH(address(tempBridge), 5 ether);
     }
 }

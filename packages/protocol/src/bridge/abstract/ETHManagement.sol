@@ -35,7 +35,12 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      */
     function withdrawETH(uint256 amount) external onlyOwner {
         require(amount <= address(this).balance, "Insufficient balance");
-        payable(owner()).transfer(amount);
+        
+        (bool success, ) = payable(owner()).call{value: amount}("");
+        if (!success) {
+            revert ETHTransferFailed(owner(), amount);
+        }
+        
         emit ETHWithdrawn(owner(), amount);
 
         // Check gas thresholds after withdrawal
