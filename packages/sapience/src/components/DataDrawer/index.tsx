@@ -164,19 +164,9 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
             </TableHeader>
             <TableBody>
               {allTransactions.map((tx) => {
-                // Helper function to safely convert scientific notation to BigInt
-                const safeBigInt = (value: string | number): bigint => {
-                  const stringValue = String(value);
-                  if (stringValue.includes('e') || stringValue.includes('E')) {
-                    // Convert scientific notation to regular number, then to BigInt
-                    return BigInt(Math.floor(Number(value)));
-                  }
-                  return BigInt(stringValue);
-                };
-
                 const typeDisplay = getTransactionTypeDisplay(tx.type);
                 const collateralAmount = tx.position.collateral
-                  ? Number(formatEther(safeBigInt(tx.position.collateral)))
+                  ? Number(formatEther(BigInt(tx.position.collateral)))
                   : 0;
 
                 return (
