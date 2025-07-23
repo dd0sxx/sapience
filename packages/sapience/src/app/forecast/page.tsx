@@ -6,17 +6,17 @@ import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
 // Import existing components
-import PredictForm from '~/components/forecasting/forms/PredictForm';
-import AskForm from '~/components/shared/AskForm';
-import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import Slider from '@sapience/ui/components/ui/slider';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
+import { Input as UiInput } from '@sapience/ui';
 import { SpecialTab } from '../../components/shared/Comments';
+import PredictForm from '~/components/forecasting/forms/PredictForm';
+import AskForm from '~/components/shared/AskForm';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupClassification } from '~/lib/types';
-import { Input as UiInput } from '@sapience/ui';
 
 // Dynamically import components to avoid SSR issues
 const QuestionSelect = dynamic(() => import('../../components/shared/QuestionSelect'), {

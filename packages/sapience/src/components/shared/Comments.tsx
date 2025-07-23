@@ -2,14 +2,14 @@
 
 import { blo } from 'blo';
 import Image from 'next/image';
-import { AddressDisplay } from './AddressDisplay';
 import { useState, useEffect } from 'react';
-import { usePredictions } from '~/hooks/graphql/usePredictions';
 import { useAccount } from 'wagmi';
-import { SCHEMA_UID } from '~/lib/constants/eas';
-import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { connectorsForWallets } from '@rainbow-me/rainbowkit';
 import { fromHex } from 'viem';
+import { AddressDisplay } from './AddressDisplay';
+import { usePredictions } from '~/hooks/graphql/usePredictions';
+import { SCHEMA_UID } from '~/lib/constants/eas';
+import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 
 export enum Answer {
   Yes = 'yes',
@@ -151,8 +151,8 @@ function getDecodedDataFromAttestation(att: any): {
   prediction: bigint;
   commentText: string;
 } {
-  console.log("marketID", att.decodedData[1].value.value)
-  console.log("prediction", att.decodedData[2].value.value)
+  console.log("marketID", att.decodedData[1].value.value);
+  console.log("prediction", att.decodedData[2].value.value);
   return {
     marketAddress: att.decodedData[0].value.value,
     // marketId: att.decodedData[1].value.value,
