@@ -154,7 +154,8 @@ export function useOrderBookData({
     const tickRange: number[] = [];
     // Align min/max ticks to the tick spacing grid
     const alignedMinTick = Math.ceil(baseAssetMinPriceTick / spacing) * spacing;
-    const alignedMaxTick = Math.floor(baseAssetMaxPriceTick / spacing) * spacing;
+    const alignedMaxTick =
+      Math.floor(baseAssetMaxPriceTick / spacing) * spacing;
 
     for (let i = alignedMinTick; i <= alignedMaxTick; i += spacing) {
       // Basic check against Uniswap V3 theoretical min/max ticks
@@ -163,7 +164,12 @@ export function useOrderBookData({
       }
     }
     return tickRange;
-  }, [actualTickSpacing, baseAssetMaxPriceTick, baseAssetMinPriceTick, enabled]);
+  }, [
+    actualTickSpacing,
+    baseAssetMaxPriceTick,
+    baseAssetMinPriceTick,
+    enabled,
+  ]);
 
   // 2. Prepare Contracts for useReadContracts
   const contracts = useMemo(() => {
@@ -193,7 +199,7 @@ export function useOrderBookData({
   } = useReadContracts({
     contracts,
     query: {
-      enabled: enabled && contracts.length > 0, // Only run if enabled and contracts are defined
+      enabled: enabled && contracts.length > 0, // Only run expensive RPC calls if enabled and contracts are defined
       // Add other query options like refetchInterval if needed
     },
   });
