@@ -33,6 +33,7 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
 }) => {
   const priceColor = type === 'ask' ? 'text-red-500' : 'text-green-500';
   const bgColor = type === 'ask' ? 'bg-red-500/10' : 'bg-green-500/10'; // Use subtle opacity
+  // const barPosition = type === 'ask' ? 'right-0' : 'left-0'; // Removed conditional positioning
 
   const baseUnit = baseTokenName ? ` ${baseTokenName}` : '';
   const baseUnitPart = baseUnit ? `/${baseUnit.trim()}` : '';
@@ -72,6 +73,7 @@ interface OrderBookChartProps {
   isErrorPool: boolean;
   isLoadingBook: boolean;
   isErrorBook: boolean;
+  // Removed bookError as specific errors are combined now
 }
 
 const OrderBookChart: React.FC<OrderBookChartProps> = ({
@@ -137,6 +139,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
       >
         <p className="text-sm text-center">
           Error loading order book data.
+          {/* Optionally display error message: {isErrorPool ? "Pool Error" : "Book Error"} */}
         </p>
       </div>
     );
@@ -199,8 +202,8 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
                 total={ask.cumulativeSize}
                 type="ask"
                 percentage={percentage}
-                baseTokenName={baseTokenName}
-                quoteTokenName={quoteTokenName}
+                baseTokenName={baseTokenName} // Pass base token name
+                quoteTokenName={quoteTokenName} // Pass quote token name
               />
             );
           })}
@@ -227,8 +230,8 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
                 total={bid.cumulativeSize}
                 type="bid"
                 percentage={percentage}
-                baseTokenName={baseTokenName}
-                quoteTokenName={quoteTokenName}
+                baseTokenName={baseTokenName} // Pass base token name
+                quoteTokenName={quoteTokenName} // Pass quote token name
               />
             );
           })}

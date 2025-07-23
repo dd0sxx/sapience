@@ -162,7 +162,6 @@ export function useOrderBookData({
         tickRange.push(i);
       }
     }
-    console.log(`[useOrderBookData] Generated ${tickRange.length} ticks for RPC calls`);
     return tickRange;
   }, [actualTickSpacing, baseAssetMaxPriceTick, baseAssetMinPriceTick, enabled]);
 
