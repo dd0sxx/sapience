@@ -48,8 +48,7 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
         setLastSelected({ group: undefined });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMarketGroup, selectedMarketId, marketMode, markets]);
+  }, [selectedMarketGroup, selectedMarketId, marketMode, markets, lastSelected, inputValue]);
 
   // Filter dropdown options
   useEffect(() => {
@@ -87,7 +86,7 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
       });
     }
     setFilteredMarketGroups(filtered.slice(0, 10));
-  }, [inputValue, marketGroups, selectedCategory, marketMode, markets]);
+  }, [inputValue, marketGroups, filteredMarketGroups, selectedCategory, marketMode, markets]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -64,13 +64,22 @@ const NavLinks = ({
 
   return (
     <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-60 pl-4">
-      <Link href="/forecasting" passHref className="flex w-fit">
+      <Link href="/markets" passHref className="flex w-fit">
         <Button
           variant="ghost"
-          className={`${linkClass} ${isActive('/forecasting', pathname) ? activeClass : ''}`}
+          className={`${linkClass} ${isActive('/markets', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
-          Forecasting
+          Markets
+        </Button>
+      </Link>
+      <Link href="/forecast" passHref className="flex w-fit">
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          Forecast
         </Button>
       </Link>
       <Link href="/leaderboard" passHref className="flex w-fit">
