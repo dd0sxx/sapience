@@ -30,6 +30,12 @@ interface Comment {
   question: string; // Added question field
   category?: string; // Added category field
   answer: Answer;
+  marketClassification?: string; // Added marketClassification field
+  optionIndex?: number;
+  totalOptions?: number;
+  numericValue?: number;
+  lowerBound?: number;
+  upperBound?: number;
 }
 
 interface CommentsProps {
@@ -162,12 +168,18 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
   // Schema: address marketAddress, uint256 marketId, uint160 prediction, string comment
   const {marketAddress, marketId, prediction, commentText} = getDecodedDataFromAttestation(att);
 
-  console.log("marketAddress", marketAddress, "marketId", marketId, "prediction", prediction, "commentText", commentText);
-  const confidence = `${prediction}% Chance`;
-
-  // Find the category and question using marketGroups
+  // Find the category, question, and marketClassification using marketGroups
   let category: string | undefined = undefined;
   let question: string = marketId?.toString() || '';
+  let marketClassification: string | undefined = undefined;
+  let optionName: string | undefined = undefined;
+  let baseTokenName: string | undefined = undefined;
+  let quoteTokenName: string | undefined = undefined;
+  let optionIndex: number | undefined = undefined;
+  let totalOptions: number | undefined = undefined;
+  let numericValue: number | undefined = undefined;
+  let lowerBound: number | undefined = undefined;
+  let upperBound: number | undefined = undefined;
   if (marketGroups && marketAddress && marketId) {
     const group = marketGroups.find(
       (g) => g.address?.toLowerCase() === marketAddress.toLowerCase()
@@ -175,7 +187,6 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
     if (group) {
       // Find the market in the group
       const market = group.markets?.find((m: any) => m.marketId?.toString() === marketId?.toString());
-      console.log("market", market?.question);
       if (market && market.question) {
         if (typeof market.question === 'string') {
           question = market.question;
@@ -190,7 +201,39 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
       } else if (group.category?.slug) {
         category = group.category.slug;
       }
+      if (group.marketClassification) {
+        marketClassification = group.marketClassification;
+      }
+      if (market && market.optionName) {
+        optionName = market.optionName;
+      }
+      if (group.baseTokenName) baseTokenName = group.baseTokenName;
+      if (group.quoteTokenName) quoteTokenName = group.quoteTokenName;
+      // Multiple choice: find index and total
+      if (marketClassification === '1' && group.markets) {
+        optionIndex = group.markets.findIndex((m: any) => m.marketId?.toString() === marketId?.toString());
+        totalOptions = group.markets.length;
+      }
+      // Numeric: get value and bounds
+      if (marketClassification === '3' && market) {
+        numericValue = Number(prediction);
+        lowerBound = market.baseAssetMinPriceTick !== undefined ? Number(market.baseAssetMinPriceTick) : undefined;
+        upperBound = market.baseAssetMaxPriceTick !== undefined ? Number(market.baseAssetMaxPriceTick) : undefined;
+      }
     }
+  }
+
+  // Format prediction text based on market type
+  let predictionText = '';
+  const YES_SQRT_PRICE_X96 = BigInt('79228162514264337593543950336');
+  if (marketClassification === '2') { // YES_NO
+    predictionText = `${prediction === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'} • ${prediction === YES_SQRT_PRICE_X96 ? '100' : '0'}% Chance`;
+  } else if (marketClassification === '1') { // MULTIPLE_CHOICE
+    predictionText = optionName ? `Option: ${optionName}` : `Option ID: ${marketId}`;
+  } else if (marketClassification === '3') { // NUMERIC
+    predictionText = `Prediction: ${prediction.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;
+  } else {
+    predictionText = `${prediction}% Chance`;
   }
 
   return {
@@ -198,10 +241,16 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
     address: att.attester,
     content: commentText,
     timestamp: new Date(Number(att.rawTime) * 1000).toISOString(),
-    prediction: confidence,
+    prediction: predictionText,
     answer: Answer.Yes, // Not available in this schema, default to Yes
     question,
     category,
+    marketClassification,
+    optionIndex,
+    totalOptions,
+    numericValue,
+    lowerBound,
+    upperBound,
   };
 }
 
@@ -259,44 +308,60 @@ const Comments = ({
     // Sort by timestamp descending (most recent first)
     filtered = filtered.slice().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+    // Filter out numeric comments outside the range
+    filtered = filtered.filter(comment => {
+      if (comment.marketClassification === '3' && comment.numericValue !== undefined && comment.lowerBound !== undefined && comment.upperBound !== undefined) {
+        return comment.numericValue >= comment.lowerBound && comment.numericValue <= comment.upperBound;
+      }
+      return true;
+    });
+
     return filtered;
   })();
 
   // Helper function to get badge styling based on prediction percentage
-  const getPredictionBadgeStyle = (answer: Answer, prediction: string) => {
-    // Extract percentage from prediction string
-    const percentageMatch = prediction.match(/(\d+)%/);
-    if (!percentageMatch) {
-      return 'bg-gray-100 text-gray-700 border-gray-300';
+  const getPredictionBadgeStyle = (answer: Answer, prediction: string, comment?: Comment) => {
+    // Multiple Choice: color by option index
+    if (comment?.marketClassification === '1' && comment.optionIndex !== undefined && comment.totalOptions) {
+      // Use HSL: hue from 0 to 360
+      const hue = Math.round((comment.optionIndex / comment.totalOptions) * 360);
+      return `bg-[hsl(${hue},80%,80%)] text-[hsl(${hue},60%,30%)] border-[hsl(${hue},80%,60%)]`;
     }
-    const percentage = parseInt(percentageMatch[1], 10);
-
-    // Define color intensity steps
-    let bg = '', text = '', border = '';
-    if (answer === Answer.Yes) {
-      if (percentage >= 90) {
-        bg = 'bg-green-500'; text = 'text-white'; border = 'border-green-600';
-      } else if (percentage >= 70) {
-        bg = 'bg-green-300'; text = 'text-green-900'; border = 'border-green-400';
-      } else if (percentage >= 50) {
-        bg = 'bg-green-100'; text = 'text-green-700'; border = 'border-green-300';
+    // Yes/No: red/green
+    if (comment?.marketClassification === '2') {
+      if (answer === Answer.Yes) {
+        return 'bg-green-500 text-white border-green-600';
       } else {
-        bg = 'bg-green-50'; text = 'text-green-700'; border = 'border-green-200';
+        return 'bg-red-500 text-white border-red-600';
       }
-    } else if (answer === Answer.No) {
-      if (percentage >= 90) {
-        bg = 'bg-red-500'; text = 'text-white'; border = 'border-red-600';
-      } else if (percentage >= 70) {
-        bg = 'bg-red-300'; text = 'text-red-900'; border = 'border-red-400';
-      } else if (percentage >= 50) {
-        bg = 'bg-red-100'; text = 'text-red-700'; border = 'border-red-300';
-      } else {
-        bg = 'bg-red-50'; text = 'text-red-700'; border = 'border-red-200';
-      }
-    } else {
-      bg = 'bg-green-50'; text = 'text-green-700'; border = 'border-green-200';
     }
-    return `${bg} ${text} ${border}`;
+    // Numeric: interpolate color from red to green
+    if (comment?.marketClassification === '3' && comment.numericValue !== undefined && comment.lowerBound !== undefined && comment.upperBound !== undefined) {
+      const min = comment.lowerBound;
+      const max = comment.upperBound;
+      const val = comment.numericValue;
+      // Clamp value
+      const pct = Math.max(0, Math.min(1, (val - min) / (max - min)));
+      // Interpolate from red (0) to yellow (0.5) to green (1)
+      let r, g, b;
+      if (pct < 0.5) {
+        // Red to yellow
+        r = 255;
+        g = Math.round(255 * (pct / 0.5));
+        b = 0;
+      } else {
+        // Yellow to green
+        r = Math.round(255 * (1 - (pct - 0.5) / 0.5));
+        g = 255;
+        b = 0;
+      }
+      const bg = `bg-[rgb(${r},${g},${b})]`;
+      const text = 'text-black';
+      const border = 'border-black/20';
+      return `${bg} ${text} ${border}`;
+    }
+    // Fallback: gray
+    return 'bg-gray-100 text-gray-700 border-gray-300';
   };
 
 
@@ -327,14 +392,22 @@ const Comments = ({
                     </h2>
                     {/* Prediction and Signature on same line */}
                     <div className="flex items-center gap-4">
-                      {/* Yes/No + Percentage badge */}
+                      {/* Prediction badge/text based on market type */}
                       {comment.prediction && (
-                        <span className={`inline-flex items-center h-6 px-2.5 text-xs font-semibold rounded-full border ${getPredictionBadgeStyle(comment.answer, comment.prediction)}`}>
-                          {comment.answer === Answer.Yes ? 'Yes' : 'No'}
-                          {(() => {
-                            const match = comment.prediction?.match(/(\d+)%/);
-                            return match ? ` • ${match[1]}% Chance` : '';
-                          })()}
+                        <span className={`inline-flex items-center h-6 px-2.5 text-xs font-semibold rounded-full border ${getPredictionBadgeStyle(comment.answer, comment.prediction, comment)}`}>
+                          {comment.marketClassification === '2' ? (
+                            // YES_NO
+                            comment.prediction
+                          ) : comment.marketClassification === '1' ? (
+                            // MULTIPLE_CHOICE
+                            comment.prediction
+                          ) : comment.marketClassification === '3' ? (
+                            // NUMERIC
+                            comment.prediction
+                          ) : (
+                            // fallback
+                            comment.prediction
+                          )}
                         </span>
                       )}
                       {/* Signature */}

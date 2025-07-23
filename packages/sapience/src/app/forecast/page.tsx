@@ -177,9 +177,10 @@ const ForecastPage = () => {
                       className="mb-2"
                       selectedMarketGroup={selectedMarketGroup}
                       selectedCategory={selectedCategory}
-                      // For market selection, we pass a custom onMarketGroupSelect that sets selectedMarketId
+                      // For market selection, we pass a custom onMarketGroupSelect that sets selectedMarketId and selectedQuestion
                       onMarketGroupSelect={(market) => {
                         setSelectedMarketId(market ? market.id.toString() : '');
+                        setSelectedQuestion(market ? (market.question || market.optionName || undefined) : undefined);
                       }}
                       // Custom prop to indicate market mode (not group mode)
                       marketMode={true}
@@ -195,45 +196,14 @@ const ForecastPage = () => {
                       <div className="text-muted-foreground text-sm">Select a market to submit a prediction.</div>
                     )}
                     {selectedMarketGroup && selectedMarketId && (
-                      <>
-                        {/* Prediction Slider */}
-                        <div className="space-y-6">
-                          <div className="flex gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                                <span>No</span>
-                                <span>Yes</span>
-                              </div>
-                              <Slider
-                                value={predictionValue}
-                                onValueChange={setPredictionValue}
-                                max={100}
-                                min={0}
-                                step={1}
-                                className="w-full"
-                              />
-                            </div>
-                            <div className="flex items-end justify-center text-center text-lg font-medium text-foreground w-[120px] pt-1.5">
-                              {predictionValue[0]}% Chance
-                            </div>
-                          </div>
-                          {/* Comment and Submit */}
-                          <div className="flex gap-4">
-                            <Input
-                              value={comment}
-                              onChange={(e) => setComment(e.target.value)}
-                              placeholder="What's the rationale for your prediction?"
-                              className="flex-1"
-                            />
-                            <Button className="px-6 py-3 w-[140px]"
-                              onClick={submitPrediction}
-                              disabled={isAttesting || !selectedMarket || !selectedMarketGroup || !selectedMarketId}
-                            >
-                              {isAttesting ? 'Submitting...' : 'Predict'}
-                            </Button>
-                          </div>
-                        </div>
-                      </>
+                      <PredictForm
+                        marketGroupData={{
+                          ...selectedMarketGroup,
+                          markets: [selectedMarketGroup.markets.find((m: any) => m.id.toString() === selectedMarketId)],
+                        }}
+                        marketClassification={selectedMarketGroup.marketClassification}
+                        chainId={selectedMarketGroup.chainId}
+                      />
                     )}
                   </div>
                 ) : (
