@@ -36,8 +36,8 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
   // const barPosition = type === 'ask' ? 'right-0' : 'left-0'; // Removed conditional positioning
 
   const baseUnit = baseTokenName ? ` ${baseTokenName}` : '';
-  const baseUnitPart = baseUnit ? `/${baseUnit.trim()}` : '';
-  const priceUnit = quoteTokenName ? ` ${quoteTokenName}${baseUnitPart}` : '';
+  const baseUnitPart = baseUnit ? `/${baseUnit.trim()}` : ''; // Create the conditional part separately
+  const priceUnit = quoteTokenName ? ` ${quoteTokenName}${baseUnitPart}` : ''; // Combine without nesting
 
   return (
     <div className="relative grid grid-cols-3 gap-4 text-sm py-1 px-2 hover:bg-muted/50 overflow-hidden">
