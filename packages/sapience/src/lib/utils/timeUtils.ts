@@ -1,7 +1,11 @@
 export function formatRelativeTime(timestamp: number): string {
   const now = Date.now();
   const diff = now - timestamp;
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
@@ -25,4 +29,8 @@ export function formatRelativeTime(timestamp: number): string {
   } else {
     return 'Just now';
   }
+<<<<<<< HEAD
 }
+=======
+} 
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92

@@ -29,6 +29,10 @@ interface TraderPositionsTableProps {
   showHeader?: boolean;
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
 function MaxPayoutCell({ position }: { position: PositionType }) {
   const baseTokenName = position.market?.marketGroup?.baseTokenName;
   const collateralSymbol = position.market?.marketGroup?.collateralSymbol;

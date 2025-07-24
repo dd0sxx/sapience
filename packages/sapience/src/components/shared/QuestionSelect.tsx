@@ -1,20 +1,30 @@
 'use client';
 
 import { Input } from '@sapience/ui/components/ui/input';
+<<<<<<< HEAD
 import { Search } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import type { SelectableTab } from './Comments';
+=======
+import { Search, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 
 interface QuestionSelectProps {
   className?: string;
   selectedMarketGroup?: any;
+<<<<<<< HEAD
   onMarketGroupSelect?: (marketOrGroup: any) => void;
+=======
+  onMarketGroupSelect?: (marketOrGroup: any | undefined) => void;
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
   selectedCategory?: string | null;
   // New props for market selection mode
   marketMode?: boolean;
   markets?: any[];
   selectedMarketId?: string;
+<<<<<<< HEAD
   // New prop for category switching
   onCategorySwitch?: (categorySlug: SelectableTab) => void;
 }
@@ -34,6 +44,14 @@ const QuestionSelect = ({
   const [lastSelected, setLastSelected] = useState<
     { id?: string; group?: any } | undefined
   >(undefined);
+=======
+}
+
+const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, selectedCategory, marketMode = false, markets = [], selectedMarketId }: QuestionSelectProps) => {
+  // Track last selected id/group to avoid overwriting inputValue on every render
+  const [inputValue, setInputValue] = useState('');
+  const [lastSelected, setLastSelected] = useState<{ id?: string; group?: any } | undefined>(undefined);
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [filteredMarketGroups, setFilteredMarketGroups] = useState<any[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -46,6 +64,7 @@ const QuestionSelect = ({
   useEffect(() => {
     if (marketMode) {
       if (selectedMarketId && lastSelected?.id !== selectedMarketId) {
+<<<<<<< HEAD
         const selected = markets.find(
           (m) => m.marketId?.toString() === selectedMarketId
         );
@@ -62,6 +81,10 @@ const QuestionSelect = ({
         }
 
         setInputValue(displayValue);
+=======
+        const selected = markets.find((m) => m.id?.toString() === selectedMarketId);
+        setInputValue(selected?.optionName || selected?.question || '');
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
         setLastSelected({ id: selectedMarketId });
       } else if (!selectedMarketId && lastSelected?.id) {
         setInputValue('');
@@ -76,7 +99,11 @@ const QuestionSelect = ({
         setLastSelected({ group: undefined });
       }
     }
+<<<<<<< HEAD
   }, [selectedMarketGroup, selectedMarketId, marketMode, markets]);
+=======
+  }, [selectedMarketGroup, selectedMarketId, marketMode, markets, lastSelected, inputValue]);
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
 
   // Filter dropdown options
   useEffect(() => {
@@ -85,6 +112,7 @@ const QuestionSelect = ({
       let filtered = markets;
       if (inputValue.trim()) {
         const searchTerm = inputValue.toLowerCase();
+<<<<<<< HEAD
         filtered = filtered.filter(
           (market) =>
             (market.question?.toLowerCase() || '').includes(searchTerm) ||
@@ -92,6 +120,14 @@ const QuestionSelect = ({
         );
       }
       setFilteredMarketGroups(filtered);
+=======
+        filtered = filtered.filter((market) =>
+          (market.question?.toLowerCase() || '').includes(searchTerm) ||
+          (market.optionName?.toLowerCase() || '').includes(searchTerm)
+        );
+      }
+      setFilteredMarketGroups(filtered.slice(0, 10));
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
       return;
     }
     // Group mode (original)
@@ -100,6 +136,12 @@ const QuestionSelect = ({
       return;
     }
     let filtered = marketGroups;
+<<<<<<< HEAD
+=======
+    if (selectedCategory && selectedCategory !== 'selected' && selectedCategory !== 'my-predictions') {
+      filtered = filtered.filter((group) => group.category?.slug === selectedCategory);
+    }
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
     if (inputValue.trim()) {
       const searchTerm = inputValue.toLowerCase();
       filtered = filtered.filter((group) => {
@@ -111,8 +153,13 @@ const QuestionSelect = ({
         );
       });
     }
+<<<<<<< HEAD
     setFilteredMarketGroups(filtered);
   }, [inputValue, marketGroups, selectedCategory, marketMode]);
+=======
+    setFilteredMarketGroups(filtered.slice(0, 10));
+  }, [inputValue, marketGroups, filteredMarketGroups, selectedCategory, marketMode, markets]);
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,6 +170,7 @@ const QuestionSelect = ({
 
   // Handle input blur: if input is empty, deselect
   const handleInputBlur = () => {
+<<<<<<< HEAD
     // Only deselect if input is empty AND there's no current selection
     if (inputValue.trim() === '') {
       if (marketMode) {
@@ -134,11 +182,16 @@ const QuestionSelect = ({
           onMarketGroupSelect?.(undefined);
         }
       }
+=======
+    if (inputValue.trim() === '') {
+      onMarketGroupSelect?.(undefined);
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
     }
   };
 
   // Handle selection
   const handleSelect = (item: any) => {
+<<<<<<< HEAD
     const displayValue = marketMode
       ? item.optionName || item.question || ''
       : item.question || '';
@@ -154,6 +207,10 @@ const QuestionSelect = ({
     } else {
       setLastSelected({ group: item });
     }
+=======
+    setInputValue(marketMode ? (item.optionName || item.question || '') : (item.question || ''));
+    setIsDropdownOpen(false);
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
     onMarketGroupSelect?.(item);
   };
 
@@ -182,7 +239,11 @@ const QuestionSelect = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+<<<<<<< HEAD
   }, [isDropdownOpen]);
+=======
+  }, []);
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
 
   return (
     <div className={`${className || ''} relative`}>
@@ -197,11 +258,15 @@ const QuestionSelect = ({
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
+<<<<<<< HEAD
           placeholder={
             marketMode
               ? 'Search markets...'
               : 'Search questions or market groups...'
           }
+=======
+          placeholder={marketMode ? 'Search markets...' : 'Search questions or market groups...'}
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
           className="pl-10 h-12 text-base pr-10"
         />
         {inputValue && (
@@ -241,6 +306,7 @@ const QuestionSelect = ({
                       {/* Market info */}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-foreground truncate">
+<<<<<<< HEAD
                           {market.group?.question ||
                             market.question ||
                             `Market ${market.marketId}`}
@@ -252,6 +318,13 @@ const QuestionSelect = ({
                           ) : (
                             market.question && <span>{market.question}</span>
                           )}
+=======
+                          {market.optionName || market.question || `Market ${market.marketId}`}
+                        </div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                          {market.question && <span>{market.question}</span>}
+                          {market.optionName && <span>• {market.optionName}</span>}
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                         </div>
                       </div>
                     </div>
@@ -263,6 +336,7 @@ const QuestionSelect = ({
                 No markets found matching "{inputValue}"
               </div>
             ) : null
+<<<<<<< HEAD
           ) : // Group mode dropdown (original)
           isLoading ? (
             <div className="p-4 text-center text-muted-foreground">
@@ -332,10 +406,79 @@ const QuestionSelect = ({
               No market groups found matching "{inputValue}"
             </div>
           ) : null}
+=======
+          ) : (
+            // Group mode dropdown (original)
+            isLoading ? (
+              <div className="p-4 text-center text-muted-foreground">
+                Loading market groups...
+              </div>
+            ) : filteredMarketGroups.length > 0 ? (
+              <div className="py-2">
+                {filteredMarketGroups.map((marketGroup) => (
+                  <button
+                    key={marketGroup.id}
+                    type="button"
+                    className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b border-border last:border-b-0"
+                    onClick={() => handleSelect(marketGroup)}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Category icon */}
+                      <div className="flex-shrink-0 mt-1">
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: `${marketGroup.category?.color || '#9CA3AF'}1A` }}
+                        >
+                          <div style={{ transform: 'scale(0.6)' }}>
+                            <div
+                              style={{ color: marketGroup.category?.color || '#9CA3AF' }}
+                              dangerouslySetInnerHTML={{
+                                __html: marketGroup.category?.iconSvg || '',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {/* Market group info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-foreground truncate">
+                          {marketGroup.question}
+                        </div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                          <span>{marketGroup.category?.name}</span>
+                          {marketGroup.baseTokenName && marketGroup.quoteTokenName && (
+                            <>
+                              <span>•</span>
+                              <span>{marketGroup.baseTokenName}/{marketGroup.quoteTokenName}</span>
+                            </>
+                          )}
+                          {marketGroup.markets?.length > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>{marketGroup.markets.length} markets</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : inputValue.trim() ? (
+              <div className="p-4 text-center text-muted-foreground">
+                No market groups found matching "{inputValue}"
+              </div>
+            ) : null
+          )}
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
         </div>
       )}
     </div>
   );
 };
 
+<<<<<<< HEAD
 export default QuestionSelect;
+=======
+export default QuestionSelect; 
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92

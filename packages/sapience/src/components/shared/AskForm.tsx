@@ -20,7 +20,11 @@ import {
   SelectValue,
 } from '@sapience/ui/components/ui/select';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+<<<<<<< HEAD
 import { InfoIcon, PlusIcon, XIcon } from 'lucide-react';
+=======
+import { CalendarIcon, InfoIcon, PlusIcon, XIcon } from 'lucide-react';
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
 import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
@@ -29,16 +33,21 @@ import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 
 // Form validation schema
 const askFormSchema = z.object({
+<<<<<<< HEAD
   question: z
     .string()
     .min(1, 'Question is required')
     .min(10, 'Question must be at least 10 characters'),
+=======
+  question: z.string().min(1, 'Question is required').min(10, 'Question must be at least 10 characters'),
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
   focusArea: z.string().min(1, 'Focus area is required'),
   settlementDate: z.string().min(1, 'Settlement date is required'),
   marketClassification: z.enum(['yes-no', 'multiple-choice', 'numeric'], {
     required_error: 'Market classification is required',
   }),
   units: z.string().optional(),
+<<<<<<< HEAD
   options: z
     .array(
       z.object({
@@ -46,6 +55,11 @@ const askFormSchema = z.object({
       })
     )
     .optional(),
+=======
+  options: z.array(z.object({
+    value: z.string().min(1, 'Option cannot be empty')
+  })).optional(),
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
 });
 
 type AskFormValues = z.infer<typeof askFormSchema>;
@@ -77,11 +91,16 @@ const AskForm = ({ className }: AskFormProps) => {
 
   const marketClassification = form.watch('marketClassification');
 
+<<<<<<< HEAD
   const onSubmit = (values: AskFormValues) => {
+=======
+  const onSubmit = async (values: AskFormValues) => {
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
     setIsSubmitting(true);
     try {
       // Here you would submit the form to your API
       console.log('Form submitted:', values);
+<<<<<<< HEAD
 
       // Show success toast
       toast({
@@ -90,14 +109,27 @@ const AskForm = ({ className }: AskFormProps) => {
           "Your question has been submitted for review. We'll notify you when it's available for forecasting.",
       });
 
+=======
+      
+      // Show success toast
+      toast({
+        title: 'Question Submitted',
+        description: 'Your question has been submitted for review. We\'ll notify you when it\'s available for forecasting.',
+      });
+      
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
       // Reset form
       form.reset();
     } catch (error) {
       console.error('Error submitting form:', error);
       toast({
         title: 'Error',
+<<<<<<< HEAD
         description:
           'There was an error submitting your question. Please try again.',
+=======
+        description: 'There was an error submitting your question. Please try again.',
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
         variant: 'destructive',
       });
     } finally {
@@ -111,8 +143,12 @@ const AskForm = ({ className }: AskFormProps) => {
         <div className="mb-6">
           <h2 className="text-2xl font-semibold mb-2">Submit a Question</h2>
           <p className="text-muted-foreground">
+<<<<<<< HEAD
             Ask a question for the sapience community and bots to forecast. The
             most interesting questions will become prediction markets.
+=======
+            Ask a question for the sapience community and bots to forecast. The most interesting questions will become prediction markets.
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
           </p>
         </div>
 
@@ -132,8 +168,12 @@ const AskForm = ({ className }: AskFormProps) => {
                     />
                   </FormControl>
                   <FormDescription>
+<<<<<<< HEAD
                     Write a clear, specific question that can be objectively
                     resolved.
+=======
+                    Write a clear, specific question that can be objectively resolved.
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -147,10 +187,14 @@ const AskForm = ({ className }: AskFormProps) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Focus Area</FormLabel>
+<<<<<<< HEAD
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
+=======
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a focus area" />
@@ -196,9 +240,13 @@ const AskForm = ({ className }: AskFormProps) => {
                     <div className="flex items-start gap-2">
                       <InfoIcon className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                       <span>
+<<<<<<< HEAD
                         When can this question be definitively answered? This
                         should be the date when the outcome becomes known or
                         verifiable.
+=======
+                        When can this question be definitively answered? This should be the date when the outcome becomes known or verifiable.
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                       </span>
                     </div>
                   </FormDescription>
@@ -214,10 +262,14 @@ const AskForm = ({ className }: AskFormProps) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Market Classification</FormLabel>
+<<<<<<< HEAD
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
+=======
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -225,9 +277,13 @@ const AskForm = ({ className }: AskFormProps) => {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="yes-no">Yes/No</SelectItem>
+<<<<<<< HEAD
                       <SelectItem value="multiple-choice">
                         Multiple Choice
                       </SelectItem>
+=======
+                      <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                       <SelectItem value="numeric">Numeric</SelectItem>
                     </SelectContent>
                   </Select>
@@ -254,9 +310,13 @@ const AskForm = ({ className }: AskFormProps) => {
                       />
                     </FormControl>
                     <FormDescription>
+<<<<<<< HEAD
                       Specify the unit of measurement for the numeric answer
                       (e.g., "USD" for price questions, "Celsius" for
                       temperature, etc.).
+=======
+                      Specify the unit of measurement for the numeric answer (e.g., "USD" for price questions, "Celsius" for temperature, etc.).
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -271,7 +331,11 @@ const AskForm = ({ className }: AskFormProps) => {
                 <FormDescription>
                   Provide the possible answer choices for your question.
                 </FormDescription>
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                 {fields.map((field, index) => (
                   <FormField
                     key={field.id}
@@ -303,7 +367,11 @@ const AskForm = ({ className }: AskFormProps) => {
                     )}
                   />
                 ))}
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                 <Button
                   type="button"
                   variant="outline"
@@ -319,7 +387,15 @@ const AskForm = ({ className }: AskFormProps) => {
 
             {/* Submit Button */}
             <div className="pt-4">
+<<<<<<< HEAD
               <Button type="submit" disabled={isSubmitting} className="w-full">
+=======
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full"
+              >
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
                 {isSubmitting ? 'Submitting...' : 'Submit Question'}
               </Button>
             </div>
@@ -330,4 +406,8 @@ const AskForm = ({ className }: AskFormProps) => {
   );
 };
 
+<<<<<<< HEAD
 export default AskForm;
+=======
+export default AskForm; 
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92

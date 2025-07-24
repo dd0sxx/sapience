@@ -6,8 +6,11 @@ import { useEffect, useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+<<<<<<< HEAD
 import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+=======
+>>>>>>> ccf23b0fa0d1f1f7231e6d389147a20779082e92
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
 import YesNoPredict from './inputs/YesNoPredict';
