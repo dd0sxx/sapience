@@ -12,6 +12,8 @@ import YesNoPredict from './inputs/YesNoPredict';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
+import { useAccount } from 'wagmi';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 
 // Define sqrtPriceX96 constants to match those in YesNoPredict
 const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
@@ -28,6 +30,8 @@ export default function PredictForm({
   marketClassification,
   chainId,
 }: PredictFormProps) {
+  const { isConnected } = useAccount();
+  const { toast } = useToast();
   const firstMarket = marketGroupData.markets?.[0];
   const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
@@ -135,11 +139,20 @@ export default function PredictForm({
   });
 
   const handleSubmit = async () => {
+    if (!isConnected) {
+      toast({
+        title: 'Wallet Not Connected',
+        description: 'Please connect your wallet to submit a prediction.',
+        variant: 'destructive',
+      });
+      return;
+    }
     await submitPrediction();
   };
 
   // Render the appropriate prediction input based on market category
   const renderCategoryInput = () => {
+    console.log("marketGroupData.markets", marketGroupData.markets);
     switch (marketClassification) {
       case MarketGroupClassification.YES_NO:
         return <YesNoPredict />;

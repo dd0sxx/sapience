@@ -39,7 +39,7 @@ const PositionSelector: React.FC<{}> = () => {
   }
 
   const handleSelectPosition = (positionId: string | null) => {
-    const currentPath = `/forecasting/${params.chainShortName}/${params.marketId}`;
+    const currentPath = `/markets/${params.chainShortName}/${params.marketId}`;
     const newSearchParams = new URLSearchParams(searchParams.toString());
 
     if (positionId) {

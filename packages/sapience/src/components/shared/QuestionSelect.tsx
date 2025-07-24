@@ -32,7 +32,7 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
   useEffect(() => {
     if (marketMode) {
       if (selectedMarketId && lastSelected?.id !== selectedMarketId) {
-        const selected = markets.find((m) => m.id?.toString() === selectedMarketId);
+        const selected = markets.find((m) => m.marketId?.toString() === selectedMarketId);
         setInputValue(selected?.optionName || selected?.question || '');
         setLastSelected({ id: selectedMarketId });
       } else if (!selectedMarketId && lastSelected?.id) {
@@ -48,7 +48,7 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
         setLastSelected({ group: undefined });
       }
     }
-  }, [selectedMarketGroup, selectedMarketId, marketMode, markets, lastSelected, inputValue]);
+  }, [selectedMarketGroup, selectedMarketId, marketMode, markets]);
 
   // Filter dropdown options
   useEffect(() => {
@@ -62,7 +62,7 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
           (market.optionName?.toLowerCase() || '').includes(searchTerm)
         );
       }
-      setFilteredMarketGroups(filtered.slice(0, 10));
+      setFilteredMarketGroups(filtered);
       return;
     }
     // Group mode (original)
@@ -71,9 +71,6 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
       return;
     }
     let filtered = marketGroups;
-    if (selectedCategory && selectedCategory !== 'selected' && selectedCategory !== 'my-predictions') {
-      filtered = filtered.filter((group) => group.category?.slug === selectedCategory);
-    }
     if (inputValue.trim()) {
       const searchTerm = inputValue.toLowerCase();
       filtered = filtered.filter((group) => {
@@ -85,8 +82,8 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
         );
       });
     }
-    setFilteredMarketGroups(filtered.slice(0, 10));
-  }, [inputValue, marketGroups, filteredMarketGroups, selectedCategory, marketMode, markets]);
+    setFilteredMarketGroups(filtered);
+  }, [inputValue, marketGroups, selectedCategory, marketMode]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,15 +94,31 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
 
   // Handle input blur: if input is empty, deselect
   const handleInputBlur = () => {
+    // Only deselect if input is empty AND there's no current selection
     if (inputValue.trim() === '') {
-      onMarketGroupSelect?.(undefined);
+      if (marketMode) {
+        if (!selectedMarketId) {
+          onMarketGroupSelect?.(undefined);
+        }
+      } else {
+        if (!selectedMarketGroup) {
+          onMarketGroupSelect?.(undefined);
+        }
+      }
     }
   };
 
   // Handle selection
   const handleSelect = (item: any) => {
-    setInputValue(marketMode ? (item.optionName || item.question || '') : (item.question || ''));
+    const displayValue = marketMode ? (item.optionName || item.question || '') : (item.question || '');
+    setInputValue(displayValue);
     setIsDropdownOpen(false);
+    // Update lastSelected to prevent useEffect from overriding the input value
+    if (marketMode) {
+      setLastSelected({ id: item.marketId?.toString() });
+    } else {
+      setLastSelected({ group: item });
+    }
     onMarketGroupSelect?.(item);
   };
 
@@ -134,7 +147,7 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isDropdownOpen]);
 
   return (
     <div className={`${className || ''} relative`}>
@@ -189,11 +202,14 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
                       {/* Market info */}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-foreground truncate">
-                          {market.optionName || market.question || `Market ${market.marketId}`}
+                          {market.group?.question || market.question || `Market ${market.marketId}`}
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                          {market.question && <span>{market.question}</span>}
-                          {market.optionName && <span>• {market.optionName}</span>}
+                          {market.optionName && market.group?.markets?.length > 1 ? (
+                            <span>Option: {market.optionName}</span>
+                          ) : (
+                            market.question && <span>{market.question}</span>
+                          )}
                         </div>
                       </div>
                     </div>

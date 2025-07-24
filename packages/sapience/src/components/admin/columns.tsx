@@ -426,7 +426,7 @@ const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
         </Dialog>
         <Button variant="outline" size="sm" asChild>
           <a
-            href={`/forecasting/${getChainShortName(group.chainId)}:${group.address}`}
+            href={`/markets/${getChainShortName(group.chainId)}:${group.address}`}
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -296,7 +296,7 @@ export default function TraderPositionsTable({
                               // Render Sell button only if not on Market Page
                               !isMarketPage && (
                                 <Link
-                                  href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
+                                  href={`/markets/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
                                   passHref
                                 >
                                   <Button size="xs" variant="outline">

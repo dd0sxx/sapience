@@ -9,8 +9,6 @@ import { useAccount } from 'wagmi';
 import PredictForm from '~/components/forecasting/forms/PredictForm';
 import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import Slider from '@sapience/ui/components/ui/slider';
-import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { SpecialTab } from '../../components/shared/Comments';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
@@ -29,58 +27,60 @@ const Comments = dynamic(() => import('../../components/shared/Comments'), {
   loading: () => <div className="h-64 bg-muted animate-pulse rounded-lg" />,
 });
 
+const AddressFilter = dynamic(() => import('../../components/shared/AddressFilter'), {
+  ssr: false,
+  loading: () => <div className="h-12 bg-muted animate-pulse rounded-lg" />,
+});
+
 const ForecastPage = () => {
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] = useState<string | null>('selected');
   const [activeTab, setActiveTab] = useState<'forecasts' | 'ask'>('forecasts');
   const [predictionValue, setPredictionValue] = useState([50]);
   const [comment, setComment] = useState('');
-  const [selectedMarketGroup, setSelectedMarketGroup] = useState<any | undefined>(undefined);
-  const [selectedQuestion, setSelectedQuestion] = useState<string | undefined>(undefined); // For compatibility, but not used for group selection
-
-  // State for market selection within a group
-  const [selectedMarketId, setSelectedMarketId] = useState<string>('');
-  const [marketSearchQuery, setMarketSearchQuery] = useState('');
-
-  // Reset market selection when group changes
-  useEffect(() => {
-    setSelectedMarketId('');
-    setMarketSearchQuery('');
-  }, [selectedMarketGroup]);
-
+  const [selectedAddressFilter, setSelectedAddressFilter] = useState<string | null>(null);
   // Fetch all market groups
   const { data: marketGroups } = useEnrichedMarketGroups();
 
-  // Use selectedMarketGroup directly
-  let selectedMarket, marketId, marketAddress, marketClassification, targetChainId;
-  console.log("selectedMarket", selectedMarket, "selectedQuestion", selectedQuestion, "selectedMarketGroup", selectedMarketGroup);
-  console.log("marketGroups", marketGroups);
-  if (selectedMarketGroup) {
-    selectedMarket = selectedMarketGroup.markets.find((m: any) => m.id.toString() === selectedMarketId);
-    marketId = selectedMarket?.marketId;
-    marketAddress = selectedMarketGroup.address;
-    marketClassification = selectedMarketGroup.marketClassification;
-    targetChainId = selectedMarketGroup.chainId;
-  }
+  // Flatten all markets from all groups
+  const allMarkets = (marketGroups || []).flatMap((group) =>
+    (group.markets || []).map((market) => ({
+      ...market,
+      group,
+    }))
+  );
 
-  // Filter markets in the selected group by search query
-  let filteredMarkets: any[] = [];
-  if (selectedMarketGroup) {
-    filteredMarkets = selectedMarketGroup.markets.filter((market: any) => {
-      if (!marketSearchQuery) return true;
-      const q = marketSearchQuery.toLowerCase();
-      return (
-        (market.question?.toLowerCase() || '').includes(q) ||
-        (market.optionName?.toLowerCase() || '').includes(q)
-      );
-    });
-  }
+  // Filter to only show active markets
+  const activeMarkets = allMarkets.filter((market) => {
+    const now = Math.floor(Date.now() / 1000);
+    const start = market.startTimestamp;
+    const end = market.endTimestamp;
+    
+    return (
+      market.public &&
+      typeof start === 'number' &&
+      !Number.isNaN(start) &&
+      typeof end === 'number' &&
+      !Number.isNaN(end) &&
+      now >= start &&
+      now < end
+    );
+  });
 
-  // If a market is selected by id, use it for prediction
-  if (selectedMarketGroup && selectedMarketId) {
-    selectedMarket = selectedMarketGroup.markets.find((m: any) => m.id.toString() === selectedMarketId);
-    marketId = selectedMarket?.marketId;
-    // (marketAddress, marketClassification, targetChainId remain as before)
+  // State for selected market
+  const [selectedMarket, setSelectedMarket] = useState<any | undefined>(undefined);
+
+  // Extract market details if selected
+  let marketId, marketAddress, marketClassification, targetChainId, marketGroupData;
+  if (selectedMarket) {
+    marketId = selectedMarket.marketId;
+    marketAddress = selectedMarket.group.address;
+    marketClassification = selectedMarket.group.marketClassification;
+    targetChainId = selectedMarket.group.chainId;
+    marketGroupData = {
+      ...selectedMarket.group,
+      markets: [selectedMarket],
+    };
   }
 
   // Prepare submission value for attestation (confidence as string)
@@ -98,8 +98,13 @@ const ForecastPage = () => {
 
   // Deselect question when switching tabs or category
   useEffect(() => {
-    setSelectedQuestion(undefined);
+    setSelectedMarket(undefined);
   }, [activeTab, selectedCategory]);
+
+  // Clear address filter when switching tabs
+  useEffect(() => {
+    setSelectedAddressFilter(null);
+  }, [activeTab]);
 
   // Refetch comments after successful attestation
   useEffect(() => {
@@ -154,71 +159,44 @@ const ForecastPage = () => {
         {/* Tab Content */}
         {activeTab === 'forecasts' && (
           <>
-            {/* Question Selector */}
+            {/* Market Selector (direct market search) */}
             <div className="sticky top-[65px] bg-background/80 backdrop-blur-sm z-10">
               <div className="px-4 pb-2 pt-6">
-                <QuestionSelect 
-                  selectedMarketGroup={selectedMarketGroup}
-                  selectedCategory={selectedCategory}
-                  onMarketGroupSelect={(group) => {
-                    setSelectedMarketGroup(group);
-                  }}
+                <QuestionSelect
+                  marketMode={true}
+                  markets={activeMarkets}
+                  selectedMarketId={selectedMarket?.marketId?.toString()}
+                  onMarketGroupSelect={setSelectedMarket}
+                />
+              </div>
+              {/* Address Filter */}
+              <div className="px-4 pb-4">
+                <AddressFilter
+                  selectedAddress={selectedAddressFilter}
+                  onAddressChange={setSelectedAddressFilter}
+                  placeholder="Filter by address or ENS..."
                 />
               </div>
             </div>
-            
             {/* Forecast Form */}
             <div className="border-b border-border bg-background">
               <div className="px-4 pb-2 pt-6">
-                {/* Market dropdown if a group is selected */}
-                {selectedMarketGroup && (
-                  <div className="mb-4">
-                    <QuestionSelect
-                      className="mb-2"
-                      selectedMarketGroup={selectedMarketGroup}
-                      selectedCategory={selectedCategory}
-                      // For market selection, we pass a custom onMarketGroupSelect that sets selectedMarketId and selectedQuestion
-                      onMarketGroupSelect={(market) => {
-                        setSelectedMarketId(market ? market.id.toString() : '');
-                        setSelectedQuestion(market ? (market.question || market.optionName || undefined) : undefined);
-                      }}
-                      // Custom prop to indicate market mode (not group mode)
-                      marketMode={true}
-                      markets={selectedMarketGroup.markets}
-                      selectedMarketId={selectedMarketId}
-                    />
-                  </div>
-                )}
                 {selectedCategory === 'selected' ? (
                   <div className="space-y-4">
                     {/* Only show prediction form if a market is selected */}
-                    {selectedMarketGroup && !selectedMarketId && (
-                      <div className="text-muted-foreground text-sm">Select a market to submit a prediction.</div>
-                    )}
-                    {selectedMarketGroup && selectedMarketId && (
+                    {selectedMarket && (
                       <PredictForm
-                        marketGroupData={{
-                          ...selectedMarketGroup,
-                          markets: [selectedMarketGroup.markets.find((m: any) => m.id.toString() === selectedMarketId)],
-                        }}
-                        marketClassification={selectedMarketGroup.marketClassification}
-                        chainId={selectedMarketGroup.chainId}
+                        marketGroupData={marketGroupData}
+                        marketClassification={marketClassification}
+                        chainId={targetChainId}
                       />
                     )}
                   </div>
                 ) : (
                   <></>
                 )}
-                {/* 
-                <PredictForm 
-                  marketGroupData={selectedMarket}
-                  marketClassification={marketClassification}
-                  chainId={chainId}
-                />
-                */}
               </div>
             </div>
-            
             {/* Category Selection Section */}
             <div className="bg-background border-b border-border">
               <div
@@ -302,16 +280,17 @@ const ForecastPage = () => {
                 ))}
               </div>
             </div>
-            
             {/* Comments Section */}
             <div className="bg-background">
               <div className="divide-y divide-border">
                 <Comments 
                   showAllForecasts={selectedCategory !== SpecialTab.Selected && selectedCategory !== SpecialTab.MyPredictions} 
                   selectedCategory={selectedCategory}
-                  question={selectedQuestion}
+                  question={selectedMarket?.question}
                   address={address}
                   refetchTrigger={refetchCommentsTrigger}
+                  selectedAddressFilter={selectedAddressFilter}
+                  onAddressFilterChange={setSelectedAddressFilter}
                 />
               </div>
             </div>
