@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@sapience/ui/components/ui/select';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { CalendarIcon, InfoIcon, PlusIcon, XIcon } from 'lucide-react';
+import { InfoIcon, PlusIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
@@ -29,16 +29,23 @@ import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 
 // Form validation schema
 const askFormSchema = z.object({
-  question: z.string().min(1, 'Question is required').min(10, 'Question must be at least 10 characters'),
+  question: z
+    .string()
+    .min(1, 'Question is required')
+    .min(10, 'Question must be at least 10 characters'),
   focusArea: z.string().min(1, 'Focus area is required'),
   settlementDate: z.string().min(1, 'Settlement date is required'),
   marketClassification: z.enum(['yes-no', 'multiple-choice', 'numeric'], {
     required_error: 'Market classification is required',
   }),
   units: z.string().optional(),
-  options: z.array(z.object({
-    value: z.string().min(1, 'Option cannot be empty')
-  })).optional(),
+  options: z
+    .array(
+      z.object({
+        value: z.string().min(1, 'Option cannot be empty'),
+      })
+    )
+    .optional(),
 });
 
 type AskFormValues = z.infer<typeof askFormSchema>;
@@ -70,25 +77,27 @@ const AskForm = ({ className }: AskFormProps) => {
 
   const marketClassification = form.watch('marketClassification');
 
-  const onSubmit = async (values: AskFormValues) => {
+  const onSubmit = (values: AskFormValues) => {
     setIsSubmitting(true);
     try {
       // Here you would submit the form to your API
       console.log('Form submitted:', values);
-      
+
       // Show success toast
       toast({
         title: 'Question Submitted',
-        description: 'Your question has been submitted for review. We\'ll notify you when it\'s available for forecasting.',
+        description:
+          "Your question has been submitted for review. We'll notify you when it's available for forecasting.",
       });
-      
+
       // Reset form
       form.reset();
     } catch (error) {
       console.error('Error submitting form:', error);
       toast({
         title: 'Error',
-        description: 'There was an error submitting your question. Please try again.',
+        description:
+          'There was an error submitting your question. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -102,7 +111,8 @@ const AskForm = ({ className }: AskFormProps) => {
         <div className="mb-6">
           <h2 className="text-2xl font-semibold mb-2">Submit a Question</h2>
           <p className="text-muted-foreground">
-            Ask a question for the sapience community and bots to forecast. The most interesting questions will become prediction markets.
+            Ask a question for the sapience community and bots to forecast. The
+            most interesting questions will become prediction markets.
           </p>
         </div>
 
@@ -122,7 +132,8 @@ const AskForm = ({ className }: AskFormProps) => {
                     />
                   </FormControl>
                   <FormDescription>
-                    Write a clear, specific question that can be objectively resolved.
+                    Write a clear, specific question that can be objectively
+                    resolved.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -136,7 +147,10 @@ const AskForm = ({ className }: AskFormProps) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Focus Area</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a focus area" />
@@ -182,7 +196,9 @@ const AskForm = ({ className }: AskFormProps) => {
                     <div className="flex items-start gap-2">
                       <InfoIcon className="w-4 h-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                       <span>
-                        When can this question be definitively answered? This should be the date when the outcome becomes known or verifiable.
+                        When can this question be definitively answered? This
+                        should be the date when the outcome becomes known or
+                        verifiable.
                       </span>
                     </div>
                   </FormDescription>
@@ -198,7 +214,10 @@ const AskForm = ({ className }: AskFormProps) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Market Classification</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -206,7 +225,9 @@ const AskForm = ({ className }: AskFormProps) => {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="yes-no">Yes/No</SelectItem>
-                      <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+                      <SelectItem value="multiple-choice">
+                        Multiple Choice
+                      </SelectItem>
                       <SelectItem value="numeric">Numeric</SelectItem>
                     </SelectContent>
                   </Select>
@@ -233,7 +254,9 @@ const AskForm = ({ className }: AskFormProps) => {
                       />
                     </FormControl>
                     <FormDescription>
-                      Specify the unit of measurement for the numeric answer (e.g., "USD" for price questions, "Celsius" for temperature, etc.).
+                      Specify the unit of measurement for the numeric answer
+                      (e.g., "USD" for price questions, "Celsius" for
+                      temperature, etc.).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -248,7 +271,7 @@ const AskForm = ({ className }: AskFormProps) => {
                 <FormDescription>
                   Provide the possible answer choices for your question.
                 </FormDescription>
-                
+
                 {fields.map((field, index) => (
                   <FormField
                     key={field.id}
@@ -280,7 +303,7 @@ const AskForm = ({ className }: AskFormProps) => {
                     )}
                   />
                 ))}
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -296,11 +319,7 @@ const AskForm = ({ className }: AskFormProps) => {
 
             {/* Submit Button */}
             <div className="pt-4">
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full"
-              >
+              <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting ? 'Submitting...' : 'Submit Question'}
               </Button>
             </div>
@@ -311,4 +330,4 @@ const AskForm = ({ className }: AskFormProps) => {
   );
 };
 
-export default AskForm; 
+export default AskForm;

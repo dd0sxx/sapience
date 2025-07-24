@@ -19,7 +19,6 @@ import { useAccount } from 'wagmi';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import PositionBadge from '~/components/shared/PositionBadge';
 import PredictionDisplay from '~/components/shared/PredictionDisplay';
 import PositionValueDisplay from '~/components/shared/PositionValueDisplay';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
@@ -32,9 +31,7 @@ import {
   useMarketGroupPage,
 } from '~/lib/context/MarketGroupPageProvider';
 import type { MarketGroupClassification } from '~/lib/types';
-import {
-  findActiveMarkets,
-} from '~/lib/utils/util';
+import { findActiveMarkets } from '~/lib/utils/util';
 
 // Helper function to group markets by end time and find the appropriate group to display
 const getMarketsGroupedByEndTime = (markets: MarketType[]) => {
@@ -101,7 +98,8 @@ const mockComments = [
     id: 1,
     address: '0x742d35Cc6Ab4b8c0e5d5b7a1aebd2C7B4e37Ca2D',
     timestamp: Date.now() - 1000 * 60 * 30, // 30 minutes ago
-    comment: 'This market looks really promising. I think the price will continue to trend upward based on recent economic indicators.',
+    comment:
+      'This market looks really promising. I think the price will continue to trend upward based on recent economic indicators.',
     prediction: { value: '1.50', side: 'yes' as const },
     positions: [
       {
@@ -129,7 +127,8 @@ const mockComments = [
     id: 2,
     address: '0x8ba1f109551bD432803012645Hac136c22C5FfFF',
     timestamp: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
-    comment: 'Not sure about this one. The volatility has been crazy lately and I think we might see a correction soon.',
+    comment:
+      'Not sure about this one. The volatility has been crazy lately and I think we might see a correction soon.',
     prediction: { value: '0.75', side: 'no' as const },
     positions: [
       {
@@ -157,7 +156,8 @@ const mockComments = [
     id: 3,
     address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
     timestamp: Date.now() - 1000 * 60 * 60 * 6, // 6 hours ago
-    comment: 'Just placed a large wager on YES. The fundamentals look strong and I expect this to resolve positively.',
+    comment:
+      'Just placed a large wager on YES. The fundamentals look strong and I expect this to resolve positively.',
     prediction: { value: '2.25', side: 'yes' as const },
     positions: [
       {
@@ -504,7 +504,10 @@ const MarketGroupPageContent = () => {
               <h3 className="text-2xl font-medium">Forecasts</h3>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-1">
-                  <Label htmlFor="min-size" className="text-sm whitespace-nowrap text-muted-foreground font-light">
+                  <Label
+                    htmlFor="min-size"
+                    className="text-sm whitespace-nowrap text-muted-foreground font-light"
+                  >
                     Min Size:
                   </Label>
                   <span className="text-sm text-muted-foreground min-w-[2rem]">
@@ -536,28 +539,28 @@ const MarketGroupPageContent = () => {
             </div>
             <div className="bg-card border border-border rounded shadow-sm">
               <div className="divide-y divide-border">
-              {mockComments.map((comment) => (
-                <div key={comment.id} className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <PredictionDisplay 
-                        prediction={comment.prediction.side} 
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {formatRelativeTime(comment.timestamp)}
-                      </span>
+                {mockComments.map((comment) => (
+                  <div key={comment.id} className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <PredictionDisplay
+                          prediction={comment.prediction.side}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {formatRelativeTime(comment.timestamp)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-6 ml-8">
+                        <PositionValueDisplay
+                          value={comment.prediction.value}
+                          prediction={comment.prediction.side}
+                        />
+                        <AddressDisplay address={comment.address} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-6 ml-8">
-                      <PositionValueDisplay 
-                        value={comment.prediction.value}
-                        prediction={comment.prediction.side}
-                      />
-                      <AddressDisplay address={comment.address} />
-                    </div>
+                    <p className="text-lg leading-relaxed">{comment.comment}</p>
                   </div>
-                  <p className="text-lg leading-relaxed">{comment.comment}</p>
-                </div>
-              ))}
+                ))}
               </div>
             </div>
           </div>

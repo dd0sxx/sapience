@@ -6,14 +6,14 @@ import { useEffect, useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { useAccount } from 'wagmi';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
 import YesNoPredict from './inputs/YesNoPredict';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-import { useAccount } from 'wagmi';
-import { useToast } from '@sapience/ui/hooks/use-toast';
 
 // Define sqrtPriceX96 constants to match those in YesNoPredict
 const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
@@ -152,7 +152,7 @@ export default function PredictForm({
 
   // Render the appropriate prediction input based on market category
   const renderCategoryInput = () => {
-    console.log("marketGroupData.markets", marketGroupData.markets);
+    console.log('marketGroupData.markets', marketGroupData.markets);
     switch (marketClassification) {
       case MarketGroupClassification.YES_NO:
         return <YesNoPredict />;

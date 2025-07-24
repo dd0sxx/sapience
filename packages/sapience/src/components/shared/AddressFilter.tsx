@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Input } from '@sapience/ui/components/ui/input';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Search, X, Loader2 } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { isAddress } from 'viem';
 import { mainnetClient } from '~/lib/utils/util';
 
@@ -14,11 +14,11 @@ interface AddressFilterProps {
   className?: string;
 }
 
-const AddressFilter = ({ 
-  selectedAddress, 
-  onAddressChange, 
-  placeholder = "Enter address or ENS...",
-  className = ""
+const AddressFilter = ({
+  selectedAddress,
+  onAddressChange,
+  placeholder = 'Enter address or ENS...',
+  className = '',
 }: AddressFilterProps) => {
   const [inputValue, setInputValue] = useState('');
   const [displayValue, setDisplayValue] = useState('');
@@ -71,7 +71,7 @@ const AddressFilter = ({
           // Keep the original ENS input for display, but store resolved address
           setDisplayValue(inputValue.trim());
           setResolvedAddress(resolvedAddr);
-        } catch (error) {
+        } catch (_error) {
           setError('Error resolving ENS address');
           return;
         } finally {
@@ -137,9 +137,7 @@ const AddressFilter = ({
           </button>
         )}
       </div>
-      {error && (
-        <p className="text-sm text-red-500 mt-1">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
       {isResolving && (
         <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" />
@@ -171,4 +169,4 @@ const AddressFilter = ({
   );
 };
 
-export default AddressFilter; 
+export default AddressFilter;

@@ -1,4 +1,3 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
@@ -17,8 +16,6 @@ import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
-import { MarketGroupClassification } from '~/lib/types';
-import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import {
   calculateEffectiveEntryPrice,
   getChainShortName,
@@ -31,7 +28,6 @@ interface TraderPositionsTableProps {
   parentMarketId?: number;
   showHeader?: boolean;
 }
-
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
   const baseTokenName = position.market?.marketGroup?.baseTokenName;

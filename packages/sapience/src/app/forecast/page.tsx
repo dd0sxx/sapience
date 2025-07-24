@@ -6,45 +6,52 @@ import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
 // Import existing components
-import PredictForm from '~/components/forecasting/forms/PredictForm';
-import AskForm from '~/components/shared/AskForm';
-import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { Input } from '@sapience/ui/components/ui/input';
-import { 
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@sapience/ui/components/ui/accordion';
-import { SpecialTab } from '../../components/shared/Comments';
+import { SelectableTab } from '../../components/shared/Comments';
+import PredictForm from '~/components/forecasting/forms/PredictForm';
+import AskForm from '~/components/shared/AskForm';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupClassification } from '~/lib/types';
-import { Input as UiInput } from '@sapience/ui';
 
 // Dynamically import components to avoid SSR issues
-const QuestionSelect = dynamic(() => import('../../components/shared/QuestionSelect'), {
-  ssr: false,
-  loading: () => <div className="h-20 bg-muted animate-pulse rounded-lg" />,
-});
+const QuestionSelect = dynamic(
+  () => import('../../components/shared/QuestionSelect'),
+  {
+    ssr: false,
+    loading: () => <div className="h-20 bg-muted animate-pulse rounded-lg" />,
+  }
+);
 
 const Comments = dynamic(() => import('../../components/shared/Comments'), {
   ssr: false,
   loading: () => <div className="h-64 bg-muted animate-pulse rounded-lg" />,
 });
 
-const AddressFilter = dynamic(() => import('../../components/shared/AddressFilter'), {
-  ssr: false,
-  loading: () => <div className="h-12 bg-muted animate-pulse rounded-lg" />,
-});
+const AddressFilter = dynamic(
+  () => import('../../components/shared/AddressFilter'),
+  {
+    ssr: false,
+    loading: () => <div className="h-12 bg-muted animate-pulse rounded-lg" />,
+  }
+);
 
 const ForecastPage = () => {
   const { address } = useAccount();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>('selected');
+  const [selectedCategory, setSelectedCategory] =
+    useState<SelectableTab | null>(SelectableTab.Selected);
   const [activeTab, setActiveTab] = useState<'forecasts' | 'ask'>('forecasts');
-  const [predictionValue, setPredictionValue] = useState([50]);
-  const [comment, setComment] = useState('');
-  const [selectedAddressFilter, setSelectedAddressFilter] = useState<string | null>(null);
+  const [predictionValue, _setPredictionValue] = useState([50]);
+  const [comment, _setComment] = useState('');
+  const [selectedAddressFilter, setSelectedAddressFilter] = useState<
+    string | null
+  >(null);
   // Fetch all market groups
   const { data: marketGroups } = useEnrichedMarketGroups();
 
@@ -61,7 +68,7 @@ const ForecastPage = () => {
     const now = Math.floor(Date.now() / 1000);
     const start = market.startTimestamp;
     const end = market.endTimestamp;
-    
+
     return (
       market.public &&
       typeof start === 'number' &&
@@ -74,10 +81,14 @@ const ForecastPage = () => {
   });
 
   // State for selected market
-  const [selectedMarket, setSelectedMarket] = useState<any | undefined>(undefined);
+  const [selectedMarket, setSelectedMarket] = useState<any>(undefined);
 
   // Extract market details if selected
-  let marketId, marketAddress, marketClassification, targetChainId, marketGroupData;
+  let marketId,
+    marketAddress,
+    marketClassification,
+    targetChainId,
+    marketGroupData;
   if (selectedMarket) {
     marketId = selectedMarket.marketId;
     marketAddress = selectedMarket.group.address;
@@ -93,9 +104,15 @@ const ForecastPage = () => {
   const submissionValue = String(predictionValue[0]);
 
   // Use the attestation hook
-  const { submitPrediction, isAttesting, attestationError, attestationSuccess } = useSubmitPrediction({
+  const {
+    submitPrediction: _1,
+    isAttesting: _2,
+    attestationError: _3,
+    attestationSuccess,
+  } = useSubmitPrediction({
     marketAddress: marketAddress || '',
-    marketClassification: marketClassification || MarketGroupClassification.YES_NO,
+    marketClassification:
+      marketClassification || MarketGroupClassification.YES_NO,
     submissionValue,
     marketId: marketId || 0,
     targetChainId: targetChainId || 8453, // Default to Base chain if not found
@@ -120,35 +137,36 @@ const ForecastPage = () => {
   }, [attestationSuccess]);
 
   // Style classes for category buttons
-  const selectedStatusClass = "bg-primary/10 text-primary";
-  const hoverStatusClass = "hover:bg-muted/50 text-muted-foreground hover:text-foreground";
+  const selectedStatusClass = 'bg-primary/10 text-primary';
+  const hoverStatusClass =
+    'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   const [refetchCommentsTrigger, setRefetchCommentsTrigger] = useState(0);
 
   // Calculate number of applied filters
   const appliedFiltersCount = (() => {
     let count = 0;
-    
+
     // Count address filter
     if (selectedAddressFilter) {
       count++;
     }
-    
+
     // Count selected market (if it's a multiple choice market)
     if (selectedMarket && selectedMarket.group?.marketClassification === '1') {
       count++;
     }
-    
+
     return count;
   })();
 
   // Generate accordion title with filter count
   const getAccordionTitle = () => {
     if (appliedFiltersCount === 0) {
-      return "Advanced Filters";
+      return 'Advanced Filters';
     }
-    
-    const filterText = appliedFiltersCount === 1 ? "filter" : "filters";
+
+    const filterText = appliedFiltersCount === 1 ? 'filter' : 'filters';
     return `Advanced Filters (${appliedFiltersCount} ${filterText})`;
   };
 
@@ -157,10 +175,10 @@ const ForecastPage = () => {
     if (!selectedMarket || selectedMarket.group?.marketClassification !== '1') {
       return null;
     }
-    
+
     return {
       question: selectedMarket.group?.question || 'Unknown question',
-      option: selectedMarket.optionName || 'Unknown option'
+      option: selectedMarket.optionName || 'Unknown option',
     };
   };
 
@@ -187,7 +205,11 @@ const ForecastPage = () => {
                 <h1 className="text-3xl font-bold">Forecast</h1>
                 <button
                   type="button"
-                  onClick={() => setActiveTab(activeTab === 'forecasts' ? 'ask' : 'forecasts')}
+                  onClick={() =>
+                    setActiveTab(
+                      activeTab === 'forecasts' ? 'ask' : 'forecasts'
+                    )
+                  }
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                     activeTab === 'ask' ? selectedStatusClass : hoverStatusClass
                   }`}
@@ -210,7 +232,7 @@ const ForecastPage = () => {
                       markets={activeMarkets}
                       selectedMarketId={selectedMarket?.marketId?.toString()}
                       onMarketGroupSelect={handleMarketSelect}
-                      onCategorySwitch={(categorySlug) => {
+                      onCategorySwitch={(categorySlug: SelectableTab) => {
                         setSelectedCategory(categorySlug);
                       }}
                     />
@@ -218,7 +240,10 @@ const ForecastPage = () => {
                   {/* Advanced Filters */}
                   <div className="px-4">
                     <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="advanced-filters" className="border-none">
+                      <AccordionItem
+                        value="advanced-filters"
+                        className="border-none"
+                      >
                         <AccordionTrigger className="text-base font-medium text-muted-foreground hover:text-foreground py-3">
                           {getAccordionTitle()}
                         </AccordionTrigger>
@@ -231,12 +256,16 @@ const ForecastPage = () => {
                                   Selected Market
                                 </div>
                                 <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                                  <div className="font-medium">{selectedMarketInfo.question}</div>
-                                  <div className="text-xs mt-1">Option: {selectedMarketInfo.option}</div>
+                                  <div className="font-medium">
+                                    {selectedMarketInfo.question}
+                                  </div>
+                                  <div className="text-xs mt-1">
+                                    Option: {selectedMarketInfo.option}
+                                  </div>
                                 </div>
                               </div>
                             )}
-                            
+
                             {/* Address Filter */}
                             <div className="space-y-2">
                               <div className="text-sm font-medium text-foreground">
@@ -258,7 +287,7 @@ const ForecastPage = () => {
                 {/* Forecast Form */}
                 <div className="border-b border-border bg-background">
                   <div className="px-4 pb-2 pt-6">
-                    {selectedCategory === 'selected' ? (
+                    {selectedCategory === SelectableTab.Selected ? (
                       <div className="space-y-4">
                         {/* Only show prediction form if a market is selected */}
                         {selectedMarket && (
@@ -279,7 +308,7 @@ const ForecastPage = () => {
                   <div
                     className="tab-row flex overflow-x-auto h-10 min-h-[2.5rem] items-center mb-2"
                     style={{ WebkitOverflowScrolling: 'touch' }}
-                    onWheel={e => {
+                    onWheel={(e) => {
                       if (e.deltaY === 0) return;
                       e.currentTarget.scrollLeft += e.deltaY;
                       e.preventDefault();
@@ -288,9 +317,13 @@ const ForecastPage = () => {
                     {/* Selected Question option */}
                     <button
                       type="button"
-                      onClick={() => setSelectedCategory('selected')}
+                      onClick={() =>
+                        setSelectedCategory(SelectableTab.Selected)
+                      }
                       className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border ${
-                        selectedCategory === 'selected' ? selectedStatusClass : hoverStatusClass
+                        selectedCategory === SelectableTab.Selected
+                          ? selectedStatusClass
+                          : hoverStatusClass
                       }`}
                     >
                       <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
@@ -304,7 +337,9 @@ const ForecastPage = () => {
                       type="button"
                       onClick={() => setSelectedCategory(null)}
                       className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border ${
-                        selectedCategory === null ? selectedStatusClass : hoverStatusClass
+                        selectedCategory === null
+                          ? selectedStatusClass
+                          : hoverStatusClass
                       }`}
                     >
                       <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
@@ -316,9 +351,13 @@ const ForecastPage = () => {
                     {/* My Predictions option */}
                     <button
                       type="button"
-                      onClick={() => setSelectedCategory('my-predictions')}
+                      onClick={() =>
+                        setSelectedCategory(SelectableTab.MyPredictions)
+                      }
                       className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border ${
-                        selectedCategory === 'my-predictions' ? selectedStatusClass : hoverStatusClass
+                        selectedCategory === SelectableTab.MyPredictions
+                          ? selectedStatusClass
+                          : hoverStatusClass
                       }`}
                     >
                       <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
@@ -328,13 +367,17 @@ const ForecastPage = () => {
                     </button>
 
                     {/* Category options */}
-                    {FOCUS_AREAS.map((focusArea, index) => (
+                    {FOCUS_AREAS.map((focusArea, _index) => (
                       <button
                         key={focusArea.id}
                         type="button"
-                        onClick={() => setSelectedCategory(focusArea.id)}
+                        onClick={() =>
+                          setSelectedCategory(focusArea.id as SelectableTab)
+                        }
                         className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border ${
-                          selectedCategory === focusArea.id ? selectedStatusClass : hoverStatusClass
+                          selectedCategory === (focusArea.id as SelectableTab)
+                            ? selectedStatusClass
+                            : hoverStatusClass
                         }`}
                       >
                         <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
@@ -351,8 +394,7 @@ const ForecastPage = () => {
                 {/* Comments Section */}
                 <div className="bg-background">
                   <div className="divide-y divide-border">
-                    <Comments 
-                      showAllForecasts={selectedCategory !== SpecialTab.Selected && selectedCategory !== SpecialTab.MyPredictions} 
+                    <Comments
                       selectedCategory={selectedCategory}
                       question={selectedMarket?.question}
                       address={address}
@@ -366,9 +408,7 @@ const ForecastPage = () => {
             )}
 
             {/* Ask Tab Content */}
-            {activeTab === 'ask' && (
-              <AskForm />
-            )}
+            {activeTab === 'ask' && <AskForm />}
           </div>
         </div>
       </div>
@@ -376,4 +416,4 @@ const ForecastPage = () => {
   );
 };
 
-export default ForecastPage; 
+export default ForecastPage;

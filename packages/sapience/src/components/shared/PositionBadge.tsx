@@ -17,9 +17,9 @@ function PositionCell({ position }: { position: PositionType }) {
   const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
   const value = Number(formatEther(netPositionBI));
   const absValue = Math.abs(value);
-  const baseTokenName = position.market.marketGroup?.baseTokenName;
-  const marketClassification = position.market.marketGroup
-    ? getMarketGroupClassification(position.market.marketGroup)
+  const baseTokenName = position.market?.marketGroup?.baseTokenName;
+  const marketClassification = position.market?.marketGroup
+    ? getMarketGroupClassification(position.market?.marketGroup)
     : MarketGroupClassification.NUMERIC;
 
   // For non-numeric markets, show just the number and Yes/No without badge
@@ -62,7 +62,10 @@ function PositionCell({ position }: { position: PositionType }) {
   );
 }
 
-export default function PositionBadge({ positions, className }: PositionBadgeProps) {
+export default function PositionBadge({
+  positions,
+  className,
+}: PositionBadgeProps) {
   if (!positions || positions.length === 0) {
     return null;
   }
