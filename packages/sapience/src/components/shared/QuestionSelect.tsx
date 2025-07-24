@@ -14,9 +14,20 @@ interface QuestionSelectProps {
   marketMode?: boolean;
   markets?: any[];
   selectedMarketId?: string;
+  // New prop for category switching
+  onCategorySwitch?: (categorySlug: string) => void;
 }
 
-const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, selectedCategory, marketMode = false, markets = [], selectedMarketId }: QuestionSelectProps) => {
+const QuestionSelect = ({ 
+  className, 
+  selectedMarketGroup, 
+  onMarketGroupSelect, 
+  selectedCategory, 
+  marketMode = false, 
+  markets = [], 
+  selectedMarketId,
+  onCategorySwitch 
+}: QuestionSelectProps) => {
   // Track last selected id/group to avoid overwriting inputValue on every render
   const [inputValue, setInputValue] = useState('');
   const [lastSelected, setLastSelected] = useState<{ id?: string; group?: any } | undefined>(undefined);
@@ -122,24 +133,16 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
 
   // Handle selection
   const handleSelect = (item: any) => {
-    // For multiple choice markets, show the market group question instead of option name
-    let displayValue = '';
-    if (marketMode) {
-      const isMultipleChoice = item.group?.marketClassification === '1';
-      if (isMultipleChoice) {
-        displayValue = item.group?.question || item.question || '';
-      } else {
-        displayValue = item.optionName || item.question || '';
-      }
-    } else {
-      displayValue = item.question || '';
-    }
-    
+    const displayValue = marketMode ? (item.optionName || item.question || '') : (item.question || '');
     setInputValue(displayValue);
     setIsDropdownOpen(false);
     // Update lastSelected to prevent useEffect from overriding the input value
     if (marketMode) {
       setLastSelected({ id: item.marketId?.toString() });
+      // Automatically switch to the correct category if available
+      if (onCategorySwitch && item.group?.category?.slug) {
+        onCategorySwitch(item.group.category.slug);
+      }
     } else {
       setLastSelected({ group: item });
     }
