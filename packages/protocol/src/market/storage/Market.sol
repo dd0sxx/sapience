@@ -127,8 +127,8 @@ library Market {
                 market.marketParams.bondAmount = minUMABond;
             }
         }
-        VirtualToken tokenA = _createVirtualToken(salt, "Base Token", "vBase");
-        VirtualToken tokenB = _createVirtualToken(salt + 1, "Quote Token", "vQuote");
+        VirtualToken tokenA = _createVirtualToken(salt, "Token A", "vTokenA");
+        VirtualToken tokenB = _createVirtualToken(salt + 1, "Token B", "vTokenB");
 
         if (address(tokenA) < address(tokenB)) {
             market.baseToken = tokenA;
