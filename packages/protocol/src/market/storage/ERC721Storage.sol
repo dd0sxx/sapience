@@ -79,13 +79,13 @@ library ERC721Storage {
         }
 
         if (_exists(tokenId)) {
-            revert IERC721Foil.TokenAlreadyMinted(tokenId);
+            revert IERC721Sapience.TokenAlreadyMinted(tokenId);
         }
 
         store.balanceOf[to] += 1;
         store.ownerOf[tokenId] = to;
 
-        emit IERC721Foil.Transfer(address(0), to, tokenId);
+        emit IERC721Sapience.Transfer(address(0), to, tokenId);
 
         _enumarebleTransfer(address(0), to, tokenId);
     }
@@ -99,7 +99,7 @@ library ERC721Storage {
         store.balanceOf[holder] -= 1;
         delete store.ownerOf[tokenId];
 
-        emit IERC721Foil.Transfer(holder, address(0), tokenId);
+        emit IERC721Sapience.Transfer(holder, address(0), tokenId);
 
         _enumarebleTransfer(holder, address(0), tokenId);
     }
@@ -122,14 +122,14 @@ library ERC721Storage {
         store.balanceOf[to] += 1;
         store.ownerOf[tokenId] = to;
 
-        emit IERC721Foil.Transfer(from, to, tokenId);
+        emit IERC721Sapience.Transfer(from, to, tokenId);
 
         _enumarebleTransfer(from, to, tokenId);
     }
 
     function _approve(address to, uint256 tokenId) internal {
         load().tokenApprovals[tokenId] = to;
-        emit IERC721Foil.Approval(_ownerOf(tokenId), to, tokenId);
+        emit IERC721Sapience.Approval(_ownerOf(tokenId), to, tokenId);
     }
 
     function _checkOnERC721Received(address from, address to, uint256 tokenId, bytes memory data)

@@ -6,7 +6,7 @@ import "./IERC721.sol";
 /**
  * @title ERC721 extension with helper functions that allow the enumeration of NFT tokens.
  */
-interface IERC721Enumerable is IERC721Foil {
+interface IERC721Enumerable is IERC721Sapience {
     /**
      * @notice Thrown calling *ByIndex function with an index greater than the number of tokens existing
      * @param requestedIndex The index requested by the caller
