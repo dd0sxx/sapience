@@ -8,7 +8,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract VirtualToken is ERC20, Ownable {
     constructor(address _owner, string memory name, string memory symbol) ERC20(name, symbol) Ownable(_owner) {}
 
-    function mint(address to, uint256 amount) public {
+    function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
     }
 }
