@@ -181,7 +181,7 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
   if (marketClassification === '2') { // YES_NO
     predictionText = `${prediction === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'} • ${prediction === YES_SQRT_PRICE_X96 ? '100' : '0'}% Chance`;
   } else if (marketClassification === '1') { // MULTIPLE_CHOICE
-    predictionText = optionName ? `Option: ${optionName}` : `Option ID: ${marketId}`;
+    predictionText = optionName ? `${optionName}` : `Option ID: ${marketId}`;
   } else if (marketClassification === '3') { // NUMERIC
     predictionText = `Prediction: ${numericValue?.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;
   } else {

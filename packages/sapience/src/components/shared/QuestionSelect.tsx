@@ -33,7 +33,19 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
     if (marketMode) {
       if (selectedMarketId && lastSelected?.id !== selectedMarketId) {
         const selected = markets.find((m) => m.marketId?.toString() === selectedMarketId);
-        setInputValue(selected?.optionName || selected?.question || '');
+        
+        // For multiple choice markets, show the market group question instead of option name
+        let displayValue = '';
+        if (selected) {
+          const isMultipleChoice = selected.group?.marketClassification === '1';
+          if (isMultipleChoice) {
+            displayValue = selected.group?.question || selected.question || '';
+          } else {
+            displayValue = selected.optionName || selected.question || '';
+          }
+        }
+        
+        setInputValue(displayValue);
         setLastSelected({ id: selectedMarketId });
       } else if (!selectedMarketId && lastSelected?.id) {
         setInputValue('');
@@ -110,7 +122,19 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
 
   // Handle selection
   const handleSelect = (item: any) => {
-    const displayValue = marketMode ? (item.optionName || item.question || '') : (item.question || '');
+    // For multiple choice markets, show the market group question instead of option name
+    let displayValue = '';
+    if (marketMode) {
+      const isMultipleChoice = item.group?.marketClassification === '1';
+      if (isMultipleChoice) {
+        displayValue = item.group?.question || item.question || '';
+      } else {
+        displayValue = item.optionName || item.question || '';
+      }
+    } else {
+      displayValue = item.question || '';
+    }
+    
     setInputValue(displayValue);
     setIsDropdownOpen(false);
     // Update lastSelected to prevent useEffect from overriding the input value
