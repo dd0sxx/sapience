@@ -18,6 +18,7 @@ import {ETHManagement} from "./abstract/ETHManagement.sol";
  * 2. Tracks remote balances
  * 3. Processes verifications
  * 4. Receives and processes verifications
+ * @notice onlyOwner protected functions don't use 2 step ownership transfer. If the EOA is not valid and new onlyOwner functions need to be called, a new bridge should be set.
  */
 contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge, ETHManagement {
     using Encoder for bytes;

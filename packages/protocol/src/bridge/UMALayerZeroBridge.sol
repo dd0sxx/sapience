@@ -30,6 +30,7 @@ struct AssertionMarketData {
  * 2. Interacts with UMA's OptimisticOracleV3
  * 3. Manages bond tokens and gas fees
  * 4. Sends verification results back to Converge
+ * @notice onlyOwner protected functions don't use 2 step ownership transfer. If the EOA is not valid and new onlyOwner functions need to be called, a new bridge should be set.
  */
 contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondManagement {
     using SafeERC20 for IERC20;
