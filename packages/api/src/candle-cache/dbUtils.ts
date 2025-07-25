@@ -314,19 +314,23 @@ export async function getLastCandleFromDb({
 }
 
 export async function saveCandle(candle: Prisma.CacheCandleCreateInput) {
+  // Exclude the id field from create operation to avoid unique constraint violations
+  // Cast to any because runtime objects may have id field even though type doesn't include it
+  const { id, ...candleWithoutId } = candle as any;
+  
   await prisma.cacheCandle.upsert({
     where: {
       candleType_interval_timestamp_resourceSlug_marketIdx_trailingAvgTime: {
         candleType: candle.candleType,
         interval: candle.interval,
         timestamp: candle.timestamp,
-        resourceSlug: candle.resourceSlug || null,
-        marketIdx: candle.marketIdx || null,
-        trailingAvgTime: candle.trailingAvgTime || null,
+        resourceSlug: candle.resourceSlug ?? null,
+        marketIdx: candle.marketIdx ?? null,
+        trailingAvgTime: candle.trailingAvgTime ?? null,
       } as Prisma.CacheCandleCandleTypeIntervalTimestampResourceSlugMarketIdxTrailingAvgTimeCompoundUniqueInput,
     },
-    update: candle,
-    create: candle,
+    update: candle, // Keep the full object for updates (includes id)
+    create: candleWithoutId, // Exclude id for creates (let DB auto-generate)
   });
 }
 
