@@ -1,24 +1,24 @@
 'use client';
 
-import { Badge } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@foil/ui/components/ui/dropdown-menu';
-import { Label } from '@foil/ui/components/ui/label';
+} from '@sapience/ui/components/ui/dropdown-menu';
+import { Label } from '@sapience/ui/components/ui/label';
 import { ChevronDown } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
+import { PositionKind } from '~/hooks/contract/usePositions';
 
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 
-interface PositionSelectorProps {}
-
-const PositionSelector: React.FC<PositionSelectorProps> = () => {
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+const PositionSelector: React.FC<{}> = () => {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -54,7 +54,7 @@ const PositionSelector: React.FC<PositionSelectorProps> = () => {
   // Determine trigger button text
   let triggerText = 'New Position';
   if (selectedPosition) {
-    triggerText = `${selectedPosition.kind === 1 ? 'LP' : 'Trade'} #${
+    triggerText = `${selectedPosition.kind === PositionKind.Liquidity ? 'LP' : 'Trade'} #${
       selectedPosition.id
     }`;
   } else if (hasPositions) {
@@ -73,7 +73,9 @@ const PositionSelector: React.FC<PositionSelectorProps> = () => {
                 <>
                   <span>#{selectedPosition.id.toString()}</span>
                   <Badge variant="outline">
-                    {selectedPosition.kind === 1 ? 'Liquidity' : 'Trader'}
+                    {selectedPosition.kind === PositionKind.Liquidity
+                      ? 'Liquidity'
+                      : 'Trader'}
                   </Badge>
                 </>
               ) : (

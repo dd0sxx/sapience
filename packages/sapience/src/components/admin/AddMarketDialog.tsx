@@ -1,14 +1,14 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@foil/ui/components/ui/dialog';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/dialog';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
@@ -16,9 +16,8 @@ import type { Address } from 'viem';
 import { useSignMessage } from 'wagmi';
 import { z } from 'zod';
 
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
-
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
+import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
@@ -42,7 +41,7 @@ const marketApiSchema = z
     endTime: z.coerce
       .number()
       .int()
-      .nonnegative('End Time must be a non-negative integer'),
+      .positive('End Time must be a positive integer and is required'),
     startingSqrtPriceX96: z
       .string()
       .trim()
@@ -90,11 +89,15 @@ const createEmptyMarket = (id: number): MarketInput => {
     marketQuestion: '',
     optionName: '',
     startTime: now.toString(),
-    endTime: (now + 28 * 24 * 60 * 60).toString(), // Default to 28 days from now
+    endTime: '', // Empty string - user must set this
     startingSqrtPriceX96: DEFAULT_SQRT_PRICE,
     baseAssetMinPriceTick: DEFAULT_MIN_PRICE_TICK,
     baseAssetMaxPriceTick: DEFAULT_MAX_PRICE_TICK,
-    claimStatement: '',
+    startingPrice: '0.5',
+    lowTickPrice: '0.00009908435194807992',
+    highTickPrice: '1',
+    claimStatementYesOrNumeric: '',
+    claimStatementNo: '',
     rules: '',
   };
 };
@@ -167,7 +170,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
     e.preventDefault();
 
     // Prepare data for validation (excluding client-side 'id')
-    const { id, ...marketDataToValidate } = market;
+    const { id: _id, ...marketDataToValidate } = market;
     const validationResult = marketApiSchema.safeParse(marketDataToValidate);
 
     if (!validationResult.success) {

@@ -1,4 +1,5 @@
-import { initializeDataSource, resourceRepository } from './db';
+import 'reflect-metadata';
+import { initializeDataSource } from './db';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
@@ -9,10 +10,9 @@ import { initSentry } from './instrument';
 import { initializeApolloServer } from './graphql/startApolloServer';
 import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
-import { ResourcePerformanceManager } from './performance';
 import { initializeFixtures } from './fixtures';
 import { handleMcpAppRequests } from './routes/mcp';
-
+import prisma from './db';
 const PORT = 3001;
 
 // Load environment variables
@@ -45,6 +45,7 @@ const startServer = async () => {
     expressMiddleware(apolloServer, {
       context: async () => ({
         loaders: createLoaders(),
+        prisma,
       }),
     })
   );
@@ -60,25 +61,6 @@ const startServer = async () => {
   if (process.env.NODE_ENV === 'production') {
     Sentry.setupExpressErrorHandler(app);
   }
-
-  console.log('ResourcePerformanceManager - Starting');
-
-  let resources;
-  if (
-    process.env.NODE_ENV === 'development' &&
-    process.env.DATABASE_URL?.includes('render')
-  ) {
-    console.log(
-      "WARNING: Initializing resources selectively so that we don't have to cache everything"
-    );
-    resources = (await resourceRepository.find()).filter((res) => res.id === 8);
-  } else {
-    resources = await resourceRepository.find();
-  }
-
-  const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-  await resourcePerformanceManager.initialize(resources);
-  console.log('ResourcePerformanceManager - Initialized');
 
   // Global error handle
   // Needs the unused _next parameter to be passed in: https://expressjs.com/en/guide/error-handling.html

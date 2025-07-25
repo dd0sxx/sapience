@@ -1,8 +1,6 @@
-/* eslint-disable sonarjs/cognitive-complexity */
-
-import type { MarketGroupType, MarketType } from '@foil/ui/types';
 import dynamic from 'next/dynamic';
 import type React from 'react';
+import type { MarketGroupType } from '@sapience/ui/types';
 
 import { MarketGroupClassification } from '~/lib/types';
 import { formatNumber } from '~/lib/utils/util';
@@ -23,7 +21,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
   marketGroupData,
   marketClassification,
 }) => {
-  const firstMarket = marketGroupData.markets[0] as MarketType | undefined;
+  const firstMarket = marketGroupData.markets?.[0];
 
   if (!firstMarket) {
     return null;
@@ -63,7 +61,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
 
     if (marketClassification === MarketGroupClassification.MULTIPLE_CHOICE) {
       // For single choice markets, find the option with settlement price of 1
-      const settledMarket = marketGroupData.markets.find(
+      const settledMarket = (marketGroupData.markets || []).find(
         (market) => market.settlementPriceD18 === '1000000000000000000' // 1 with 18 decimals
       );
 
@@ -80,7 +78,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
     }
 
     return (
-      <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-6 text-center">
+      <div className="rounded-lg border border-border p-6 text-center">
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="rounded-full bg-green-100 dark:bg-green-800 p-2">
             <svg

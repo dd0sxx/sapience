@@ -1,24 +1,29 @@
 'use client';
 
-import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
-import { Button } from '@foil/ui/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
-import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import type { MarketType as GqlMarketType } from '@foil/ui/types/graphql';
+import {
+  IntervalSelector,
+  PriceSelector,
+} from '@sapience/ui/components/charts';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, LineChart, BarChart2 } from 'lucide-react';
+import { ChevronLeft, LineChart, BarChart2, DatabaseIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
+import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
+import { ChartType, LineType, TimeInterval } from '@sapience/ui/types/charts';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
+import DataDrawer from '~/components/DataDrawer';
+import MarketHeader from '~/components/forecasting/MarketHeader';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
-import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
+import { PositionKind } from '~/hooks/contract/usePositions';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketPageProvider,
@@ -105,7 +110,6 @@ const ForecastContent = () => {
     marketData,
     isLoadingMarket,
     isLoadingMarketContract,
-    displayQuestion,
     chainId,
     marketAddress,
     numericMarketId,
@@ -116,6 +120,9 @@ const ForecastContent = () => {
     baseTokenName,
     quoteTokenName,
     marketClassification,
+    marketContractData,
+    collateralAssetAddress,
+    collateralAssetTicker,
   } = useMarketPage();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
@@ -143,7 +150,7 @@ const ForecastContent = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const refetchUserPositions = useCallback(() => {}, [userPositionsTrigger]);
 
-  const { isLoading: isUserPositionsLoading } = usePositions({
+  const { isLoading: _isUserPositionsLoading } = usePositions({
     address: address || '',
     marketAddress: marketAddress || undefined,
   });
@@ -181,6 +188,7 @@ const ForecastContent = () => {
     tickSpacing,
     quoteTokenName,
     baseTokenName,
+    enabled: chartType === ChartType.ORDER_BOOK,
   });
   // ---- End: Hoisted OrderBook Data Fetching ----
 
@@ -198,7 +206,9 @@ const ForecastContent = () => {
   useEffect(() => {
     if (selectedPosition) {
       // Set tab based on position kind (1 = Liquidity, 2 = Trade)
-      setActiveFormTab(selectedPosition.kind === 1 ? 'liquidity' : 'trade');
+      setActiveFormTab(
+        selectedPosition.kind === PositionKind.Liquidity ? 'liquidity' : 'trade'
+      );
     }
   }, [selectedPosition]);
 
@@ -240,12 +250,12 @@ const ForecastContent = () => {
                       {marketData.marketGroup.markets
                         .filter(
                           (
-                            market // market.id is string, numericMarketId is number | null, market.marketId is number
+                            market: GqlMarketType // market.id is string, numericMarketId is number | null, market.marketId is number
                           ) =>
                             market.endTimestamp &&
                             market.endTimestamp * 1000 > Date.now()
                         )
-                        .map((market) => {
+                        .map((market: GqlMarketType) => {
                           const buttonText =
                             market.optionName ||
                             market.question ||
@@ -265,16 +275,21 @@ const ForecastContent = () => {
                 </div>
               )}
           </div>
-          {displayQuestion && (
-            <h1 className="text-2xl md:text-4xl font-normal mb-2 leading-tight">
-              {displayQuestion}
-            </h1>
-          )}
-          <div className="flex justify-start mb-6 mt-2">
-            <EndTimeDisplay endTime={marketData?.endTimestamp} />
-          </div>
-          <div className="flex flex-col gap-12">
-            <div className="flex flex-col md:flex-row gap-12">
+          <MarketHeader
+            marketData={marketData!}
+            marketContractData={marketContractData}
+            chainId={chainId!}
+            marketAddress={marketAddress!}
+            marketClassification={marketClassification!}
+            collateralAssetAddress={collateralAssetAddress}
+            baseTokenName={baseTokenName}
+            quoteTokenName={quoteTokenName}
+            collateralSymbol={collateralAssetTicker}
+            minTick={minTick}
+            maxTick={maxTick}
+          />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col lg:flex-row lg:gap-8">
               <div className="flex flex-col w-full relative">
                 <div className="w-full h-[500px] relative">
                   <AnimatePresence>
@@ -295,6 +310,8 @@ const ForecastContent = () => {
                             quoteTokenName:
                               marketData?.marketGroup?.quoteTokenName ||
                               undefined,
+                            startTimestamp: marketData?.startTimestamp,
+                            endTimestamp: marketData?.endTimestamp,
                           }}
                           selectedInterval={selectedInterval}
                           selectedPrices={selectedPrices}
@@ -327,7 +344,7 @@ const ForecastContent = () => {
                     )}
                   </AnimatePresence>
                 </div>
-                <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
+                <div className="flex flex-col lg:flex-row justify-between w-full items-start lg:items-center my-4 gap-4">
                   <div className="flex flex-row flex-wrap gap-3 w-full items-center">
                     <div className="order-1 sm:order-1">
                       <div className="flex rounded-md overflow-hidden">
@@ -358,41 +375,50 @@ const ForecastContent = () => {
                       </div>
                     </div>
 
-                    {chartType === ChartType.PRICE && (
-                      <>
-                        <motion.div
-                          className="order-2 sm:order-2 ml-auto"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.1 }}
-                        >
-                          <IntervalSelector
-                            selectedInterval={selectedInterval}
-                            setSelectedInterval={setSelectedInterval}
-                          />
-                        </motion.div>
-                        {marketData?.marketGroup?.resource?.slug && (
+                    <div className="order-2 sm:order-2 ml-auto flex flex-wrap gap-3">
+                      {chartType === ChartType.PRICE && (
+                        <>
                           <motion.div
-                            className="order-3 sm:order-3"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.1 }}
                           >
-                            <PriceSelector
-                              selectedPrices={selectedPrices}
-                              setSelectedPrices={handlePriceSelection}
+                            <IntervalSelector
+                              selectedInterval={selectedInterval}
+                              setSelectedInterval={setSelectedInterval}
                             />
                           </motion.div>
-                        )}
-                      </>
-                    )}
+                          {marketData?.marketGroup?.resource?.slug && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.1 }}
+                            >
+                              <PriceSelector
+                                selectedPrices={selectedPrices}
+                                setSelectedPrices={handlePriceSelection}
+                              />
+                            </motion.div>
+                          )}
+                        </>
+                      )}
+
+                      <DataDrawer
+                        trigger={
+                          <Button className="w-full sm:w-auto">
+                            <DatabaseIcon className="w-4 h-4 mr-0.5" />
+                            Data
+                          </Button>
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="w-full md:max-w-[340px] pb-4">
+              <div className="w-full lg:max-w-[340px] pb-4">
                 <div className="bg-card p-6 rounded border mb-5 overflow-auto">
                   <div className="w-full">
                     <h3 className="text-3xl font-normal mb-4">
@@ -426,18 +452,20 @@ const ForecastContent = () => {
                       </div>
                     )}
                     <div className="mt-4 relative">
-                      {selectedPosition && selectedPosition.kind === 2 && (
-                        <SimpleTradeWrapper
-                          positionId={positionId || undefined}
-                          onActionComplete={handleUserPositionsRefetch}
-                        />
-                      )}
-                      {selectedPosition && selectedPosition.kind === 1 && (
-                        <SimpleLiquidityWrapper
-                          positionId={positionId || undefined}
-                          onActionComplete={handleUserPositionsRefetch}
-                        />
-                      )}
+                      {selectedPosition &&
+                        selectedPosition.kind === PositionKind.Trade && (
+                          <SimpleTradeWrapper
+                            positionId={positionId || undefined}
+                            onActionComplete={handleUserPositionsRefetch}
+                          />
+                        )}
+                      {selectedPosition &&
+                        selectedPosition.kind === PositionKind.Liquidity && (
+                          <SimpleLiquidityWrapper
+                            positionId={positionId || undefined}
+                            onActionComplete={handleUserPositionsRefetch}
+                          />
+                        )}
                       {!selectedPosition && activeFormTab === 'trade' && (
                         <SimpleTradeWrapper
                           positionId={positionId || undefined}
@@ -468,43 +496,28 @@ const ForecastContent = () => {
               </div>
             </div>
 
-            {/* User Positions Table - Full Width */}
-            <div className="w-full my-4">
-              {(() => {
-                if (!address) {
-                  return null;
-                }
-                if (isUserPositionsLoading) {
-                  return (
-                    <div className="mt-6 text-center p-6 border border-muted rounded bg-background/50">
-                      <div className="flex flex-col items-center justify-center py-2">
-                        <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Loading your positions...
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
-                return (
-                  <div>
-                    <UserPositionsTable
-                      account={address}
-                      marketAddress={marketAddress!}
-                      chainId={chainId === null ? undefined : chainId}
-                      marketId={
-                        numericMarketId === null ? undefined : numericMarketId
-                      }
-                      refetchUserPositions={refetchUserPositions}
-                    />
-                  </div>
-                );
-              })()}
-            </div>
+            {(() => {
+              if (!address) {
+                return null;
+              }
+              return (
+                <div>
+                  <UserPositionsTable
+                    account={address}
+                    marketAddress={marketAddress!}
+                    chainId={chainId === null ? undefined : chainId}
+                    marketId={
+                      numericMarketId === null ? undefined : numericMarketId
+                    }
+                    refetchUserPositions={refetchUserPositions}
+                  />
+                </div>
+              );
+            })()}
 
             {/* Market Rules */}
             {marketData?.rules && (
-              <div className="w-full mt-8 mb-4">
+              <div className="w-full mb-4">
                 <h3 className="text-lg font-normal mb-2">Rules</h3>
                 <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {marketData.rules}

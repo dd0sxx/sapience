@@ -1,16 +1,16 @@
-import { useToast } from '@foil/ui/hooks/use-toast';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useEffect } from 'react';
 import type { Abi, Address } from 'viem';
 import { useReadContract } from 'wagmi';
 
 // Define the types based on the provided structs
 interface MarketData {
-  epochId: bigint;
+  marketId: bigint;
   startTime: bigint;
   endTime: bigint;
   pool: Address;
-  ethToken: Address;
-  gasToken: Address;
+  quoteToken: Address;
+  baseToken: Address;
   minPriceD18: bigint;
   maxPriceD18: bigint;
   baseAssetMinPriceTick: number;
@@ -61,7 +61,7 @@ export function useMarketRead({
     address: marketAddress,
     abi,
     chainId: 8453,
-    functionName: 'getEpoch',
+    functionName: 'getMarket',
     args: [marketId],
   });
 

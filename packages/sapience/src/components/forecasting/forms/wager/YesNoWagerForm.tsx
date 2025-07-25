@@ -1,19 +1,18 @@
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { Button } from '@foil/ui/components/ui/button';
-import { useToast } from '@foil/ui/hooks/use-toast';
-import { foilAbi } from '@foil/ui/lib/abi';
-import type { MarketGroupType } from '@foil/ui/types';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { Button } from '@sapience/ui/components/ui/button';
+import { useToast } from '@sapience/ui/hooks/use-toast';
+import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import YesNoPredict from '../inputs/YesNoPredict';
+import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-
-import PermittedAlert from './PermittedAlert';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -34,7 +33,7 @@ export default function YesNoWagerForm({
   const successHandled = useRef(false);
 
   // Form validation schema
-  const formSchema = useMemo(() => {
+  const formSchema: z.ZodType = useMemo(() => {
     return z.object({
       predictionValue: z.enum([YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96], {
         required_error: 'Please select Yes or No',
@@ -60,7 +59,7 @@ export default function YesNoWagerForm({
   // Use the quoter hook directly
   const { quoteData, isQuoteLoading, quoteError } = useQuoter({
     marketData: marketGroupData,
-    marketId: marketGroupData.markets[0].marketId, // first market in the array
+    marketId: marketGroupData.markets?.[0]?.marketId ?? 0, // first market in the array
     expectedPrice: predictionValue === YES_SQRT_PRICE_X96 ? 1 : 0.0000009,
     wagerAmount,
   });
@@ -76,9 +75,9 @@ export default function YesNoWagerForm({
     reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
-    marketAbi: foilAbi().abi,
+    marketAbi: sapienceAbi().abi,
     chainId: marketGroupData.chainId,
-    numericMarketId: marketGroupData.markets[0].marketId,
+    numericMarketId: marketGroupData.markets?.[0]?.marketId ?? 0,
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
     collateralAmount: wagerAmount,
     slippagePercent: 0.5, // Default slippage percentage

@@ -1,13 +1,11 @@
-/* eslint-disable sonarjs/cognitive-complexity */
-
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { SlippageTolerance } from '@sapience/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -15,11 +13,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
-import { Skeleton } from '@foil/ui/components/ui/skeleton';
-import Slider from '@foil/ui/components/ui/slider';
-import { useToast } from '@foil/ui/index';
+} from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Skeleton } from '@sapience/ui/components/ui/skeleton';
+import Slider from '@sapience/ui/components/ui/slider';
+import { useToast } from '@sapience/ui/index';
 import { motion } from 'framer-motion';
 import { HelpCircle } from 'lucide-react';
 import type React from 'react';
@@ -27,6 +25,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { formatUnits } from 'viem';
 
+import type { LiquidityFormMarketDetails } from './CreateLiquidityForm';
 import LottieLoader from '~/components/shared/LottieLoader';
 import {
   useModifyLiquidityQuoter,
@@ -35,8 +34,6 @@ import {
 import { useModifyLP } from '~/hooks/contract/useModifyLP';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-
-import type { LiquidityFormMarketDetails } from './CreateLiquidityForm';
 
 interface ModifyLiquidityFormValues {
   percentage: string;
@@ -59,7 +56,6 @@ type ModifyLiquidityFormProps = {
   isPermitLoadingPermit?: boolean;
 };
 
-// eslint-disable-next-line import/prefer-default-export
 export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
   marketDetails,
   walletData,

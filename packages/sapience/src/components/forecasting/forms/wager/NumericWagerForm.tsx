@@ -1,20 +1,19 @@
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { Button } from '@foil/ui/components/ui/button';
-import { useToast } from '@foil/ui/hooks/use-toast';
-import { foilAbi } from '@foil/ui/lib/abi';
-import type { MarketGroupType } from '@foil/ui/types';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { Button } from '@sapience/ui/components/ui/button';
+import { useToast } from '@sapience/ui/hooks/use-toast';
+import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import type { MarketGroupType } from '@sapience/ui/types';
 import NumericPredict from '../inputs/NumericPredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
+import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-
-import PermittedAlert from './PermittedAlert';
 
 interface NumericWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -29,16 +28,13 @@ export default function NumericWagerForm({
 }: NumericWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const lowerBound = tickToPrice(
-    marketGroupData.markets[0].baseAssetMinPriceTick!
-  );
-  const upperBound = tickToPrice(
-    marketGroupData.markets[0].baseAssetMaxPriceTick!
-  );
+  const firstMarket = marketGroupData.markets?.[0];
+  const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
+  const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
   const unitDisplay = ''; // marketGroupData.unitDisplay || '';
 
   // Form validation schema
-  const formSchema = useMemo(() => {
+  const formSchema: z.ZodType = useMemo(() => {
     return z.object({
       predictionValue: z
         .string()
@@ -60,7 +56,11 @@ export default function NumericWagerForm({
   const methods = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      predictionValue: String(Math.round((lowerBound + upperBound) / 2)),
+      predictionValue: String(
+        (lowerBound + upperBound) / 2 > -1 && (lowerBound + upperBound) / 2 < 1
+          ? ((lowerBound + upperBound) / 2).toFixed(6)
+          : Math.round((lowerBound + upperBound) / 2)
+      ),
       wagerAmount: '',
     },
     mode: 'onChange', // Validate on change for immediate feedback
@@ -73,7 +73,7 @@ export default function NumericWagerForm({
   // Use the quoter hook directly
   const { quoteData, isQuoteLoading, quoteError } = useQuoter({
     marketData: marketGroupData,
-    marketId: marketGroupData.markets[0].marketId,
+    marketId: firstMarket?.marketId ?? 0,
     expectedPrice: Number(predictionValue),
     wagerAmount,
   });
@@ -89,9 +89,9 @@ export default function NumericWagerForm({
     reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
-    marketAbi: foilAbi().abi,
+    marketAbi: sapienceAbi().abi,
     chainId: marketGroupData.chainId,
-    numericMarketId: marketGroupData.markets[0].marketId,
+    numericMarketId: firstMarket?.marketId ?? 0,
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
     collateralAmount: wagerAmount,
     slippagePercent: 0.5, // Default slippage percentage
@@ -174,7 +174,7 @@ export default function NumericWagerForm({
               value={BigInt(Math.abs(Number(quoteData.maxSize)))}
               precision={4}
             />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
+            {marketGroupData?.collateralSymbol || 'tokens'}.
           </span>
         </p>
       </div>
@@ -191,6 +191,7 @@ export default function NumericWagerForm({
           }}
           baseTokenName={marketGroupData.baseTokenName || ''}
           quoteTokenName={marketGroupData.quoteTokenName || ''}
+          decimalPlaces={6}
         />
         <div>
           <WagerInput

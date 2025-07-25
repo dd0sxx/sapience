@@ -37,6 +37,11 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
     };
   }
 
+  // Implement the abstract method to specify the IPC key for this class
+  protected getStatusIPCKey(): string {
+    return CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus;
+  }
+
   public static getInstance() {
     if (!this.instance) {
       this.instance = new CandleCacheReBuilder();
@@ -84,7 +89,7 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
     await this.processResourcePrices(0);
 
     // Process all market prices
-    await this.processMarketPrices(0);
+    await this.processmarketPrices(0);
 
     // Save all runtime candles
     await this.saveAllRuntimeCandles();

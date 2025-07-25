@@ -1,13 +1,11 @@
-/* eslint-disable sonarjs/cognitive-complexity */
-
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { SlippageTolerance } from '@sapience/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -15,22 +13,23 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import type { Abi } from 'viem';
 import { formatUnits } from 'viem';
 
+import CollateralBalance from './inputs/CollateralBalance';
+import type { WalletData } from './ModifyLiquidityForm';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateLP, useCreateLiquidityQuoter } from '~/hooks/contract';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { priceToTick, tickToPrice } from '~/lib/utils/tickUtils';
-
-import type { WalletData } from './ModifyLiquidityForm';
+import { getChainShortName } from '~/lib/utils/util';
 
 export type LiquidityFormMarketDetails = {
   marketAddress: `0x${string}`;
@@ -273,7 +272,22 @@ export function CreateLiquidityForm({
     <Form {...form}>
       <form onSubmit={handleSubmit(submitForm)} className="space-y-4">
         <div className="mb-6">
-          <FormLabel className="block mb-2">Collateral</FormLabel>
+          <div className="flex justify-between items-center mb-2">
+            <FormLabel className="block">Collateral</FormLabel>
+            <CollateralBalance
+              collateralSymbol={collateralAssetTicker}
+              collateralAddress={collateralAssetAddress}
+              chainId={chainId}
+              chainShortName={getChainShortName(chainId)}
+              onSetWagerAmount={(amount) =>
+                form.setValue('depositAmount', amount, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                  shouldTouch: true,
+                })
+              }
+            />
+          </div>
           <FormField
             control={control}
             name="depositAmount"
@@ -308,7 +322,10 @@ export function CreateLiquidityForm({
           <div className="flex items-center justify-between mb-2">
             <FormLabel className="block">Low Price</FormLabel>
             <div className="text-sm text-muted-foreground">
-              Min: {tickToPrice(lowPriceTick || 0, tickSpacing).toFixed(6)}
+              Min:{' '}
+              <NumberDisplay
+                value={tickToPrice(lowPriceTick || 0, tickSpacing)}
+              />
             </div>
           </div>
           <FormField
@@ -322,6 +339,8 @@ export function CreateLiquidityForm({
                       placeholder="0"
                       type="number"
                       step="any"
+                      min={tickToPrice(lowPriceTick || 0, tickSpacing)}
+                      max={tickToPrice(highPriceTick || 0, tickSpacing)}
                       className="rounded-r-none"
                       {...field}
                     />
@@ -340,7 +359,10 @@ export function CreateLiquidityForm({
           <div className="flex items-center justify-between mb-2">
             <FormLabel className="block">High Price</FormLabel>
             <div className="text-sm text-muted-foreground">
-              Max: {tickToPrice(highPriceTick || 0, tickSpacing).toFixed(6)}
+              Max:{' '}
+              <NumberDisplay
+                value={tickToPrice(highPriceTick || 0, tickSpacing)}
+              />
             </div>
           </div>
           <FormField
@@ -354,6 +376,8 @@ export function CreateLiquidityForm({
                       placeholder="0"
                       type="number"
                       step="any"
+                      min={tickToPrice(lowPriceTick || 0, tickSpacing)}
+                      max={tickToPrice(highPriceTick || 0, tickSpacing)}
                       className="rounded-r-none"
                       {...field}
                     />

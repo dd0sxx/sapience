@@ -1,13 +1,13 @@
-import { resourcePriceRepository } from '../../db';
+import prisma from '../../db';
 import Sentry from '../../instrument';
 import { IResourcePriceIndexer } from '../../interfaces';
-import { Resource } from '../../models/Resource';
+import type { Resource } from '../../../generated/prisma';
 import axios from 'axios';
 import {
   getBlockByTimestamp,
   getProviderForChain,
   sleep,
-} from 'src/utils/utils';
+} from '../../utils/utils';
 import { PublicClient } from 'viem';
 
 interface BlobData {
@@ -117,16 +117,28 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       const feePaid =
         BigInt(blobData.blobGasPrice) * BigInt(blobData.blobGasUsed);
 
-      const price = {
-        resource: { id: resource.id },
-        timestamp: blobData.timestamp,
-        value: blobData.blobGasPrice,
-        used: blobData.blobGasUsed,
-        feePaid: feePaid.toString(),
-        blockNumber: blockNumber,
-      };
-
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      await prisma.resourcePrice.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: blobData.timestamp,
+          },
+        },
+        create: {
+          resourceId: resource.id,
+          timestamp: blobData.timestamp,
+          value: blobData.blobGasPrice,
+          used: blobData.blobGasUsed,
+          feePaid: feePaid.toString(),
+          blockNumber: blockNumber,
+        },
+        update: {
+          value: blobData.blobGasPrice,
+          used: blobData.blobGasUsed,
+          feePaid: feePaid.toString(),
+          blockNumber: blockNumber,
+        },
+      });
       console.log(
         `[EthBlobIndexer] Stored block price for block ${blockNumber}`
       );
@@ -184,9 +196,9 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         blockNumber--
       ) {
         try {
-          const maybeResourcePrice = await resourcePriceRepository.findOne({
+          const maybeResourcePrice = await prisma.resourcePrice.findFirst({
             where: {
-              resource: { id: resource.id },
+              resourceId: resource.id,
               blockNumber,
             },
           });

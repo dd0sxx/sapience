@@ -1,10 +1,10 @@
-import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import { SlippageTolerance } from '@sapience/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -12,10 +12,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { AlertTriangle } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import type { Abi } from 'viem';
@@ -27,6 +27,7 @@ import {
   useSwitchChain,
 } from 'wagmi';
 
+import TradeOrderQuote from './TradeOrderQuote';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
@@ -35,8 +36,6 @@ import { useTradeForm } from '~/hooks/forms/useTradeForm';
 import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
-
-import TradeOrderQuote from './TradeOrderQuote';
 
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
 
@@ -110,7 +109,7 @@ export function CreateTradeForm({
   const sizeBigInt = React.useMemo(() => {
     try {
       return parseUnits(sizeInput || '0', TOKEN_DECIMALS);
-    } catch (e) {
+    } catch (_e) {
       return BigInt(0);
     }
   }, [sizeInput]);
@@ -162,7 +161,7 @@ export function CreateTradeForm({
     return formatUnits(quotedFillPriceBI, TOKEN_DECIMALS);
   }, [quotedFillPriceBI]);
 
-  const poolAddress = marketContractData?.pool as `0x${string}` | undefined;
+  const poolAddress = marketContractData?.pool;
 
   const { pool } = useUniswapPool(
     chainId ?? undefined,

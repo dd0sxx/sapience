@@ -10,6 +10,11 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
     super();
   }
 
+  // Implement the abstract method to specify the IPC key for this class
+  protected getStatusIPCKey(): string {
+    return CANDLE_CACHE_IPC_KEYS.candleCacheBuilderStatus;
+  }
+
   public static getInstance() {
     if (!this.instance) {
       this.instance = new CandleCacheBuilder();
@@ -37,7 +42,7 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
     const lastProcessedMarketPrice = await getParam(
       CANDLE_CACHE_IPC_KEYS.lastProcessedMarketPrice
     );
-    await this.processMarketPrices(lastProcessedMarketPrice);
+    await this.processmarketPrices(lastProcessedMarketPrice);
 
     log({
       message: 'step 3: process resource prices',

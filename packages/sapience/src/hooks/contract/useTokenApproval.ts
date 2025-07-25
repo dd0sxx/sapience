@@ -1,4 +1,4 @@
-import erc20ABI from '@foil/ui/abis/erc20abi.json';
+import erc20ABI from '@sapience/ui/abis/erc20abi.json';
 import { useEffect, useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
 import {
@@ -52,7 +52,7 @@ export function useTokenApproval({
     address: tokenAddress,
     functionName: 'allowance',
     args: [address as `0x${string}`, spenderAddress as `0x${string}`],
-    account: (address || zeroAddress) as `0x${string}`,
+    account: address || zeroAddress,
     chainId,
     query: {
       enabled:
@@ -104,6 +104,7 @@ export function useTokenApproval({
     setIsApproving(true);
 
     try {
+      // eslint-disable-next-line @typescript-eslint/await-thenable
       await approveWrite({
         abi: erc20ABI,
         address: tokenAddress,

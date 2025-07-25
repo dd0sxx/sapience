@@ -2,49 +2,76 @@ import { Router, Request, Response } from 'express';
 import { validateRequestParams } from '../helpers/validateRequestParams';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { parseContractId } from '../helpers/parseContractId';
-import dataSource from '../db';
-import { Transaction } from '../models/Transaction';
-import { hydrateTransactions } from 'src/helpers';
+import prisma from '../db';
+import { hydrateTransactions } from '../helpers/hydrateTransactions';
+import type { Prisma } from '../../generated/prisma';
 
 const router = Router();
-
-const transactionRepository = dataSource.getRepository(Transaction);
 
 router.get(
   '/',
   validateRequestParams(['contractId']),
   handleAsyncErrors(async (req: Request, res: Response) => {
-    const { contractId, epochId, positionId } = req.query as {
+    const { contractId, marketId, positionId } = req.query as {
       contractId: string;
-      epochId?: string;
+      marketId?: string;
       positionId?: string;
     };
 
     const { chainId, address } = parseContractId(contractId);
 
-    const queryBuilder = transactionRepository
-      .createQueryBuilder('transaction')
-      .innerJoinAndSelect('transaction.position', 'position')
-      .innerJoinAndSelect('position.epoch', 'epoch')
-      .innerJoinAndSelect('epoch.market', 'market')
-      .innerJoinAndSelect('market.resource', 'resource')
-      .innerJoinAndSelect('transaction.event', 'event')
-      .where('market.chainId = :chainId', { chainId })
-      .andWhere('market.address = :address', { address: address.toLowerCase() })
-      .orderBy('position.positionId', 'ASC')
-      .addOrderBy('event.blockNumber', 'ASC');
+    // Build the where clause
+    const whereClause: Prisma.TransactionWhereInput = {
+      position: {
+        market: {
+          market_group: {
+            chainId: parseInt(chainId),
+            address: address.toLowerCase(),
+          },
+        },
+      },
+    };
 
-    if (epochId) {
-      queryBuilder.andWhere('epoch.epochId = :epochId', { epochId });
+    // Add optional filters
+    if (marketId) {
+      // Note: In the new schema, there's no direct market relationship
+      // This might need to be adjusted based on your business logic
+      // For now, we'll use marketId as a substitute if that's what marketId represents
+      if (whereClause.position && whereClause.position.market) {
+        whereClause.position.market.marketId = parseInt(marketId);
+      }
     }
 
     if (positionId) {
-      queryBuilder.andWhere('position.positionId = :positionId', {
-        positionId,
-      });
+      if (whereClause.position) {
+        whereClause.position.positionId = parseInt(positionId);
+      }
     }
 
-    const transactions = await queryBuilder.getMany();
+    const transactions = await prisma.transaction.findMany({
+      where: whereClause,
+      include: {
+        position: {
+          include: {
+            market: {
+              include: {
+                market_group: {
+                  include: {
+                    resource: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        event: true,
+      },
+      orderBy: [
+        { position: { positionId: 'asc' } },
+        { event: { blockNumber: 'asc' } },
+      ],
+    });
+
     const hydratedPositions = hydrateTransactions(transactions);
 
     res.json(hydratedPositions);

@@ -1,33 +1,26 @@
-import {
-  initializeDataSource,
-  resourcePriceRepository,
-  marketGroupRepository,
-} from '../../db';
+import prisma from '../../db';
 import { initializeMarket } from '../../controllers/market';
 import { getMarketStartEndBlock } from '../../controllers/marketHelpers';
-import { Between } from 'typeorm';
 import * as Sentry from '@sentry/node';
 import { INDEXERS } from '../../fixtures';
-import { Resource } from 'src/models/Resource';
+import type { Resource } from '../../../generated/prisma';
 
 export async function reindexMissingBlocks(
   chainId: number,
   address: string,
-  epochId: string
+  marketId: string
 ) {
   try {
     console.log(
-      `Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`
+      `Starting reindex of missing resource blocks for market ${chainId}:${address}, market ${marketId}`
     );
 
-    await initializeDataSource();
-
-    const marketEntity = await marketGroupRepository.findOne({
+    const marketEntity = await prisma.marketGroup.findFirst({
       where: {
         chainId,
         address: address.toLowerCase(),
       },
-      relations: ['resource'],
+      include: { resource: true },
     });
 
     if (!marketEntity) {
@@ -39,7 +32,7 @@ export async function reindexMissingBlocks(
     const marketInfo = {
       marketChainId: marketEntity.chainId,
       deployment: {
-        address: marketEntity.address.toLowerCase(),
+        address: marketEntity.address?.toLowerCase() || '',
         deployTxnBlockNumber: marketEntity.deployTxnBlockNumber,
         deployTimestamp: marketEntity.deployTimestamp,
       },
@@ -65,7 +58,7 @@ export async function reindexMissingBlocks(
       const { startBlockNumber, endBlockNumber, error } =
         await getMarketStartEndBlock(
           market,
-          epochId,
+          marketId,
           marketInfo.resource.priceIndexer.client
         );
 
@@ -73,12 +66,15 @@ export async function reindexMissingBlocks(
         return { missingBlockNumbers: null, error };
       }
 
-      const resourcePrices = await resourcePriceRepository.find({
+      const resourcePrices = await prisma.resourcePrice.findMany({
         where: {
-          resource: { id: market.resource?.id },
-          blockNumber: Between(startBlockNumber, endBlockNumber),
+          resourceId: market.resource?.id,
+          blockNumber: {
+            gte: startBlockNumber,
+            lte: endBlockNumber,
+          },
         },
-        select: ['blockNumber'],
+        select: { blockNumber: true },
       });
 
       const existingBlockNumbersSet = new Set(
@@ -113,7 +109,7 @@ export async function reindexMissingBlocks(
     Sentry.withScope((scope: Sentry.Scope) => {
       scope.setExtra('chainId', chainId);
       scope.setExtra('address', address);
-      scope.setExtra('epochId', epochId);
+      scope.setExtra('marketId', marketId);
       Sentry.captureException(error);
     });
     throw error;

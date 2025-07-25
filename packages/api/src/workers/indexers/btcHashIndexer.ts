@@ -1,15 +1,11 @@
 import { IResourcePriceIndexer } from '../../interfaces';
-import { resourcePriceRepository } from '../../db';
-import { Resource } from '../../models/Resource';
+import prisma from '../../db';
 import axios from 'axios';
 import Sentry from '../../instrument';
 
 interface PriceData {
   timestamp: Date;
-  fee_per_exahash: bigint;
-  hashrate: bigint;
   average_fee: bigint;
-  difficulty: bigint;
 }
 
 interface BlockData {
@@ -19,6 +15,16 @@ interface BlockData {
   size: number;
   weight: number;
   difficulty: bigint;
+}
+
+interface Resource {
+  id: number;
+  slug: string;
+}
+
+interface HashrateData {
+  timestamp: number;
+  avgHashrate: string;
 }
 
 class BlockDeque {
@@ -65,28 +71,19 @@ class BlockDeque {
 class BtcHashIndexer implements IResourcePriceIndexer {
   private isWatching: boolean = false;
   private apiUrl: string = 'https://mempool.space/api/v1';
-  private retryDelay: number = 1000; // 1 second
-  private maxRetries: number = Infinity;
   private pollInterval: NodeJS.Timeout | null = null;
-  private readonly BLOCK_TIME = 600n; // Average block time in seconds (10 minutes)
-  private readonly DIFFICULTY_1_TARGET = 2n ** 32n; // Number of hashes needed for difficulty 1
   private readonly CHUNK_SIZE = 15; // Number of blocks to fetch in one request
-  private readonly EXA_MULTIPLIER = 10n ** 18n; // Multiplier for exa hashrate
+  private readonly ZETTA_MULTIPLIER = 10n ** 21n; // Multiplier for zetta hashrate
   private blockDeque: BlockDeque;
+  private historicalHashrates: HashrateData[] = [];
 
   constructor() {
-    // Initialize deque with 7 days capacity (7 days)
+    // Initialize deque with 7 day capacity
     this.blockDeque = new BlockDeque(7);
   }
 
   private async sleep(ms: number) {
     return await new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  private calculateHashrate(difficulty: bigint): bigint {
-    // Hashrate calculation based on difficulty
-    // Formula: hashrate = difficulty * 2^32 / block_time
-    return (difficulty * this.DIFFICULTY_1_TARGET) / this.BLOCK_TIME;
   }
 
   private async storeBlockPrice(
@@ -97,10 +94,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     let timestamp: number;
     try {
       // Validate block data fields
-      if (
-        !priceData.timestamp ||
-        typeof priceData.fee_per_exahash !== 'bigint'
-      ) {
+      if (!priceData.timestamp || typeof priceData.average_fee !== 'bigint') {
         console.warn(
           `[BtcIndexer] Invalid block data for block ${priceData.timestamp}. Skipping block.`
         );
@@ -109,15 +103,24 @@ class BtcHashIndexer implements IResourcePriceIndexer {
 
       timestamp = Math.floor(priceData.timestamp.getTime() / 1000);
       const price = {
-        resource: { id: resource.id },
+        resourceId: resource.id,
         timestamp,
-        value: priceData.fee_per_exahash.toString(),
-        used: priceData.hashrate.toString(),
-        feePaid: priceData.average_fee.toString(),
+        value: priceData.average_fee.toString(),
+        used: '1', // Set to 1 as requested
+        feePaid: priceData.average_fee.toString(), // Use calculated value
         blockNumber: timestamp,
       };
 
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      await prisma.resourcePrice.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: timestamp,
+          },
+        },
+        update: price,
+        create: price,
+      });
       console.log(
         `[BtcIndexer] Stored price and hashrate for timestamp ${timestamp}`
       );
@@ -148,7 +151,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     for (
       let timestamp = startTimestamp;
       timestamp <= nonNullEndTimestamp;
-      timestamp += 60 * 60 // hourly intervals in seconds
+      timestamp += 24 * 60 * 60 // daily intervals in seconds
     ) {
       await this.calcAndStoreMetrics(
         resource,
@@ -343,43 +346,144 @@ class BtcHashIndexer implements IResourcePriceIndexer {
 
   private calculateMetrics(
     blocks: BlockData[],
-    hashrate: bigint,
-    targetDate: Date
+    hashrates: HashrateData[],
+    targetTimestamp: number
   ): {
-    averagedFeePerBlock: bigint;
-    averageFeePerExahash: bigint;
-    hashrateInEH: bigint;
+    averageFeesPerHashrate: bigint;
   } {
-    // Get blocks from last 24 hours relative to target date
-    const targetTimestamp = Math.floor(targetDate.getTime() / 1000);
-    const dayAgoTimestamp = targetTimestamp - 24 * 60 * 60;
-    const last24HoursBlocks = blocks.filter(
-      (block) => block.timestamp >= dayAgoTimestamp
+    console.log(
+      `[BtcIndexer] calculateMetrics called with ${blocks.length} blocks, ${hashrates.length} hashrates, targetTimestamp: ${targetTimestamp}`
+    );
+    console.log(
+      `[BtcIndexer] Target date: ${new Date(targetTimestamp * 1000).toISOString()}`
     );
 
-    // Calculate total fees
-    let totalFees = 0n;
-    for (const block of last24HoursBlocks) {
-      totalFees += BigInt(block.total_fee);
+    // Get blocks from last 7 days relative to target date
+    const sevenDaysAgoTimestamp = targetTimestamp - 7 * 24 * 60 * 60;
+    const last7DaysBlocks = blocks.filter(
+      (block) => block.timestamp >= sevenDaysAgoTimestamp
+    );
+
+    console.log(
+      `[BtcIndexer] Found ${last7DaysBlocks.length} blocks in the last 7 days (from ${new Date(sevenDaysAgoTimestamp * 1000).toISOString()})`
+    );
+
+    // Group blocks by day (UTC day boundary)
+    const blocksByDay = new Map<string, BlockData[]>();
+
+    for (const block of last7DaysBlocks) {
+      // Convert block timestamp to UTC day boundary
+      const blockDate = new Date(block.timestamp * 1000);
+      const dayKey = Date.UTC(
+        blockDate.getUTCFullYear(),
+        blockDate.getUTCMonth(),
+        blockDate.getUTCDate()
+      ).toString();
+
+      if (!blocksByDay.has(dayKey)) {
+        blocksByDay.set(dayKey, []);
+      }
+      blocksByDay.get(dayKey)!.push(block);
     }
-    // Calculate average fee per block
-    const averagedFeePerBlock =
-      last24HoursBlocks.length > 0
-        ? (totalFees * BigInt(10 ** 12)) / BigInt(last24HoursBlocks.length)
-        : 0n;
 
-    // Convert hashrate to EH/s
-    const hashrateInEH = (hashrate * BigInt(10 ** 3)) / this.EXA_MULTIPLIER;
+    console.log(`[BtcIndexer] Grouped blocks by day:`);
+    for (const [dayKey, dayBlocks] of blocksByDay.entries()) {
+      console.log(
+        `${new Date(Number(dayKey)).toISOString()}: ${dayBlocks.length} blocks`
+      );
+    }
 
-    // Calculate fee per exahash
-    const averageFeePerExahash =
-      averagedFeePerBlock > 0 ? averagedFeePerBlock / hashrateInEH : 0n;
+    // Calculate daily fee/hashrate ratios
+    let totalDailyRatio = 0n;
+    let daysWithData = 0;
+
+    for (let dayOffset = 1; dayOffset <= 7; dayOffset++) {
+      const dayTimestamp = targetTimestamp - dayOffset * 24 * 60 * 60;
+      const dayHashrate = this.getHashrateForTimestamp(dayTimestamp);
+
+      const dayKey = (dayTimestamp * 1000).toString();
+      const dayBlocks = blocksByDay.get(dayKey) || [];
+
+      console.log(
+        `[BtcIndexer] Day ${dayOffset}: timestamp=${dayTimestamp}, blocks=${dayBlocks.length}, hashrate=${dayHashrate.toString()}`
+      );
+
+      if (dayBlocks.length > 0 && dayHashrate > 0n) {
+        // Calculate total fees for the day
+        let totalFees = 0n;
+        for (const block of dayBlocks) {
+          totalFees += BigInt(block.total_fee);
+        }
+
+        // Scale fees to preserve decimals (multiply by 10^12)
+        const scaledFees = totalFees * BigInt(10 ** 12);
+        // Scale hashrate to preserve decimals (multiply by 10^12) -> decimals should cancel out
+        const scaledHashrate =
+          (dayHashrate * BigInt(10 ** 12)) / this.ZETTA_MULTIPLIER;
+
+        // Calculate fee/hashrate ratio for the day; scaled by 10^1 for the frontend (10^9 * 10^(-8) = default 9 decimals upscaling * btc decimals downscaling)
+        const dailyRatio = (scaledFees * BigInt(10 ** 1)) / scaledHashrate;
+        totalDailyRatio += dailyRatio;
+        daysWithData++;
+
+        console.log(
+          `[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: totalFees=${totalFees.toString()}, scaledFees=${scaledFees.toString()}, dailyRatio=${dailyRatio.toString()}`
+        );
+        console.log(
+          `[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: hashrate=${dayHashrate.toString()}, scaledHashrate (Zh * 10^12)=${scaledHashrate.toString()}`
+        );
+      } else {
+        console.log(
+          `[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: Skipping - no blocks (${dayBlocks.length}) or no hashrate (${dayHashrate.toString()})`
+        );
+      }
+    }
+
+    // Calculate 7-day average
+    const averageFeesPerHashrate =
+      daysWithData > 0 ? totalDailyRatio / BigInt(daysWithData) : 0n;
+
+    console.log(
+      `[BtcIndexer] Final calculation: daysWithData=${daysWithData}, totalDailyRatio=${totalDailyRatio.toString()}, averageFeesPerHashrate=${averageFeesPerHashrate.toString()}`
+    );
+    console.log(
+      `[BtcIndexer] Calculation breakdown: totalDailyRatio / ${daysWithData} = ${totalDailyRatio} / ${daysWithData} = ${averageFeesPerHashrate}`
+    );
 
     return {
-      averagedFeePerBlock,
-      averageFeePerExahash,
-      hashrateInEH,
+      averageFeesPerHashrate,
     };
+  }
+
+  private getHashrateForTimestamp(targetTimestamp: number): bigint {
+    // Directly find the hashrate entry for the given day (00:00 UTC)
+    const hashrateEntry = this.historicalHashrates.find(
+      (entry) => entry.timestamp === targetTimestamp
+    );
+
+    if (!hashrateEntry) {
+      throw new Error(`No hashrate found for timestamp ${targetTimestamp}`);
+    }
+
+    return BigInt(hashrateEntry.avgHashrate);
+  }
+
+  private async fetchHistoricalHashrates(): Promise<void> {
+    try {
+      const response = await axios.get(`${this.apiUrl}/mining/hashrate/3y`);
+      if (response.status === 200 && Array.isArray(response.data.hashrates)) {
+        this.historicalHashrates = response.data.hashrates;
+        console.log(
+          `[BtcIndexer] Fetched ${this.historicalHashrates.length} historical hashrates`
+        );
+      } else {
+        throw new Error('Invalid response format from hashrate API');
+      }
+    } catch (error) {
+      console.error('[BtcIndexer] Error fetching historical hashrates:', error);
+      Sentry.captureException(error);
+      throw error;
+    }
   }
 
   private async calcAndStoreMetrics(
@@ -388,21 +492,23 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     overwriteExisting: boolean = false
   ): Promise<void> {
     try {
-      // Set endTimestamp to start of the hour
-      const endTimestamp =
-        new Date(
-          targetDate.getFullYear(),
-          targetDate.getMonth(),
-          targetDate.getDate(),
-          targetDate.getHours(),
-          0,
-          0
-        ).getTime() / 1000;
+      // Convert target date to UTC timestamp
+      const targetTimestamp = Date.UTC(
+        targetDate.getUTCFullYear(),
+        targetDate.getUTCMonth(),
+        targetDate.getUTCDate(),
+        0,
+        0,
+        0
+      );
+
+      // Set endTimestamp to start of the day in UTC
+      const endTimestamp = Math.floor(targetTimestamp / 1000);
       const startTimestamp = endTimestamp - 7 * 24 * 60 * 60; // 7 days before target date
 
-      const existingPrice = await resourcePriceRepository.findOne({
+      const existingPrice = await prisma.resourcePrice.findFirst({
         where: {
-          resource: { id: resource.id },
+          resourceId: resource.id,
           timestamp: endTimestamp,
         },
       });
@@ -411,11 +517,15 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         console.log('[BtcIndexer] Skipping existing price');
       } else {
         console.log(
-          `[BtcIndexer] Processing metrics for hour: ${new Date(endTimestamp * 1000).toISOString()}`
+          `[BtcIndexer] Processing metrics for: ${new Date(endTimestamp * 1000).toISOString()}`
         );
         console.log(
           `[BtcIndexer] Time window: ${new Date(startTimestamp * 1000).toISOString()} to ${new Date(endTimestamp * 1000).toISOString()}`
         );
+
+        // currently refetching the whole thing to upfetch latest data for prev. day from the API
+        // TODO: upfetch only the hashrate for the previous day
+        await this.fetchHistoricalHashrates();
 
         // Get blocks for the time window from deque
         let blocks = this.blockDeque.getAllBlocks();
@@ -479,37 +589,20 @@ class BtcHashIndexer implements IResourcePriceIndexer {
           return;
         }
 
-        // Calculate weighted average difficulty for hashrate
-        const weightedDifficulty =
-          await this.calculateWeightedAverageDifficulty(blocks);
-        const hashrate = this.calculateHashrate(weightedDifficulty);
-
-        console.log(
-          `[BtcIndexer] Calculated weighted difficulty: ${weightedDifficulty.toString()}`
-        );
-        console.log(
-          `[BtcIndexer] Calculated hashrate: ${hashrate.toString()} H/s`
-        );
-
-        // Calculate metrics using exact target date
+        // Calculate metrics using historical hashrates for the last 7 days
         const metrics = this.calculateMetrics(
           blocks,
-          hashrate,
-          new Date(endTimestamp * 1000)
+          this.historicalHashrates,
+          endTimestamp
         );
 
         console.log(`[BtcIndexer] Calculated metrics:
-          - Average fee per block (* 10^12): ${metrics.averagedFeePerBlock.toString()}
-          - Fee per exahash (* 10^9): ${metrics.averageFeePerExahash.toString()}
-          - Hashrate in EH/s (* 10^3): ${metrics.hashrateInEH.toString()}`);
+          - Average fees per hashrate: ${metrics.averageFeesPerHashrate.toString()}`);
 
-        // Store the weekly average hashrate and daily average fees
+        // Store the calculated value
         const priceData: PriceData = {
           timestamp: new Date(endTimestamp * 1000),
-          fee_per_exahash: metrics.averageFeePerExahash,
-          hashrate: metrics.hashrateInEH,
-          average_fee: metrics.averagedFeePerBlock,
-          difficulty: weightedDifficulty,
+          average_fee: metrics.averageFeesPerHashrate,
         };
 
         console.log('priceData', priceData);
@@ -518,9 +611,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         console.log('[BtcIndexer] Stored new price data');
 
         console.log(
-          `[BtcIndexer] Stored fee per ExaHash metric (scaled by 10 ** 9): ${metrics.averageFeePerExahash.toString()}, ` +
-            `weekly average hashrate: ${(metrics.hashrateInEH / BigInt(10 ** 3)).toString()} EH/s, ` +
-            `and daily average fee: ${(metrics.averagedFeePerBlock / BigInt(10 ** 3)).toString()} sat`
+          `[BtcIndexer] Stored calculated value: ${metrics.averageFeesPerHashrate.toString()}`
         );
       }
     } catch (error) {
@@ -544,19 +635,32 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     );
     this.isWatching = true;
 
-    // Initial processing
-    await this.calcAndStoreMetrics(resource, new Date(), true);
+    // Initial processing with current UTC time
+    const now = new Date();
+    const utcNow = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        now.getUTCHours(),
+        now.getUTCMinutes(),
+        now.getUTCSeconds()
+      )
+    );
+    await this.calcAndStoreMetrics(resource, utcNow, true);
 
     // Set up hourly processing
     const scheduleNextRun = () => {
       const now = new Date();
       const nextRun = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        now.getHours() + 1, // Schedule for next hour..
-        5, // ..and 5 minutes to make sure we process new data
-        0
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate() + 1,
+          1,
+          0,
+          0
+        )
       );
 
       const timeUntilNextRun = nextRun.getTime() - now.getTime();
@@ -565,7 +669,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
       );
 
       this.pollInterval = setTimeout(async () => {
-        await this.calcAndStoreMetrics(resource, new Date(), true);
+        await this.calcAndStoreMetrics(resource, nextRun, true);
         scheduleNextRun(); // Schedule the next run
       }, timeUntilNextRun);
     };

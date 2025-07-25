@@ -1,4 +1,4 @@
-import { Toaster } from '@foil/ui/components/ui/toaster';
+import { Toaster } from '@sapience/ui/components/ui/toaster';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
@@ -10,7 +10,7 @@ import Layout from '~/components/layout';
 import GlobalLoader from '~/components/shared/GlobalLoader';
 import PasswordScrim from '~/components/shared/PasswordScrim';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
-import '../styles/globals.css';
+import '~/styles/globals.css';
 
 type RootLayoutProps = {
   children: React.ReactNode;
@@ -71,8 +71,8 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    creator: '@foilxyz',
-    site: '@foilxyz',
+    creator: '@sapiencexyz',
+    site: '@sapiencexyz',
     card: 'summary_large_image',
     title: {
       default: APP_NAME,

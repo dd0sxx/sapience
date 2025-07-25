@@ -1,5 +1,5 @@
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { Button } from '@foil/ui/components/ui/button';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -7,8 +7,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
-import type { ColumnDef, CellContext } from '@tanstack/react-table';
+} from '@sapience/ui/components/ui/table';
+import type { ColumnDef } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
@@ -21,6 +21,64 @@ import React from 'react';
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
 import { useSapience } from '~/lib/context/SapienceProvider';
 
+// Helper function to extract market address from attestation data
+const extractMarketAddress = (
+  attestation: FormattedAttestation
+): string | null => {
+  const marketAddressField = attestation.decodedData.find(
+    (field) => field.name === 'marketAddress'
+  );
+
+  const potentialMarketAddress =
+    marketAddressField &&
+    typeof marketAddressField.value === 'object' &&
+    marketAddressField.value !== null &&
+    'value' in marketAddressField.value
+      ? marketAddressField.value.value
+      : null;
+
+  return typeof potentialMarketAddress === 'string'
+    ? (potentialMarketAddress as string).toLowerCase()
+    : null;
+};
+
+// Helper function to extract market ID hex from attestation data
+const extractMarketIdHex = (
+  attestation: FormattedAttestation
+): string | null => {
+  const marketIdField = attestation.decodedData.find(
+    (field) => field.name === 'marketId'
+  );
+
+  return marketIdField &&
+    typeof marketIdField.value === 'object' &&
+    marketIdField.value !== null &&
+    'value' in marketIdField.value &&
+    typeof marketIdField.value.value === 'object' &&
+    marketIdField.value.value !== null &&
+    'hex' in marketIdField.value.value &&
+    typeof marketIdField.value.value.hex === 'string'
+    ? marketIdField.value.value.hex
+    : null;
+};
+
+// Helper function to check if market group has multiple markets
+const hasMultipleMarkets = (
+  marketAddress: string,
+  marketGroups: ReturnType<typeof useSapience>['marketGroups']
+): boolean => {
+  const marketGroup = marketGroups.find(
+    (group) => group.address?.toLowerCase() === marketAddress
+  );
+
+  return Boolean(
+    marketGroup &&
+      marketGroup.markets &&
+      Array.isArray(marketGroup.markets) &&
+      marketGroup.markets.length > 1
+  );
+};
+
 // Helper function to render prediction when baseTokenName is 'Yes'
 const renderConditionalPrediction = (value: string) => {
   if (value === '1000000000000000000' || value === '1') {
@@ -31,7 +89,7 @@ const renderConditionalPrediction = (value: string) => {
   }
   try {
     return <NumberDisplay value={BigInt(value)} />;
-  } catch (e) {
+  } catch (_e) {
     return value; // Fallback if not a BigInt string
   }
 };
@@ -61,22 +119,7 @@ const renderPredictionCell = ({
   marketGroups: ReturnType<typeof useSapience>['marketGroups'];
   isMarketsLoading: boolean;
 }) => {
-  const marketAddressField = row.original.decodedData.find(
-    (field) => field.name === 'marketAddress'
-  );
-
-  // Safely extract marketAddress string
-  const potentialMarketAddress =
-    marketAddressField &&
-    typeof marketAddressField.value === 'object' &&
-    marketAddressField.value !== null &&
-    'value' in marketAddressField.value
-      ? marketAddressField.value.value
-      : null;
-  const marketAddress =
-    typeof potentialMarketAddress === 'string'
-      ? (potentialMarketAddress as string).toLowerCase()
-      : null;
+  const marketAddress = extractMarketAddress(row.original);
 
   let baseTokenName = '';
   if (!isMarketsLoading && marketAddress) {
@@ -103,7 +146,7 @@ const renderPredictionCell = ({
         {baseTokenName && ` ${baseTokenName}`}
       </>
     );
-  } catch (e) {
+  } catch (_e) {
     // Fallback: if value is not a string parsable to BigInt (e.g., "CAT", "DOG" for a categorical market)
     return `${value} ${baseTokenName || ''}`.trim();
   }
@@ -118,39 +161,8 @@ const renderQuestionCell = ({
   marketGroups: ReturnType<typeof useSapience>['marketGroups'];
   isMarketsLoading: boolean;
 }) => {
-  const marketAddressField = row.original.decodedData.find(
-    (field) => field.name === 'marketAddress'
-  );
-
-  // Safely extract marketAddress string
-  const potentialMarketAddress =
-    marketAddressField &&
-    typeof marketAddressField.value === 'object' &&
-    marketAddressField.value !== null &&
-    'value' in marketAddressField.value
-      ? marketAddressField.value.value
-      : null;
-  const marketAddress =
-    typeof potentialMarketAddress === 'string'
-      ? (potentialMarketAddress as string).toLowerCase()
-      : null;
-
-  const marketIdField = row.original.decodedData.find(
-    (field) => field.name === 'marketId'
-  );
-
-  // Safely extract marketId hex string
-  const marketIdHex =
-    marketIdField &&
-    typeof marketIdField.value === 'object' &&
-    marketIdField.value !== null &&
-    'value' in marketIdField.value &&
-    typeof marketIdField.value.value === 'object' &&
-    marketIdField.value.value !== null &&
-    'hex' in marketIdField.value.value &&
-    typeof marketIdField.value.value.hex === 'string'
-      ? marketIdField.value.value.hex
-      : null;
+  const marketAddress = extractMarketAddress(row.original);
+  const marketIdHex = extractMarketIdHex(row.original);
 
   if (isMarketsLoading) {
     return (
@@ -166,7 +178,9 @@ const renderQuestionCell = ({
     );
 
     if (marketGroup) {
-      const market = marketGroup.markets.find((m) => m.marketId === marketId);
+      const market = marketGroup.markets?.find(
+        (m: { marketId: number }) => m.marketId === marketId
+      );
 
       if (market && typeof market.question === 'string') {
         return (
@@ -201,103 +215,67 @@ const renderActionsCell = ({
   </a>
 );
 
-const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
+const PredictionPositionsTable = ({
   attestations,
   parentMarketAddress,
   parentChainId,
   parentMarketId,
-}) => {
+}: PredictionPositionsTableProps) => {
   const { marketGroups, isMarketsLoading } = useSapience();
 
   const isMarketPage = parentMarketAddress && parentChainId && parentMarketId;
 
   // Memoize the calculation for showing the question column
   const shouldDisplayQuestionColumn = React.useMemo(() => {
-    if (
-      isMarketPage ||
-      !attestations ||
-      attestations.length === 0 ||
-      !marketGroups ||
-      marketGroups.length === 0
-    ) {
-      return false;
-    }
-    return attestations.some((attestation) => {
-      const marketAddressField = attestation.decodedData.find(
-        (field) => field.name === 'marketAddress'
-      );
-      const potentialMarketAddress =
-        marketAddressField &&
-        typeof marketAddressField.value === 'object' &&
-        marketAddressField.value !== null &&
-        'value' in marketAddressField.value
-          ? marketAddressField.value.value
-          : null;
-      const marketAddress =
-        typeof potentialMarketAddress === 'string'
-          ? (potentialMarketAddress as string).toLowerCase()
-          : null;
+    // Early returns for simple conditions
+    if (isMarketPage) return false;
+    if (!attestations || attestations.length === 0) return false;
+    if (!marketGroups || marketGroups.length === 0) return false;
 
-      if (marketAddress) {
-        const marketGroup = marketGroups.find(
-          (group) => group.address?.toLowerCase() === marketAddress
-        );
-        return (
-          marketGroup &&
-          marketGroup.markets &&
-          Array.isArray(marketGroup.markets) &&
-          marketGroup.markets.length > 1
-        );
-      }
-      return false;
+    // Check if any attestation has a market with multiple markets
+    return attestations.some((attestation) => {
+      const marketAddress = extractMarketAddress(attestation);
+
+      if (!marketAddress) return false;
+
+      return hasMultipleMarkets(marketAddress, marketGroups);
     });
   }, [isMarketPage, attestations, marketGroups]);
 
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
       {
-        accessorKey: 'rawTime',
-        header: 'Submitted',
-        cell: renderSubmittedCell,
+        accessorKey: 'question',
+        header: 'Question',
+        cell: (info) =>
+          renderQuestionCell({ row: info.row, marketGroups, isMarketsLoading }),
       },
-      ...(!isMarketPage && shouldDisplayQuestionColumn
-        ? [
-            {
-              id: 'question',
-              header: 'Question',
-              cell: (
-                props: CellContext<FormattedAttestation, unknown> // Type props
-              ) =>
-                renderQuestionCell({
-                  row: props.row,
-                  marketGroups,
-                  isMarketsLoading,
-                }), // Pass props.row
-            },
-          ]
-        : []),
       {
         accessorKey: 'value',
         header: 'Prediction',
-        cell: (props) =>
-          renderPredictionCell({ ...props, marketGroups, isMarketsLoading }),
+        cell: (info) =>
+          renderPredictionCell({
+            row: info.row,
+            marketGroups,
+            isMarketsLoading,
+          }),
+      },
+      {
+        accessorKey: 'rawTime',
+        header: 'Submitted',
+        cell: (info) => renderSubmittedCell({ row: info.row }),
       },
       {
         id: 'actions',
-        header: '',
-        cell: renderActionsCell,
+        cell: (info) => renderActionsCell({ row: info.row }),
       },
     ],
-    [
-      marketGroups,
-      isMarketsLoading,
-      isMarketPage,
-      shouldDisplayQuestionColumn, // Use memoized value and remove attestations
-    ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [marketGroups, isMarketsLoading, isMarketPage, shouldDisplayQuestionColumn]
   );
 
   const table = useReactTable({
-    data: attestations || [], // Use attestations directly, handle null/undefined here
+    data: attestations || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -307,67 +285,78 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
     return null;
   }
 
+  const renderContent = (
+    content: unknown
+  ): React.ReactNode | string | number | null => {
+    if (typeof content === 'bigint') {
+      return content.toString();
+    }
+    if (Array.isArray(content)) {
+      return (
+        <>
+          {content.map((item, index) => (
+            <React.Fragment key={index}>{renderContent(item)}</React.Fragment>
+          ))}
+        </>
+      );
+    }
+    if (React.isValidElement(content)) {
+      return content;
+    }
+    return content as string | number | null;
+  };
+
   return (
-    <div>
-      <h3 className="font-medium mb-4">Predictions</h3>
-      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className={
-                      header.id === 'question' ? '' : 'whitespace-nowrap'
-                    }
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                const content = header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    );
+                return (
+                  <TableHead key={header.id} colSpan={header.colSpan}>
+                    {renderContent(content)}
                   </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="hover:bg-secondary/10 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={`${
-                        cell.column.id === 'question' ? '' : 'whitespace-nowrap'
-                      } ${cell.column.id === 'actions' ? 'text-right' : ''}`}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() && 'selected'}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const content = flexRender(
+                    cell.column.columnDef.cell,
+                    cell.getContext()
+                  );
+                  return (
+                    <TableCell key={cell.id}>
+                      {renderContent(content)}
                     </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow className="min-h-[69px]">
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center align-middle"
-                >
-                  No results.
-                </TableCell>
+                  );
+                })}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center">
+                No results.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { IResourcePriceIndexer } from '../../interfaces';
-import { resourcePriceRepository } from '../../db';
-import { Resource } from '../../models/Resource';
+import type { Resource } from '../../../generated/prisma';
+import prisma from '../../db';
 import axios from 'axios';
 import Sentry from '../../instrument';
 
@@ -110,9 +110,9 @@ class BtcIndexer implements IResourcePriceIndexer {
           }
 
           // Check if we already have this block
-          const existingPrice = await resourcePriceRepository.findOne({
+          const existingPrice = await prisma.resourcePrice.findFirst({
             where: {
-              resource: { id: resource.id },
+              resourceId: resource.id,
               blockNumber: block.height,
             },
           });
@@ -179,16 +179,28 @@ class BtcIndexer implements IResourcePriceIndexer {
       const feePerWeight =
         data.weight > 0 ? (data.total_fee / data.weight) * 10 ** 9 : BigInt(0);
 
-      const price = {
-        resource: { id: resource.id },
-        timestamp: data.time,
-        value: feePerWeight.toString(),
-        used: data.weight.toString(),
-        feePaid: data.total_fee.toString(),
-        blockNumber: blockNumber,
-      };
-
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      await prisma.resourcePrice.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: data.time,
+          },
+        },
+        create: {
+          resourceId: resource.id,
+          timestamp: data.time,
+          value: feePerWeight.toString(),
+          used: data.weight.toString(),
+          feePaid: data.total_fee.toString(),
+          blockNumber: blockNumber,
+        },
+        update: {
+          value: feePerWeight.toString(),
+          used: data.weight.toString(),
+          feePaid: data.total_fee.toString(),
+          blockNumber: blockNumber,
+        },
+      });
       console.log(`[BtcIndexer] Stored price for block ${blockNumber}`);
       return true;
     } catch (error) {
@@ -260,9 +272,9 @@ class BtcIndexer implements IResourcePriceIndexer {
       ) {
         try {
           // Check if we already have a price for this block
-          const existingPrice = await resourcePriceRepository.findOne({
+          const existingPrice = await prisma.resourcePrice.findFirst({
             where: {
-              resource: { id: resource.id },
+              resourceId: resource.id,
               blockNumber: Number(blockNumber),
             },
           });

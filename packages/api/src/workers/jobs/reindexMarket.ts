@@ -1,38 +1,39 @@
-import { initializeDataSource } from '../../db';
+import Sapience from '@sapience/protocol/deployments/Sapience.json';
+import * as Sentry from '@sentry/node';
+import { Abi } from 'viem';
 import {
   initializeMarket,
-  reindexMarketEvents,
+  reindexMarketGroupEvents,
 } from '../../controllers/market';
-import * as Sentry from '@sentry/node';
-import { marketGroupRepository } from '../../db';
+import prisma, { initializeDataSource } from '../../db';
 import { INDEXERS } from '../../fixtures';
-import { Abi } from 'viem';
-import Foil from '@foil/protocol/deployments/Foil.json';
 
 export async function reindexMarket(
   chainId: number,
   address: string,
-  epochId: string
+  marketId: string
 ) {
   try {
     console.log(
-      'reindexing market',
+      'reindexing market group',
       address,
       'on chain',
       chainId,
-      'epoch',
-      epochId
+      'market',
+      marketId
     );
 
     await initializeDataSource();
 
     // Find the market in the database instead of using MARKETS
-    const marketEntity = await marketGroupRepository.findOne({
+    const marketEntity = await prisma.marketGroup.findFirst({
       where: {
         chainId,
         address: address.toLowerCase(),
       },
-      relations: ['resource'],
+      include: {
+        resource: true,
+      },
     });
 
     if (!marketEntity) {
@@ -41,19 +42,18 @@ export async function reindexMarket(
       );
     }
 
-    // Create a market info object that matches the MarketInfo interface
+    // Create a market info object that matches the marketInfo interface
     const marketInfo = {
       marketChainId: chainId,
       deployment: {
         address,
-        abi: Foil.abi as Abi,
+        abi: Sapience.abi as Abi,
         deployTimestamp: marketEntity.deployTimestamp?.toString() || '0',
         deployTxnBlockNumber:
           marketEntity.deployTxnBlockNumber?.toString() || '0',
       },
-      vaultAddress: marketEntity.vaultAddress || '',
-      isYin: marketEntity.isYin || false,
       isCumulative: marketEntity.isCumulative || false,
+      isBridged: marketEntity.isBridged || false,
       resource: {
         name: marketEntity.resource?.name,
         priceIndexer: marketEntity.resource
@@ -66,7 +66,7 @@ export async function reindexMarket(
 
     await Promise.all([
       // Pass only the two required arguments: market
-      reindexMarketEvents(market),
+      reindexMarketGroupEvents(market),
     ]);
 
     console.log('finished reindexing market', address, 'on chain', chainId);
@@ -75,7 +75,7 @@ export async function reindexMarket(
     Sentry.withScope((scope: Sentry.Scope) => {
       scope.setExtra('chainId', chainId);
       scope.setExtra('address', address);
-      scope.setExtra('epochId', epochId);
+      scope.setExtra('marketId', marketId);
       Sentry.captureException(error);
     });
     throw error;

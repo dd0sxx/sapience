@@ -1,6 +1,6 @@
-import { Input } from '@foil/ui/components/ui/input';
-import { Label } from '@foil/ui/components/ui/label';
-import Slider from '@foil/ui/components/ui/slider';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Label } from '@sapience/ui/components/ui/label';
+import Slider from '@sapience/ui/components/ui/slider';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 
@@ -39,14 +39,16 @@ export default function NumericPredict({
   const stepSize = 1 / 10 ** decimalPlaces;
 
   // Parse current value for slider
-  const numericValue = value
-    ? parseFloat(value)
-    : (bounds.lowerBound + bounds.upperBound) / 2;
+  const numericValue =
+    value && !Number.isNaN(parseFloat(value))
+      ? parseFloat(value)
+      : (bounds.lowerBound + bounds.upperBound) / 2;
 
   // Calculate slider values, ensuring they're within bounds
-  const sliderValue = [
-    Math.max(bounds.lowerBound, Math.min(bounds.upperBound, numericValue)),
-  ];
+  const sliderValue = Math.max(
+    bounds.lowerBound,
+    Math.min(bounds.upperBound, numericValue)
+  );
 
   const handleSliderChange = (newValues: number[]) => {
     if (newValues.length > 0) {
@@ -86,7 +88,7 @@ export default function NumericPredict({
         <Label htmlFor={`${name}-input`}>Your Prediction</Label>
         <div className="mt-4 mb-6">
           <Slider
-            value={sliderValue}
+            value={[sliderValue]}
             min={bounds.lowerBound}
             max={bounds.upperBound}
             step={stepSize}

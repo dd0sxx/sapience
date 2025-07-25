@@ -4,8 +4,8 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -13,36 +13,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@foil/ui/components/ui/dialog';
-import type { MarketType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/dialog';
+import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { toBytes, bytesToHex } from 'viem';
+import { useEffect, useState } from 'react';
 import type { Address } from 'viem';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-
-// ABI for the createEpoch function (from CreateMarketDialog originally)
-const createEpochAbiFragment = [
-  {
-    type: 'function',
-    name: 'createEpoch',
-    inputs: [
-      { name: 'startTime', type: 'uint256', internalType: 'uint256' },
-      { name: 'endTime', type: 'uint256', internalType: 'uint256' },
-      {
-        name: 'startingSqrtPriceX96',
-        type: 'uint160',
-        internalType: 'uint160',
-      },
-      { name: 'baseAssetMinPriceTick', type: 'int24', internalType: 'int24' },
-      { name: 'baseAssetMaxPriceTick', type: 'int24', internalType: 'int24' },
-      { name: 'salt', type: 'uint256', internalType: 'uint256' },
-      { name: 'claimStatement', type: 'bytes', internalType: 'bytes' },
-    ],
-    outputs: [{ name: 'epochId', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'nonpayable',
-  },
-] as const;
+import { bytesToHex, toBytes } from 'viem';
+import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import type { MarketType } from '@sapience/ui/types';
 
 interface MarketDeployButtonProps {
   market: MarketType; // Use the adjusted market type
@@ -120,9 +98,10 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
     ) {
       return 'Missing base asset maximum price tick.';
     }
-    if (!market.marketParams?.claimStatement) {
-      return 'Missing or invalid claim statement.';
+    if (!market.claimStatementYesOrNumeric) {
+      return 'Missing or invalid claim statement Yes or Numeric.';
     }
+    // claimStatementNo is optional, so no validation needed
     return null;
   };
 
@@ -140,9 +119,17 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
     }
 
     try {
-      const { claimStatement } = market.marketParams!;
-      const claimStatementBytes = toBytes(claimStatement as string);
-      const claimStatementHex = bytesToHex(claimStatementBytes);
+      const claimStatementYesOrNumeric = market.claimStatementYesOrNumeric;
+      const claimStatementNo = market.claimStatementNo || ''; // Default to empty string if undefined
+      const claimStatementBytesYesOrNumeric = toBytes(
+        claimStatementYesOrNumeric as string
+      );
+      const claimStatementHexYesOrNumeric = bytesToHex(
+        claimStatementBytesYesOrNumeric
+      );
+
+      const claimStatementBytesNo = toBytes(claimStatementNo);
+      const claimStatementHexNo = bytesToHex(claimStatementBytesNo);
 
       // Ensure numeric values are correctly typed for BigInt/Number conversion
       const startTimeNum = Number(market.startTimestamp);
@@ -162,24 +149,26 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
       // Generate salt on the fly
       const salt = BigInt(Math.floor(Math.random() * 1e18));
 
-      const args = [
-        BigInt(startTimeNum),
-        BigInt(endTimeNum),
-        BigInt(market.startingSqrtPriceX96!),
-        minPriceTickNum,
-        maxPriceTickNum,
+      // Create MarketCreationParams struct
+      const args = {
+        startTime: BigInt(startTimeNum),
+        endTime: BigInt(endTimeNum),
+        startingSqrtPriceX96: BigInt(market.startingSqrtPriceX96 ?? '0'),
+        baseAssetMinPriceTick: minPriceTickNum,
+        baseAssetMaxPriceTick: maxPriceTickNum,
         salt,
-        claimStatementHex as `0x${string}`,
-      ] as const;
+        claimStatementYesOrNumeric: claimStatementHexYesOrNumeric,
+        claimStatementNo: claimStatementHexNo,
+      };
 
-      console.log('Calling writeContract (createEpoch) with args:', args);
+      console.log('Calling writeContract (createMarket) with args:', args);
       console.log('Target contract:', marketGroupAddress);
 
       writeContract({
         address: marketGroupAddress as Address,
-        abi: createEpochAbiFragment,
-        functionName: 'createEpoch',
-        args,
+        abi: sapienceAbi().abi,
+        functionName: 'createMarket',
+        args: [args],
       });
     } catch (err) {
       console.error('Deployment preparation error:', err);
@@ -224,7 +213,7 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Deploy Market (Epoch)</DialogTitle>
+          <DialogTitle>Deploy Market</DialogTitle>
           <DialogDescription>
             Deploy market ID {market.marketId} for group {marketGroupAddress} on
             chain {chainId}
@@ -257,8 +246,12 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
                 {market.baseAssetMaxPriceTick?.toString() ?? 'N/A'}
               </p>
               <p>
-                <strong>claimStatement (bytes):</strong>{' '}
-                {market.marketParams?.claimStatement ?? 'N/A'}
+                <strong>claimStatement Yes (bytes):</strong>{' '}
+                {market.claimStatementYesOrNumeric ?? 'N/A'}
+              </p>
+              <p>
+                <strong>claimStatement No (bytes):</strong>{' '}
+                {market.claimStatementNo ?? 'N/A'}
               </p>
               <p>
                 <strong>salt (uint256):</strong> {'<generated on deploy>'}

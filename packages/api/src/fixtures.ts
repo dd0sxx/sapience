@@ -1,12 +1,12 @@
 import { mainnet } from 'viem/chains';
-import { categoryRepository, resourceRepository } from './db';
+import prisma from './db';
 import fixturesData from './fixtures.json';
 import { IResourcePriceIndexer } from './interfaces';
-import { Category } from './models/Category';
-import { Resource } from './models/Resource';
 import evmIndexer from './workers/indexers/evmIndexer';
 import { WeatherIndexer } from './workers/indexers/weatherIndexer';
 import BtcHashIndexer from './workers/indexers/btcHashIndexer';
+import EASPredictionIndexer from './workers/indexers/easIndexer';
+import type { Resource } from '../generated/prisma';
 
 export const TIME_INTERVALS = {
   intervals: {
@@ -28,6 +28,7 @@ export const INDEXERS: {
   'nyc-air-temperature': new WeatherIndexer('temperature'),
   'sf-precipitation': new WeatherIndexer('precipitation'),
   'bitcoin-hashrate': new BtcHashIndexer(),
+  'attestation-prediction-market': new EASPredictionIndexer(432),
 };
 
 // Function to initialize fixtures - upsert resources and markets from fixtures.json
@@ -35,26 +36,28 @@ export const initializeFixtures = async (): Promise<void> => {
   console.log('Initializing fixtures from fixtures.json');
 
   for (const categoryData of fixturesData.CATEGORIES) {
-    let category = await categoryRepository.findOne({
+    let category = await prisma.category.findFirst({
       where: { slug: categoryData.slug },
     });
 
     if (!category) {
-      category = new Category();
-      category.name = categoryData.name;
-      category.slug = categoryData.slug;
-      await categoryRepository.save(category);
+      category = await prisma.category.create({
+        data: {
+          name: categoryData.name,
+          slug: categoryData.slug,
+        },
+      });
       console.log('Created category:', categoryData.name);
     }
   }
 
   for (const resourceData of fixturesData.RESOURCES) {
     try {
-      let resource = await resourceRepository.findOne({
+      let resource = await prisma.resource.findFirst({
         where: { name: resourceData.name },
       });
 
-      const category = await categoryRepository.findOne({
+      const category = await prisma.category.findFirst({
         where: { slug: resourceData.category },
       });
 
@@ -66,39 +69,33 @@ export const initializeFixtures = async (): Promise<void> => {
       }
 
       if (!resource) {
-        resource = new Resource();
-        resource.name = resourceData.name;
-        resource.slug = resourceData.slug;
-        resource.category = category;
-        await resourceRepository.save(resource);
+        resource = await prisma.resource.create({
+          data: {
+            name: resourceData.name,
+            slug: resourceData.slug,
+            categoryId: category.id,
+          },
+        });
         console.log('Created resource:', resourceData.name);
       } else {
         let updated = false;
+        const updateData: Partial<Resource> = {};
+
         if (resource.slug !== resourceData.slug) {
-          resource.slug = resourceData.slug;
+          updateData.slug = resourceData.slug;
           updated = true;
         }
 
-        if (!resource.category || resource.category.id !== category.id) {
-          const currentResource = await resourceRepository.findOne({
-            where: { id: resource.id },
-            relations: ['category'],
-          });
-          if (
-            currentResource &&
-            (!currentResource.category ||
-              currentResource.category.id !== category.id)
-          ) {
-            resource.category = category;
-            updated = true;
-          } else if (!currentResource) {
-            console.log(`Resource ${resource.name} not found for update.`);
-            continue;
-          }
+        if (resource.categoryId !== category.id) {
+          updateData.categoryId = category.id;
+          updated = true;
         }
 
         if (updated) {
-          await resourceRepository.save(resource);
+          await prisma.resource.update({
+            where: { id: resource.id },
+            data: updateData,
+          });
           console.log('Updated resource:', resourceData.name);
         }
       }

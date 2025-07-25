@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { User } from 'lucide-react';
 import Link from 'next/link';
@@ -7,7 +7,6 @@ import { useEffect } from 'react';
 import type { Address } from 'viem';
 
 import ErrorState from '../profile/ErrorState'; // Assuming similar loading/error components
-import LoadingState from '../profile/LoadingState'; // Assuming similar loading/error components
 import LpPositionsTable from '../profile/LpPositionsTable';
 import PredictionPositionsTable from '../profile/PredictionPositionsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
@@ -22,6 +21,7 @@ interface UserPositionsTableProps {
   marketId?: number; // Changed from string to number to match typical ID types
   refetchUserPositions?: () => void;
   showProfileButton?: boolean;
+  showHeaderText?: boolean;
 }
 
 const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
@@ -30,6 +30,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
   chainId,
   marketId,
   refetchUserPositions,
+  showHeaderText = true,
   showProfileButton = true,
 }) => {
   // Animation variants
@@ -40,18 +41,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       transition: {
         duration: 0.3,
         staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.4,
-        ease: [0.25, 0.25, 0, 1],
       },
     },
   };
@@ -69,14 +58,14 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
 
   const {
     data: positionsData,
-    isLoading: isLoadingPositions,
+    isLoading: _isLoadingPositions,
     error: positionsError,
     refetch: refetchPositions,
   } = usePositions(positionVars);
 
   const {
     data: attestationsData,
-    isLoading: isLoadingAttestations,
+    isLoading: _isLoadingAttestations,
     error: attestationsError,
     refetch: refetchAttestations,
   } = usePredictions({
@@ -87,7 +76,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     marketId,
   });
 
-  const isLoading = isLoadingPositions || isLoadingAttestations;
   const error = positionsError || attestationsError;
 
   useEffect(() => {
@@ -96,10 +84,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       refetchAttestations();
     }
   }, [refetchUserPositions, refetchPositions, refetchAttestations]);
-
-  if (isLoading) {
-    return <LoadingState />;
-  }
 
   if (error) {
     // It's good practice to log the error as well
@@ -111,7 +95,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
 
   if (marketId !== undefined) {
     allPositions = allPositions.filter(
-      (position) => position.market.marketId === marketId
+      (position) => position.market?.marketId === marketId
     );
   }
 
@@ -136,10 +120,9 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       variants={containerVariants}
     >
       <AnimatePresence mode="wait">
-        {hasAnyData && (
+        {hasAnyData && showHeaderText && (
           <motion.h3
             className="text-2xl font-medium mb-4"
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10 }}
           >
             Your Positions
@@ -150,7 +133,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <AnimatePresence>
         {hasTraderPositions && (
           <motion.div
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
             <TraderPositionsTable
@@ -166,7 +148,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <AnimatePresence>
         {hasLpPositions && (
           <motion.div
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
             <LpPositionsTable
@@ -182,7 +163,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <AnimatePresence>
         {hasAttestations && (
           <motion.div
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
             <PredictionPositionsTable
@@ -198,7 +178,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <AnimatePresence>
         {showProfileButton && (
           <motion.div
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
             <Link href={`/profile/${account}`}>

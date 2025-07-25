@@ -1,4 +1,3 @@
-import { LineType } from '@foil/ui/types/charts'; // Import LineType
 import type {
   UTCTimestamp,
   IChartApi,
@@ -16,6 +15,7 @@ import {
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
 
+import { LineType } from '@sapience/ui/types/charts'; // Import LineType
 import type { PriceChartDataPoint } from './usePriceChartData'; // Import the shared type
 
 // Reusable colors (consider moving to a shared constants file)
@@ -61,7 +61,7 @@ export const useLightweightChart = ({
   selectedPrices, // Destructure selectedPrices
 }: UseLightweightChartProps) => {
   const chartRef = useRef<IChartApi | null>(null);
-  const resizeObserverRef = useRef<ResizeObserver>();
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const indexPriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const resourcePriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null); // Add ref for resource price

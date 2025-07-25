@@ -4,8 +4,8 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -13,86 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@foil/ui/components/ui/dialog';
+} from '@sapience/ui/components/ui/dialog';
+import { sapienceFactoryAbi } from '@sapience/ui/lib/abi';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { parseAbiItem, decodeEventLog, zeroAddress } from 'viem';
-import type { Address, AbiEvent } from 'viem';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useEffect, useState } from 'react';
+import type { AbiEvent, Address } from 'viem';
+import { decodeEventLog, parseAbiItem } from 'viem';
+import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
-
-// ABI for the MarketGroupFactory contract - Minimal needed for deployment
-const marketGroupFactoryAbi = [
-  {
-    type: 'function',
-    name: 'cloneAndInitializeMarketGroup',
-    inputs: [
-      { name: 'collateralAsset', type: 'address', internalType: 'address' },
-      { name: 'feeCollectors', type: 'address[]', internalType: 'address[]' },
-      { name: 'callbackRecipient', type: 'address', internalType: 'address' },
-      { name: 'minTradeSize', type: 'uint256', internalType: 'uint256' },
-      {
-        name: 'marketParams',
-        type: 'tuple',
-        internalType: 'struct IFoilStructs.MarketParams',
-        components: [
-          { name: 'feeRate', type: 'uint24', internalType: 'uint24' },
-          { name: 'assertionLiveness', type: 'uint64', internalType: 'uint64' },
-          { name: 'bondAmount', type: 'uint256', internalType: 'uint256' },
-          { name: 'bondCurrency', type: 'address', internalType: 'address' },
-          {
-            name: 'uniswapPositionManager',
-            type: 'address',
-            internalType: 'address',
-          },
-          {
-            name: 'uniswapSwapRouter',
-            type: 'address',
-            internalType: 'address',
-          },
-          { name: 'uniswapQuoter', type: 'address', internalType: 'address' },
-          {
-            name: 'optimisticOracleV3',
-            type: 'address',
-            internalType: 'address',
-          },
-        ],
-      },
-      { name: 'nonce', type: 'uint256', internalType: 'uint256' },
-    ],
-    outputs: [
-      { name: '', type: 'address', internalType: 'address' },
-      { name: '', type: 'bytes', internalType: 'bytes' },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'event',
-    name: 'MarketGroupInitialized',
-    inputs: [
-      {
-        name: 'sender',
-        type: 'address',
-        indexed: true,
-        internalType: 'address',
-      },
-      {
-        name: 'marketGroup',
-        type: 'address',
-        indexed: true,
-        internalType: 'address',
-      },
-      {
-        name: 'nonce',
-        type: 'uint256',
-        indexed: false,
-        internalType: 'uint256',
-      },
-    ],
-    anonymous: false,
-  },
-] as const;
 
 // Event ABI item for parsing logs
 const marketGroupInitializedEvent = parseAbiItem(
@@ -191,21 +120,37 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
     setDeployError(null);
     setDeployedAddress(null);
     resetWriteContract(); // Reset previous states
-
     // --- Validation ---
     if (
       !group.factoryAddress ||
       !group.initializationNonce ||
       !group.collateralAsset ||
       !group.minTradeSize ||
-      !group.marketParams
+      !group.marketParamsFeerate ||
+      !group.marketParamsAssertionliveness ||
+      !group.marketParamsBondamount ||
+      !group.marketParamsBondcurrency ||
+      !group.marketParamsUniswappositionmanager ||
+      !group.marketParamsUniswapswaprouter ||
+      !group.marketParamsUniswapquoter ||
+      !group.marketParamsOptimisticoraclev3
     ) {
       setDeployError('Missing required market group data for deployment.');
       return;
     }
 
     try {
-      const { marketParams } = group;
+      // Reconstruct marketParams from flattened properties
+      const marketParams = {
+        feeRate: group.marketParamsFeerate,
+        assertionLiveness: group.marketParamsAssertionliveness,
+        bondAmount: group.marketParamsBondamount,
+        bondCurrency: group.marketParamsBondcurrency,
+        uniswapPositionManager: group.marketParamsUniswappositionmanager,
+        uniswapSwapRouter: group.marketParamsUniswapswaprouter,
+        uniswapQuoter: group.marketParamsUniswapquoter,
+        optimisticOracleV3: group.marketParamsOptimisticoraclev3,
+      };
       // Validate numeric marketParams fields
       const feeRateNumber = Number(marketParams.feeRate);
       const assertionLivenessNumber = Number(marketParams.assertionLiveness);
@@ -223,8 +168,8 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       const args = [
         group.collateralAsset as Address,
         [],
-        zeroAddress,
         BigInt(group.minTradeSize),
+        group.isBridged,
         {
           feeRate: feeRateNumber,
           assertionLiveness: BigInt(assertionLivenessNumber),
@@ -243,7 +188,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
 
       writeContract({
         address: group.factoryAddress as Address,
-        abi: marketGroupFactoryAbi,
+        abi: sapienceFactoryAbi().abi,
         functionName: 'cloneAndInitializeMarketGroup',
         args,
       });

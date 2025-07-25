@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { Input } from '@foil/ui/components/ui/input';
-import { Label } from '@foil/ui/components/ui/label';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Label } from '@sapience/ui/components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -27,6 +27,16 @@ const PasswordScrim = () => {
       setIsAuthenticated(true);
     }
     setIsLoadingAuthStatus(false);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryPassword = params.get('password');
+    if (queryPassword?.toLowerCase() === 'nostradamus') {
+      localStorage.setItem('isAuthenticated', 'true');
+      setIsAuthenticated(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   useEffect(() => {
@@ -101,10 +111,10 @@ const PasswordScrim = () => {
         <motion.div
           key="password-scrim"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: 1, transition: { ease: 'easeInOut' } }}
           exit={{
             opacity: 0,
-            transition: { duration: 1.33 },
+            transition: { duration: 1.33, ease: 'easeInOut' },
           }}
           transition={{
             duration: 0.33, // Fast fade in
@@ -199,7 +209,6 @@ const PasswordScrim = () => {
             transition={{ duration: 0.5 }}
             className="absolute inset-0 w-full h-full pointer-events-none z-1"
           >
-            {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
             <iframe
               ref={iframeRef}
               src="https://my.spline.design/particlesfutarchy-SDhuN0OYiCRHRPt2fFec4bCm/"

@@ -1,36 +1,35 @@
-import { Resolver, Query, Arg, Int, FieldResolver, Root } from 'type-graphql';
-import dataSource from '../../db';
-import { Market } from '../../models/Market';
-import { MarketPrice } from '../../models/MarketPrice';
-import { MarketType } from '../types';
-import { mapMarketToType } from './mappers';
+import { Arg, FieldResolver, Int, Query, Resolver, Root } from 'type-graphql';
+import { Market } from '../../../generated/prisma';
+import prisma from '../../db';
 
-@Resolver(() => MarketType)
+@Resolver(() => Object)
 export class MarketResolver {
-  @Query(() => [MarketType])
+  @Query(() => [Object])
   async markets(
     @Arg('marketId', () => Int) marketId: number,
     @Arg('chainId', () => Int) chainId: number,
     @Arg('marketAddress', () => String) marketAddress: string
-  ): Promise<MarketType[]> {
+  ): Promise<Market[]> {
     try {
-      const queryBuilder = dataSource
-        .getRepository(Market)
-        .createQueryBuilder('market')
-        .leftJoinAndSelect('market.marketGroup', 'marketGroup')
-        .leftJoinAndSelect('marketGroup.markets', 'groupMarkets')
-        .leftJoinAndSelect('marketGroup.resource', 'resource');
-
-      queryBuilder.andWhere('market.marketId = :marketId', { marketId });
-      queryBuilder.andWhere('marketGroup.chainId = :chainId', { chainId });
-      queryBuilder.andWhere('marketGroup.address = :marketAddress', {
-        marketAddress: marketAddress.toLowerCase(),
+      const markets = await prisma.market.findMany({
+        where: {
+          marketId: marketId,
+          market_group: {
+            chainId: chainId,
+            address: marketAddress.toLowerCase(),
+          },
+        },
+        include: {
+          market_group: {
+            include: {
+              market: true,
+              resource: true,
+            },
+          },
+        },
       });
 
-      const markets = await queryBuilder.getMany();
-
-      const result = markets.map(mapMarketToType);
-      return result;
+      return markets as Market[];
     } catch (error) {
       console.error('Error fetching markets:', error);
       throw new Error('Failed to fetch markets');
@@ -46,17 +45,33 @@ export class MarketResolver {
     try {
       // We need to find the latest MarketPrice associated with this Market.
       // The path is Market -> Position -> Transaction -> MarketPrice.
-      const latestMarketPrice = await dataSource
-        .getRepository(MarketPrice)
-        .createQueryBuilder('marketPrice')
-        .innerJoin('marketPrice.transaction', 'transaction')
-        .innerJoin('transaction.position', 'position')
-        .innerJoin('position.market', 'market_alias') // market is a keyword, use alias
-        .where('market_alias.id = :marketId', { marketId: market.id })
-        .orderBy('marketPrice.timestamp', 'DESC')
-        .getOne();
+      const latestMarketPrice = await prisma.marketPrice.findFirst({
+        where: {
+          transaction: {
+            position: {
+              market: {
+                id: market.id,
+              },
+            },
+          },
+        },
+        orderBy: {
+          timestamp: 'desc',
+        },
+        include: {
+          transaction: {
+            include: {
+              position: {
+                include: {
+                  market: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
-      return latestMarketPrice ? latestMarketPrice.value : null;
+      return latestMarketPrice ? latestMarketPrice.value.toString() : null;
     } catch (e) {
       console.error(`Error fetching currentPrice for market ${market.id}:`, e);
       return null;

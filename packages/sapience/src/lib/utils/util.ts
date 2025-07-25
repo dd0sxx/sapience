@@ -1,13 +1,9 @@
-import type {
-  MarketGroupType,
-  MarketType,
-  TransactionType,
-} from '@foil/ui/types';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { createPublicClient, formatEther, http } from 'viem';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
+import type { MarketType, TransactionType } from '@sapience/ui/types';
 
 export const foilApi = {
   baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
@@ -104,11 +100,15 @@ export const formatQuestion = (
 
 /**
  * Determines which question to display based on active markets and market group data
+ * This implements the comprehensive logic used across market group lists and headers
  */
 export const getDisplayQuestion = (
-  marketGroupData: MarketGroupType | null | undefined, // Use MarketGroupType
-  activeMarkets: MarketType[], // Use MarketType[]
-  isLoading: boolean,
+  marketGroupData:
+    | { question?: string | null; markets?: MarketType[] }
+    | null
+    | undefined,
+  activeMarkets?: MarketType[], // Make activeMarkets optional
+  isLoading: boolean = false,
   defaultLoadingMessage: string = '', // Default loading message
   defaultErrorMessage: string = 'This market question is not available' // Default error message
 ): string => {
@@ -124,31 +124,44 @@ export const getDisplayQuestion = (
   }
 
   // Handle null, undefined, or placeholder data
-  // Note: Assuming MarketGroupType doesn't have a 'placeholder' property like the deprecated interface.
-  // Adjust this check if the GraphQL type structure differs significantly or if placeholder logic is still needed.
   if (!marketGroupData) {
     return defaultErrorMessage;
   }
 
-  // Primary Logic:
-  // 1. If exactly one market is active and has a question, use its question.
-  if (activeMarkets.length === 1 && activeMarkets[0]?.question) {
-    return formatOrDefault(activeMarkets[0].question);
+  // If activeMarkets is not provided, calculate it
+  const markets = activeMarkets || findActiveMarkets(marketGroupData);
+
+  // Comprehensive Logic matching MarketGroupsList:
+  // 1. If we have multiple active markets, use market group question
+  if (markets.length > 1 && marketGroupData.question) {
+    return formatOrDefault(marketGroupData.question);
   }
 
-  // 2. Otherwise (multiple active markets OR zero active markets OR the single active market has no question),
-  //    use the market group's question if available.
+  // 2. If we have exactly one active market with a question, use that
+  if (markets.length === 1 && markets[0]?.question) {
+    return formatOrDefault(markets[0].question);
+  }
+
+  // 3. Fallback to market group question
   if (marketGroupData.question) {
     return formatOrDefault(marketGroupData.question);
   }
 
-  // 3. Fallback: If group question isn't available, find the first market (active or not) with a question.
-  //    (Consider if this fallback is truly desired, might be better to show defaultErrorMessage)
-  const firstMarketWithQuestion = marketGroupData.markets?.find(
-    (market: MarketType) => market.question // Explicitly type 'market'
-  );
-  if (firstMarketWithQuestion?.question) {
-    return formatOrDefault(firstMarketWithQuestion.question);
+  // 4. Fallback to first market with a question (sorted by start time)
+  if (marketGroupData.markets && marketGroupData.markets.length > 0) {
+    const firstMarketWithQuestion = [...marketGroupData.markets]
+      .sort((a, b) => {
+        const aStart =
+          typeof a.startTimestamp === 'number' ? a.startTimestamp : 0;
+        const bStart =
+          typeof b.startTimestamp === 'number' ? b.startTimestamp : 0;
+        return aStart - bStart;
+      })
+      .find((market: MarketType) => market.question);
+
+    if (firstMarketWithQuestion?.question) {
+      return formatOrDefault(firstMarketWithQuestion.question);
+    }
   }
 
   // Final Fallback: If no question found anywhere, return the default error message.
@@ -156,14 +169,43 @@ export const getDisplayQuestion = (
 };
 
 /**
+ * Determines which question to display for market headers specifically
+ * Handles the simpler logic used in individual market pages
+ */
+export const getMarketHeaderQuestion = (
+  marketGroupData:
+    | {
+        question?: string | null;
+        markets?: MarketType[];
+        resource?: { name: string } | null;
+      }
+    | null
+    | undefined,
+  activeMarket?: MarketType | null
+): string => {
+  const markets = marketGroupData?.markets;
+  const hasOnlyOneMarket = markets && markets.length === 1;
+
+  if (hasOnlyOneMarket && activeMarket?.question) {
+    return formatQuestion(activeMarket.question) || activeMarket.question;
+  }
+
+  return (
+    formatQuestion(marketGroupData?.question) ||
+    marketGroupData?.question ||
+    `${marketGroupData?.resource?.name} Market`
+  );
+};
+
+/**
  * Finds active markets for a market group based on current timestamp
  */
-export const findActiveMarkets = (
-  marketGroupData: MarketGroupType
-): MarketType[] => {
+export const findActiveMarkets = (marketGroupData: {
+  markets?: MarketType[];
+}): MarketType[] => {
   const nowInSeconds = Date.now() / 1000;
   // Filter markets based on timestamps
-  return marketGroupData.markets.filter(
+  return (marketGroupData.markets || []).filter(
     (
       market: MarketType // Use MarketType here
     ) => {
@@ -211,7 +253,10 @@ export const formatTokenValue = (
 
 // Helper to determine Y-axis configuration based on market type
 export const getYAxisConfig = (
-  marketGroup: MarketGroupType | null | undefined // Use MarketGroupType
+  marketGroup:
+    | { baseTokenName?: string | null; quoteTokenName?: string | null }
+    | null
+    | undefined
 ) => {
   // Check for Yes/No market (based on base token name)
   // Removed isGroupMarket check as it's not directly on MarketGroupType
@@ -309,6 +354,44 @@ export const parseUrlParameter = (
 // --- Function: Calculate Effective Entry Price ---
 
 /**
+ * Helper function to check if position direction has flipped
+ */
+function hasPositionFlipped(
+  isLong: boolean,
+  totalBaseTokenDelta: number
+): boolean {
+  return (
+    (isLong && totalBaseTokenDelta <= 0) ||
+    (!isLong && totalBaseTokenDelta >= 0)
+  );
+}
+
+/**
+ * Helper function to calculate final entry price
+ */
+function calculateFinalPrice(
+  totalBaseTokenDelta: number,
+  totalQuoteTokenDelta: number,
+  isLong: boolean
+): number {
+  if (totalBaseTokenDelta === 0) {
+    return 0; // Avoid division by zero
+  }
+
+  // For short positions, we negate both values to get the correct ratio
+  let adjustedBase = totalBaseTokenDelta;
+  let adjustedQuote = totalQuoteTokenDelta;
+
+  if (!isLong) {
+    adjustedBase = -totalBaseTokenDelta;
+    adjustedQuote = -totalQuoteTokenDelta;
+  }
+
+  // Calculate the entry price as the ratio of quote tokens to base tokens
+  return Math.abs(adjustedQuote / adjustedBase);
+}
+
+/**
  * Calculate the effective entry price for a position based on its transactions
  * Uses the UI package TransactionType
  */
@@ -322,7 +405,9 @@ export function calculateEffectiveEntryPrice(
 
   // Sort transactions by timestamp (oldest first)
   const sortedTransactions = [...transactions].sort(
-    (a, b) => a.timestamp - b.timestamp
+    (a, b) =>
+      (new Date(a.createdAt).getTime() || 0) -
+      (new Date(b.createdAt).getTime() || 0)
   );
 
   // Initialize entry price calculation variables
@@ -332,44 +417,29 @@ export function calculateEffectiveEntryPrice(
   // Process transactions to calculate deltas
   for (const tx of sortedTransactions) {
     // Skip non-trade transactions
-    if (tx.type === 'trade') {
+    if (tx.type === 'long' || tx.type === 'short') {
       // Parse token deltas safely, handling null/undefined and converting from wei string
+      // Use the correct property names from the GraphQL Transaction type
       const baseTokenDelta = parseFloat(
-        formatEther(BigInt(tx.baseTokenDelta ?? '0'))
+        formatEther(BigInt(tx.baseToken ?? '0'))
       );
       const quoteTokenDelta = parseFloat(
-        formatEther(BigInt(tx.quoteTokenDelta ?? '0'))
+        formatEther(BigInt(tx.quoteToken ?? '0'))
       );
 
       // Accumulate deltas
       totalBaseTokenDelta += baseTokenDelta;
       totalQuoteTokenDelta += quoteTokenDelta;
 
-      // If we've reached a point where the position is flipped (long to short or vice versa),
-      // we should reset our calculations as the effective entry price changes
-      if (
-        (isLong && totalBaseTokenDelta <= 0) ||
-        (!isLong && totalBaseTokenDelta >= 0)
-      ) {
+      // If we've reached a point where the position is flipped, reset calculations
+      if (hasPositionFlipped(isLong, totalBaseTokenDelta)) {
         totalBaseTokenDelta = 0;
         totalQuoteTokenDelta = 0;
       }
     }
   }
 
-  // Calculate final entry price based on accumulated deltas
-  if (totalBaseTokenDelta === 0) {
-    return 0; // Avoid division by zero
-  }
-
-  // For short positions, we negate both values to get the correct ratio
-  if (!isLong) {
-    totalBaseTokenDelta = -totalBaseTokenDelta;
-    totalQuoteTokenDelta = -totalQuoteTokenDelta;
-  }
-
-  // Calculate the entry price as the ratio of quote tokens to base tokens
-  return Math.abs(totalQuoteTokenDelta / totalBaseTokenDelta);
+  return calculateFinalPrice(totalBaseTokenDelta, totalQuoteTokenDelta, isLong);
 }
 
 /**
@@ -390,6 +460,35 @@ export function tickToPrice(tick: number | string | undefined | null): number {
   return 1.0001 ** numericTick;
 }
 
+/**
+ * Converts settlementSqrtPriceX96 to settlementPriceD18
+ * @param settlementSqrtPriceX96 sqrt price in X96 format as bigint
+ * @returns bigint price with 18 decimals
+ */
+export const sqrtPriceX96ToPriceD18 = (sqrtPriceX96: bigint): bigint => {
+  // 2^192
+  return (
+    (sqrtPriceX96 * sqrtPriceX96 * BigInt(10 ** 18)) /
+    BigInt('6277101735386680763835789423207666416102355444464034512896')
+  );
+};
+
+/**
+ * Converts a price to sqrtPriceX96 format used by Uniswap V3
+ * @param price The price to convert
+ * @returns The sqrtPriceX96 value
+ */
+export const priceToSqrtPriceX96 = (price: number): bigint => {
+  // Calculate the square root of the price
+  const sqrtPrice = BigInt(Math.floor(Math.sqrt(price) * 10 ** 18)); // 10^18 is the precision of the sqrt price
+
+  // Calculate 2^96 without using bigint exponentiation
+  const Q96 = BigInt('79228162514264337593543950336');
+
+  // Convert to bigint format required by the Uniswap contracts
+  return BigInt(sqrtPrice * Q96) / BigInt(10 ** 18);
+};
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -397,3 +496,9 @@ export function cn(...inputs: ClassValue[]) {
 export function bigIntAbs(value: bigint): bigint {
   return value < BigInt(0) ? -value : value;
 }
+
+export const shortenAddress = (address: string) => {
+  if (!address) return '';
+  if (address.length < 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};

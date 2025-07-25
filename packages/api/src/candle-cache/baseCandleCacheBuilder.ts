@@ -9,16 +9,28 @@ import {
   getMarketPricesCount,
   truncateCandlesTable,
   truncateParamsTable,
+  setStringParam,
+  getStringParam,
 } from './dbUtils';
 import { log } from 'src/utils/logs';
 import { RuntimeCandleStore } from './runtimeCandleStore';
 import { TrailingAvgHistoryStore } from './trailingAvgHistoryStore';
-import { MarketInfoStore } from './marketInfoStore';
+import { marketInfoStore } from './marketInfoStore';
 import { ResourceCandleProcessor } from './processors/resourceCandleProcessor';
 import { IndexCandleProcessor } from './processors/indexCandleProcessor';
 import { TrailingAvgCandleProcessor } from './processors/trailingAvgCandleProcessor';
 import { MarketCandleProcessor } from './processors/marketCandleProcessor';
-import { ResourcePrice } from 'src/models/ResourcePrice';
+import type { ResourcePrice, Resource, Prisma } from '../../generated/prisma';
+
+type ResourcePriceWithResource = ResourcePrice & { resource: Resource };
+
+// Type for what getMarketGroups returns
+type MarketGroupWithRelations = Prisma.MarketGroupGetPayload<{
+  include: {
+    resource: true;
+    market: true;
+  };
+}>;
 
 export interface ResourcePriceParams {
   initialTimestamp: number;
@@ -28,14 +40,33 @@ export interface ResourcePriceParams {
   endTimestamp?: number;
 }
 
+export enum CandleCacheReBuilderStatus {
+  IDLE = 'idle',
+  PROCESSING = 'processing',
+}
+
+export interface ProcessStatus {
+  isActive: boolean;
+  processType?: string;
+  resourceSlug?: string;
+  startTime?: number;
+  builderStatus?: {
+    status: string;
+    description: string;
+    timestamp: number;
+  };
+}
+
 export abstract class BaseCandleCacheBuilder {
   protected runtimeCandles: RuntimeCandleStore;
   protected trailingAvgHistory: TrailingAvgHistoryStore;
-  protected marketInfoStore: MarketInfoStore;
+  protected marketInfoStore: marketInfoStore;
   protected resourceCandleProcessor: ResourceCandleProcessor;
   protected indexCandleProcessor: IndexCandleProcessor;
   protected trailingAvgCandleProcessor: TrailingAvgCandleProcessor;
   protected marketCandleProcessor: MarketCandleProcessor;
+  private status: CandleCacheReBuilderStatus = CandleCacheReBuilderStatus.IDLE;
+  private description: string = '';
 
   // Configurable resource price fetching functions
   protected getResourcePricesCountFn: (
@@ -43,13 +74,18 @@ export abstract class BaseCandleCacheBuilder {
   ) => Promise<number> = getResourcePricesCount;
   protected getResourcePricesFn: (
     params: ResourcePriceParams
-  ) => Promise<{ prices: ResourcePrice[]; hasMore: boolean }> =
-    getResourcePrices;
+  ) => Promise<{ prices: ResourcePriceWithResource[]; hasMore: boolean }> =
+    getResourcePrices as unknown as (
+      params: ResourcePriceParams
+    ) => Promise<{ prices: ResourcePriceWithResource[]; hasMore: boolean }>;
+
+  // Abstract method that derived classes must implement to specify their IPC key
+  protected abstract getStatusIPCKey(): string;
 
   protected constructor() {
     this.runtimeCandles = new RuntimeCandleStore();
     this.trailingAvgHistory = new TrailingAvgHistoryStore();
-    this.marketInfoStore = MarketInfoStore.getInstance();
+    this.marketInfoStore = marketInfoStore.getInstance();
     this.resourceCandleProcessor = new ResourceCandleProcessor(
       this.runtimeCandles
     );
@@ -67,9 +103,62 @@ export abstract class BaseCandleCacheBuilder {
     );
   }
 
+  private async updateStatusInIPC(): Promise<void> {
+    try {
+      // Get existing process status to preserve process information
+      const statusKey = this.getStatusIPCKey();
+      const existingStatusString = await getStringParam(statusKey);
+      let processStatus: ProcessStatus = {
+        isActive: false,
+        builderStatus: {
+          status: this.status,
+          description: this.description,
+          timestamp: Date.now(),
+        },
+      };
+
+      if (existingStatusString) {
+        try {
+          processStatus = JSON.parse(existingStatusString);
+          // Update only the builder status while preserving other fields
+          processStatus.builderStatus = {
+            status: this.status,
+            description: this.description,
+            timestamp: Date.now(),
+          };
+          processStatus.isActive =
+            this.status === CandleCacheReBuilderStatus.PROCESSING;
+        } catch (parseError) {
+          log({
+            message: `Failed to parse existing status, creating new: ${parseError}`,
+            prefix: CANDLE_CACHE_CONFIG.logPrefix,
+          });
+        }
+      }
+
+      await setStringParam(statusKey, JSON.stringify(processStatus));
+    } catch (error) {
+      log({
+        message: `Failed to update status in IPC: ${error}`,
+        prefix: CANDLE_CACHE_CONFIG.logPrefix,
+      });
+    }
+  }
+
+  private async setStatus(
+    status: CandleCacheReBuilderStatus,
+    description: string
+  ): Promise<void> {
+    this.status = status;
+    this.description = description;
+    await this.updateStatusInIPC();
+  }
+
   protected async getUpdatedMarketsAndMarketGroups() {
     const marketGroups = await getMarketGroups();
-    await this.marketInfoStore.updateMarketInfo(marketGroups);
+    await this.marketInfoStore.updateMarketInfo(
+      marketGroups as unknown as MarketGroupWithRelations[]
+    );
   }
 
   protected async processResourcePrices(initialTimestamp: number = 0) {
@@ -82,6 +171,12 @@ export abstract class BaseCandleCacheBuilder {
       message: `step 1: process resource prices from ${correctedInitialTimestamp} (${initialTimestamp})`,
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
+
+    await this.setStatus(
+      CandleCacheReBuilderStatus.PROCESSING,
+      `process resource prices from ${correctedInitialTimestamp} (${initialTimestamp})`
+    );
+
     initialTimestamp = correctedInitialTimestamp;
 
     const totalResourcePrices = await this.getResourcePricesCountFn({
@@ -96,10 +191,15 @@ export abstract class BaseCandleCacheBuilder {
     while (getNextBatch) {
       iter++;
       log({
-        message: `batch: ${iter}/${totalBatches} - step 1: get the batch`,
+        message: `batch: ${iter}/${totalBatches} - step 1`,
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
+
+      await this.setStatus(
+        CandleCacheReBuilderStatus.PROCESSING,
+        `resource prices batch: ${iter}/${totalBatches} - step 1`
+      );
 
       const { prices, hasMore } = await this.getResourcePricesFn({
         initialTimestamp,
@@ -113,6 +213,11 @@ export abstract class BaseCandleCacheBuilder {
           prefix: CANDLE_CACHE_CONFIG.logPrefix,
           indent: 2,
         });
+
+        await this.setStatus(
+          CandleCacheReBuilderStatus.PROCESSING,
+          `resource prices batch is empty: ${iter}/${totalBatches} - step 2`
+        );
         break;
       }
 
@@ -121,10 +226,16 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
-      const batchStartTime = Date.now();
 
+      await this.setStatus(
+        CandleCacheReBuilderStatus.PROCESSING,
+        `resource prices batch: ${iter}/${totalBatches} - step 2, process the batch of size: ${prices.length}`
+      );
+
+      const batchStartTime = Date.now();
       let batchIdx = 0;
       let lastLogTime = Date.now();
+
       while (batchIdx < prices.length) {
         if (Date.now() - lastLogTime > CANDLE_CACHE_CONFIG.batchLogInterval) {
           log({
@@ -132,6 +243,11 @@ export abstract class BaseCandleCacheBuilder {
             prefix: CANDLE_CACHE_CONFIG.logPrefix,
             indent: 4,
           });
+
+          await this.setStatus(
+            CandleCacheReBuilderStatus.PROCESSING,
+            `resource prices batch: ${iter}/${totalBatches} - step 2: processing the batch of size: ${prices.length} - ${batchIdx}/${prices.length}`
+          );
           lastLogTime = Date.now();
         }
         const price = prices[batchIdx];
@@ -141,8 +257,8 @@ export abstract class BaseCandleCacheBuilder {
           price.resource.slug,
           {
             timestamp: price.timestamp,
-            used: price.used,
-            fee: price.feePaid,
+            used: price.used.toString(),
+            fee: price.feePaid.toString(),
           },
           CANDLE_CACHE_CONFIG.trailingAvgTime
         );
@@ -168,6 +284,11 @@ export abstract class BaseCandleCacheBuilder {
         indent: 2,
       });
 
+      await this.setStatus(
+        CandleCacheReBuilderStatus.PROCESSING,
+        `resource prices batch: ${iter}/${totalBatches} - step 3: done processing the batch in ${batchDuration} seconds`
+      );
+
       // Update timestamp for next batch
       initialTimestamp = prices[prices.length - 1].timestamp;
       await setParam(
@@ -175,19 +296,28 @@ export abstract class BaseCandleCacheBuilder {
         initialTimestamp
       );
     }
+
+    await this.setStatus(
+      CandleCacheReBuilderStatus.IDLE,
+      'resource prices processing completed'
+    );
   }
 
-  protected async processMarketPrices(initialTimestamp: number = 0) {
+  protected async processmarketPrices(initialTimestamp: number = 0) {
     log({
       message: 'step 1: process market prices',
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
 
+    await this.setStatus(
+      CandleCacheReBuilderStatus.PROCESSING,
+      `process market prices`
+    );
     let getNextBatch = true;
 
-    const totalMarketPrices = await getMarketPricesCount(initialTimestamp);
+    const totalmarketPrices = await getMarketPricesCount(initialTimestamp);
     const totalBatches = Math.ceil(
-      totalMarketPrices / CANDLE_CACHE_CONFIG.batchSize
+      totalmarketPrices / CANDLE_CACHE_CONFIG.batchSize
     );
     let iter = 0;
 
@@ -198,6 +328,11 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
+
+      await this.setStatus(
+        CandleCacheReBuilderStatus.PROCESSING,
+        `market prices batch: ${iter}/${totalBatches} - step 1`
+      );
 
       const { prices, hasMore } = await getMarketPrices({
         initialTimestamp,
@@ -211,6 +346,11 @@ export abstract class BaseCandleCacheBuilder {
           prefix: CANDLE_CACHE_CONFIG.logPrefix,
           indent: 2,
         });
+
+        await this.setStatus(
+          CandleCacheReBuilderStatus.PROCESSING,
+          `market prices batch is empty: ${iter}/${totalBatches} - step 2`
+        );
         break;
       }
 
@@ -219,6 +359,11 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
+
+      await this.setStatus(
+        CandleCacheReBuilderStatus.PROCESSING,
+        `market prices batch: ${iter}/${totalBatches} - step 2, process the batch of size: ${prices.length}`
+      );
 
       const batchStartTime = Date.now();
       let batchIdx = 0;
@@ -230,6 +375,11 @@ export abstract class BaseCandleCacheBuilder {
             prefix: CANDLE_CACHE_CONFIG.logPrefix,
             indent: 4,
           });
+
+          await this.setStatus(
+            CandleCacheReBuilderStatus.PROCESSING,
+            `market prices batch: ${iter}/${totalBatches} - step 2: processing the batch of size: ${prices.length} - ${batchIdx}/${prices.length}`
+          );
           lastLogTime = Date.now();
         }
         const price = prices[batchIdx];
@@ -245,6 +395,11 @@ export abstract class BaseCandleCacheBuilder {
         indent: 2,
       });
 
+      await this.setStatus(
+        CandleCacheReBuilderStatus.PROCESSING,
+        `market prices batch: ${iter}/${totalBatches} - step 3: done processing the batch in ${batchDuration} seconds`
+      );
+
       // Update timestamp for next batch
       if (prices.length > 0) {
         initialTimestamp = prices[prices.length - 1].timestamp;
@@ -254,9 +409,19 @@ export abstract class BaseCandleCacheBuilder {
         );
       }
     }
+
+    await this.setStatus(
+      CandleCacheReBuilderStatus.IDLE,
+      'market prices processing completed'
+    );
   }
 
   protected async saveAllRuntimeCandles() {
+    await this.setStatus(
+      CandleCacheReBuilderStatus.PROCESSING,
+      'save all runtime candles'
+    );
+
     // Save all market candles
     const marketIndices = this.runtimeCandles.getAllMarketIndices();
     for (const marketIdx of marketIndices) {
@@ -296,6 +461,11 @@ export abstract class BaseCandleCacheBuilder {
         }
       }
     }
+
+    await this.setStatus(
+      CandleCacheReBuilderStatus.IDLE,
+      'save all runtime candles completed'
+    );
   }
 
   protected async hardRefresh() {
@@ -304,7 +474,7 @@ export abstract class BaseCandleCacheBuilder {
 
     this.runtimeCandles = new RuntimeCandleStore();
     this.trailingAvgHistory = new TrailingAvgHistoryStore();
-    this.marketInfoStore = MarketInfoStore.getInstance();
+    this.marketInfoStore = marketInfoStore.getInstance();
     this.resourceCandleProcessor = new ResourceCandleProcessor(
       this.runtimeCandles
     );
@@ -320,5 +490,12 @@ export abstract class BaseCandleCacheBuilder {
       this.runtimeCandles,
       this.marketInfoStore
     );
+  }
+
+  public getStatus() {
+    return {
+      status: this.status,
+      description: this.description,
+    };
   }
 }

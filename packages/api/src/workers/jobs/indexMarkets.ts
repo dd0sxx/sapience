@@ -1,11 +1,11 @@
-import { MarketGroup } from '../../models/MarketGroup';
-import { marketGroupRepository } from '../../db';
+import prisma from '../../db';
 import { getProviderForChain } from '../../utils/utils';
 import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
 import { indexMarketGroupEvents } from '../../controllers/market';
 import { updateCollateralData } from '../../controllers/marketHelpers';
-import marketGroupFactoryData from '@foil/protocol/deployments/FoilFactory.json';
+import marketGroupFactoryData from '@sapience/protocol/deployments/SapienceFactory.json';
 import Sentry from '../../instrument';
+import type { MarketGroup } from '../../../generated/prisma';
 
 const marketGroupFactoryAbi = marketGroupFactoryData.abi;
 
@@ -48,7 +48,7 @@ export async function handleMarketGroupInitialized(
   factoryAddress: string,
   client: PublicClient
 ) {
-  console.log('MarketGroupInitialized event caught:', eventArgs);
+  console.log('MarketGroupInitialized/Deployed event caught:', eventArgs);
 
   const nonce = eventArgs.nonce.toString();
   const sender = eventArgs.sender.toLowerCase();
@@ -73,38 +73,50 @@ export async function handleMarketGroupInitialized(
 
   try {
     // Find the existing market group record based on initialization nonce, factory address, and chain ID.
-    const existingMarketGroup = await marketGroupRepository.findOneBy({
-      initializationNonce: nonce,
-      factoryAddress: factoryAddress.toLowerCase(),
-      chainId: chainId,
+    const existingMarketGroup = await prisma.marketGroup.findFirst({
+      where: {
+        initializationNonce: nonce,
+        factoryAddress: factoryAddress.toLowerCase(),
+        chainId: chainId,
+      },
     });
 
     if (existingMarketGroup) {
       // Update the address and owner of the existing record
-      existingMarketGroup.address = newMarketGroupAddress;
-      existingMarketGroup.owner = sender; // Also update owner if it can change or wasn't set initially
+      const updatedMarketGroup = await prisma.marketGroup.update({
+        where: { id: existingMarketGroup.id },
+        data: {
+          address: newMarketGroupAddress,
+          owner: sender, // Also update owner if it can change or wasn't set initially
+        },
+      });
 
       try {
-        await updateCollateralData(client, existingMarketGroup);
+        // Cast to work with the legacy updateCollateralData function
+        await updateCollateralData(
+          client,
+          updatedMarketGroup as unknown as MarketGroup
+        );
       } catch (err) {
         console.error(
-          `Failed to update collateral data for market group ${existingMarketGroup.address}:`,
+          `Failed to update collateral data for market group ${updatedMarketGroup.address}:`,
           err
         );
       }
-
-      await marketGroupRepository.save(existingMarketGroup);
 
       console.log(
         `Updated market group address to ${newMarketGroupAddress} for nonce ${nonce} on chain ${chainId}.`
       );
 
       // Fetch the updated record including necessary relations for indexing.
-      // Note: We refetch here to ensure relations are loaded correctly if they weren't loaded initially
-      // or if the save operation returns an object without relations.
-      const marketGroupRecord = await marketGroupRepository.findOne({
-        where: { id: existingMarketGroup.id }, // Use the ID for certainty
-        relations: ['marketParams'], // Load relations needed for indexing
+      const marketGroupRecord = await prisma.marketGroup.findUnique({
+        where: { id: existingMarketGroup.id },
+        include: {
+          market: true,
+          event: true,
+          resource: true,
+          category: true,
+        },
       });
 
       if (marketGroupRecord) {
@@ -338,16 +350,14 @@ export async function startIndexingAndWatchingMarketGroups(
   const client = getProviderForChain(chainId);
   const unwatchFunctions: (() => void)[] = [];
 
-  const marketGroups = await marketGroupRepository.find({
+  const marketGroups = await prisma.marketGroup.findMany({
     where: { chainId },
-    select: [
-      'id',
-      'address',
-      'factoryAddress',
-      'initializationNonce',
-      'chainId',
-    ],
-    relations: ['marketParams'],
+    include: {
+      market: true,
+      event: true,
+      resource: true,
+      category: true,
+    },
   });
 
   console.log(

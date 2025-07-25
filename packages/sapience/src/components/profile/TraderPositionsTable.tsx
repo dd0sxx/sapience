@@ -1,5 +1,5 @@
-import { Badge } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -7,12 +7,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
-import type { PositionType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/table';
 import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
+import type { PositionType } from '@sapience/ui/types';
 import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
@@ -28,6 +28,7 @@ interface TraderPositionsTableProps {
   parentMarketAddress?: string;
   parentChainId?: number;
   parentMarketId?: number;
+  showHeader?: boolean;
 }
 
 function PositionCell({ position }: { position: PositionType }) {
@@ -36,8 +37,8 @@ function PositionCell({ position }: { position: PositionType }) {
   const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
   const value = Number(formatEther(netPositionBI));
   const absValue = Math.abs(value);
-  const baseTokenName = position.market.marketGroup?.baseTokenName;
-  const marketClassification = position.market.marketGroup
+  const baseTokenName = position.market?.marketGroup?.baseTokenName;
+  const marketClassification = position.market?.marketGroup
     ? getMarketGroupClassification(position.market.marketGroup)
     : MarketGroupClassification.NUMERIC;
 
@@ -82,8 +83,8 @@ function PositionCell({ position }: { position: PositionType }) {
 }
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
-  const baseTokenName = position.market.marketGroup?.baseTokenName;
-  const collateralSymbol = position.market.marketGroup?.collateralSymbol;
+  const baseTokenName = position.market?.marketGroup?.baseTokenName;
+  const collateralSymbol = position.market?.marketGroup?.collateralSymbol;
 
   if (baseTokenName === 'Yes') {
     const baseTokenBI = BigInt(position.baseToken || '0');
@@ -111,8 +112,8 @@ function MaxPayoutCell({ position }: { position: PositionType }) {
 
 function PositionValueCell({ position }: { position: PositionType }) {
   const { transactions } = position;
-  const { marketId } = position.market;
-  const { marketGroup } = position.market;
+  const marketId = position.market?.marketId;
+  const marketGroup = position.market?.marketGroup;
   const address = marketGroup?.address || '';
   const chainId = marketGroup?.chainId || 0;
   const baseTokenName = marketGroup?.baseTokenName;
@@ -136,7 +137,7 @@ function PositionValueCell({ position }: { position: PositionType }) {
   const isLong = netPosition >= 0;
 
   // --- Calculate Effective Entry Price ---
-  const entryPrice = calculateEffectiveEntryPrice(transactions, isLong);
+  const entryPrice = calculateEffectiveEntryPrice(transactions || [], isLong);
 
   // --- Calculate Position Size, Value, PnL ---
   let positionSize = 0;
@@ -204,6 +205,7 @@ export default function TraderPositionsTable({
   parentMarketAddress,
   parentChainId,
   parentMarketId,
+  showHeader = true,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -215,12 +217,10 @@ export default function TraderPositionsTable({
   }
 
   const validPositions = positions.filter(
-    (p) => p && p.market && p.market.marketGroup && p.id && !p.isLP // Added !isLP check
+    (p) => p && p.market && p.id && !p.isLP
   );
 
   if (validPositions.length === 0) {
-    // Optionally return null or a message if only LP positions were passed
-    // return <p className="text-muted-foreground text-sm">No non-LP positions found.</p>;
     return null;
   }
 
@@ -234,20 +234,20 @@ export default function TraderPositionsTable({
     // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
     displayQuestionColumn = validPositions.some(
       (p) =>
-        p.market.marketGroup &&
-        p.market.marketGroup.markets &&
-        p.market.marketGroup.markets.length > 1
+        p.market?.marketGroup &&
+        p.market?.marketGroup?.markets &&
+        p.market?.marketGroup?.markets.length > 1
     );
   }
 
   return (
     <div>
-      <h3 className="font-medium mb-4">Trader Positions</h3>
+      {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
       <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead /> {/* Header for Position ID */}
+              <TableHead>ID</TableHead> {/* Header for Position ID */}
               {displayQuestionColumn && (
                 <TableHead className="whitespace-nowrap">Question</TableHead>
               )}
@@ -267,7 +267,7 @@ export default function TraderPositionsTable({
                 position.owner &&
                 connectedAddress.toLowerCase() === position.owner.toLowerCase();
 
-              if (!position.market?.marketGroup) {
+              if (!position.market) {
                 console.warn(
                   'Skipping position render due to missing market data:',
                   position.positionId
@@ -277,9 +277,9 @@ export default function TraderPositionsTable({
 
               const isClosed = Number(position.collateral) === 0;
               const chainShortName = getChainShortName(
-                position.market.marketGroup.chainId || 0
+                position.market.marketGroup?.chainId || 0
               );
-              const marketAddress = position.market.marketGroup.address || '';
+              const marketAddress = position.market.marketGroup?.address || '';
 
               // Determine if the position is expired and settled
               const endTimestamp = position.market?.endTimestamp;
@@ -316,7 +316,8 @@ export default function TraderPositionsTable({
                             formatEther(BigInt(position.collateral || '0'))
                           )}
                         />{' '}
-                        {position.market.marketGroup.collateralSymbol}
+                        {position.market.marketGroup?.collateralSymbol ||
+                          'Unknown'}
                       </TableCell>
                       <TableCell>
                         <PositionValueCell position={position} />
@@ -332,7 +333,7 @@ export default function TraderPositionsTable({
                                 positionId={position.positionId.toString()}
                                 marketAddress={marketAddress}
                                 chainId={
-                                  position.market.marketGroup.chainId || 0
+                                  position.market.marketGroup?.chainId || 0
                                 }
                                 onSuccess={() => {
                                   console.log(

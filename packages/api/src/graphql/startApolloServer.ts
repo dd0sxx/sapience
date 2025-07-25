@@ -1,42 +1,220 @@
+import 'reflect-metadata';
+import { buildSchema } from 'type-graphql';
+import { relationResolvers } from '@generated/type-graphql';
+import { prisma } from './resolvers/GeneratedResolvers';
+import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
-import { buildSchema } from 'type-graphql';
-import {
-  MarketGroupResolver,
-  PositionResolver,
-  ResourceResolver,
-  TransactionResolver,
-  CandleResolver,
-  PnLResolver,
-  VolumeResolver,
-  CategoryResolver,
-  MarketResolver,
-} from './resolvers';
-import { SharedSchema } from './sharedSchema';
+import depthLimit from 'graphql-depth-limit';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface ApolloContext {}
+// Import only the query (read-only) resolvers from generated TypeGraphQL
+import {
+  // Category queries
+  AggregateCategoryResolver,
+  FindFirstCategoryResolver,
+  FindFirstCategoryOrThrowResolver,
+  FindManyCategoryResolver,
+  FindUniqueCategoryResolver,
+  FindUniqueCategoryOrThrowResolver,
+  GroupByCategoryResolver,
+
+  // CryptoPrices queries
+  AggregateCryptoPricesResolver,
+  FindFirstCryptoPricesResolver,
+  FindFirstCryptoPricesOrThrowResolver,
+  FindManyCryptoPricesResolver,
+  FindUniqueCryptoPricesResolver,
+  FindUniqueCryptoPricesOrThrowResolver,
+  GroupByCryptoPricesResolver,
+
+  // Market queries
+  AggregateMarketResolver,
+  FindFirstMarketResolver,
+  FindFirstMarketOrThrowResolver,
+  FindManyMarketResolver,
+  FindUniqueMarketResolver,
+  FindUniqueMarketOrThrowResolver,
+  GroupByMarketResolver,
+
+  // MarketGroup queries
+  AggregateMarketGroupResolver,
+  FindFirstMarketGroupResolver,
+  FindFirstMarketGroupOrThrowResolver,
+  FindManyMarketGroupResolver,
+  FindUniqueMarketGroupResolver,
+  FindUniqueMarketGroupOrThrowResolver,
+  GroupByMarketGroupResolver,
+
+  // MarketPrice queries
+  AggregateMarketPriceResolver,
+  FindFirstMarketPriceResolver,
+  FindFirstMarketPriceOrThrowResolver,
+  FindManyMarketPriceResolver,
+  FindUniqueMarketPriceResolver,
+  FindUniqueMarketPriceOrThrowResolver,
+  GroupByMarketPriceResolver,
+
+  // Position queries
+  AggregatePositionResolver,
+  FindFirstPositionResolver,
+  FindFirstPositionOrThrowResolver,
+  FindManyPositionResolver,
+  FindUniquePositionResolver,
+  FindUniquePositionOrThrowResolver,
+  GroupByPositionResolver,
+
+  // Resource queries
+  AggregateResourceResolver,
+  FindFirstResourceResolver,
+  FindFirstResourceOrThrowResolver,
+  FindManyResourceResolver,
+  FindUniqueResourceResolver,
+  FindUniqueResourceOrThrowResolver,
+  GroupByResourceResolver,
+
+  // ResourcePrice queries
+  AggregateResourcePriceResolver,
+  FindFirstResourcePriceResolver,
+  FindFirstResourcePriceOrThrowResolver,
+  FindManyResourcePriceResolver,
+  FindUniqueResourcePriceResolver,
+  FindUniqueResourcePriceOrThrowResolver,
+  GroupByResourcePriceResolver,
+
+  // Transaction queries
+  AggregateTransactionResolver,
+  FindFirstTransactionResolver,
+  FindFirstTransactionOrThrowResolver,
+  FindManyTransactionResolver,
+  FindUniqueTransactionResolver,
+  FindUniqueTransactionOrThrowResolver,
+  GroupByTransactionResolver,
+
+  // Attestation queries
+  AggregateAttestationResolver,
+  FindFirstAttestationResolver,
+  FindFirstAttestationOrThrowResolver,
+  FindManyAttestationResolver,
+  FindUniqueAttestationResolver,
+  FindUniqueAttestationOrThrowResolver,
+  GroupByAttestationResolver,
+} from '@generated/type-graphql';
+
+// Import the custom resolvers to keep
+import { CandleResolver, PnLResolver, VolumeResolver } from './resolvers';
+
+export interface ApolloContext {
+  prisma: typeof prisma;
+}
 
 export const initializeApolloServer = async () => {
-  // Create GraphQL schema
+  // Define the query-only resolvers
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+  const queryResolvers: Function[] = [
+    // Category queries
+    AggregateCategoryResolver,
+    FindFirstCategoryResolver,
+    FindFirstCategoryOrThrowResolver,
+    FindManyCategoryResolver,
+    FindUniqueCategoryResolver,
+    FindUniqueCategoryOrThrowResolver,
+    GroupByCategoryResolver,
+
+    // CryptoPrices queries
+    AggregateCryptoPricesResolver,
+    FindFirstCryptoPricesResolver,
+    FindFirstCryptoPricesOrThrowResolver,
+    FindManyCryptoPricesResolver,
+    FindUniqueCryptoPricesResolver,
+    FindUniqueCryptoPricesOrThrowResolver,
+    GroupByCryptoPricesResolver,
+
+    // Market queries
+    AggregateMarketResolver,
+    FindFirstMarketResolver,
+    FindFirstMarketOrThrowResolver,
+    FindManyMarketResolver,
+    FindUniqueMarketResolver,
+    FindUniqueMarketOrThrowResolver,
+    GroupByMarketResolver,
+
+    // MarketGroup queries
+    AggregateMarketGroupResolver,
+    FindFirstMarketGroupResolver,
+    FindFirstMarketGroupOrThrowResolver,
+    FindManyMarketGroupResolver,
+    FindUniqueMarketGroupResolver,
+    FindUniqueMarketGroupOrThrowResolver,
+    GroupByMarketGroupResolver,
+
+    // MarketPrice queries
+    AggregateMarketPriceResolver,
+    FindFirstMarketPriceResolver,
+    FindFirstMarketPriceOrThrowResolver,
+    FindManyMarketPriceResolver,
+    FindUniqueMarketPriceResolver,
+    FindUniqueMarketPriceOrThrowResolver,
+    GroupByMarketPriceResolver,
+
+    // Position queries
+    AggregatePositionResolver,
+    FindFirstPositionResolver,
+    FindFirstPositionOrThrowResolver,
+    FindManyPositionResolver,
+    FindUniquePositionResolver,
+    FindUniquePositionOrThrowResolver,
+    GroupByPositionResolver,
+
+    // Resource queries
+    AggregateResourceResolver,
+    FindFirstResourceResolver,
+    FindFirstResourceOrThrowResolver,
+    FindManyResourceResolver,
+    FindUniqueResourceResolver,
+    FindUniqueResourceOrThrowResolver,
+    GroupByResourceResolver,
+
+    // ResourcePrice queries
+    AggregateResourcePriceResolver,
+    FindFirstResourcePriceResolver,
+    FindFirstResourcePriceOrThrowResolver,
+    FindManyResourcePriceResolver,
+    FindUniqueResourcePriceResolver,
+    FindUniqueResourcePriceOrThrowResolver,
+    GroupByResourcePriceResolver,
+
+    // Transaction queries
+    AggregateTransactionResolver,
+    FindFirstTransactionResolver,
+    FindFirstTransactionOrThrowResolver,
+    FindManyTransactionResolver,
+    FindUniqueTransactionResolver,
+    FindUniqueTransactionOrThrowResolver,
+    GroupByTransactionResolver,
+
+    // Attestation queries
+    AggregateAttestationResolver,
+    FindFirstAttestationResolver,
+    FindFirstAttestationOrThrowResolver,
+    FindManyAttestationResolver,
+    FindUniqueAttestationResolver,
+    FindUniqueAttestationOrThrowResolver,
+    GroupByAttestationResolver,
+  ];
+
+  // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
+  const allResolvers = queryResolvers
+    .concat(relationResolvers)
+    .concat([CandleResolver, PnLResolver, VolumeResolver]);
   const schema = await buildSchema({
-    resolvers: [
-      MarketGroupResolver,
-      MarketResolver,
-      ResourceResolver,
-      PositionResolver,
-      TransactionResolver,
-      CandleResolver,
-      PnLResolver,
-      VolumeResolver,
-      CategoryResolver,
-    ],
-    emitSchemaFile: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolvers: allResolvers as any,
     validate: false,
+    emitSchemaFile: true,
   });
 
-  // Create Apollo Server
+  // Create Apollo Server with the combined schema and depth limit
   const apolloServer = new ApolloServer({
     schema,
     formatError: (error) => {
@@ -51,15 +229,15 @@ export const initializeApolloServer = async () => {
       }),
       responseCachePlugin(),
     ],
+    validationRules: [depthLimit(5)],
   });
 
-  // Start Apollo Server
   await apolloServer.start();
 
   // Get the singleton instance
   const sharedSchema = SharedSchema.getInstance();
 
-  // Set the schema
+  // Set the combined schema (with both generated and custom resolvers)
   sharedSchema.setSchema(schema);
 
   return apolloServer;

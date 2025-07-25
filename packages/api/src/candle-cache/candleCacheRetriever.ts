@@ -2,16 +2,24 @@ import { ResponseCandleData } from './types';
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
 import { getTimeWindow } from './candleUtils';
 import { getCandles, getMarketGroups } from './dbUtils';
-import { CacheCandle } from 'src/models/CacheCandle';
-import { MarketInfoStore } from './marketInfoStore';
+import { marketInfoStore } from './marketInfoStore';
+import type { CacheCandle, Prisma } from '../../generated/prisma';
+
+// Type for what getMarketGroups returns
+type MarketGroupWithRelations = Prisma.MarketGroupGetPayload<{
+  include: {
+    resource: true;
+    market: true;
+  };
+}>;
 
 export class CandleCacheRetriever {
   private static instance: CandleCacheRetriever;
-  private marketInfoStore: MarketInfoStore;
+  private marketInfoStore: marketInfoStore;
   private lastUpdateTimestamp: number;
 
   private constructor() {
-    this.marketInfoStore = MarketInfoStore.getInstance();
+    this.marketInfoStore = marketInfoStore.getInstance();
     this.lastUpdateTimestamp = 0;
   }
 
@@ -44,9 +52,12 @@ export class CandleCacheRetriever {
     });
 
     return this.getAndFillResponseCandles({
+      initialTimestamp: from,
+      finalTimestamp: to,
+      interval,
       candles,
       isCumulative: false,
-      fillMissingCandles: false,
+      fillMissingCandles: true,
       fillInitialCandlesWithZeroes: true,
     });
   }
@@ -87,6 +98,9 @@ export class CandleCacheRetriever {
     });
 
     return this.getAndFillResponseCandles({
+      initialTimestamp: from,
+      finalTimestamp: to,
+      interval,
       candles,
       isCumulative: marketInfo.isCumulative,
       fillMissingCandles: false,
@@ -113,6 +127,9 @@ export class CandleCacheRetriever {
     });
 
     return this.getAndFillResponseCandles({
+      initialTimestamp: from,
+      finalTimestamp: to,
+      interval,
       candles,
       isCumulative: false,
       fillMissingCandles: false,
@@ -150,10 +167,13 @@ export class CandleCacheRetriever {
     });
 
     return this.getAndFillResponseCandles({
+      initialTimestamp: from,
+      finalTimestamp: to,
+      interval,
       candles,
       isCumulative: false,
       fillMissingCandles: true,
-      fillInitialCandlesWithZeroes: false,
+      fillInitialCandlesWithZeroes: true,
     });
   }
 
@@ -166,35 +186,47 @@ export class CandleCacheRetriever {
   }
 
   private async getAndFillResponseCandles({
+    initialTimestamp,
+    finalTimestamp,
+    interval,
     candles,
     isCumulative,
     fillMissingCandles,
     fillInitialCandlesWithZeroes,
   }: {
+    initialTimestamp: number;
+    finalTimestamp: number;
+    interval: number;
     candles: CacheCandle[];
     isCumulative: boolean;
     fillMissingCandles: boolean;
     fillInitialCandlesWithZeroes: boolean;
   }): Promise<{ data: ResponseCandleData[]; lastUpdateTimestamp: number }> {
-    if (!candles || candles.length === 0) {
+    if (
+      (!candles || candles.length === 0) &&
+      !(fillMissingCandles || fillInitialCandlesWithZeroes)
+    ) {
       return { data: [], lastUpdateTimestamp: 0 };
     }
 
     const timeWindow = getTimeWindow(
-      candles[0].timestamp,
-      candles[candles.length - 1].timestamp,
-      candles[0].interval
+      initialTimestamp,
+      finalTimestamp,
+      interval
     );
 
     // First, create entries only for the candles we have
     const outputEntries: ResponseCandleData[] = candles.map((candle) => ({
       timestamp: candle.timestamp,
-      open: isCumulative ? candle.sumUsed : candle.open,
-      high: isCumulative ? candle.sumUsed : candle.high,
-      low: isCumulative ? candle.sumUsed : candle.low,
-      close: isCumulative ? candle.sumUsed : candle.close,
+      open: isCumulative ? candle.sumUsed?.toString() || '0' : candle.open,
+      high: isCumulative ? candle.sumUsed?.toString() || '0' : candle.high,
+      low: isCumulative ? candle.sumUsed?.toString() || '0' : candle.low,
+      close: isCumulative ? candle.sumUsed?.toString() || '0' : candle.close,
     }));
 
+    const firstCandleTimestamp = candles[0]?.timestamp ?? timeWindow.to;
+    const lastCandleTimestampUpdate =
+      candles.length > 0 ? candles[candles.length - 1].lastUpdatedTimestamp : 0;
     // If we need to fill missing candles or initial zeroes
     if (fillMissingCandles || fillInitialCandlesWithZeroes) {
       const filledEntries: ResponseCandleData[] = [];
@@ -203,11 +235,7 @@ export class CandleCacheRetriever {
 
       // Add initial zero entries if needed
       if (fillInitialCandlesWithZeroes) {
-        for (
-          let t = timeWindow.from;
-          t < candles[0].timestamp;
-          t += candles[0].interval
-        ) {
+        for (let t = timeWindow.from; t < firstCandleTimestamp; t += interval) {
           filledEntries.push({
             timestamp: t,
             open: '0',
@@ -222,9 +250,9 @@ export class CandleCacheRetriever {
       for (
         let t = fillInitialCandlesWithZeroes
           ? timeWindow.from
-          : candles[0].timestamp;
+          : firstCandleTimestamp;
         t < timeWindow.to;
-        t += candles[0].interval
+        t += interval
       ) {
         // Move pointer forward until we find a matching or later timestamp
         while (
@@ -255,7 +283,7 @@ export class CandleCacheRetriever {
 
       return {
         data: filledEntries,
-        lastUpdateTimestamp: candles[candles.length - 1].lastUpdatedTimestamp,
+        lastUpdateTimestamp: lastCandleTimestampUpdate,
       };
     }
 
@@ -274,6 +302,8 @@ export class CandleCacheRetriever {
     }
     // get all market groups
     const marketGroups = await getMarketGroups();
-    await this.marketInfoStore.updateMarketInfo(marketGroups);
+    await this.marketInfoStore.updateMarketInfo(
+      marketGroups as unknown as MarketGroupWithRelations[]
+    );
   }
 }

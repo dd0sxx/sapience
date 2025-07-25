@@ -1,6 +1,14 @@
-import { MarketGroup } from 'src/models/MarketGroup';
+import { Prisma } from '../../generated/prisma';
 
-export interface MarketInfo {
+// Define the type for MarketGroup with necessary includes
+type MarketGroupWithRelations = Prisma.MarketGroupGetPayload<{
+  include: {
+    resource: true;
+    market: true;
+  };
+}>;
+
+export interface marketInfo {
   resourceSlug: string;
   marketGroupIdx: number;
   marketIdx: number;
@@ -12,28 +20,28 @@ export interface MarketInfo {
   isCumulative: boolean;
 }
 
-export class MarketInfoStore {
-  private static instance: MarketInfoStore;
-  private marketInfoByIdx: Map<number, MarketInfo> = new Map();
+export class marketInfoStore {
+  private static instance: marketInfoStore;
+  private marketInfoByIdx: Map<number, marketInfo> = new Map();
 
   private constructor() {}
 
   public static getInstance() {
     if (!this.instance) {
-      this.instance = new MarketInfoStore();
+      this.instance = new marketInfoStore();
     }
     return this.instance;
   }
 
-  public async updateMarketInfo(marketGroups: MarketGroup[]) {
+  public async updateMarketInfo(marketGroups: MarketGroupWithRelations[]) {
     for (const marketGroup of marketGroups) {
       // Add resource slug
       const resourceSlug = marketGroup.resource?.slug ?? 'no-resource';
 
       // Add market with extra data
-      if (marketGroup.markets) {
-        for (const market of marketGroup.markets) {
-          if (this.marketInfoByIdx.has(market.id)) {
+      if (marketGroup.market) {
+        for (const market of marketGroup.market) {
+          if (this.marketInfoByIdx.has(market.id) || !marketGroup.address) {
             continue;
           }
           this.marketInfoByIdx.set(market.id, {
@@ -52,7 +60,7 @@ export class MarketInfoStore {
     }
   }
 
-  public getMarketInfo(marketId: number): MarketInfo | undefined {
+  public getMarketInfo(marketId: number): marketInfo | undefined {
     return this.marketInfoByIdx.get(marketId);
   }
 
@@ -60,10 +68,20 @@ export class MarketInfoStore {
     chainId: number,
     address: string,
     marketId: string
-  ): MarketInfo | undefined {
+  ): marketInfo | undefined {
     for (const marketInfo of this.marketInfoByIdx.values()) {
+      if (!marketInfo.marketGroupAddress || !address) {
+        console.log(
+          'getMarketInfoByChainAndAddress: debug statement',
+          this.marketInfoByIdx,
+          chainId,
+          address,
+          marketId
+        );
+      }
       if (
         marketInfo.marketGroupChainId === chainId &&
+        marketInfo.marketGroupAddress &&
         marketInfo.marketGroupAddress.toLowerCase() === address.toLowerCase() &&
         marketInfo.marketId === Number(marketId)
       ) {

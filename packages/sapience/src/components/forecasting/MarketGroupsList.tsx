@@ -1,15 +1,14 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { Input } from '@foil/ui/components/ui/input';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
-} from '@foil/ui/components/ui/sheet';
-import { Skeleton } from '@foil/ui/components/ui/skeleton';
-import { useIsMobile } from '@foil/ui/hooks/use-mobile';
-import { type MarketType as GraphQLMarketType } from '@foil/ui/types/graphql';
+} from '@sapience/ui/components/ui/sheet';
+import { Skeleton } from '@sapience/ui/components/ui/skeleton';
+import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -23,19 +22,19 @@ import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
+import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
+import MarketGroupsRow from './MarketGroupsRow';
 import {
   useEnrichedMarketGroups,
   useCategories,
 } from '~/hooks/graphql/useMarketGroups';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
-import { formatQuestion, getYAxisConfig } from '~/lib/utils/util';
-
-import MarketGroupsRow from './MarketGroupsRow';
+import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 
 // Define Category type based on assumed hook return
 interface Category {
-  id: string;
+  id: number;
   slug: string;
   name: string;
   // Add other fields if known
@@ -75,9 +74,9 @@ export interface MarketWithContext extends GraphQLMarketType {
   marketAddress: string;
   chainId: number;
   collateralAsset: string;
-  isYin: boolean;
   categorySlug: string;
   categoryId: string;
+  // currentPrice?: string | null; // Removed
 }
 
 // Interface for the final grouped market data structure
@@ -90,7 +89,6 @@ interface GroupedMarketGroup {
   color: string;
   categorySlug: string;
   categoryId: string;
-  isYin: boolean;
   marketQuestion?: string | null;
   markets: MarketWithContext[];
   displayQuestion?: string;
@@ -117,14 +115,14 @@ const FocusAreaFilter = ({
   categories: Category[] | null | undefined; // Use defined Category type
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
 }) => (
-  <div className="p-5 w-[280px] mt-0">
+  <div className="p-5 pr-12 w-[280px] mt-0">
     <div className="pb-2">
       <h3 className="font-medium mb-4 md:hidden">Filters</h3>
-      <div className="space-y-1">
+      <div className="space-y-1 flex flex-col">
         <button
           type="button"
           onClick={() => handleCategoryClick(null)}
-          className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
+          className={`flex w-full text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
         >
           <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
             <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
@@ -154,7 +152,7 @@ const FocusAreaFilter = ({
                 type="button"
                 key={category.id}
                 onClick={() => handleCategoryClick(category.slug)}
-                className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
+                className={`flex w-full text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
               >
                 <div
                   className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
@@ -164,7 +162,6 @@ const FocusAreaFilter = ({
                     <div style={{ transform: 'scale(0.65)' }}>
                       <div
                         style={{ color: categoryColor }}
-                        // eslint-disable-next-line react/no-danger
                         dangerouslySetInnerHTML={{
                           __html: styleInfo.iconSvg,
                         }}
@@ -275,17 +272,6 @@ const ForecastingTable = () => {
     // 2. Map filteredMarketGroups to MarketWithContext[]
     const allMarkets: MarketWithContext[] = filteredByCategory.flatMap(
       (marketGroup) => {
-        // Ensure required fields for MarketWithContext from marketGroup are present AND are strings
-        if (
-          typeof marketGroup.address !== 'string' ||
-          typeof marketGroup.collateralAsset !== 'string' ||
-          !marketGroup.category || // Ensure category object itself exists
-          typeof marketGroup.category.slug !== 'string' ||
-          typeof marketGroup.category.id !== 'string'
-        ) {
-          return []; // Skip this marketGroup if essential context fields are missing or not strings
-        }
-
         // Filter and map markets within this marketGroup
         return marketGroup.markets
           .filter(
@@ -314,9 +300,8 @@ const ForecastingTable = () => {
               marketAddress: marketGroup.address!,
               chainId: marketGroup.chainId,
               collateralAsset: marketGroup.collateralAsset!,
-              isYin: marketGroup.isYin,
-              categorySlug: marketGroup.category!.slug!,
-              categoryId: marketGroup.category!.id!,
+              categorySlug: marketGroup.category.slug,
+              categoryId: marketGroup.category.id.toString(),
             };
           });
       }
@@ -378,7 +363,6 @@ const ForecastingTable = () => {
           color,
           categorySlug: market.categorySlug,
           categoryId: market.categoryId,
-          isYin: market.isYin,
           marketQuestion: undefined,
           markets: [],
           displayQuestion: undefined,
@@ -419,34 +403,17 @@ const ForecastingTable = () => {
           displayUnit = yAxisConfig.unit;
         }
 
-        // Determine the raw question (will be formatted by MarketGroupsRow)
-        let rawQuestion: string | null = null;
+        // Use the same question logic as the header
+        // Determine the "active market" for header logic:
+        // If there's only one market total, use that market; otherwise use null
+        const allMarketsInGroup = sourceMarketGroup?.markets || [];
+        const singleMarket =
+          allMarketsInGroup.length === 1 ? allMarketsInGroup[0] : null;
 
-        // If we have multiple active markets, use market question
-        if (activeMarkets.length > 1 && sourceMarketGroup?.question) {
-          rawQuestion = sourceMarketGroup.question;
-        }
-        // If we have exactly one active market with a question, use that
-        else if (activeMarkets.length === 1 && activeMarkets[0]?.question) {
-          rawQuestion = activeMarkets[0].question;
-        }
-        // Fallback to market question
-        else if (sourceMarketGroup?.question) {
-          rawQuestion = sourceMarketGroup.question;
-        }
-        // Fallback to first market with a question
-        else if (groupedMarketGroup.markets.length > 0) {
-          const firstMarketWithQuestion = [...groupedMarketGroup.markets]
-            .sort((a, b) => a.startTimestamp! - b.startTimestamp!)
-            .find((market) => market.question);
-
-          rawQuestion = firstMarketWithQuestion?.question || null;
-        }
-
-        // Format the question if we have one, otherwise use market name
-        const displayQuestion =
-          (rawQuestion ? formatQuestion(rawQuestion) : null) ||
-          groupedMarketGroup.marketName;
+        const displayQuestion = getMarketHeaderQuestion(
+          sourceMarketGroup,
+          singleMarket
+        );
 
         return {
           ...groupedMarketGroup,
@@ -508,7 +475,7 @@ const ForecastingTable = () => {
           )[0].endTimestamp!;
         }
 
-        const dayKey = getDayKey(timestamp!);
+        const dayKey = getDayKey(timestamp);
         if (!acc[dayKey]) {
           acc[dayKey] = [];
         }
@@ -563,12 +530,14 @@ const ForecastingTable = () => {
       const timeA = dayEndTimes[a];
       const timeB = dayEndTimes[b];
       if (typeof timeA === 'number' && typeof timeB === 'number') {
-        return timeA - timeB;
+        // When status filter is "all", sort by end time descending (latest first)
+        // When status filter is "active", sort by end time ascending (earliest first)
+        return statusFilter === 'all' ? timeB - timeA : timeA - timeB;
       }
       // Fallback sort if types are not numbers (should not happen with current logic)
       return 0;
     });
-  }, [marketGroupsByDay, dayEndTimes]);
+  }, [marketGroupsByDay, dayEndTimes, statusFilter]);
 
   // Create a key that changes whenever filters change to force complete re-render
   const filterKey = React.useMemo(() => {
@@ -754,7 +723,7 @@ const ForecastingTable = () => {
                                 marketGroup.displayQuestion || 'Loading...'
                               }
                               color={marketGroup.color}
-                              markets={marketGroup.markets}
+                              market={marketGroup.markets}
                               isActive={marketGroup.isActive}
                               marketClassification={
                                 marketGroup.marketClassification

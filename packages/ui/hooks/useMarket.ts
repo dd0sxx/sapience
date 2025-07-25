@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { Abi, Address } from 'viem';
+import type { Abi, Address } from 'viem';
 import { useReadContract } from 'wagmi';
 import { useToast } from './use-toast';
 
 // Define the types based on the provided structs
 interface MarketData {
-  epochId: bigint;
+  marketId: bigint;
   startTime: bigint;
   endTime: bigint;
   pool: Address;
@@ -61,7 +61,7 @@ export function useMarket({
     address: marketAddress,
     abi,
     chainId: 8453,
-    functionName: 'getEpoch',
+    functionName: 'getMarket',
     args: [marketId],
   });
 

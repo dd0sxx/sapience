@@ -1,21 +1,15 @@
-/* eslint-disable sonarjs/cognitive-complexity */
-
-import { Button } from '@foil/ui/components/ui/button'; // Import Button
-import { Input } from '@foil/ui/components/ui/input'; // Import Input
-import { Label } from '@foil/ui/components/ui/label'; // Import Label
-import { Separator } from '@foil/ui/components/ui/separator'; // Import Separator
-import { useToast } from '@foil/ui/hooks/use-toast'; // Import useToast
-import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi'; // Import the hook
-import type {
-  MarketType as Market,
-  MarketGroupType as MarketGroup,
-} from '@foil/ui/types'; // Import types
 import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Privy
+import { Button } from '@sapience/ui/components/ui/button'; // Import Button
+import { Input } from '@sapience/ui/components/ui/input'; // Import Input
+import { Label } from '@sapience/ui/components/ui/label'; // Import Label
+import { Separator } from '@sapience/ui/components/ui/separator'; // Import Separator
+import { useToast } from '@sapience/ui/hooks/use-toast'; // Import useToast
+import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi'; // Import the hook
 import { Loader2 } from 'lucide-react'; // Import Loader2
-import type React from 'react';
 import { useState } from 'react'; // Import useState and useMemo
 import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex
 import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
+import type { MarketType as Market } from '@sapience/ui/types'; // Import types
 
 import { NO_SQRT_RATIO, YES_SQRT_RATIO } from '~/lib/constants/numbers';
 
@@ -31,14 +25,14 @@ interface MarketParams {
   uniswapSwapRouter: `0x${string}`;
 }
 
-// Interface for EpochData based on ABI
-interface EpochData {
-  epochId: bigint;
+// Interface for MarketData based on ABI
+interface MarketData {
+  marketId: bigint;
   startTime: bigint;
   endTime: bigint;
   pool: `0x${string}`;
-  ethToken: `0x${string}`;
-  gasToken: `0x${string}`;
+  quoteToken: `0x${string}`;
+  baseToken: `0x${string}`;
   minPriceD18: bigint;
   maxPriceD18: bigint;
   baseAssetMinPriceTick: number;
@@ -46,7 +40,8 @@ interface EpochData {
   settled: boolean;
   settlementPriceD18: bigint;
   assertionId: `0x${string}`;
-  claimStatement: `0x${string}`; // This is a hex string for bytes
+  claimStatementYesOrNumeric: `0x${string}`;
+  claimStatementNo?: `0x${string}`; // This is a hex string for bytes
 }
 
 // Helper function (copied from PredictionInput) - Needs refinement for BigInt math
@@ -86,7 +81,7 @@ interface BondInfoSectionProps {
   bondAmount: bigint | undefined;
 }
 
-const BondInfoSection: React.FC<BondInfoSectionProps> = ({
+const BondInfoSection = ({
   isLoading,
   error,
   marketParams,
@@ -98,7 +93,7 @@ const BondInfoSection: React.FC<BondInfoSectionProps> = ({
   handleApprove,
   bondCurrency,
   bondAmount,
-}) => (
+}: BondInfoSectionProps) => (
   <div>
     <h4 className="text-sm font-medium mb-2">Bond Details</h4>
     <div className="text-xs text-muted-foreground space-y-1">
@@ -159,13 +154,19 @@ const BondInfoSection: React.FC<BondInfoSectionProps> = ({
 
 interface SettleMarketDialogProps {
   market: Market; // Assume Market type includes baseTokenName/quoteTokenName or similar
-  marketGroup: MarketGroup;
+  marketGroup: {
+    address?: string | null;
+    chainId: number;
+    owner?: string | null;
+    baseTokenName?: string | null;
+    quoteTokenName?: string | null;
+  };
 }
 
-const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
+const SettleMarketDialog = ({
   market,
   marketGroup,
-}) => {
+}: SettleMarketDialogProps) => {
   // Use Privy's hook to get wallets
   const { wallets } = useWallets();
   const connectedWallet = wallets[0]; // Get the first connected wallet (if any)
@@ -177,38 +178,38 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
   const [isApproving, setIsApproving] = useState(false);
 
   // 1. Get the ABI using the hook
-  const { abi: foilAbi } = useFoilAbi();
+  const { abi: sapienceAbi } = useSapienceAbi();
 
-  // 2. Fetch epoch data (which includes marketParams and claimStatement) using the ABI
+  // 2. Fetch market data (which includes marketParams and claimStatement) using the ABI
   const {
-    data: epochResult, // Typed as [EpochData, MarketParams] | undefined based on ABI
-    isLoading: isLoadingEpochAndMarketData,
-    error: epochAndMarketDataError,
+    data: marketResult, // Typed as [MarketData, MarketParams] | undefined based on ABI
+    isLoading: isLoadingMarketAndMarketGroupData,
+    error: marketAndMarketGroupDataError,
   } = useReadContract({
     address: marketGroup.address as `0x${string}`,
-    abi: foilAbi, // Use the fetched ABI
-    functionName: 'getEpoch',
-    args: [BigInt(market.marketId)], // market.marketId is the epochId
+    abi: sapienceAbi, // Use the fetched ABI
+    functionName: 'getMarket',
+    args: [BigInt(market.marketId)],
     chainId: marketGroup.chainId,
     query: {
       enabled:
-        !!foilAbi &&
-        foilAbi.length > 0 &&
+        !!sapienceAbi &&
+        sapienceAbi.length > 0 &&
         !!marketGroup?.address &&
         !!marketGroup?.chainId &&
         market.marketId !== undefined && // Ensure marketId is available
         market.marketId !== null,
     },
   });
-
-  // Destructure the result from getEpoch with type safety
-  const epochData: EpochData | undefined =
-    Array.isArray(epochResult) && epochResult.length > 0
-      ? (epochResult[0] as EpochData)
+  console.log('marketResult', marketResult);
+  // Destructure the result from getMarket with type safety
+  const marketData: MarketData | undefined =
+    Array.isArray(marketResult) && marketResult.length > 0
+      ? (marketResult[0] as MarketData)
       : undefined;
   const marketParams: MarketParams | undefined =
-    Array.isArray(epochResult) && epochResult.length > 1
-      ? (epochResult[1] as MarketParams)
+    Array.isArray(marketResult) && marketResult.length > 1
+      ? (marketResult[1] as MarketParams)
       : undefined;
 
   const bondCurrency = marketParams?.bondCurrency;
@@ -275,8 +276,9 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
 
   // Combined loading and error states
   const isLoading =
-    isLoadingEpochAndMarketData || (!!connectedAddress && isLoadingAllowance); // Check connectedAddress existence
-  const error = epochAndMarketDataError || allowanceError;
+    isLoadingMarketAndMarketGroupData ||
+    (!!connectedAddress && isLoadingAllowance); // Check connectedAddress existence
+  const error = marketAndMarketGroupDataError || allowanceError;
 
   const requiresApproval =
     bondAmount !== undefined &&
@@ -357,7 +359,7 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
     }
 
     try {
-      const epochId = BigInt(market.marketId);
+      const marketId = BigInt(market.marketId);
       const { price, errorMessage } = calculateSettlementPrice(
         settlementValue,
         marketGroup.baseTokenName === 'Yes'
@@ -372,11 +374,17 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
         return;
       }
 
+      const args = {
+        marketId,
+        asserter: connectedAddress,
+        settlementSqrtPriceX96: price,
+      };
+
       settleWrite({
         address: marketGroup.address as `0x${string}`, // Settle is called on the market group address
-        abi: foilAbi, // Use the dynamically loaded ABI
+        abi: sapienceAbi, // Use the dynamically loaded ABI
         functionName: 'submitSettlementPrice', // Corrected function name
-        args: [epochId, connectedAddress, price], // Add asserter (connectedAddress)
+        args: [args],
         chainId: marketGroup.chainId,
       });
     } catch (settlePrepareError: unknown) {
@@ -463,7 +471,7 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
             connectedAddress={connectedAddress}
             isYesNoMarket={isYesNoMarket}
             settlementValue={settlementValue}
-            claimStatement={epochData?.claimStatement ?? ''}
+            claimStatement={marketData?.claimStatementYesOrNumeric ?? ''}
           />
 
           {/* Submit Button */}
@@ -492,14 +500,14 @@ interface SettlementInputProps {
   unitDisplay: string;
 }
 
-const SettlementInput: React.FC<SettlementInputProps> = ({
+const SettlementInput = ({
   isYesNoMarket,
   settlementValue,
   setSettlementValue,
   isSettling,
   connectedAddress,
   unitDisplay,
-}) => {
+}: SettlementInputProps) => {
   if (isYesNoMarket) {
     return (
       <div className="flex gap-4">
@@ -584,13 +592,13 @@ interface SettlementParamsDisplayProps {
   claimStatement: string; // This is `0x${string}` or empty string from prop
 }
 
-const SettlementParamsDisplay: React.FC<SettlementParamsDisplayProps> = ({
+const SettlementParamsDisplay = ({
   marketId,
   connectedAddress,
   isYesNoMarket,
   settlementValue,
   claimStatement,
-}) => {
+}: SettlementParamsDisplayProps) => {
   let settlementDisplayValue: string;
 
   if (isYesNoMarket) {
@@ -632,7 +640,7 @@ interface SettleButtonProps {
   connectedAddress: `0x${string}` | undefined;
 }
 
-const SettleButton: React.FC<SettleButtonProps> = ({
+const SettleButton = ({
   isSettling,
   requiresApproval,
   canSettle,
@@ -640,7 +648,7 @@ const SettleButton: React.FC<SettleButtonProps> = ({
   isApproving,
   handleSettle,
   connectedAddress,
-}) => {
+}: SettleButtonProps) => {
   let buttonText = 'Settle Market';
   if (isSettling) {
     buttonText = 'Submitting Settlement...';
