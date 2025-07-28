@@ -456,25 +456,4 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         
         return (true, 0);
     }
-    
-    // ============ Internal Functions ============
-    
-    function _updateBestFill(uint256 requestId) internal {
-        ParlayRequest storage request = parlayRequests[requestId];
-        address[] storage intents = requestFillIntents[requestId];
-        
-        uint256 bestPayout = 0;
-        address bestLP = address(0);
-        
-        for (uint256 i = 0; i < intents.length; i++) {
-            FillIntent storage intent = fillIntents[requestId][intents[i]];
-            if (intent.payout > bestPayout) {
-                bestPayout = intent.payout;
-                bestLP = intents[i];
-            }
-        }
-        
-        request.bestFillPayout = bestPayout;
-        request.bestFillLP = bestLP;
-    }
 } 
