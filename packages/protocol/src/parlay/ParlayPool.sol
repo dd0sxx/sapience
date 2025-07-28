@@ -27,20 +27,11 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
     // Mapping from request ID to parlay request
     mapping(uint256 => ParlayRequest) public parlayRequests;
     
-    // Mapping from request ID to fill intents (LP address => FillIntent)
-    mapping(uint256 => mapping(address => FillIntent)) public fillIntents;
-    
     // Mapping from NFT token ID to parlay
     mapping(uint256 => Parlay) public parlays;
     
-    // Mapping from LP address to deposited balance
-    mapping(address => uint256) public lpBalances;
-    
     // Mapping from LP address to amount used in unsettled parlays
     mapping(address => uint256) public lpUsedAmounts;
-    
-    // Mapping from request ID to array of LP addresses who registered fill intents
-    mapping(uint256 => address[]) public requestFillIntents;
     
     // ============ Modifiers ============
     
@@ -122,8 +113,9 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
             orderExpirationTime: orderExpirationTime,
             parlayExpirationTime: parlayExpirationTime,
             filled: false,
-            bestFillPayout: 0,
-            bestFillLP: address(0)
+            filledBy: address(0),
+            filledPayout: 0,
+            filledAt: 0
         });
         
         emit ParlayOrderSubmitted(
@@ -138,76 +130,71 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         );
     }
     
-    function registerFillIntent(
+    function fillParlayOrder(
         uint256 requestId,
         uint256 payout
-    ) external onlyValidRequest(requestId) {
+    ) external onlyValidRequest(requestId) nonReentrant {
         ParlayRequest storage request = parlayRequests[requestId];
         
         require(!request.filled, "Order already filled");
         require(block.timestamp < request.orderExpirationTime, "Order expired");
         require(payout >= request.minPayout, "Payout below minimum");
-        require(payout > request.bestFillPayout, "Payout is not greater than existing fill intent");
         
-        uint256 availableBalance = lpBalances[msg.sender] - lpUsedAmounts[msg.sender];
-        require(availableBalance >= payout, "Insufficient LP balance");
+        // Check if LP has sufficient balance by looking at their token balance
+        uint256 lpBalance = IERC20(config.principleToken).balanceOf(msg.sender);
+        require(lpBalance >= payout, "Insufficient LP balance");
         
-        FillIntent storage intent = fillIntents[requestId][msg.sender];
+        // Transfer payout from LP to contract
+        uint256 balanceBefore = IERC20(config.principleToken).balanceOf(address(this));
+        IERC20(config.principleToken).safeTransferFrom(msg.sender, address(this), payout);
+        uint256 balanceAfter = IERC20(config.principleToken).balanceOf(address(this));
+        require(balanceAfter - balanceBefore == payout, "Payout transfer failed");
         
-        // Update best fill if this is better
-        request.bestFillPayout = payout;
-        request.bestFillLP = msg.sender;
-
-        if (intent.lp == address(0)) {
-            // New fill intent
-            intent.lp = msg.sender;
-            intent.payout = payout;
-            intent.timestamp = block.timestamp;
-            requestFillIntents[requestId].push(msg.sender);
-        } else {
-            // Update existing fill intent
-            intent.payout = payout;
-            intent.timestamp = block.timestamp;            
-        }        
-
-        emit FillIntentUpdated(msg.sender, requestId, payout, block.timestamp);
+        // Mark request as filled
+        request.filled = true;
+        request.filledBy = msg.sender;
+        request.filledPayout = payout;
+        request.filledAt = block.timestamp;
+        
+        // Update LP used amount
+        lpUsedAmounts[msg.sender] += payout;
+        
+        // Mint NFTs
+        _playerNftCounter.increment();
+        _lpNftCounter.increment();
+        
+        uint256 playerNftTokenId = _playerNftCounter.current();
+        uint256 lpNftTokenId = _lpNftCounter.current();
+        
+        // Create parlay
+        parlays[playerNftTokenId] = Parlay({
+            playerNftTokenId: playerNftTokenId,
+            lpNftTokenId: lpNftTokenId,
+            principle: request.principle,
+            potentialPayout: payout,
+            payout: 0,
+            createdAt: block.timestamp,
+            expirationTime: request.parlayExpirationTime,
+            settled: false,
+            predictedOutcomes: request.predictedOutcomes
+        });
+        
+        parlays[lpNftTokenId] = parlays[playerNftTokenId];
+        
+        // Mint NFTs to respective owners
+        IParlayNFT(config.playerNft).mint(request.player, playerNftTokenId, "");
+        IParlayNFT(config.lpNft).mint(msg.sender, lpNftTokenId, "");
+        
+        emit ParlayOrderFilled(
+            requestId,
+            request.player,
+            msg.sender,
+            playerNftTokenId,
+            lpNftTokenId,
+            request.principle,
+            payout
+        );
     }
-    
-    function cancelFillIntent(uint256 requestId) external onlyValidRequest(requestId) {
-        // TODO: check if we need this function or not
-        FillIntent storage intent = fillIntents[requestId][msg.sender];
-        require(intent.lp != address(0), "No fill intent to cancel");
-        
-        ParlayRequest storage request = parlayRequests[requestId];
-        require(!request.filled, "Order already filled");
-
-        require(request.bestFillLP != msg.sender, "Cannot cancel best fill intent");
-        
-        // Remove from request fill intents array 
-        // TODO use the mapping instead of the array and initialize as not used for this request
-        address[] storage intents = requestFillIntents[requestId];
-        for (uint256 i = 0; i < intents.length; i++) {
-            if (intents[i] == msg.sender) {
-                intents[i] = intents[intents.length - 1];
-                intents.pop();
-                break;
-            }
-        }
-                
-        delete fillIntents[requestId][msg.sender];
-    }
-    
-    function fillParlayOrder(uint256 requestId) external onlyValidRequest(requestId) {
-        ParlayRequest storage request = parlayRequests[requestId];
-        
-        require(!request.filled, "Order already filled");
-        require(block.timestamp >= request.orderExpirationTime, "Order not expired yet");
-        require(block.timestamp < request.parlayExpirationTime, "Parlay expired");
-        require(request.bestFillLP != address(0), "No fill intent available");
-        // require(msg.sender == request.player, "Only player can fill order");
-        
-        FillIntent storage bestIntent = fillIntents[requestId][request.bestFillLP];
-        require(bestIntent.lp != address(0), "Best fill intent not found");
         
         // Mint NFTs
         _playerNftCounter.increment();
@@ -338,28 +325,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         emit ParlayExpired(parlay.playerNftTokenId, parlay.lpNftTokenId, parlay.principle);
     }
     
-    // ============ LP Functions ============
-    
-    function depositLP(uint256 amount) external nonReentrant {
-        require(amount > 0, "Amount must be greater than 0");
-        
-        IERC20(config.principleToken).transferFrom(msg.sender, address(this), amount);
-        lpBalances[msg.sender] += amount;
-        
-        emit LPDeposit(msg.sender, amount);
-    }
-    
-    function withdrawLP(uint256 amount) external nonReentrant {
-        require(amount > 0, "Amount must be greater than 0");
-        
-        uint256 withdrawableAmount = getLPWithdrawableAmount(msg.sender);
-        require(amount <= withdrawableAmount, "Insufficient withdrawable amount");
-        
-        lpBalances[msg.sender] -= amount;
-        IERC20(config.principleToken).transfer(msg.sender, amount);
-        
-        emit LPWithdrawal(msg.sender, amount);
-    }
+
     
     // ============ View Functions ============
     
@@ -375,33 +341,23 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         return parlayRequests[requestId];
     }
     
-    function getFillIntent(uint256 requestId) external view returns (FillIntent memory fillIntent) {
-        return fillIntents[requestId][msg.sender];
-    }
-    
-    function getFillIntents(uint256 requestId) external view returns (FillIntent[] memory fillIntents) {
-        address[] memory lpAddresses = requestFillIntents[requestId];
-        fillIntents = new FillIntent[](lpAddresses.length);
-        
-        for (uint256 i = 0; i < lpAddresses.length; i++) {
-            fillIntents[i] = fillIntents[requestId][lpAddresses[i]];
-        }
-    }
-    
-    function getBestFillIntent(uint256 requestId) external view returns (FillIntent memory fillIntent) {
+    function getParlayOrderFillInfo(uint256 requestId) external view returns (
+        bool filled,
+        address filledBy,
+        uint256 filledPayout,
+        uint256 filledAt
+    ) {
         ParlayRequest storage request = parlayRequests[requestId];
-        if (request.bestFillLP != address(0)) {
-            return fillIntents[requestId][request.bestFillLP];
-        }
-        return FillIntent({lp: address(0), payout: 0, timestamp: 0});
+        return (
+            request.filled,
+            request.filledBy,
+            request.filledPayout,
+            request.filledAt
+        );
     }
     
-    function getLPBalance(address lp) external view returns (uint256 balance) {
-        return lpBalances[lp];
-    }
-    
-    function getLPWithdrawableAmount(address lp) external view returns (uint256 amount) {
-        return lpBalances[lp] - lpUsedAmounts[lp];
+    function getLPUsedAmount(address lp) external view returns (uint256 amount) {
+        return lpUsedAmounts[lp];
     }
     
     function canFillParlayOrder(uint256 requestId) external view returns (bool canFill, uint256 reason) {
@@ -419,18 +375,14 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
             return (false, 3); // Order expired
         }
         
-        if (request.bestFillLP == address(0)) {
-            return (false, 4); // No fill intent available
-        }
-        
         return (true, 0);
     }
     
-    function canRegisterFillIntent(
+    function canFillParlayOrder(
         address lp,
         uint256 requestId,
         uint256 payout
-    ) external view returns (bool canRegister, uint256 reason) {
+    ) external view returns (bool canFill, uint256 reason) {
         ParlayRequest storage request = parlayRequests[requestId];
         
         if (request.player == address(0)) {
@@ -449,8 +401,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
             return (false, 4); // Payout below minimum
         }
         
-        uint256 availableBalance = lpBalances[lp] - lpUsedAmounts[lp];
-        if (availableBalance < payout) {
+        uint256 lpBalance = IERC20(config.principleToken).balanceOf(lp);
+        if (lpBalance < payout) {
             return (false, 5); // Insufficient LP balance
         }
         

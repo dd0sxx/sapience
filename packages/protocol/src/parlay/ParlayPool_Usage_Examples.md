@@ -4,10 +4,11 @@ This document explains how to use the ParlayPool contract with practical example
 
 ## Overview
 
-The ParlayPool implements an orderbook-style parlay system where:
+The ParlayPool implements a true orderbook-style parlay system where:
 - **Players** submit parlay orders with their principle and desired outcomes
-- **LPs** compete by offering fill intents with different payouts
-- The **best offer wins** and the parlay is created
+- **LPs** compete by directly filling orders with their preferred payouts
+- The **first LP to fill** within the order expiration time wins (60 seconds in examples)
+- No pre-deposits needed - LPs transfer funds directly when filling
 - After market resolution, the **winner** (player or LP) withdraws principle + payout
 
 ## Contract Setup
@@ -22,14 +23,48 @@ ParlayNFT lpNFT = new ParlayNFT("Parlay LP", "PLPY");
 // Deploy ParlayPool
 ParlayPool pool = new ParlayPool(
     principleToken,    // USDC address
-    playerNFT,         // Player NFT contract
-    lpNFT,            // LP NFT contract
+    address(playerNFT), // Player NFT contract
+    address(lpNFT),    // LP NFT contract
     100e6,            // minRequestPayout (100 USDC)
-    3600,             // minRequestExpirationTime (1 hour)
+    60,               // minRequestExpirationTime (60 seconds)
     86400 * 7,        // maxRequestExpirationTime (7 days)
     86400 * 30        // parlayAfterExpirationTime (30 days)
 );
+
+// Transfer ownership of NFT contracts to ParlayPool
+playerNFT.transferOwnership(address(pool));
+lpNFT.transferOwnership(address(pool));
 ```
+
+### Alternative Deployment Pattern
+
+You could also deploy the NFTs with the ParlayPool as the initial owner by passing the pool address to the NFT constructors:
+
+```solidity
+// Deploy ParlayPool first (without NFT addresses)
+ParlayPool pool = new ParlayPool(
+    principleToken,    // USDC address
+    address(0),        // Player NFT contract (placeholder)
+    address(0),        // LP NFT contract (placeholder)
+    100e6,            // minRequestPayout (100 USDC)
+    60,               // minRequestExpirationTime (60 seconds)
+    86400 * 7,        // maxRequestExpirationTime (7 days)
+    86400 * 30        // parlayAfterExpirationTime (30 days)
+);
+
+// Deploy NFT contracts with ParlayPool as owner
+ParlayNFT playerNFT = new ParlayNFT("Parlay Player", "PPLY");
+ParlayNFT lpNFT = new ParlayNFT("Parlay LP", "PLPY");
+
+// Transfer ownership to ParlayPool
+playerNFT.transferOwnership(address(pool));
+lpNFT.transferOwnership(address(pool));
+
+// Update ParlayPool with NFT addresses (would need a setter function)
+pool.setNFTAddresses(address(playerNFT), address(lpNFT));
+```
+
+**Note:** This alternative pattern would require adding setter functions to the ParlayPool contract.
 
 ## Example Scenario: Ana's Parlay Order
 
@@ -41,24 +76,19 @@ ParlayPool pool = new ParlayPool(
 
 **Bob** and **Carl** are LPs who want to provide liquidity and compete for Ana's order.
 
-### Step 1: LPs Deposit Collateral
+### Step 1: LPs Prepare for Competition
 
-Before competing, LPs must deposit collateral:
+LPs need to have sufficient balance and approve the pool to spend their tokens:
 
 ```solidity
-// Bob deposits 10,000 USDC
+// Bob approves the pool to spend his USDC (he'll need this when filling orders)
 IERC20(principleToken).approve(address(pool), 10000e6);
-pool.depositLP(10000e6);
 
-// Carl deposits 8,000 USDC
+// Carl approves the pool to spend his USDC
 IERC20(principleToken).approve(address(pool), 8000e6);
-pool.depositLP(8000e6);
 
-// Check LP balances
-console.log("Bob's balance:", pool.getLPBalance(bob));
-console.log("Carl's balance:", pool.getLPBalance(carl));
-// Output: Bob's balance: 10000000000 (10,000 USDC)
-// Output: Carl's balance: 8000000000 (8,000 USDC)
+// Note: No pre-deposits needed! LPs transfer funds directly when filling orders
+// The pool checks their actual token balance at fill time
 ```
 
 ### Step 2: Ana Submits Parlay Order
@@ -83,7 +113,7 @@ uint256 requestId = pool.submitParlayOrder(
     outcomes,
     1000e6,                    // 1,000 USDC principle
     1200e6,                    // Minimum 1,200 USDC payout
-    block.timestamp + 3600,    // Order expires in 1 hour
+    block.timestamp + 60,      // Order expires in 60 seconds
     block.timestamp + 86400    // Parlay expires in 1 day
 );
 
@@ -105,74 +135,68 @@ ParlayOrderSubmitted(
 )
 ```
 
-### Step 3: LPs Compete with Fill Intents
+### Step 3: LPs Compete by Filling the Order
 
-Bob and Carl now compete by offering different payouts:
-
-```solidity
-// Bob offers 1,300 USDC payout (higher than Ana's minimum)
-pool.registerFillIntent(1, 1300e6);
-
-// Carl offers 1,400 USDC payout (beats Bob's offer)
-pool.registerFillIntent(1, 1400e6);
-
-// Bob tries to beat Carl's offer
-pool.registerFillIntent(1, 1500e6);
-
-console.log("Best fill intent:", pool.getBestFillIntent(1));
-// Output: Best fill intent: {lp: bob, payout: 1500000000, timestamp: 1703123456}
-```
-
-**Events Emitted:**
-```
-FillIntentUpdated(bob, 1, 1300000000, 1703123456)
-FillIntentUpdated(carl, 1, 1400000000, 1703123457)
-FillIntentUpdated(bob, 1, 1500000000, 1703123458)
-```
-
-### Step 4: Ana Fills the Order
-
-Ana fills the order with Bob's best offer:
+Bob and Carl now compete by directly filling the order with their preferred payouts. The first one to fill within 60 seconds wins:
 
 ```solidity
-// Ana fills the order (anyone can call this, not just Ana)
-pool.fillParlayOrder(1);
+// Bob tries to fill the order with 1,300 USDC payout
+pool.fillParlayOrder(1, 1300e6);
 
-console.log("Parlay created with player NFT:", pool.getParlay(1));
-// Output: Parlay created with player NFT: {playerNftTokenId: 1, lpNftTokenId: 1, ...}
+// If Bob's transaction goes through first, he wins!
+// If Carl's transaction goes through first, Carl wins!
+
+// Carl tries to fill the order with 1,400 USDC payout (higher payout)
+pool.fillParlayOrder(1, 1400e6);
+
+// Only one of these transactions will succeed - the first one to be mined
 ```
 
-**Event Emitted:**
+**Event Emitted (for the winner):**
 ```
 ParlayOrderFilled(
     requestId: 1,
     player: ana,
-    lp: bob,
+    lp: bob, // or carl, depending on who filled first
     playerNftTokenId: 1,
     lpNftTokenId: 1,
     principle: 1000000000,
-    payout: 1500000000
+    payout: 1300000000 // or 1400000000, depending on who filled
 )
+```
+
+### Step 4: Order is Filled (First LP Wins)
+
+The first LP to successfully fill the order within 60 seconds wins. Let's say Bob's transaction was mined first:
+
+```solidity
+// Check who filled the order
+(bool filled, address filledBy, uint256 filledPayout, uint256 filledAt) = pool.getParlayOrderFillInfo(1);
+
+console.log("Order filled by:", filledBy);
+console.log("Payout offered:", filledPayout);
+console.log("Filled at:", filledAt);
+// Output: Order filled by: bob
+// Output: Payout offered: 1300000000 (1,300 USDC)
+// Output: Filled at: 1703123456
 ```
 
 **What happens:**
 - Ana's 1,000 USDC principle is locked in the contract
-- Bob's 1,500 USDC payout is locked in the contract
+- Bob's 1,300 USDC payout is transferred from Bob to the contract
 - Player NFT #1 is minted to Ana
 - LP NFT #1 is minted to Bob
-- Bob's used amount increases by 1,500 USDC
+- Bob's used amount increases by 1,300 USDC
 
-### Step 5: Check LP Balances After Fill
+### Step 5: Check LP Used Amount After Fill
 
 ```solidity
-console.log("Bob's total balance:", pool.getLPBalance(bob));
-console.log("Bob's used amount:", pool.lpUsedAmounts(bob));
-console.log("Bob's withdrawable amount:", pool.getLPWithdrawableAmount(bob));
+console.log("Bob's used amount:", pool.getLPUsedAmount(bob));
+console.log("Bob's actual USDC balance:", IERC20(principleToken).balanceOf(bob));
 
 // Output:
-// Bob's total balance: 10000000000 (10,000 USDC)
-// Bob's used amount: 1500000000 (1,500 USDC)
-// Bob's withdrawable amount: 8500000000 (8,500 USDC)
+// Bob's used amount: 1300000000 (1,300 USDC)
+// Bob's actual USDC balance: 8700000000 (8,700 USDC)
 ```
 
 ### Step 6: Market Resolution and Settlement
@@ -192,7 +216,7 @@ console.log("Parlay settled:", pool.getParlay(1).settled);
 ParlaySettled(
     playerNftTokenId: 1,
     lpNftTokenId: 1,
-    payout: 2500000000, // 1,000 + 1,500 USDC
+    payout: 2300000000, // 1,000 + 1,300 USDC
     playerWon: true
 )
 ```
@@ -206,7 +230,7 @@ Since Ana won (all predictions were correct), she can withdraw her principle + p
 pool.withdrawParlayPrinciple(1);
 
 console.log("Ana's USDC balance after withdrawal:", IERC20(principleToken).balanceOf(ana));
-// Output: Ana's USDC balance after withdrawal: 2500000000 (2,500 USDC)
+// Output: Ana's USDC balance after withdrawal: 2300000000 (2,300 USDC)
 ```
 
 **Event Emitted:**
@@ -214,7 +238,7 @@ console.log("Ana's USDC balance after withdrawal:", IERC20(principleToken).balan
 ParlayPrincipleWithdrawn(
     nftTokenId: 1,
     owner: ana,
-    amount: 2500000000
+    amount: 2300000000
 )
 ```
 
@@ -230,25 +254,24 @@ If Ana's predictions were wrong, Bob (the LP) would win:
 pool.withdrawParlayPrinciple(1); // Using LP NFT token ID
 
 console.log("Bob's USDC balance after withdrawal:", IERC20(principleToken).balanceOf(bob));
-// Output: Bob's USDC balance after withdrawal: 2500000000 (2,500 USDC)
+// Output: Bob's USDC balance after withdrawal: 2300000000 (2,300 USDC)
 ```
 
-## LP Withdrawal Example
+## LP Balance Management
 
-Bob wants to withdraw some of his available balance:
+In the new orderbook approach, LPs don't need to manage deposits/withdrawals:
 
 ```solidity
-console.log("Bob's withdrawable amount:", pool.getLPWithdrawableAmount(bob));
-// Output: Bob's withdrawable amount: 8500000000 (8,500 USDC)
+// Bob's used amount (locked in unsettled parlays)
+console.log("Bob's used amount:", pool.getLPUsedAmount(bob));
+// Output: Bob's used amount: 1300000000 (1,300 USDC)
 
-// Bob withdraws 2,000 USDC
-pool.withdrawLP(2000e6);
+// Bob's actual USDC balance (he can spend this freely)
+console.log("Bob's actual balance:", IERC20(principleToken).balanceOf(bob));
+// Output: Bob's actual balance: 8700000000 (8,700 USDC)
 
-console.log("Bob's balance after withdrawal:", pool.getLPBalance(bob));
-console.log("Bob's withdrawable amount after withdrawal:", pool.getLPWithdrawableAmount(bob));
-// Output:
-// Bob's balance after withdrawal: 8000000000 (8,000 USDC)
-// Bob's withdrawable amount after withdrawal: 6500000000 (6,500 USDC)
+// Bob can use his actual balance for other purposes or to fill more orders
+// No need to withdraw from the pool - funds are only locked when filling orders
 ```
 
 ## Order Expiration Example
@@ -310,17 +333,18 @@ ParlayExpired(
 - ✅ Withdraw winnings if predictions correct
 
 ### For LPs (like Bob and Carl):
-- ✅ Deposit collateral to participate
-- ✅ Compete with fill intents
-- ✅ Best offer automatically wins
-- ✅ Withdraw available balance (deposited - used)
+- ✅ Approve token spending to participate
+- ✅ Compete by directly filling orders
+- ✅ First to fill within time limit wins
+- ✅ Transfer funds directly when filling
+- ✅ No deposit/withdrawal management needed
 - ✅ Withdraw winnings if player loses
 
 ### Competition Mechanism:
-- ✅ LPs can update their offers
-- ✅ Only better offers are accepted
-- ✅ Best offer is automatically tracked
-- ✅ Winner is determined at fill time
+- ✅ LPs compete by calling fillParlayOrder directly
+- ✅ First transaction to be mined wins
+- ✅ No pre-deposits required
+- ✅ Winner is determined by transaction order
 
 ### Security Features:
 - ✅ Reentrancy protection

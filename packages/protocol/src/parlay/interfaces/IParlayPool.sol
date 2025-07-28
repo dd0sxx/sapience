@@ -37,14 +37,9 @@ interface IParlayPool {
         uint256 orderExpirationTime;
         uint256 parlayExpirationTime;
         bool filled;
-        uint256 bestFillPayout;
-        address bestFillLP;
-    }
-
-    struct FillIntent {
-        address lp;
-        uint256 payout;
-        uint256 timestamp;
+        address filledBy;
+        uint256 filledPayout;
+        uint256 filledAt;
     }
 
     struct Parlay {
@@ -73,20 +68,6 @@ interface IParlayPool {
         uint256 parlayExpirationTime
     );
 
-    event FillIntentRegistered(
-        address indexed lp,
-        uint256 indexed requestId,
-        uint256 payout,
-        uint256 timestamp
-    );
-
-    event FillIntentUpdated(
-        address indexed lp,
-        uint256 indexed requestId,
-        uint256 newPayout,
-        uint256 timestamp
-    );
-
     event ParlayOrderFilled(
         uint256 indexed requestId,
         address indexed player,
@@ -110,15 +91,7 @@ interface IParlayPool {
         uint256 amount
     );
 
-    event LPDeposit(
-        address indexed lp,
-        uint256 amount
-    );
 
-    event LPWithdrawal(
-        address indexed lp,
-        uint256 amount
-    );
 
     event ParlayExpired(
         uint256 indexed playerNftTokenId,
@@ -154,29 +127,14 @@ interface IParlayPool {
     ) external returns (uint256 requestId);
 
     /**
-     * @notice Register or update a fill intent for a parlay order
+     * @notice Fill a parlay order directly with the specified payout
      * @param requestId ID of the parlay request
      * @param payout Amount of stablecoins to pay for the parlay (in principleToken)
-     * @dev LP must have sufficient deposited balance to cover the payout
-     */
-    function registerFillIntent(
-        uint256 requestId,
-        uint256 payout
-    ) external;
-
-    /**
-     * @notice Cancel a fill intent for a parlay order
-     * @param requestId ID of the parlay request
-     */
-    function cancelFillIntent(uint256 requestId) external;
-
-    /**
-     * @notice Fill a parlay order with the best available fill intent
-     * @dev This function is called by the player to fill the parlay order, will mint both the player and lp NFTs
-     * @param requestId ID of the parlay request
+     * @dev First LP to call this function within orderExpirationTime will fill the order
      */
     function fillParlayOrder(
-        uint256 requestId
+        uint256 requestId,
+        uint256 payout
     ) external;
 
     /**
@@ -205,20 +163,7 @@ interface IParlayPool {
      */
     function sweepExpiredParlay(uint256 tokenId) external;
 
-    // ============ LP Functions ============
 
-    /**
-     * @notice Deposit stablecoins to become a liquidity provider
-     * @param amount Amount of stablecoins to deposit
-     */
-    function depositLP(uint256 amount) external;
-
-    /**
-     * @notice Withdraw LP position
-     * @param amount Amount of stablecoins to withdraw
-     * @dev Only can withdraw deposited - non-settled parlays that were filled by this lp
-     */
-    function withdrawLP(uint256 amount) external;
 
     // ============ View Functions ============
     
@@ -243,39 +188,26 @@ interface IParlayPool {
     function getParlayOrder(uint256 requestId) external view returns (ParlayRequest memory parlayRequest);
 
     /**
-     * @notice Get fill intent for a parlay order
+     * @notice Get parlay order fill information
      * @param requestId ID of the parlay request
-     * @return fillIntent Fill intent details
+     * @return filled Whether the order has been filled
+     * @return filledBy Address of the LP who filled the order
+     * @return filledPayout Payout amount offered by the LP
+     * @return filledAt Timestamp when the order was filled
      */
-    function getFillIntent(uint256 requestId) external view returns (FillIntent memory fillIntent);
+    function getParlayOrderFillInfo(uint256 requestId) external view returns (
+        bool filled,
+        address filledBy,
+        uint256 filledPayout,
+        uint256 filledAt
+    );
 
     /**
-     * @notice Get all fill intents for a parlay order
-     * @param requestId ID of the parlay request
-     * @return fillIntents Array of fill intents
-     */
-    function getFillIntents(uint256 requestId) external view returns (FillIntent[] memory fillIntents);
-
-    /**
-     * @notice Get best fill intent for a parlay order
-     * @param requestId ID of the parlay request
-     * @return fillIntent Best fill intent details
-     */
-    function getBestFillIntent(uint256 requestId) external view returns (FillIntent memory fillIntent);
-
-    /**
-     * @notice Get LP deposited balance
+     * @notice Get LP used amount (locked in unsettled parlays)
      * @param lp Address of the liquidity provider
-     * @return balance Current deposited balance
+     * @return amount Amount used in unsettled parlays
      */
-    function getLPBalance(address lp) external view returns (uint256 balance);
-
-    /**
-     * @notice Get LP withdrawable amount (deposited - used in unsettled parlays)
-     * @param lp Address of the liquidity provider
-     * @return amount Withdrawable amount
-     */
-    function getLPWithdrawableAmount(address lp) external view returns (uint256 amount);
+    function getLPUsedAmount(address lp) external view returns (uint256 amount);
 
     /**
      * @notice Check if a parlay order can be filled
@@ -286,17 +218,17 @@ interface IParlayPool {
     function canFillParlayOrder(uint256 requestId) external view returns (bool canFill, uint256 reason);
 
     /**
-     * @notice Check if an LP can register a fill intent
+     * @notice Check if an LP can fill a parlay order
      * @param lp Address of the liquidity provider
      * @param requestId ID of the parlay request
      * @param payout Proposed payout amount
-     * @return canRegister Whether the LP can register the fill intent
-     * @return reason Reason if cannot register
+     * @return canFill Whether the LP can fill the order
+     * @return reason Reason if cannot fill
      */
-    function canRegisterFillIntent(
+    function canFillParlayOrder(
         address lp,
         uint256 requestId,
         uint256 payout
-    ) external view returns (bool canRegister, uint256 reason);
+    ) external view returns (bool canFill, uint256 reason);
 
 }
