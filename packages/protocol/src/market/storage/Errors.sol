@@ -43,6 +43,5 @@ library Errors {
     error TradePriceOutOfBounds(uint256 tradeRatioD18, uint256 minTradeRatioD18, uint256 maxTradeRatioD18);
     error InvalidStartingPrice(uint160 startingSqrtPriceX96, uint160 minSqrtPriceX96, uint160 maxSqrtPriceX96);
     error InvalidBondAmount(uint256 bondAmount, uint256 minBond);
-    error ManualSettlementTooEarly(uint256 requiredDelay);
     error InvalidSlippage(uint256 liquiditySlippage, uint256 tradeSlippage);
 }
