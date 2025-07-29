@@ -44,7 +44,7 @@ const AddressFilter = dynamic(
 const ForecastPage = () => {
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
-    useState<SelectableTab | null>(SelectableTab.MyPredictions);
+    useState<SelectableTab | null>(null);
   const [predictionValue, _setPredictionValue] = useState([50]);
   const [comment, _setComment] = useState('');
   const [selectedAddressFilter, setSelectedAddressFilter] = useState<
