@@ -13,7 +13,7 @@ import "@synthetixio/core-contracts/contracts/interfaces/IERC721Receiver.sol";
 import "./ERC721EnumerableStorage.sol";
 
 library ERC721Storage {
-    bytes32 private constant _SLOT_ERC721_STORAGE = keccak256(abi.encode("io.synthetix.core-contracts.ERC721"));
+    bytes32 private constant _SLOT_ERC721_STORAGE = keccak256(abi.encode("sapience.ERC721"));
 
     struct Data {
         string name;

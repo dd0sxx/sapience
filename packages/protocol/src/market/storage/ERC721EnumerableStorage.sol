@@ -9,7 +9,7 @@ library ERC721EnumerableStorage {
     using ERC721Storage for ERC721Storage.Data;
 
     bytes32 private constant _SLOT_ERC721_ENUMERABLE_STORAGE =
-        keccak256(abi.encode("io.synthetix.core-contracts.ERC721Enumerable"));
+        keccak256(abi.encode("sapience.ERC721Enumerable"));
 
     struct Data {
         mapping(uint256 tokenId => uint256) ownedTokensIndex;
