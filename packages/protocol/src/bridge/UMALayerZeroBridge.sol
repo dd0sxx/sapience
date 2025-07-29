@@ -76,7 +76,6 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         external
         override
         nonReentrant
-        returns (MessagingReceipt memory)
     {
         AssertionMarketData storage marketData = assertionIdToMarketData[assertionId];
 
@@ -97,14 +96,12 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
 
         // Notice: the bond is sent back to the submitter, not to the bridge, that's why we don't update the balance here.
 
-        return receipt;
     }
 
     function assertionDisputedCallback(bytes32 assertionId)
         external
         override
         nonReentrant
-        returns (MessagingReceipt memory)
     {
         AssertionMarketData storage marketData = assertionIdToMarketData[assertionId];
 
@@ -124,8 +121,6 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
             _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK, commandPayload, false);
 
         // We don't need to update the balance since it was already deducted when the assertion was submitted
-
-        return receipt;
     }
 
     // LayerZero message handling

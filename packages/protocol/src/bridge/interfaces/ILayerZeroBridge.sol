@@ -73,10 +73,8 @@ interface IUMALayerZeroBridge is ILayerZeroBridge, IBondManagement {
     event OptimisticOracleV3Updated(address indexed optimisticOracleV3);
 
     // UMA-side specific functions
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully)
-        external
-        returns (MessagingReceipt memory);
-    function assertionDisputedCallback(bytes32 assertionId) external returns (MessagingReceipt memory);
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external;
+    function assertionDisputedCallback(bytes32 assertionId) external;
 
     // Optimistic Oracle V3
     function setOptimisticOracleV3(address _optimisticOracleV3) external;
