@@ -205,7 +205,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
 
         IERC20 bondToken = IERC20(bondTokenAddress);
 
-        bondToken.approve(address(optimisticOracleV3), bondAmount);
+        bondToken.forceApprove(address(optimisticOracleV3), bondAmount);
 
         bytes32 umaAssertionId = optimisticOracleV3.assertTruth(
             claim,

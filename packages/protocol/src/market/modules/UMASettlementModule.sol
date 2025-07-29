@@ -56,7 +56,7 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable
                 OptimisticOracleV3Interface(marketGroup.marketParams.optimisticOracleV3);
 
             bondCurrency.safeTransferFrom(msg.sender, address(this), marketGroup.marketParams.bondAmount);
-            bondCurrency.approve(address(optimisticOracleV3), marketGroup.marketParams.bondAmount);
+            bondCurrency.forceApprove(address(optimisticOracleV3), marketGroup.marketParams.bondAmount);
 
             market.assertionId = optimisticOracleV3.assertTruth(
                 claim,
