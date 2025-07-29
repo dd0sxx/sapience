@@ -49,10 +49,12 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
 
     function enableMarketGroup(address marketGroup) external override onlyOwner {
         enabledMarketGroups[marketGroup] = true;
+        emit MarketGroupEnabled(marketGroup);
     }
 
     function disableMarketGroup(address marketGroup) external override onlyOwner {
         enabledMarketGroups[marketGroup] = false;
+        emit MarketGroupDisabled(marketGroup);
     }
 
     function isMarketGroupEnabled(address marketGroup) external view override returns (bool) {

@@ -64,6 +64,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
 
     function setOptimisticOracleV3(address _optimisticOracleV3) external override onlyOwner {
         optimisticOracleV3Address = _optimisticOracleV3;
+        emit OptimisticOracleV3Updated(_optimisticOracleV3);
     }
 
     function getOptimisticOracleV3() external view override returns (address) {

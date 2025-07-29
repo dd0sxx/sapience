@@ -10,6 +10,9 @@ import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol"
  * @notice Common interface for LayerZero bridge contracts
  */
 interface ILayerZeroBridge {
+    // Events
+    event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
+
     // Common functions
     function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config) external;
     function getBridgeConfig() external view returns (BridgeTypes.BridgeConfig memory);
@@ -33,6 +36,8 @@ interface IFeeManagement {
     // Events
     event GasReserveLow(uint256 currentBalance);
     event GasReserveCritical(uint256 currentBalance);
+    event LzReceiveCostUpdated(uint128 lzReceiveCost);
+    event GasThresholdsUpdated(uint256 warningGasThreshold, uint256 criticalGasThreshold);
 
     // Functions
     function setLzReceiveCost(uint128 _lzReceiveCost) external;
@@ -63,8 +68,9 @@ interface IBondManagement {
  * @notice Interface for UMA-side LayerZero bridge
  */
 interface IUMALayerZeroBridge is ILayerZeroBridge, IBondManagement {
+
     // Events
-    event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
+    event OptimisticOracleV3Updated(address indexed optimisticOracleV3);
 
     // UMA-side specific functions
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully)
@@ -83,12 +89,13 @@ interface IUMALayerZeroBridge is ILayerZeroBridge, IBondManagement {
  */
 interface IMarketLayerZeroBridge is ILayerZeroBridge {
     // Events
-    event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
+    event AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId);
+    event MarketGroupEnabled(address indexed marketGroup);
+    event MarketGroupDisabled(address indexed marketGroup);
     event BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount);
     event BondIntentToWithdraw(address indexed submitter, address indexed bondToken, uint256 amount);
     event BondIntentToWithdrawRemoved(address indexed submitter, address indexed bondToken, uint256 amount);
     event BondWithdrawn(address indexed submitter, address indexed bondToken, uint256 amount);
-    event AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId);
 
     // Market-side specific functions
     function forwardAssertTruth(

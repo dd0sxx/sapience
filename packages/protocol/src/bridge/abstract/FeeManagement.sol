@@ -33,6 +33,7 @@ abstract contract FeeManagement is
      */
     function setLzReceiveCost(uint128 _lzReceiveCost) external onlyOwner {
         lzReceiveCost = _lzReceiveCost;
+        emit LzReceiveCostUpdated(_lzReceiveCost);
     }
 
     /**
@@ -52,6 +53,7 @@ abstract contract FeeManagement is
         require(_warningGasThreshold > _criticalGasThreshold, "Warning threshold must be greater than critical");
         WARNING_GAS_THRESHOLD = _warningGasThreshold;
         CRITICAL_GAS_THRESHOLD = _criticalGasThreshold;
+        emit GasThresholdsUpdated(_warningGasThreshold, _criticalGasThreshold);
     }
 
     /**
