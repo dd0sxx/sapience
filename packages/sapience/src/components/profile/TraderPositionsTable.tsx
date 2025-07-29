@@ -1,4 +1,3 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
@@ -15,9 +14,8 @@ import { useAccount } from 'wagmi';
 import type { PositionType } from '@sapience/ui/types';
 import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
-import { MarketGroupClassification } from '~/lib/types';
-import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import {
   calculateEffectiveEntryPrice,
   getChainShortName,
@@ -29,57 +27,6 @@ interface TraderPositionsTableProps {
   parentChainId?: number;
   parentMarketId?: number;
   showHeader?: boolean;
-}
-
-function PositionCell({ position }: { position: PositionType }) {
-  const baseTokenBI = BigInt(position.baseToken || '0');
-  const borrowedBaseTokenBI = BigInt(position.borrowedBaseToken || '0');
-  const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
-  const value = Number(formatEther(netPositionBI));
-  const absValue = Math.abs(value);
-  const baseTokenName = position.market?.marketGroup?.baseTokenName;
-  const marketClassification = position.market?.marketGroup
-    ? getMarketGroupClassification(position.market.marketGroup)
-    : MarketGroupClassification.NUMERIC;
-
-  // For non-numeric markets, show just the number and Yes/No without badge
-  if (marketClassification !== MarketGroupClassification.NUMERIC) {
-    return (
-      <span className="flex items-center space-x-1.5">
-        <NumberDisplay value={absValue} />
-        <span>{value >= 0 ? 'Yes' : 'No'}</span>
-      </span>
-    );
-  }
-
-  if (value >= 0) {
-    // Long Position
-    return (
-      <span className="flex items-center space-x-1.5">
-        <Badge
-          variant="outline"
-          className="px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0"
-        >
-          Long
-        </Badge>
-        <NumberDisplay value={absValue} />
-        <span>{baseTokenName || 'Tokens'}</span>
-      </span>
-    );
-  }
-  // Short Position
-  return (
-    <span className="flex items-center space-x-1.5">
-      <Badge
-        variant="outline"
-        className="px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0"
-      >
-        Short
-      </Badge>
-      <NumberDisplay value={absValue} />
-      <span>{baseTokenName || 'Tokens'}</span>
-    </span>
-  );
 }
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
@@ -308,7 +255,7 @@ export default function TraderPositionsTable({
                   ) : (
                     <>
                       <TableCell>
-                        <PositionCell position={position} />
+                        <PositionBadge positions={[position]} />
                       </TableCell>
                       <TableCell>
                         <NumberDisplay
@@ -345,7 +292,7 @@ export default function TraderPositionsTable({
                               // Render Sell button only if not on Market Page
                               !isMarketPage && (
                                 <Link
-                                  href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
+                                  href={`/markets/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
                                   passHref
                                 >
                                   <Button size="xs" variant="outline">

@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
+import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -13,10 +14,6 @@ import { useParams, usePathname } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 
-import type {
-  MarketGroup as MarketGroupType,
-  Market as MarketType,
-} from '@sapience/ui/types/graphql';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
@@ -28,11 +25,7 @@ import {
   useMarketGroupPage,
 } from '~/lib/context/MarketGroupPageProvider';
 import type { MarketGroupClassification } from '~/lib/types';
-import {
-  formatQuestion,
-  parseUrlParameter,
-  findActiveMarkets,
-} from '~/lib/utils/util';
+import { findActiveMarkets } from '~/lib/utils/util';
 
 // Helper function to group markets by end time and find the appropriate group to display
 const getMarketsGroupedByEndTime = (markets: MarketType[]) => {
@@ -88,6 +81,7 @@ const getMarketsGroupedByEndTime = (markets: MarketType[]) => {
 
   return null;
 };
+import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 
 export type ActiveTab = 'predict' | 'wager';
 
@@ -209,7 +203,6 @@ const ForecastingForm = ({
             <DynamicPredictForm
               marketGroupData={marketGroupData}
               marketClassification={marketClassification}
-              chainId={marketGroupData.chainId}
             />
           ) : (
             <DynamicWagerFormFactory

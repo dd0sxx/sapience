@@ -243,7 +243,7 @@ const ForecastContent = () => {
                         : undefined
                     }
                     onValueChange={(value) => {
-                      router.push(`/forecasting/${chainShortName}/${value}`);
+                      router.push(`/markets/${chainShortName}/${value}`);
                     }}
                   >
                     <TabsList className="gap-1 py-6">
@@ -486,7 +486,7 @@ const ForecastContent = () => {
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
-                    router.push(`/forecasting/${chainShortName}`);
+                    router.push(`/markets/${chainShortName}`);
                   }}
                   className="ml-auto text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
                 >

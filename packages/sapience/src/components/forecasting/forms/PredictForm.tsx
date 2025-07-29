@@ -1,10 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
+import type { MarketGroupType } from '@sapience/ui/types';
 import { useEffect, useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import type { MarketGroupType } from '@sapience/ui/types';
+import { useAccount } from 'wagmi';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
 import YesNoPredict from './inputs/YesNoPredict';
@@ -19,14 +22,16 @@ const NO_SQRT_PRICE_X96 = '0';
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
-  chainId: number;
+  onSuccess?: () => void;
 }
 
 export default function PredictForm({
   marketGroupData,
   marketClassification,
-  chainId,
+  onSuccess,
 }: PredictFormProps) {
+  const { isConnected } = useAccount();
+  const { toast } = useToast();
   const firstMarket = marketGroupData.markets?.[0];
   const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
@@ -129,11 +134,19 @@ export default function PredictForm({
     marketClassification,
     marketId,
     submissionValue,
-    targetChainId: chainId,
     comment,
+    onSuccess,
   });
 
   const handleSubmit = async () => {
+    if (!isConnected) {
+      toast({
+        title: 'Wallet Not Connected',
+        description: 'Please connect your wallet to submit a prediction.',
+        variant: 'destructive',
+      });
+      return;
+    }
     await submitPrediction();
   };
 
@@ -174,16 +187,13 @@ export default function PredictForm({
         {renderCategoryInput()}
 
         {/* Comment field */}
-        <div className="space-y-2">
-          <label htmlFor="comment" className="text-sm font-medium">
-            Comment
-          </label>
+        <div>
+          <Label htmlFor="comment">Comment (Optional)</Label>
           <textarea
             id="comment"
+            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Add a comment about your prediction..."
             {...methods.register('comment')}
-            placeholder="Optional"
-            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            rows={3}
           />
         </div>
 
