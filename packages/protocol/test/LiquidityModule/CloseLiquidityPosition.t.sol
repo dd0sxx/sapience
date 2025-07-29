@@ -28,7 +28,7 @@ contract DecreaseLiquidityPosition is TestTrade {
     int24 constant MAX_TICK = 29800;
     uint256 constant INITIAL_LP_BALANCE = 100_000_000 ether;
     uint256 constant INITIAL_COLLATERAL_AMOUNT = 100 ether;
-    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
     uint256 positionId;
 
     function setUp() public {

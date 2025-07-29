@@ -190,17 +190,17 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             // Closing the position. No need to check collateral limit
             // We need to:
 
-            // 1. Confirm no vgas tokens
+            // 1. Confirm no vbase tokens
             if (position.vBaseAmount > 0) {
                 // Notice. This error should not happen. If it's here it means something went wrong
-                revert Errors.InvalidData("Cannot close position with vGas tokens");
+                revert Errors.InvalidData("Cannot close position with vBase tokens");
             }
             if (position.borrowedVBase > 0) {
                 // Notice. This error should not happen. If it's here it means something went wrong
-                revert Errors.InvalidData("Cannot close position with borrowed vGas tokens");
+                revert Errors.InvalidData("Cannot close position with borrowed vBase tokens");
             }
 
-            // 2. Confirm collateral is enough to pay for borrowed veth
+            // 2. Confirm collateral is enough to pay for borrowed vquote
             if (position.borrowedVQuote > 0 && position.borrowedVQuote > position.depositedCollateralAmount) {
                 // Notice. This error should not happen. If it's here it means something went wrong
                 revert Errors.InsufficientCollateral(position.borrowedVQuote, position.depositedCollateralAmount);

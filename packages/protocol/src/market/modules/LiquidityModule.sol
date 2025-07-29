@@ -552,7 +552,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             }
         }
 
-        // if all debt is paid off, and no vGAS, withdraw collateral to user
+        // if all debt is paid off, and no vBase, withdraw collateral to user
         // otherwise, transition user to trader and user can trade through pool to close position
         // in a subsequent tx
         int256 deltaCollateral;
@@ -619,8 +619,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         // Ensures that the position only have single side tokens
         position.rebalanceVirtualTokens();
 
-        // 1. Confirm no vgas tokens (no need to check for borrowedVGas or vGasAmount since they are zero because targetSize is zero
-        // 2. Confirm collateral is enough to pay for borrowed veth (no need to check because borrowedVEth is zero because targetSize is zero)
+        // 1. Confirm no vbase tokens (no need to check for borrowedVBase or vBaseAmount since they are zero because targetSize is zero
+        // 2. Confirm collateral is enough to pay for borrowed vquote (no need to check because borrowedVQuote is zero because targetSize is zero)
 
         // 3. Reconcile collateral (again)
         position.rebalanceCollateral();
