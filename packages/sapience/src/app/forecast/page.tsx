@@ -7,11 +7,11 @@ import { prefetchPredictions } from '~/hooks/graphql/usePredictions';
 
 export function generateMetadata() {
   return {
-    title: 'Forecast Markets | Sapience',
-    description: 'Make predictions on active markets',
+    title: 'Forecast | Sapience',
+    description: 'Forecast the probability of future events',
     openGraph: {
-      title: 'Forecast Markets | Sapience',
-      description: 'Make predictions on active markets',
+      title: 'Forecast | Sapience',
+      description: 'Forecast the probability of future events',
       type: 'website',
     },
   };
