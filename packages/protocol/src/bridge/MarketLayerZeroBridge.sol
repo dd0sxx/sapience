@@ -35,6 +35,15 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
     uint256 private lastAssertionId; // Internal assertionId that is sent to UMA and to the marketGroup as bytes32
 
     // Constructor and initialization
+    /**
+     * @notice Constructor
+     * @param _endpoint The LayerZero endpoint address
+     * @param _owner The owner of the contract
+     * @dev The bridge is initialized with the default LayerZero endpoint and owner.
+     * After deployment, the default LayerZero configuration values are used for:
+     * - LZ send and receive libraries.
+     * - LZ DVN and Executor settings.
+     */
     constructor(address _endpoint, address _owner) OApp(_endpoint, _owner) ETHManagement(_owner) {}
 
     // Configuration functions

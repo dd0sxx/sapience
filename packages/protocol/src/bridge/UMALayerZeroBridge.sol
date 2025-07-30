@@ -47,6 +47,18 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
     mapping(bytes32 => AssertionMarketData) private assertionIdToMarketData; // assertionId => marketData
 
     // Constructor and initialization
+
+    /**
+     * @notice Constructor
+     * @param _endpoint The LayerZero endpoint address
+     * @param _owner The owner of the contract
+     * @param _enabledBondToken The bond token that is enabled for the bridge
+     * @param _minimumDepositAmount The minimum deposit amount for the bridge
+     * @dev The bridge is initialized with the default LayerZero endpoint and owner.
+     * After deployment, the default LayerZero configuration values are used for:
+     * - LZ send and receive libraries.
+     * - LZ DVN and Executor settings.
+     */
     constructor(address _endpoint, address _owner, address _enabledBondToken, uint256 _minimumDepositAmount) OApp(_endpoint, _owner) ETHManagement(_owner) {
         enabledBondToken = _enabledBondToken;
         minimumDepositAmount = _minimumDepositAmount;
