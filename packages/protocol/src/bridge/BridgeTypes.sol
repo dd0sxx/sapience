@@ -11,13 +11,6 @@ library BridgeTypes {
         address remoteBridge;
     }
 
-    struct SettlementData {
-        address market;
-        uint256 epochId;
-        uint256 settlementPrice;
-        uint256 timestamp;
-    }
-
     struct WithdrawalIntent {
         uint256 amount;
         uint256 timestamp;

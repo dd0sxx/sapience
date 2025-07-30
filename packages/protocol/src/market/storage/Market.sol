@@ -71,11 +71,15 @@ library Market {
         bytes memory claimStatementNo
     ) internal returns (Data storage market) {
         MarketGroup.Data storage marketGroup = MarketGroup.loadValid();
-        ISapienceStructs.MarketParams storage marketParams = marketGroup.marketParams;
+        ISapienceStructs.MarketParams storage marketParams = marketGroup
+            .marketParams;
 
         market = load(id);
 
-        require(claimStatementYesOrNumeric.length > 0, "claimStatementYesOrNumeric must be non-empty");
+        require(
+            claimStatementYesOrNumeric.length > 0,
+            "claimStatementYesOrNumeric must be non-empty"
+        );
 
         // can only be called once
         if (market.startTime != 0) {
@@ -90,7 +94,10 @@ library Market {
             revert Errors.EndTimeTooEarly(startTime, endTime);
         }
 
-        if (address(market.baseToken) != address(0) || address(market.quoteToken) != address(0)) {
+        if (
+            address(market.baseToken) != address(0) ||
+            address(market.quoteToken) != address(0)
+        ) {
             revert Errors.TokensAlreadyCreated();
         }
 
@@ -109,27 +116,38 @@ library Market {
         market.marketParams.assertionLiveness = marketParams.assertionLiveness;
         market.marketParams.bondCurrency = marketParams.bondCurrency;
         market.marketParams.bondAmount = marketParams.bondAmount;
-        market.marketParams.uniswapPositionManager = marketParams.uniswapPositionManager;
+        market.marketParams.uniswapPositionManager = marketParams
+            .uniswapPositionManager;
         market.marketParams.uniswapSwapRouter = marketParams.uniswapSwapRouter;
         market.marketParams.uniswapQuoter = marketParams.uniswapQuoter;
-        market.marketParams.optimisticOracleV3 = marketParams.optimisticOracleV3;
+        market.marketParams.optimisticOracleV3 = marketParams
+            .optimisticOracleV3;
 
-        validateMarketBounds(market, baseAssetMinPriceTick, baseAssetMaxPriceTick);
+        validateMarketBounds(
+            market,
+            baseAssetMinPriceTick,
+            baseAssetMaxPriceTick
+        );
         market.baseAssetMinPriceTick = baseAssetMinPriceTick;
         market.baseAssetMaxPriceTick = baseAssetMaxPriceTick;
         market.feeRateD18 = uint256(marketParams.feeRate) * 1e12;
 
-        if(!marketGroup.bridgedSettlement) {
+        if (!marketGroup.bridgedSettlement) {
             // check market.marketParams.bondAmount is greater than the minimum bond for the assertion currency
-            uint256 minUMABond =
-                OptimisticOracleV3Interface(marketParams.optimisticOracleV3).getMinimumBond(marketParams.bondCurrency);
+            uint256 minUMABond = OptimisticOracleV3Interface(
+                marketParams.optimisticOracleV3
+            ).getMinimumBond(marketParams.bondCurrency);
             if (marketParams.bondAmount < minUMABond) {
                 // Cap the bond amount at the minimum bond for the assertion currency
                 market.marketParams.bondAmount = minUMABond;
             }
         }
         VirtualToken tokenA = _createVirtualToken(salt, "Base Token", "vBase");
-        VirtualToken tokenB = _createVirtualToken(salt + 1, "Quote Token", "vQuote");
+        VirtualToken tokenB = _createVirtualToken(
+            salt + 1,
+            "Quote Token",
+            "vQuote"
+        );
 
         if (address(tokenA) < address(tokenB)) {
             market.baseToken = tokenA;
@@ -141,22 +159,44 @@ library Market {
 
         // create & initialize pool
         market.pool = IUniswapV3Pool(
-            IUniswapV3Factory(INonfungiblePositionManager(market.marketParams.uniswapPositionManager).factory())
-                .createPool(address(market.baseToken), address(market.quoteToken), marketParams.feeRate)
+            IUniswapV3Factory(
+                INonfungiblePositionManager(
+                    market.marketParams.uniswapPositionManager
+                ).factory()
+            ).createPool(
+                    address(market.baseToken),
+                    address(market.quoteToken),
+                    marketParams.feeRate
+                )
         );
         market.pool.initialize(startingSqrtPriceX96); // starting price
 
         int24 spacing = market.pool.tickSpacing();
         // store min/max prices
-        market.sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(market.baseAssetMinPriceTick);
+        market.sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(
+            market.baseAssetMinPriceTick
+        );
         // use next tick for max price
-        market.sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(market.baseAssetMaxPriceTick + spacing);
-        market.maxPriceD18 = DecimalPrice.sqrtRatioX96ToPrice(market.sqrtPriceMaxX96);
-        market.minPriceD18 = DecimalPrice.sqrtRatioX96ToPrice(market.sqrtPriceMinX96);
+        market.sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(
+            market.baseAssetMaxPriceTick + spacing
+        );
+        market.maxPriceD18 = DecimalPrice.sqrtRatioX96ToPrice(
+            market.sqrtPriceMaxX96
+        );
+        market.minPriceD18 = DecimalPrice.sqrtRatioX96ToPrice(
+            market.sqrtPriceMinX96
+        );
 
         // Validate starting price is within the range
-        if (startingSqrtPriceX96 < market.sqrtPriceMinX96 || startingSqrtPriceX96 > market.sqrtPriceMaxX96) {
-            revert Errors.InvalidStartingPrice(startingSqrtPriceX96, market.sqrtPriceMinX96, market.sqrtPriceMaxX96);
+        if (
+            startingSqrtPriceX96 < market.sqrtPriceMinX96 ||
+            startingSqrtPriceX96 > market.sqrtPriceMaxX96
+        ) {
+            revert Errors.InvalidStartingPrice(
+                startingSqrtPriceX96,
+                market.sqrtPriceMinX96,
+                market.sqrtPriceMaxX96
+            );
         }
 
         // mint max; track tokens loaned by in FAccount
@@ -164,23 +204,48 @@ library Market {
         market.quoteToken.mint(address(this), type(uint256).max);
 
         // approve to uniswapPositionManager
-        market.baseToken.approve(address(market.marketParams.uniswapPositionManager), type(uint256).max);
-        market.quoteToken.approve(address(market.marketParams.uniswapPositionManager), type(uint256).max);
+        market.baseToken.approve(
+            address(market.marketParams.uniswapPositionManager),
+            type(uint256).max
+        );
+        market.quoteToken.approve(
+            address(market.marketParams.uniswapPositionManager),
+            type(uint256).max
+        );
 
         // approve to uniswapSwapRouter
-        market.baseToken.approve(address(market.marketParams.uniswapSwapRouter), type(uint256).max);
-        market.quoteToken.approve(address(market.marketParams.uniswapSwapRouter), type(uint256).max);
+        market.baseToken.approve(
+            address(market.marketParams.uniswapSwapRouter),
+            type(uint256).max
+        );
+        market.quoteToken.approve(
+            address(market.marketParams.uniswapSwapRouter),
+            type(uint256).max
+        );
     }
 
-    function _createVirtualToken(uint256 initialSalt, string memory name, string memory symbol)
-        private
-        returns (VirtualToken token)
-    {
+    function _createVirtualToken(
+        uint256 initialSalt,
+        string memory name,
+        string memory symbol
+    ) private returns (VirtualToken token) {
         uint256 currentSalt = initialSalt;
         uint256 currentBlockNumber = block.number;
         while (true) {
-            bytes32 salt = keccak256(abi.encodePacked(currentSalt, currentBlockNumber, block.coinbase));
-            try new VirtualToken{salt: bytes32(salt)}(address(this), name, symbol) returns (VirtualToken _token) {
+            bytes32 salt = keccak256(
+                abi.encodePacked(
+                    currentSalt,
+                    currentBlockNumber,
+                    block.coinbase
+                )
+            );
+            try
+                new VirtualToken{salt: bytes32(salt)}(
+                    address(this),
+                    name,
+                    symbol
+                )
+            returns (VirtualToken _token) {
                 return _token;
             } catch {
                 currentSalt++;
@@ -197,7 +262,11 @@ library Market {
         }
     }
 
-    function validateLpRequirements(Data storage self, int24 lowerTick, int24 upperTick) internal view {
+    function validateLpRequirements(
+        Data storage self,
+        int24 lowerTick,
+        int24 upperTick
+    ) internal view {
         validateMarketNotExpired(self);
 
         int24 minTick = self.baseAssetMinPriceTick;
@@ -222,14 +291,24 @@ library Market {
         }
     }
 
-    function validateMarketBounds(Data storage self, int24 minPriceTick, int24 maxPriceTick) internal view {
+    function validateMarketBounds(
+        Data storage self,
+        int24 minPriceTick,
+        int24 maxPriceTick
+    ) internal view {
         int24 tickSpacing = getTickSpacingForFee(self.marketParams.feeRate);
         if (minPriceTick % tickSpacing != 0) {
-            revert Errors.InvalidBaseAssetMinPriceTick(minPriceTick, tickSpacing);
+            revert Errors.InvalidBaseAssetMinPriceTick(
+                minPriceTick,
+                tickSpacing
+            );
         }
 
         if (maxPriceTick % tickSpacing != 0) {
-            revert Errors.InvalidBaseAssetMaxPriceTick(maxPriceTick, tickSpacing);
+            revert Errors.InvalidBaseAssetMaxPriceTick(
+                maxPriceTick,
+                tickSpacing
+            );
         }
 
         if (minPriceTick >= maxPriceTick) {
@@ -254,14 +333,25 @@ library Market {
         uint256 loanQuoteAmount
     ) internal view returns (uint256 requiredCollateral) {
         uint256 requiredCollateralAtMinPrice = getCollateralRequiredAtPrice(
-            self, ownedBaseAmount, ownedQuoteAmount, loanBaseAmount, loanQuoteAmount, self.minPriceD18
+            self,
+            ownedBaseAmount,
+            ownedQuoteAmount,
+            loanBaseAmount,
+            loanQuoteAmount,
+            self.minPriceD18
         );
 
         uint256 requiredCollateralAtMaxPrice = getCollateralRequiredAtPrice(
-            self, ownedBaseAmount, ownedQuoteAmount, loanBaseAmount, loanQuoteAmount, self.maxPriceD18
+            self,
+            ownedBaseAmount,
+            ownedQuoteAmount,
+            loanBaseAmount,
+            loanQuoteAmount,
+            self.maxPriceD18
         );
 
-        requiredCollateral = requiredCollateralAtMinPrice > requiredCollateralAtMaxPrice
+        requiredCollateral = requiredCollateralAtMinPrice >
+            requiredCollateralAtMaxPrice
             ? requiredCollateralAtMinPrice
             : requiredCollateralAtMaxPrice;
     }
@@ -286,11 +376,23 @@ library Market {
         uint256 loanQuoteAmount
     ) internal view {
         validateOwnedAndDebtAtPrice(
-            self, collateralAmount, ownedBaseAmount, ownedQuoteAmount, loanBaseAmount, loanQuoteAmount, self.minPriceD18
+            self,
+            collateralAmount,
+            ownedBaseAmount,
+            ownedQuoteAmount,
+            loanBaseAmount,
+            loanQuoteAmount,
+            self.minPriceD18
         );
 
         validateOwnedAndDebtAtPrice(
-            self, collateralAmount, ownedBaseAmount, ownedQuoteAmount, loanBaseAmount, loanQuoteAmount, self.maxPriceD18
+            self,
+            collateralAmount,
+            ownedBaseAmount,
+            ownedQuoteAmount,
+            loanBaseAmount,
+            loanQuoteAmount,
+            self.maxPriceD18
         );
     }
 
@@ -325,14 +427,26 @@ library Market {
         }
 
         // Get total debt
-        uint256 adjustedPrice = self.settled ? price : price.mulDecimal((DecimalMath.UNIT + self.feeRateD18));
-        uint256 totalDebtValue = Quote.quoteBaseToQuoteWithPrice(baseDebt, adjustedPrice) + quoteDebt;
+        uint256 adjustedPrice = self.settled
+            ? price
+            : price.mulDecimal((DecimalMath.UNIT + self.feeRateD18));
+        uint256 totalDebtValue = Quote.quoteBaseToQuoteWithPrice(
+            baseDebt,
+            adjustedPrice
+        ) + quoteDebt;
 
         // Get total credit
-        adjustedPrice = self.settled ? price : price.mulDecimal((DecimalMath.UNIT - self.feeRateD18));
-        uint256 totalOwnedValue = Quote.quoteBaseToQuoteWithPrice(baseAmount, adjustedPrice) + quoteAmount;
+        adjustedPrice = self.settled
+            ? price
+            : price.mulDecimal((DecimalMath.UNIT - self.feeRateD18));
+        uint256 totalOwnedValue = Quote.quoteBaseToQuoteWithPrice(
+            baseAmount,
+            adjustedPrice
+        ) + quoteAmount;
 
-        requiredCollateral = totalDebtValue > totalOwnedValue ? totalDebtValue - totalOwnedValue : 0;
+        requiredCollateral = totalDebtValue > totalOwnedValue
+            ? totalDebtValue - totalOwnedValue
+            : 0;
 
         // Adding 2 wei to prevent round up errors if greater than 0. Insignificant amount for normal operations but to prevent potential issues
         if (requiredCollateral > 0) requiredCollateral += 2;
@@ -348,33 +462,54 @@ library Market {
         uint256 price
     ) internal view {
         uint256 requiredCollateral = getCollateralRequiredAtPrice(
-            self, ownedBaseAmount, ownedQuoteAmount, loanBaseAmount, loanQuoteAmount, price
+            self,
+            ownedBaseAmount,
+            ownedQuoteAmount,
+            loanBaseAmount,
+            loanQuoteAmount,
+            price
         );
 
         if (requiredCollateral > collateralAmount) {
-            revert Errors.InsufficientCollateral(requiredCollateral, collateralAmount);
+            revert Errors.InsufficientCollateral(
+                requiredCollateral,
+                collateralAmount
+            );
         }
     }
 
-    function getCurrentPoolPriceSqrtX96(Data storage self) internal view returns (uint160 sqrtPriceX96) {
-        (sqrtPriceX96,,,,,,) = self.pool.slot0();
+    function getCurrentPoolPriceSqrtX96(
+        Data storage self
+    ) internal view returns (uint160 sqrtPriceX96) {
+        (sqrtPriceX96, , , , , , ) = self.pool.slot0();
     }
 
-    function getCurrentPoolPrice(Data storage self) internal view returns (uint256 decimalPrice) {
+    function getCurrentPoolPrice(
+        Data storage self
+    ) internal view returns (uint256 decimalPrice) {
         uint160 sqrtPriceX96 = getCurrentPoolPriceSqrtX96(self);
 
         return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
     }
 
     function validateCurrentPoolPriceInRange(Data storage self) internal view {
-        (uint160 sqrtPriceX96,,,,,,) = self.pool.slot0();
+        (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
 
         validatePriceInRange(self, sqrtPriceX96);
     }
 
-    function validatePriceInRange(Data storage self, uint160 priceX96) internal view {
-        if (priceX96 < self.sqrtPriceMinX96 || priceX96 > self.sqrtPriceMaxX96) {
-            revert Errors.PoolPriceOutOfRange(priceX96, self.sqrtPriceMinX96, self.sqrtPriceMaxX96);
+    function validatePriceInRange(
+        Data storage self,
+        uint160 priceX96
+    ) internal view {
+        if (
+            priceX96 < self.sqrtPriceMinX96 || priceX96 > self.sqrtPriceMaxX96
+        ) {
+            revert Errors.PoolPriceOutOfRange(
+                priceX96,
+                self.sqrtPriceMinX96,
+                self.sqrtPriceMaxX96
+            );
         }
     }
 
@@ -390,12 +525,27 @@ library Market {
     ) internal view returns (uint256 requiredCollateral) {
         // Note: +1 to prevent rounding errors when calculating collateral requirements inside collateralRequirementAtMinTick and collateralRequirementAtMaxTick
         uint256 collateralRequirementAtMin = collateralRequirementAtMinTick(
-            self, liquidity, sqrtPriceAX96, sqrtPriceBX96, loanAmount0 + 1, loanAmount1 + 1, tokensOwed0, tokensOwed1
+            self,
+            liquidity,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            loanAmount0 + 1,
+            loanAmount1 + 1,
+            tokensOwed0,
+            tokensOwed1
         );
         uint256 collateralRequirementAtMax = collateralRequirementAtMaxTick(
-            self, liquidity, sqrtPriceAX96, sqrtPriceBX96, loanAmount0 + 1, loanAmount1 + 1, tokensOwed0, tokensOwed1
+            self,
+            liquidity,
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            loanAmount0 + 1,
+            loanAmount1 + 1,
+            tokensOwed0,
+            tokensOwed1
         );
-        requiredCollateral = collateralRequirementAtMin > collateralRequirementAtMax
+        requiredCollateral = collateralRequirementAtMin >
+            collateralRequirementAtMax
             ? collateralRequirementAtMin
             : collateralRequirementAtMax;
 
@@ -415,20 +565,33 @@ library Market {
         uint256 tokensOwed0,
         uint256 tokensOwed1
     ) internal view returns (uint256) {
-        uint256 maxAmount0 = LiquidityAmounts.getAmount0ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity);
+        uint256 maxAmount0 = LiquidityAmounts.getAmount0ForLiquidity(
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
 
-        uint256 liquidityAmount0ConvertedTo1 = Quote.quoteBaseToQuoteWithPrice(maxAmount0, self.minPriceD18);
+        uint256 liquidityAmount0ConvertedTo1 = Quote.quoteBaseToQuoteWithPrice(
+            maxAmount0,
+            self.minPriceD18
+        );
 
         uint256 creditQuote = liquidityAmount0ConvertedTo1 + tokensOwed1;
         uint256 debitQuote = loanAmount1;
 
         // Adjust debit or credit with new loan amount balance
         if (loanAmount0 > tokensOwed0) {
-            uint256 net0ConvertedTo1 = Quote.quoteBaseToQuoteWithPrice(loanAmount0 - tokensOwed0, self.minPriceD18);
+            uint256 net0ConvertedTo1 = Quote.quoteBaseToQuoteWithPrice(
+                loanAmount0 - tokensOwed0,
+                self.minPriceD18
+            );
 
             debitQuote += net0ConvertedTo1;
         } else {
-            uint256 net0ConvertedTo1 = Quote.quoteBaseToQuoteWithPrice(tokensOwed0 - loanAmount0, self.minPriceD18);
+            uint256 net0ConvertedTo1 = Quote.quoteBaseToQuoteWithPrice(
+                tokensOwed0 - loanAmount0,
+                self.minPriceD18
+            );
 
             creditQuote += net0ConvertedTo1;
         }
@@ -446,14 +609,21 @@ library Market {
         uint256 tokensOwed0,
         uint256 tokensOwed1
     ) internal view returns (uint256) {
-        uint256 maxAmount1 = LiquidityAmounts.getAmount1ForLiquidity(sqrtPriceAX96, sqrtPriceBX96, liquidity);
+        uint256 maxAmount1 = LiquidityAmounts.getAmount1ForLiquidity(
+            sqrtPriceAX96,
+            sqrtPriceBX96,
+            liquidity
+        );
 
         uint256 creditQuote = maxAmount1 + tokensOwed1;
         uint256 debitQuote = loanAmount1;
 
         // Adjust debit or credit with new loan amount balance
         if (loanAmount0 > tokensOwed0) {
-            uint256 net0ConvertedTo1 = Quote.quoteBaseToQuoteWithPrice(loanAmount0 - tokensOwed0, self.maxPriceD18);
+            uint256 net0ConvertedTo1 = Quote.quoteBaseToQuoteWithPrice(
+                loanAmount0 - tokensOwed0,
+                self.maxPriceD18
+            );
 
             debitQuote += net0ConvertedTo1;
         } else {
@@ -468,7 +638,10 @@ library Market {
         return debitQuote > creditQuote ? debitQuote - creditQuote : 0;
     }
 
-    function setSettlementPriceInRange(Data storage self, uint256 settlementPriceD18) internal returns (uint256) {
+    function setSettlementPriceInRange(
+        Data storage self,
+        uint256 settlementPriceD18
+    ) internal returns (uint256) {
         if (settlementPriceD18 > self.maxPriceD18) {
             self.settlementPriceD18 = self.maxPriceD18;
         } else if (settlementPriceD18 < self.minPriceD18) {
@@ -496,7 +669,10 @@ library Market {
         }
     }
 
-    function getReferencePrice(Data storage self) internal view returns (uint256) {
-        return self.settled ? self.settlementPriceD18 : getCurrentPoolPrice(self);
+    function getReferencePrice(
+        Data storage self
+    ) internal view returns (uint256) {
+        return
+            self.settled ? self.settlementPriceD18 : getCurrentPoolPrice(self);
     }
 }
