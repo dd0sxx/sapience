@@ -60,7 +60,7 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      * @dev This function is called when ETH is sent to the contract
      */
     receive() external payable virtual {
-        emit ETHDeposited(msg.sender, msg.value);
+        // do nothing. Just accept ETH.
     }
 
     /**
