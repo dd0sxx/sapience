@@ -99,6 +99,29 @@ library Position {
         self.depositedCollateralAmount = amount;
     }
 
+    function updateCollateralWithLoss(Data storage self, uint256 transferAmount, uint256 finalDepositedAmount) internal returns (int256 deltaCollateral) {
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        IERC20 collateralAsset = marketGroup.collateralAsset;
+
+        // Calculate delta in 18 decimals
+        deltaCollateral = transferAmount.toInt() - self.depositedCollateralAmount.toInt();
+
+        if (deltaCollateral == 0) {
+            return 0;
+        } else if (deltaCollateral > 0) {
+            // Convert to token decimals for transfer (round up to ensure protocol receives full amount)
+            uint256 actualTransferAmount = marketGroup.denormalizeCollateralAmountUp(deltaCollateral.toUint());
+            collateralAsset.safeTransferFrom(msg.sender, address(this), actualTransferAmount);
+        } else if (deltaCollateral < 0) {
+            // Convert to token decimals for transfer
+            uint256 actualTransferAmount = marketGroup.denormalizeCollateralAmount((deltaCollateral * -1).toUint());
+            collateralAsset.safeTransfer(msg.sender, actualTransferAmount);
+        }
+
+        // Set the final deposited amount (which may be different from the transfer amount)
+        self.depositedCollateralAmount = finalDepositedAmount;
+    }
+
     function afterTradeCheck(Data storage self) internal view {
         Market.load(self.marketId).validateCollateralRequirementsForTrade(
             self.depositedCollateralAmount, self.vBaseAmount, self.vQuoteAmount, self.borrowedVBase, self.borrowedVQuote

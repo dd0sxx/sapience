@@ -181,6 +181,7 @@ library Trade {
         int256 expectedDeltaCollateral;
         int256 closePnL; // PnL from initial position to zero
         uint160 sqrtPriceX96After;
+        uint256 extraCollateralRequired; // Track extra collateral required due to losses
     }
 
     function quoteOrTrade(QuoteOrTradeInputParams memory params)
@@ -285,8 +286,14 @@ library Trade {
             output.position.borrowedVQuote
         );
 
+        // The requiredCollateral should include the extraCollateralRequired for the transfer
         output.requiredCollateral = newPositionCollateralRequired + extraCollateralRequired;
+        
+        // Track the extra collateral required for the TradeModule to handle
+        output.extraCollateralRequired = extraCollateralRequired;
 
+        // The expectedDeltaCollateral calculation should be based on the position's actual collateral
+        // (which doesn't include extraCollateralRequired) vs the required collateral (which does include it)
         output.expectedDeltaCollateral =
             output.requiredCollateral.toInt() - output.position.depositedCollateralAmount.toInt();
     }

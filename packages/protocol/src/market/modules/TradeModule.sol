@@ -211,7 +211,16 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
             // 4. Transfer the released collateral to the trader (pnl)
             // Notice: under normal operations, the required collateral should be zero, but if somehow there is a "bad debt" it needs to be repaid.
-            runtime.deltaCollateral = position.updateCollateral(outputParams.requiredCollateral);
+            if (outputParams.extraCollateralRequired > 0) {
+                // Use the new method that separates transfer amount from deposited amount
+                runtime.deltaCollateral = position.updateCollateralWithLoss(
+                    outputParams.requiredCollateral, 
+                    outputParams.requiredCollateral - outputParams.extraCollateralRequired
+                );
+            } else {
+                // Use the standard method
+                runtime.deltaCollateral = position.updateCollateral(outputParams.requiredCollateral);
+            }
 
             // Check if the collateral is within the limit
             Trade.checkDeltaCollateralLimit(runtime.deltaCollateral, normalizedDeltaCollateralLimit);
@@ -221,7 +230,16 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             // Not closing, proced as a normal trade
 
             // Transfer the locked collateral to the market or viceversa
-            runtime.deltaCollateral = position.updateCollateral(outputParams.requiredCollateral);
+            if (outputParams.extraCollateralRequired > 0) {
+                // Use the new method that separates transfer amount from deposited amount
+                runtime.deltaCollateral = position.updateCollateralWithLoss(
+                    outputParams.requiredCollateral, 
+                    outputParams.requiredCollateral - outputParams.extraCollateralRequired
+                );
+            } else {
+                // Use the standard method
+                runtime.deltaCollateral = position.updateCollateral(outputParams.requiredCollateral);
+            }
 
             // Check if the collateral is within the limit
             Trade.checkDeltaCollateralLimit(runtime.deltaCollateral, normalizedDeltaCollateralLimit);
