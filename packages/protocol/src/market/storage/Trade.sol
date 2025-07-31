@@ -73,7 +73,11 @@ library Trade {
                 sqrtPriceLimitX96: 0
             });
 
-            amountOut = ISwapRouter(marketGroup.marketParams.uniswapSwapRouter).exactInputSingle(swapParams);
+            try ISwapRouter(marketGroup.marketParams.uniswapSwapRouter).exactInputSingle(swapParams) returns (uint256 amountOutResult) {
+                amountOut = amountOutResult;
+            } catch (bytes memory reason) {
+                revert Errors.SwapFailed(reason);
+            }
         }
 
         if (amountInVQuote > 0) {
@@ -138,7 +142,11 @@ library Trade {
                 amountInMaximum: type(uint256).max
             });
 
-            amountIn = ISwapRouter(marketGroup.marketParams.uniswapSwapRouter).exactOutputSingle(swapParams);
+            try ISwapRouter(marketGroup.marketParams.uniswapSwapRouter).exactOutputSingle(swapParams) returns (uint256 amountInResult) {
+                amountIn = amountInResult;
+            } catch (bytes memory reason) {
+                revert Errors.SwapFailed(reason);
+            }
         }
         if (expectedAmountOutVQuote > 0) {
             requiredAmountInVBase = amountIn;
