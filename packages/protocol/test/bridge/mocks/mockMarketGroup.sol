@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {IMarketLayerZeroBridge} from "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import {IMarketLayerZeroBridge} from "../../../src/bridge/interfaces/IMarketLayerZeroBridge.sol";
 import {IUMASettlementModule} from "../../../src/market/interfaces/IUMASettlementModule.sol";
 import {ISapienceStructs} from "../../../src/market/interfaces/ISapienceStructs.sol";
 

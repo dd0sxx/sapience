@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IFeeManagement} from "../interfaces/ILayerZeroBridge.sol";
+import {IFeeManagement} from "../interfaces/IFeeManagement.sol";
 
 /**
  * @title FeeManagement
@@ -49,8 +49,14 @@ abstract contract FeeManagement is
      * @param _warningGasThreshold The threshold for warning alerts
      * @param _criticalGasThreshold The threshold for critical alerts
      */
-    function setGasThresholds(uint256 _warningGasThreshold, uint256 _criticalGasThreshold) external onlyOwner {
-        require(_warningGasThreshold > _criticalGasThreshold, "Warning threshold must be greater than critical");
+    function setGasThresholds(
+        uint256 _warningGasThreshold,
+        uint256 _criticalGasThreshold
+    ) external onlyOwner {
+        require(
+            _warningGasThreshold > _criticalGasThreshold,
+            "Warning threshold must be greater than critical"
+        );
         WARNING_GAS_THRESHOLD = _warningGasThreshold;
         CRITICAL_GAS_THRESHOLD = _criticalGasThreshold;
         emit GasThresholdsUpdated(_warningGasThreshold, _criticalGasThreshold);

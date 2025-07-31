@@ -12,7 +12,7 @@ import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
 import {OptimisticOracleV3Interface} from
     "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
-import {IMarketLayerZeroBridge} from "../../bridge/interfaces/ILayerZeroBridge.sol";
+import {IMarketLayerZeroBridge} from "../../bridge/interfaces/IMarketLayerZeroBridge.sol";
 
 contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;

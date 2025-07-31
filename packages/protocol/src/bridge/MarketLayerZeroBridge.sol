@@ -4,7 +4,7 @@ pragma solidity ^0.8.22;
 import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IUMASettlementModule} from "../market/interfaces/IUMASettlementModule.sol";
-import {IMarketLayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
+import {IMarketLayerZeroBridge} from "./interfaces/IMarketLayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
