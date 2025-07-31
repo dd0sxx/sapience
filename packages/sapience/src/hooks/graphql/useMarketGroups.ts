@@ -1,5 +1,6 @@
 import { graphqlRequest } from '@sapience/ui/lib';
-import { QueryClient, useQuery } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import type {
   Market as MarketType,
@@ -29,37 +30,40 @@ const GET_CATEGORIES = /* GraphQL */ `
   }
 `;
 
+const fetchCategories = async (): Promise<CategoryType[]> => {
+  try {
+    type CategoriesQueryResult = {
+      categories: CategoryType[];
+    };
+
+    const data = await graphqlRequest<CategoriesQueryResult>(GET_CATEGORIES);
+
+    if (!data || !Array.isArray(data.categories)) {
+      console.error('Unexpected API response structure for categories:', data);
+      throw new Error('Failed to fetch categories: Invalid response structure');
+    }
+
+    return data.categories;
+  } catch (err) {
+    console.error('Error fetching categories:', err);
+    throw err instanceof Error
+      ? err
+      : new Error('An unknown error occurred while fetching categories');
+  }
+};
+
 // Custom hook to fetch categories using Tanstack Query
 export const useCategories = () => {
   return useQuery<CategoryType[], Error>({
     queryKey: ['categories'],
-    queryFn: async (): Promise<CategoryType[]> => {
-      try {
-        type CategoriesQueryResult = {
-          categories: CategoryType[];
-        };
+    queryFn: fetchCategories,
+  });
+};
 
-        const data =
-          await graphqlRequest<CategoriesQueryResult>(GET_CATEGORIES);
-
-        if (!data || !Array.isArray(data.categories)) {
-          console.error(
-            'Unexpected API response structure for categories:',
-            data
-          );
-          throw new Error(
-            'Failed to fetch categories: Invalid response structure'
-          );
-        }
-
-        return data.categories;
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-        throw err instanceof Error
-          ? err
-          : new Error('An unknown error occurred while fetching categories');
-      }
-    },
+export const prefetchCategories = async (queryClient: QueryClient) => {
+  return await queryClient.prefetchQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
   });
 };
 
@@ -317,7 +321,9 @@ export const useEnrichedMarketGroups = () => {
   });
 };
 
-export const prefetchEnrichedMarketGroups = async (queryClient: QueryClient) => {
+export const prefetchEnrichedMarketGroups = async (
+  queryClient: QueryClient
+) => {
   return await queryClient.prefetchQuery({
     queryKey: ['enrichedMarketGroups'],
     queryFn: getEnrichedMarketGroups,

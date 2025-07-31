@@ -1,27 +1,39 @@
-import type { Metadata } from 'next';
-import dynamic from 'next/dynamic';
+import { dehydrate, QueryClient } from '@tanstack/react-query';
 
-const MarketGroupsListSkeleton = () => <div className="space-y-4" />;
+import MarketGroupsList from '~/components/forecasting/MarketGroupsList';
+import Hydrate from '~/components/Hydrate';
+import {
+  prefetchCategories,
+  prefetchEnrichedMarketGroups,
+} from '~/hooks/graphql/useMarketGroups';
 
-// Dynamically import MarketGroupsList
-const MarketGroupsList = dynamic(
-  () => import('~/components/forecasting/MarketGroupsList'),
-  {
-    ssr: false, // Disable server-side rendering
-    loading: () => <MarketGroupsListSkeleton />, // Show skeleton while loading
-  }
-);
+export function generateMetadata() {
+  return {
+    title: 'Markets | Sapience',
+    description: 'Make forecasts across various focus areas',
+    openGraph: {
+      title: 'Markets | Sapience',
+      description: 'Make forecasts across various focus areas',
+      type: 'website',
+    },
+  };
+}
 
-export const metadata: Metadata = {
-  title: 'Forecasting',
-  description: 'Make forecasts across various focus areas',
-};
+const ForecastingPage = async () => {
+  // new query client for the server
+  const serverQC = new QueryClient();
 
-const ForecastingPage = () => {
+  // Prefetch enriched market groups data
+  await prefetchEnrichedMarketGroups(serverQC);
+  await prefetchCategories(serverQC);
+
+  const state = dehydrate(serverQC);
   return (
-    <div className="container mx-auto px-4 md:p-8 max-w-8xl mt-16">
-      <MarketGroupsList />
-    </div>
+    <Hydrate state={state}>
+      <div className="container mx-auto px-4 md:p-8 max-w-8xl mt-16">
+        <MarketGroupsList />
+      </div>
+    </Hydrate>
   );
 };
 

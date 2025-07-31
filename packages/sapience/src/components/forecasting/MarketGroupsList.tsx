@@ -28,6 +28,7 @@ import {
   useEnrichedMarketGroups,
   useCategories,
 } from '~/hooks/graphql/useMarketGroups';
+import { useIsClient } from '~/hooks/useIsClient';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
@@ -220,6 +221,7 @@ const ForecastingTable = () => {
   const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
     useEnrichedMarketGroups();
   const { data: categories, isLoading: isLoadingCategories } = useCategories();
+  const isClient = useIsClient();
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -687,19 +689,27 @@ const ForecastingTable = () => {
             {groupedMarketGroups.length > 0 && (
               <motion.div
                 key="results-container"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
+                {...(isClient
+                  ? {
+                      initial: { opacity: 0 },
+                      animate: { opacity: 1 },
+                      exit: { opacity: 0 },
+                      transition: { duration: 0.25 },
+                    }
+                  : {})}
               >
                 {sortedDays.map((dayKey) => (
                   <motion.div
                     key={dayKey}
                     className="mb-8"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}
+                    {...(isClient
+                      ? {
+                          initial: { opacity: 0 },
+                          animate: { opacity: 1 },
+                          exit: { opacity: 0 },
+                          transition: { duration: 0.25 },
+                        }
+                      : {})}
                   >
                     <div className="flex flex-col mb-2">
                       <h3 className="font-medium text-sm text-muted-foreground mb-2">
@@ -710,10 +720,14 @@ const ForecastingTable = () => {
                           <motion.div
                             layout
                             key={marketGroup.key}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.25 }}
+                            {...(isClient
+                              ? {
+                                  initial: { opacity: 0 },
+                                  animate: { opacity: 1 },
+                                  exit: { opacity: 0 },
+                                  transition: { duration: 0.25 },
+                                }
+                              : {})}
                             className="border-b last:border-b-0 border-border"
                           >
                             <MarketGroupsRow
