@@ -85,21 +85,25 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
   const [selectedTab, setSelectedTab] = useState('transactions');
 
   // Get market context data
-  const { marketAddress, chainId, numericMarketId, collateralAssetTicker } =
-    useMarketPage();
+  const {
+    marketAddress,
+    chainId,
+    numericMarketId,
+    collateralAssetTicker,
+    marketData,
+  } = useMarketPage();
 
   // Fetch GraphQL-based positions (includes transaction data)
-  const targetAddress = walletAddress || address;
+  const targetAddress = walletAddress?.toLowerCase() || address?.toLowerCase();
+
   const {
     data: allPositions = [],
     isLoading: isLoadingPositions,
     error: positionsError,
   } = usePositions({
     address: targetAddress || undefined,
-    marketAddress: marketAddress || undefined,
-    chainId: chainId || undefined,
+    marketAddress: marketData?.marketGroup?.address || undefined,
   });
-
   // Filter positions by type
   const lpPositions = allPositions.filter((pos) => pos.isLP);
   const traderPositions = allPositions.filter((pos) => !pos.isLP);
