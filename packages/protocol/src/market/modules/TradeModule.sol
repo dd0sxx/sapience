@@ -335,8 +335,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             outputParams.sqrtPriceX96After
         );
 
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
         return (
-            outputParams.requiredCollateral,
+            marketGroup.denormalizeCollateralAmount(outputParams.requiredCollateral),
             outputParams.tradeRatioD18,
             price18DigitsAfter
         );

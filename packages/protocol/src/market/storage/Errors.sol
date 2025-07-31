@@ -46,7 +46,6 @@ library Errors {
         uint160 maxPrice
     );
     error TransactionExpired(uint256 deadline, uint256 blockTime);
-    error OnlyFeeCollector();
     error InvalidTransferRecipient(address recipient);
     error TradePriceOutOfBounds(
         uint256 tradeRatioD18,

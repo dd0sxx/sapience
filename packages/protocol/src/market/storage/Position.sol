@@ -24,6 +24,8 @@ library Position {
     using Market for Market.Data;
     using MarketGroup for MarketGroup.Data;
 
+    uint256 constant DUST_TOLERANCE = 10; // Allow up to 10 wei of collateral shortfall
+
     struct Data {
         // Unique identifier for the position
         uint256 id;
@@ -89,11 +91,15 @@ library Position {
         } else if (deltaCollateral > 0) {
             // Convert to token decimals for transfer (round up to ensure protocol receives full amount)
             uint256 transferAmount = marketGroup.denormalizeCollateralAmountUp(deltaCollateral.toUint());
-            collateralAsset.safeTransferFrom(msg.sender, address(this), transferAmount);
+            if (transferAmount > 0) {
+                collateralAsset.safeTransferFrom(msg.sender, address(this), transferAmount);
+            }
         } else if (deltaCollateral < 0) {
             // Convert to token decimals for transfer
             uint256 transferAmount = marketGroup.denormalizeCollateralAmount((deltaCollateral * -1).toUint());
-            collateralAsset.safeTransfer(msg.sender, transferAmount);
+            if (transferAmount > 0) {
+                collateralAsset.safeTransfer(msg.sender, transferAmount);
+            }
         }
 
         self.depositedCollateralAmount = amount;
@@ -141,7 +147,6 @@ library Position {
         int24 upperTick;
         uint256 tokensOwed0;
         uint256 tokensOwed1;
-        bool isFeeCollector;
     }
 
     function updateValidLp(Data storage self, Market.Data storage market, UpdateLpParams memory params)
@@ -169,8 +174,11 @@ library Position {
 
         newCollateralAmount = self.depositedCollateralAmount + params.additionalCollateral;
 
-        if (requiredCollateral > newCollateralAmount && !params.isFeeCollector) {
-            revert Errors.InsufficientCollateral(requiredCollateral, newCollateralAmount);
+        if (requiredCollateral > newCollateralAmount) {
+            // Allow for dust tolerance to prevent reverts on micro rounding differences
+            if (requiredCollateral - newCollateralAmount > DUST_TOLERANCE) {
+                revert Errors.InsufficientCollateral(requiredCollateral, newCollateralAmount);
+            }
         }
     }
 

@@ -27,9 +27,8 @@ contract TestMarket is TestUser {
         uint256 minTradeSize,
         bytes memory marketClaimStatement
     ) public returns (ISapience, address) {
-        address[] memory feeCollectors = new address[](0);
         return createMarketWithFeeCollectors(
-            minTick, maxTick, startingSqrtPriceX96, feeCollectors, minTradeSize, marketClaimStatement, ""
+            minTick, maxTick, startingSqrtPriceX96, minTradeSize, marketClaimStatement, ""
         );
     }
 
@@ -37,12 +36,11 @@ contract TestMarket is TestUser {
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
-        address[] memory feeCollectors,
         uint256 minTradeSize,
         bytes memory claimStatementYesOrNumeric,
         bytes memory claimStatementNo
     ) public returns (ISapience, address) {
-        address owner = initializeMarketGroup(feeCollectors, minTradeSize);
+        address owner = initializeMarketGroup(minTradeSize);
         ISapience sapience = ISapience(vm.getAddress("Sapience"));
 
         vm.prank(owner);
@@ -62,14 +60,13 @@ contract TestMarket is TestUser {
         return (sapience, owner);
     }
 
-    function initializeMarketGroup(address[] memory feeCollectors, uint256 minTradeSize) public returns (address) {
+    function initializeMarketGroup(uint256 minTradeSize) public returns (address) {
         uint256 bondAmount = 5 ether;
         address owner = createUser("Owner", 10_000_000 ether);
         vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
         ISapience(vm.getAddress("Sapience")).initializeMarketGroup(
             owner,
             vm.getAddress("CollateralAsset.Token"),
-            feeCollectors,
             minTradeSize,
             false,
             ISapienceStructs.MarketParams({
