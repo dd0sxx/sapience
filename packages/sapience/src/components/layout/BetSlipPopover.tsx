@@ -13,6 +13,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { useState, useMemo } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { DollarSign } from 'lucide-react';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
@@ -154,56 +155,156 @@ const BetSlipPopover = () => {
   };
 
   return (
-    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="default" className="rounded-full px-5" size="default">
-          <Image src="/susde-icon.svg" alt="sUSDe" width={20} height={20} />
-          Predict
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className={`${betSlipPositions.length === 0 ? 'w-80 p-6 py-14' : 'w-[20rem] p-0'}`}
-        align="end"
+    <>
+      {/* Mobile Bet Slip Button (fixed right, with border, hover effect) */}
+      <Button
+        onClick={() => setIsPopoverOpen(true)}
+        className="fixed right-0 top-16 z-[51] flex items-center justify-center md:hidden border border-r-0 border-border bg-background/30 p-2.5 pr-1.5 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
+        variant="ghost"
       >
-        {betSlipPositions.length === 0 ? (
-          <div className="text-center space-y-3">
-            <p className="text-base text-muted-foreground">
-              Place a wager on future events
-            </p>
-            <Button variant="default" size="xs" asChild>
-              <Link href="/markets" onClick={() => setIsPopoverOpen(false)}>
-                Browse Prediction Markets
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="w-full">
-            <div className="px-3 pt-3 pb-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Place a Wager</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    Make it a parlay
-                  </span>
-                  <Switch
-                    checked={isParlayMode}
-                    onCheckedChange={setIsParlayMode}
-                  />
+        <DollarSign className="h-4 w-4" />
+      </Button>
+
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="default"
+            className="hidden md:flex rounded-full px-5"
+            size="default"
+          >
+            <Image src="/susde-icon.svg" alt="sUSDe" width={20} height={20} />
+            Predict
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className={`${betSlipPositions.length === 0 ? 'w-80 p-6 py-14' : 'w-[20rem] p-0'}`}
+          align="end"
+        >
+          {betSlipPositions.length === 0 ? (
+            <div className="text-center space-y-3">
+              <p className="text-base text-muted-foreground">
+                Place a wager on future events
+              </p>
+              <Button variant="default" size="xs" asChild>
+                <Link href="/markets" onClick={() => setIsPopoverOpen(false)}>
+                  Browse Prediction Markets
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="w-full">
+              <div className="px-3 pt-3 pb-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Place a Wager</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      Make it a parlay
+                    </span>
+                    <Switch
+                      checked={isParlayMode}
+                      onCheckedChange={setIsParlayMode}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {!isParlayMode ? (
-              <FormProvider {...individualMethods}>
-                <form
-                  onSubmit={individualMethods.handleSubmit(
-                    handleIndividualSubmit
-                  )}
-                  className="p-3 max-h-96 overflow-y-auto"
-                >
-                  {positionsWithMarketData.map((positionData) => {
-                    // Show loading state
-                    if (positionData.isLoading) {
+              {!isParlayMode ? (
+                <FormProvider {...individualMethods}>
+                  <form
+                    onSubmit={individualMethods.handleSubmit(
+                      handleIndividualSubmit
+                    )}
+                    className="p-3 max-h-96 overflow-y-auto"
+                  >
+                    {positionsWithMarketData.map((positionData) => {
+                      // Show loading state
+                      if (positionData.isLoading) {
+                        return (
+                          <div
+                            key={positionData.position.id}
+                            className="border-b border-border pb-4 last:border-b-0"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-medium text-foreground pr-2">
+                                {positionData.position.question}
+                              </h3>
+                              <button
+                                onClick={() =>
+                                  removePosition(positionData.position.id)
+                                }
+                                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                type="button"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+                              Loading market data...
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Show error state
+                      if (positionData.error) {
+                        return (
+                          <div
+                            key={positionData.position.id}
+                            className="border-b border-border pb-4 last:border-b-0"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-medium text-foreground pr-2">
+                                {positionData.position.question}
+                              </h3>
+                              <button
+                                onClick={() =>
+                                  removePosition(positionData.position.id)
+                                }
+                                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                type="button"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                            <div className="text-xs text-destructive p-2 bg-destructive/10 rounded">
+                              Error loading market data
+                              <br />
+                              <small>
+                                Chain: {positionData.position.chainId} (
+                                {getChainShortName(
+                                  positionData.position.chainId
+                                )}
+                                )
+                                <br />
+                                Market: {positionData.position.marketAddress}
+                              </small>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Show position with quote functionality
+                      if (
+                        positionData.marketGroupData &&
+                        positionData.marketClassification
+                      ) {
+                        return (
+                          <WagerInputWithQuote
+                            key={positionData.position.id}
+                            positionId={positionData.position.id}
+                            question={positionData.position.question}
+                            marketGroupData={positionData.marketGroupData}
+                            marketClassification={
+                              positionData.marketClassification
+                            }
+                            onRemove={() =>
+                              removePosition(positionData.position.id)
+                            }
+                          />
+                        );
+                      }
+
+                      // Fallback for no market data
                       return (
                         <div
                           key={positionData.position.id}
@@ -224,172 +325,96 @@ const BetSlipPopover = () => {
                             </button>
                           </div>
                           <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                            Loading market data...
+                            Market data not available
                           </div>
                         </div>
                       );
-                    }
+                    })}
 
-                    // Show error state
-                    if (positionData.error) {
-                      return (
+                    <Button
+                      type="submit"
+                      variant="default"
+                      size="lg"
+                      className="w-full"
+                      disabled={positionsWithMarketData.some(
+                        (p) => p.isLoading
+                      )}
+                    >
+                      Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
+                    </Button>
+                  </form>
+                </FormProvider>
+              ) : (
+                <FormProvider {...parlayMethods}>
+                  <form
+                    onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)}
+                    className="space-y-4 p-3"
+                  >
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {betSlipPositions.map((position) => (
                         <div
-                          key={positionData.position.id}
-                          className="border-b border-border pb-4 last:border-b-0"
+                          key={position.id}
+                          className="flex items-center justify-between py-4 border-b border-border"
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-medium text-foreground pr-2">
-                              {positionData.position.question}
-                            </h3>
+                          <div className="flex-1 pr-3">
+                            <p className="text-lg font-normal text-foreground">
+                              {position.question}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-1.5 pt-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground font-medium">
+                                YES
+                              </span>
+                              <Switch
+                                checked={!position.prediction}
+                                onCheckedChange={(checked) =>
+                                  updatePosition(position.id, {
+                                    prediction: !checked,
+                                  })
+                                }
+                                className="data-[state=checked]:bg-red-500 data-[state=unchecked]:bg-green-600"
+                              />
+                              <span className="text-xs text-muted-foreground font-medium">
+                                NO
+                              </span>
+                            </div>
+
                             <button
-                              onClick={() =>
-                                removePosition(positionData.position.id)
-                              }
+                              onClick={() => removePosition(position.id)}
                               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                               type="button"
                             >
                               &times;
                             </button>
                           </div>
-                          <div className="text-xs text-destructive p-2 bg-destructive/10 rounded">
-                            Error loading market data
-                            <br />
-                            <small>
-                              Chain: {positionData.position.chainId} (
-                              {getChainShortName(positionData.position.chainId)}
-                              )
-                              <br />
-                              Market: {positionData.position.marketAddress}
-                            </small>
-                          </div>
                         </div>
-                      );
-                    }
+                      ))}
+                    </div>
 
-                    // Show position with quote functionality
-                    if (
-                      positionData.marketGroupData &&
-                      positionData.marketClassification
-                    ) {
-                      return (
-                        <WagerInputWithQuote
-                          key={positionData.position.id}
-                          positionId={positionData.position.id}
-                          question={positionData.position.question}
-                          marketGroupData={positionData.marketGroupData}
-                          marketClassification={
-                            positionData.marketClassification
-                          }
-                          onRemove={() =>
-                            removePosition(positionData.position.id)
-                          }
-                        />
-                      );
-                    }
+                    <div className="pt-1">
+                      <WagerInput />
+                    </div>
 
-                    // Fallback for no market data
-                    return (
-                      <div
-                        key={positionData.position.id}
-                        className="border-b border-border pb-4 last:border-b-0"
+                    <div className="pt-2">
+                      <Button
+                        className="w-full"
+                        disabled
+                        type="submit"
+                        size="lg"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-medium text-foreground pr-2">
-                            {positionData.position.question}
-                          </h3>
-                          <button
-                            onClick={() =>
-                              removePosition(positionData.position.id)
-                            }
-                            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                            type="button"
-                          >
-                            &times;
-                          </button>
-                        </div>
-                        <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                          Market data not available
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  <Button
-                    type="submit"
-                    variant="default"
-                    size="lg"
-                    className="w-full"
-                    disabled={positionsWithMarketData.some((p) => p.isLoading)}
-                  >
-                    Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
-                  </Button>
-                </form>
-              </FormProvider>
-            ) : (
-              <FormProvider {...parlayMethods}>
-                <form
-                  onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)}
-                  className="space-y-4 p-3"
-                >
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {betSlipPositions.map((position) => (
-                      <div
-                        key={position.id}
-                        className="flex items-center justify-between py-4 border-b border-border"
-                      >
-                        <div className="flex-1 pr-3">
-                          <p className="text-lg font-normal text-foreground">
-                            {position.question}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-col items-end gap-1.5 pt-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground font-medium">
-                              YES
-                            </span>
-                            <Switch
-                              checked={!position.prediction}
-                              onCheckedChange={(checked) =>
-                                updatePosition(position.id, {
-                                  prediction: !checked,
-                                })
-                              }
-                              className="data-[state=checked]:bg-red-500 data-[state=unchecked]:bg-green-600"
-                            />
-                            <span className="text-xs text-muted-foreground font-medium">
-                              NO
-                            </span>
-                          </div>
-
-                          <button
-                            onClick={() => removePosition(position.id)}
-                            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                            type="button"
-                          >
-                            &times;
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-1">
-                    <WagerInput />
-                  </div>
-
-                  <div className="pt-2">
-                    <Button className="w-full" disabled type="submit" size="lg">
-                      Quote Unavailable
-                    </Button>
-                  </div>
-                </form>
-              </FormProvider>
-            )}
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+                        Quote Unavailable
+                      </Button>
+                    </div>
+                  </form>
+                </FormProvider>
+              )}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    </>
   );
 };
 

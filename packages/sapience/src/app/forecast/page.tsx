@@ -119,7 +119,7 @@ const ForecastPage = () => {
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div className="min-h-screen bg-background pt-24 xl:pt-0">
+    <div className="min-h-screen bg-background pt-32 xl:pt-0">
       {/* Main content container with Twitter-like layout */}
       <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
         <>
@@ -135,13 +135,15 @@ const ForecastPage = () => {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled
-                      className="flex-1 px-4 py-3 font-medium border-b-2 border-border text-muted-foreground/50"
-                    >
-                      Ask
-                    </button>
+                    <div className="flex-1">
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full px-4 py-3 font-medium border-b-2 border-border text-muted-foreground/50 cursor-not-allowed"
+                      >
+                        Ask
+                      </button>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Coming Soon</p>
