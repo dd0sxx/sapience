@@ -3,14 +3,15 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
+
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import type { MarketGroupType } from '@sapience/ui/types';
-import MultipleChoicePredict from '../inputs/MultipleChoicePredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
+import MultipleChoiceWagerChoiceSelect from '../inputs/MultipleChoiceWager';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
@@ -148,7 +149,7 @@ export default function MultipleChoiceWagerForm({
         <div className="space-y-4">
           <div>
             <Label>Your Prediction</Label>
-            <MultipleChoicePredict
+            <MultipleChoiceWagerChoiceSelect
               options={(marketGroupData.markets || []).map((market) => ({
                 name: market.optionName || '',
                 marketId: market.marketId,

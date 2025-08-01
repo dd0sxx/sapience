@@ -25,7 +25,7 @@ import {
   ArrowLeftRightIcon,
   DropletsIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
@@ -92,6 +92,10 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
     collateralAssetTicker,
     marketData,
   } = useMarketPage();
+
+  useEffect(() => {
+    setWalletAddress(address || null);
+  }, [address]);
 
   // Fetch GraphQL-based positions (includes transaction data)
   const targetAddress = walletAddress?.toLowerCase() || address?.toLowerCase();
