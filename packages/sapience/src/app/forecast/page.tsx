@@ -4,6 +4,12 @@ import dynamic from 'next/dynamic';
 import { useState, useCallback, useEffect } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 
 import { CommentFilters } from '../../components/shared/Comments';
 import PredictForm from '~/components/forecasting/forms/PredictForm';
@@ -113,13 +119,41 @@ const ForecastPage = () => {
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div className="min-h-screen bg-background pt-24 lg:pt-0">
+    <div className="min-h-screen bg-background pt-24 xl:pt-0">
       {/* Main content container with Twitter-like layout */}
       <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
         <>
+          {/* Tabs */}
+          <div className="border-b border-border bg-background sticky top-0 z-20 border-t border-border">
+            <div className="flex">
+              <button
+                type="button"
+                className="flex-1 px-4 py-3 font-medium border-b-2 border-b-primary text-primary bg-primary/5"
+              >
+                Predict
+              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      disabled
+                      className="flex-1 px-4 py-3 font-medium border-b-2 border-border text-muted-foreground/50"
+                    >
+                      Ask
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Coming Soon</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+
           {/* Market Selector (direct market search) */}
-          <div className="backdrop-blur-sm z-20 sticky top-0">
-            <div className="px-4 py-6">
+          <div className="backdrop-blur-sm z-10 sticky top-2-">
+            <div className="p-3 pt-6">
               <QuestionSelect
                 marketMode={true}
                 markets={activeMarkets}
@@ -130,9 +164,9 @@ const ForecastPage = () => {
             </div>
           </div>
           {/* Forecast Form */}
-          <div className="border-b border-border z-10 relative">
+          <div className="border-b border-border relative pb-3">
             {selectedMarket && (
-              <div className="p-4">
+              <div className="p-3">
                 <PredictForm
                   marketGroupData={marketGroupData}
                   marketClassification={marketClassification}
@@ -141,6 +175,7 @@ const ForecastPage = () => {
               </div>
             )}
           </div>
+
           {/* Category Selection Section */}
           <div className="bg-background z-5 relative">
             <div

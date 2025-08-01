@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen, DollarSign } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -163,10 +163,10 @@ const Header = () => {
           {ready && (
             <Button
               onClick={() => setIsPopoverOpen(true)}
-              className="fixed right-0 top-16 z-[51] flex items-center justify-center md:hidden border border-r-0 border-border bg-background/30 p-2 pr-2 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
+              className="fixed right-0 top-16 z-[51] flex items-center justify-center md:hidden border border-r-0 border-border bg-background/30 p-2.5 pr-1.5 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
               variant="ghost"
             >
-              Wager
+              <DollarSign className="h-4 w-4" />
             </Button>
           )}
 

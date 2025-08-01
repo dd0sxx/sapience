@@ -375,7 +375,7 @@ const Comments = ({
                         <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
                           {comment.marketAddress && comment.marketId ? (
                             <Link
-                              href={`/markets/base:${comment.marketAddress.toLowerCase()}/${comment.marketId}`}
+                              href={`/markets/base:${comment.marketAddress.toLowerCase()}`}
                               className="transition-all duration-200 flex items-center gap-1 hover:gap-1.5 hover:text-foreground/80"
                             >
                               {comment.question}

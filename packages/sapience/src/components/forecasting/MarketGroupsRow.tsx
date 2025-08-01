@@ -242,7 +242,7 @@ const MarketGroupsRow = ({
           </div>
 
           {/* Right Side: Action Buttons */}
-          <div className="flex items-center gap-3 md:ml-6">
+          <div className="flex flex-row-reverse items-center gap-3 self-start md:flex-row md:ml-6 md:self-auto">
             {marketClassification ===
             MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (
               // For multichoice markets, show Details + dropdown
@@ -273,7 +273,7 @@ const MarketGroupsRow = ({
             ) : (
               // For non-multichoice markets, show Details + Wager buttons for the active market
               activeMarket && (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-row-reverse items-center gap-3 md:flex-row">
                   <Button
                     variant="link"
                     size="xs"
@@ -323,7 +323,7 @@ const MarketGroupsRow = ({
                         .map((marketItem) => (
                           <div
                             key={marketItem.id}
-                            className="flex items-center justify-between py-3 border-t border-border"
+                            className="flex flex-col md:flex-row md:items-center md:justify-between py-3 border-t border-border gap-3"
                           >
                             {/* Left Side: Option Name + Prediction */}
                             <div className="flex-grow">
@@ -342,8 +342,8 @@ const MarketGroupsRow = ({
                             </div>
 
                             {/* Right Side: Actions */}
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 self-start md:self-auto">
+                              <div className="flex flex-row-reverse items-center gap-3 md:flex-row">
                                 <Button
                                   variant="link"
                                   size="xs"

@@ -181,7 +181,7 @@ const BetSlipPopover = () => {
                 <span className="text-sm font-medium">Place a Wager</span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
-                    Make it Parlay
+                    Make it a parlay
                   </span>
                   <Switch
                     checked={isParlayMode}

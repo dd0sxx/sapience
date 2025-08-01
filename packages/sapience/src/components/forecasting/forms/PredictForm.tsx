@@ -198,7 +198,7 @@ export default function PredictForm({
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-3">
         {renderCategoryInput()}
 
         {/* Comment field */}
@@ -212,13 +212,15 @@ export default function PredictForm({
           />
         </div>
 
-        <Button
-          type="submit"
-          disabled={!methods.formState.isValid || isAttesting}
-          className="w-full py-6 px-5 rounded text-lg font-normal"
-        >
-          {isAttesting ? 'Submitting Prediction...' : 'Submit Prediction'}
-        </Button>
+        <div>
+          <Button
+            type="submit"
+            disabled={!methods.formState.isValid || isAttesting}
+            className="w-full py-6 px-5 rounded text-lg font-normal"
+          >
+            {isAttesting ? 'Submitting Prediction...' : 'Submit Prediction'}
+          </Button>
+        </div>
       </form>
     </FormProvider>
   );
