@@ -1,9 +1,8 @@
-'use client';
-
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: '404 Not Found',
+export const generateMetadata = () => {
+  return {
+    title: '404 | Sapience',
+    description: 'Page not found',
+  };
 };
 
 export default function NotFound() {

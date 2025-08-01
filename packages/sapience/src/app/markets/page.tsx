@@ -1,4 +1,5 @@
 import { dehydrate, QueryClient } from '@tanstack/react-query';
+import { Suspense } from 'react';
 
 import MarketGroupsList from '~/components/forecasting/MarketGroupsList';
 import Hydrate from '~/components/Hydrate';
@@ -19,6 +20,8 @@ export function generateMetadata() {
   };
 }
 
+const MarketGroupsListSkeleton = () => <div className="space-y-4" />;
+
 const ForecastingPage = async () => {
   // new query client for the server
   const serverQC = new QueryClient();
@@ -31,7 +34,9 @@ const ForecastingPage = async () => {
   return (
     <Hydrate state={state}>
       <div className="container mx-auto px-4 md:p-8 max-w-8xl mt-16">
-        <MarketGroupsList />
+        <Suspense fallback={<MarketGroupsListSkeleton />}>
+          <MarketGroupsList />
+        </Suspense>
       </div>
     </Hydrate>
   );
