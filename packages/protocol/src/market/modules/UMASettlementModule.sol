@@ -84,7 +84,7 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable
         return market.assertionId;
     }
 
-    function assertionResolvedCallback(bytes32 assertionId, bool) external {
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         uint256 marketId = marketGroup.marketIdByAssertionId[assertionId];
         Market.Data storage market = Market.load(marketId);
@@ -93,7 +93,8 @@ contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable
 
         Market.Settlement storage settlement = market.settlement;
 
-        if (!market.settlement.disputed) {
+        // Only settle if the assertion was truthful and not disputed
+        if (assertedTruthfully && !market.settlement.disputed) {
             market.setSettlementPriceInRange(DecimalPrice.sqrtRatioX96ToPrice(settlement.settlementPriceSqrtX96));
 
             emit MarketSettled(marketId, assertionId, settlement.settlementPriceSqrtX96);

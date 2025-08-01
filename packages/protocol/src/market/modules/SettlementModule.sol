@@ -70,36 +70,6 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         );
     }
 
-    function __manual_setSettlementPrice() external override returns (uint160 settlementPriceX96) {
-        uint256 DURATION_MULTIPLIER = 2;
-
-        MarketGroup.Data storage marketGroup = MarketGroup.load();
-        Market.Data storage market = Market.loadValid(marketGroup.lastMarketId);
-
-        if (market.settled) {
-            revert Errors.MarketSettled();
-        }
-
-        uint256 marketDuration = market.endTime - market.startTime;
-        uint256 requiredDelay = marketDuration * DURATION_MULTIPLIER;
-        uint256 timeSinceEnd = block.timestamp - market.endTime;
-
-        if (timeSinceEnd < requiredDelay) {
-            revert Errors.ManualSettlementTooEarly(requiredDelay - timeSinceEnd);
-        }
-
-        settlementPriceX96 = market.getCurrentPoolPriceSqrtX96();
-        market.setSettlementPriceInRange(DecimalPrice.sqrtRatioX96ToPrice(settlementPriceX96));
-
-        // update settlement
-        market.settlement = Market.Settlement({
-            settlementPriceSqrtX96: settlementPriceX96,
-            submissionTime: block.timestamp,
-            disputed: false
-        });
-
-        emit MarketManualSettlement(market.id, settlementPriceX96);
-    }
 
     function _settleLiquidityPosition(Position.Data storage position, Market.Data storage market)
         internal
