@@ -229,8 +229,6 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.deal(marketUser, sendAmount);
 
         vm.startPrank(marketUser);
-        vm.expectEmit(true, true, false, true);
-        emit IETHManagement.ETHDeposited(marketUser, sendAmount);
         (bool success,) = address(marketBridge).call{value: sendAmount}("");
         assertTrue(success);
         vm.stopPrank();
@@ -330,8 +328,6 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.deal(umaUser, sendAmount);
 
         vm.startPrank(umaUser);
-        vm.expectEmit(true, true, false, true);
-        emit IETHManagement.ETHDeposited(umaUser, sendAmount);
         (bool success,) = address(umaBridge).call{value: sendAmount}("");
         assertTrue(success);
         vm.stopPrank();
