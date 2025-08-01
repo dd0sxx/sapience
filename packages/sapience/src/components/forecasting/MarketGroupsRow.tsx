@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -251,7 +252,7 @@ const MarketGroupsRow = ({
                   variant="link"
                   size="xs"
                   asChild
-                  className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground"
+                  className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
                 >
                   <Link href={`/markets/${chainShortName}:${marketAddress}`}>
                     Details
@@ -261,7 +262,7 @@ const MarketGroupsRow = ({
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="h-8 px-3 w-[70px]"
+                  className="h-8 px-3 w-24"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsExpanded(!isExpanded);
@@ -278,7 +279,7 @@ const MarketGroupsRow = ({
                     variant="link"
                     size="xs"
                     asChild
-                    className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground"
+                    className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
                   >
                     <Link href={`/markets/${chainShortName}:${marketAddress}`}>
                       Details
@@ -289,9 +290,15 @@ const MarketGroupsRow = ({
                     variant="default"
                     size="sm"
                     onClick={() => handleAddToBetSlip(activeMarket)}
-                    className="h-8 px-3"
+                    className="h-8 px-3 w-24"
                   >
-                    Wager
+                    <Image
+                      src="/susde-icon.svg"
+                      alt="sUSDe"
+                      width={18}
+                      height={18}
+                    />
+                    Predict
                   </Button>
                 </div>
               )
@@ -348,7 +355,7 @@ const MarketGroupsRow = ({
                                   variant="link"
                                   size="xs"
                                   asChild
-                                  className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground"
+                                  className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
                                 >
                                   <Link
                                     href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
@@ -361,9 +368,15 @@ const MarketGroupsRow = ({
                                   variant="default"
                                   size="sm"
                                   onClick={() => handleAddToBetSlip(marketItem)}
-                                  className="h-8 px-3"
+                                  className="h-8 px-3 w-24"
                                 >
-                                  Wager
+                                  <Image
+                                    src="/susde-icon.svg"
+                                    alt="sUSDe"
+                                    width={18}
+                                    height={18}
+                                  />
+                                  Predict
                                 </Button>
                               </div>
                             </div>

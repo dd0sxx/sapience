@@ -8,6 +8,7 @@ import {
 } from '@sapience/ui/components/ui/popover';
 import { Switch } from '@sapience/ui/components/ui/switch';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useState, useMemo } from 'react';
 import { z } from 'zod';
@@ -155,8 +156,9 @@ const BetSlipPopover = () => {
   return (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
-        <Button variant="default" className="rounded-full px-6" size="default">
-          Wager
+        <Button variant="default" className="rounded-full px-5" size="default">
+          <Image src="/susde-icon.svg" alt="sUSDe" width={20} height={20} />
+          Predict
         </Button>
       </PopoverTrigger>
       <PopoverContent
