@@ -83,7 +83,7 @@ contract TradePositionSettlement is TestTrade {
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
-        (owner,,,) = sapience.getMarketGroup();
+        (owner,,) = sapience.getMarketGroup();
 
         bondCurrency.mint(marketParams.bondAmount * 2, owner);
     }

@@ -30,7 +30,8 @@ interface ISapienceStructs {
 
     struct LiquidityCloseParams {
         uint256 positionId;
-        uint256 liquiditySlippage; // slippage for closing the liquidity position D18 100% = 1e18
+        uint256 amount0Min; // minimum amount of token0 to receive
+        uint256 amount1Min; // minimum amount of token1 to receive
         uint256 tradeSlippage; // slippage for closing the trade position D18 100% = 1e18
         uint256 deadline;
     }

@@ -43,7 +43,6 @@ contract YesNoMarketSettlementTest is Test {
         );
         uint256 saltNum = uint256(testSalt) % type(uint256).max;
         marketOwner = address(uint160(uint256(keccak256(abi.encodePacked("owner", testSalt)))));
-        address[] memory feeCollectors = new address[](0);
         mockSapience = ISapience(vm.getAddress("Sapience"));
 
         // Initialize market group with unique owner
@@ -51,7 +50,6 @@ contract YesNoMarketSettlementTest is Test {
         mockSapience.initializeMarketGroup(
             marketOwner,
             vm.getAddress("CollateralAsset.Token"),
-            feeCollectors,
             MIN_TRADE_SIZE,
             false,
             ISapienceStructs.MarketParams({

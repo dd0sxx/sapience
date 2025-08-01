@@ -18,7 +18,6 @@ contract MarketGroupFactory {
 
     function cloneAndInitializeMarketGroup(
         address collateralAsset,
-        address[] calldata feeCollectors,
         uint256 minTradeSize,
         bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams,
@@ -27,7 +26,7 @@ contract MarketGroupFactory {
         address marketGroup = implementation.clone();
 
         IConfigurationModule(marketGroup).initializeMarketGroup(
-            msg.sender, collateralAsset, feeCollectors, minTradeSize, bridgedSettlement, marketParams
+            msg.sender, collateralAsset, minTradeSize, bridgedSettlement, marketParams
         );
 
         emit MarketGroupDeployed(msg.sender, marketGroup, nonce);
