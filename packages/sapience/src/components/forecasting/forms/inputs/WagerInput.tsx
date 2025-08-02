@@ -84,6 +84,8 @@ export function WagerInput({
     setValue,
   } = useFormContext();
   const chainShortName = getChainShortName(chainId);
+  
+
 
   // Validate the wager amount independently using the schema
   useEffect(() => {

@@ -2,6 +2,8 @@
 
 import type React from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
+import { MarketGroupClassification } from '~/lib/types';
+import { createPositionDefaults } from '~/lib/utils/betslipUtils';
 
 // Updated BetSlipPosition type based on requirements
 export interface BetSlipPosition {
@@ -11,6 +13,8 @@ export interface BetSlipPosition {
   marketId: number;
   question: string;
   chainId: number; // Add chainId to identify which chain the market is on
+  wagerAmount?: string; // Store default wager amount
+  marketClassification?: MarketGroupClassification; // Store classification for better form handling
 }
 
 interface BetSlipContextType {
@@ -53,6 +57,9 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
           p.marketId === position.marketId
       );
 
+      // Create intelligent defaults based on market classification
+      const defaults = createPositionDefaults(position.marketClassification);
+      
       if (existingPositionIndex !== -1) {
         // Merge into existing position by updating it
         setBetSlipPositions((prev) =>
@@ -62,6 +69,9 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
                   ...p,
                   prediction: position.prediction,
                   question: position.question,
+                  marketClassification: position.marketClassification,
+                  // Preserve existing wager amount if it exists, otherwise use default
+                  wagerAmount: p.wagerAmount || defaults.wagerAmount,
                 }
               : p
           )
@@ -70,11 +80,16 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
         // Generate a unique ID for the new position
         const id = `${position.marketAddress}-${position.marketId}-${position.prediction}-${Date.now()}`;
 
-        const newPosition: BetSlipPosition = {
+        // Apply intelligent defaults for new positions
+        const enhancedPosition: BetSlipPosition = {
           ...position,
           id,
+          // Apply defaults while allowing explicit overrides
+          wagerAmount: position.wagerAmount || defaults.wagerAmount,
+          prediction: position.prediction ?? defaults.prediction ?? false,
         };
-        setBetSlipPositions((prev) => [...prev, newPosition]);
+        
+        setBetSlipPositions((prev) => [...prev, enhancedPosition]);
       }
 
       setIsPopoverOpen(true); // Open popover when position is added or updated

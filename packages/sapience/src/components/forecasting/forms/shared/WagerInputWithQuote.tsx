@@ -54,7 +54,7 @@ export default function WagerInputWithQuote({
       : undefined;
 
   return (
-    <div className="border-b border-border pb-4 last:border-b-0">
+    <div className="border-b border-border last:border-b-0">
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-medium text-foreground pr-2">{question}</h3>
         <button

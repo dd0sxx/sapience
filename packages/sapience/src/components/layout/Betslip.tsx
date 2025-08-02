@@ -18,7 +18,7 @@ import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useForm, FormProvider } from 'react-hook-form';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DollarSign } from 'lucide-react';
@@ -32,7 +32,8 @@ import {
 import { useMultipleMarketGroups } from '~/hooks/graphql/useMultipleMarketGroups';
 import { getChainShortName } from '~/lib/utils/util';
 import WagerInputWithQuote from '~/components/forecasting/forms/shared/WagerInputWithQuote';
-import type { MarketGroupClassification } from '~/lib/types';
+import { MarketGroupClassification } from '~/lib/types';
+import { getDefaultFormPredictionValue, DEFAULT_WAGER_AMOUNT, YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 interface PositionWithMarketData {
   position: any; // BetSlipPosition from context
@@ -112,7 +113,7 @@ const BetslipContent = ({
                   return (
                     <div
                       key={positionData.position.id}
-                      className={`mb-4 ${!isLast ? 'border-b border-border' : ''} ${isLast ? 'mb-0' : ''}`}
+                      className={`pb-4 mb-4 ${!isLast ? 'border-b border-border' : ''} ${isLast ? 'pb-0 mb-0' : ''}`}
                     >
                       {/* Show loading state */}
                       {positionData.isLoading && (
@@ -278,10 +279,10 @@ const BetslipContent = ({
                 </div>
 
                 <div className="pt-2">
-                  <Button 
-                    className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90" 
-                    disabled 
-                    type="submit" 
+                  <Button
+                    className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled
+                    type="submit"
                     size="lg"
                     variant="default"
                   >
@@ -319,13 +320,7 @@ const Betslip = () => {
 
       if (!marketMap.has(key)) {
         const chainShortName = getChainShortName(chainId);
-        console.log('Processing position:', {
-          originalChainId: position.chainId,
-          effectiveChainId: chainId,
-          chainShortName,
-          marketAddress: position.marketAddress,
-          question: position.question,
-        });
+
 
         marketMap.set(key, {
           chainId,
@@ -384,37 +379,62 @@ const Betslip = () => {
     });
   }, [betSlipPositions]);
 
+  // Helper function to generate form values
+  const generateFormValues = useMemo(() => {
+    return {
+      positions: Object.fromEntries(
+        betSlipPositions.map((position) => {
+          // Use stored market classification for smart defaults
+          const classification = position.marketClassification || MarketGroupClassification.NUMERIC;
+          
+          const predictionValue = getDefaultFormPredictionValue(
+            classification,
+            position.prediction
+          ) || YES_SQRT_PRICE_X96;
+          
+          const wagerAmount = position.wagerAmount || DEFAULT_WAGER_AMOUNT;
+          
+
+          
+          return [
+            position.id,
+            {
+              predictionValue,
+              wagerAmount,
+            },
+          ];
+        })
+      ),
+    };
+  }, [betSlipPositions]);
+
   // Set up form for individual wagers
   const individualMethods = useForm({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      positions: Object.fromEntries(
-        betSlipPositions.map((position) => [
-          position.id,
-          {
-            predictionValue: position.prediction ? 'YES' : 'NO',
-            wagerAmount: '1',
-          },
-        ])
-      ),
-    },
+    defaultValues: generateFormValues,
     mode: 'onChange',
   });
+
+  // Reset form when betslip positions change
+  useEffect(() => {
+
+    individualMethods.reset(generateFormValues);
+  }, [individualMethods, generateFormValues]);
 
   // Set up form for parlay mode
   const parlayMethods = useForm({
     defaultValues: {
-      wagerAmount: '1',
+      wagerAmount: DEFAULT_WAGER_AMOUNT,
     },
   });
 
   const handleIndividualSubmit = (data: any) => {
-    console.log('Individual wager form data:', data);
+
     // TODO: Implement individual wager submission logic
   };
 
   const handleParlaySubmit = (data: any) => {
-    console.log('Parlay form data:', data);
+
     // TODO: Implement parlay submission logic
   };
 

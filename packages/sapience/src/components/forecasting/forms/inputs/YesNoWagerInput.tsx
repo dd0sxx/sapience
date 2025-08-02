@@ -1,29 +1,41 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useFormContext } from 'react-hook-form';
+import { useEffect } from 'react';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput } from './WagerInput';
+import { YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 interface YesNoWagerInputProps {
   marketGroupData: MarketGroupType;
   positionId: string; // Used to namespace form fields
 }
 
-// Define constants for sqrtPriceX96 values
-const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
-const NO_SQRT_PRICE_X96 = '0';
-
 export default function YesNoWagerInput({
   marketGroupData,
   positionId,
 }: YesNoWagerInputProps) {
-  const { register, setValue, watch } = useFormContext();
+  const { register, setValue, watch, getValues } = useFormContext();
 
   const predictionFieldName = `positions.${positionId}.predictionValue`;
   const wagerAmountFieldName = `positions.${positionId}.wagerAmount`;
 
   const predictionValue = watch(predictionFieldName);
+
+  // Ensure form reflects initial values when component mounts
+  useEffect(() => {
+    const currentValue = getValues(predictionFieldName);
+
+    
+    // If there's no current value, set the default to YES
+    if (!currentValue) {
+
+      setValue(predictionFieldName, YES_SQRT_PRICE_X96, {
+        shouldValidate: true,
+      });
+    }
+  }, [predictionFieldName, setValue, getValues, positionId]);
 
   return (
     <div className="space-y-4">
@@ -76,5 +88,4 @@ export default function YesNoWagerInput({
   );
 }
 
-// Export constants for use by parent components
-export { YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96 };
+// Constants are now exported from ~/lib/utils/betslipUtils for centralized management

@@ -15,16 +15,13 @@ import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { MarketGroupClassification } from '~/lib/types';
+import { YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
   isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
-
-// Define constants for sqrtPriceX96 values
-const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
-const NO_SQRT_PRICE_X96 = '0';
 
 export default function YesNoWagerForm({
   marketGroupData,

@@ -1,6 +1,6 @@
 import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import type { MarketGroupType } from '@sapience/ui/types';
-import { YES_SQRT_PRICE_X96 } from '../inputs/YesNoWagerInput';
+import { YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 import { MarketGroupClassification } from '~/lib/types';
 
 interface QuoteDisplayProps {

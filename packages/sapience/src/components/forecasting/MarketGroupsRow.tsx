@@ -90,11 +90,12 @@ const MarketGroupsRow = ({
   // Helper function to handle adding market to bet slip
   const handleAddToBetSlip = (marketItem: MarketWithContext) => {
     const position = {
-      prediction: true, // Default to true, could be made dynamic based on market type
+      prediction: true, // Default to true, will be overridden by smart defaults for YES_NO markets
       marketAddress: marketAddress,
       marketId: marketItem.marketId,
       question: marketItem.question || marketItem.optionName || displayQuestion,
       chainId: chainId, // Include chainId so betslip knows which chain this market is on
+      marketClassification, // Pass classification for intelligent defaults
     };
     addPosition(position);
   };
