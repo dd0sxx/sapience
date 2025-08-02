@@ -1,6 +1,6 @@
 import type { MarketGroupType } from '@sapience/ui/types';
 import { MarketGroupClassification } from '~/lib/types';
-import { YES_SQRT_PRICE_X96 } from '~/components/forecasting/forms/inputs/YesNoWagerInput';
+import { YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 export interface PositionQuoteData {
   positionId: string;
