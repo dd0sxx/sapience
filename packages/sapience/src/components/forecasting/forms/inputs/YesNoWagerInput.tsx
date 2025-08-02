@@ -5,7 +5,10 @@ import { useEffect } from 'react';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput } from './WagerInput';
-import { YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
+import {
+  YES_SQRT_PRICE_X96,
+  NO_SQRT_PRICE_X96,
+} from '~/lib/utils/betslipUtils';
 
 interface YesNoWagerInputProps {
   marketGroupData: MarketGroupType;
@@ -27,10 +30,8 @@ export default function YesNoWagerInput({
   useEffect(() => {
     const currentValue = getValues(predictionFieldName);
 
-    
     // If there's no current value, set the default to YES
     if (!currentValue) {
-
       setValue(predictionFieldName, YES_SQRT_PRICE_X96, {
         shouldValidate: true,
       });

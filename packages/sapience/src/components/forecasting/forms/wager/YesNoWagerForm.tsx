@@ -15,7 +15,10 @@ import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { MarketGroupClassification } from '~/lib/types';
-import { YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
+import {
+  YES_SQRT_PRICE_X96,
+  NO_SQRT_PRICE_X96,
+} from '~/lib/utils/betslipUtils';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;

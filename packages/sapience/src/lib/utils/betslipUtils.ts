@@ -52,7 +52,7 @@ export function getDefaultFormPredictionValue(
     const prediction = currentPrediction ?? true;
     return predictionToSqrtPrice(prediction);
   }
-  
+
   // For other market types, return undefined - let the specific form components handle defaults
   return undefined;
 }

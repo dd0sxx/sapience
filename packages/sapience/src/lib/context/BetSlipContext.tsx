@@ -2,7 +2,7 @@
 
 import type React from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
-import { MarketGroupClassification } from '~/lib/types';
+import type { MarketGroupClassification } from '~/lib/types';
 import { createPositionDefaults } from '~/lib/utils/betslipUtils';
 
 // Updated BetSlipPosition type based on requirements
@@ -59,7 +59,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
 
       // Create intelligent defaults based on market classification
       const defaults = createPositionDefaults(position.marketClassification);
-      
+
       if (existingPositionIndex !== -1) {
         // Merge into existing position by updating it
         setBetSlipPositions((prev) =>
@@ -88,7 +88,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
           wagerAmount: position.wagerAmount || defaults.wagerAmount,
           prediction: position.prediction ?? defaults.prediction ?? false,
         };
-        
+
         setBetSlipPositions((prev) => [...prev, enhancedPosition]);
       }
 

@@ -21,7 +21,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { useState, useMemo, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, SquareStack } from 'lucide-react';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
@@ -33,7 +33,11 @@ import { useMultipleMarketGroups } from '~/hooks/graphql/useMultipleMarketGroups
 import { getChainShortName } from '~/lib/utils/util';
 import WagerInputWithQuote from '~/components/forecasting/forms/shared/WagerInputWithQuote';
 import { MarketGroupClassification } from '~/lib/types';
-import { getDefaultFormPredictionValue, DEFAULT_WAGER_AMOUNT, YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
+import {
+  getDefaultFormPredictionValue,
+  DEFAULT_WAGER_AMOUNT,
+  YES_SQRT_PRICE_X96,
+} from '~/lib/utils/betslipUtils';
 
 interface PositionWithMarketData {
   position: any; // BetSlipPosition from context
@@ -53,8 +57,8 @@ interface BetslipContentProps {
   positionsWithMarketData: PositionWithMarketData[];
   individualMethods: any;
   parlayMethods: any;
-  handleIndividualSubmit: (data: any) => void;
-  handleParlaySubmit: (data: any) => void;
+  handleIndividualSubmit: () => void;
+  handleParlaySubmit: () => void;
 }
 
 const BetslipContent = ({
@@ -89,8 +93,9 @@ const BetslipContent = ({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Place a Wager</span>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  Make it a parlay
+                <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+                  <SquareStack className="w-3 h-3" />
+                  Parlay
                 </span>
                 <Switch
                   checked={isParlayMode}
@@ -221,7 +226,7 @@ const BetslipContent = ({
                   className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={positionsWithMarketData.some((p) => p.isLoading)}
                 >
-                  Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
+                  Submit Prediction{betSlipPositions.length > 1 ? 's' : ''}
                 </Button>
               </form>
             </FormProvider>
@@ -321,7 +326,6 @@ const Betslip = () => {
       if (!marketMap.has(key)) {
         const chainShortName = getChainShortName(chainId);
 
-
         marketMap.set(key, {
           chainId,
           marketAddress: position.marketAddress,
@@ -385,17 +389,17 @@ const Betslip = () => {
       positions: Object.fromEntries(
         betSlipPositions.map((position) => {
           // Use stored market classification for smart defaults
-          const classification = position.marketClassification || MarketGroupClassification.NUMERIC;
-          
-          const predictionValue = getDefaultFormPredictionValue(
-            classification,
-            position.prediction
-          ) || YES_SQRT_PRICE_X96;
-          
-          const wagerAmount = position.wagerAmount || DEFAULT_WAGER_AMOUNT;
-          
+          const classification =
+            position.marketClassification || MarketGroupClassification.NUMERIC;
 
-          
+          const predictionValue =
+            getDefaultFormPredictionValue(
+              classification,
+              position.prediction
+            ) || YES_SQRT_PRICE_X96;
+
+          const wagerAmount = position.wagerAmount || DEFAULT_WAGER_AMOUNT;
+
           return [
             position.id,
             {
@@ -417,7 +421,6 @@ const Betslip = () => {
 
   // Reset form when betslip positions change
   useEffect(() => {
-
     individualMethods.reset(generateFormValues);
   }, [individualMethods, generateFormValues]);
 
@@ -428,13 +431,11 @@ const Betslip = () => {
     },
   });
 
-  const handleIndividualSubmit = (data: any) => {
-
+  const handleIndividualSubmit = () => {
     // TODO: Implement individual wager submission logic
   };
 
-  const handleParlaySubmit = (data: any) => {
-
+  const handleParlaySubmit = () => {
     // TODO: Implement parlay submission logic
   };
 
