@@ -40,47 +40,37 @@ contract UMASettlementModule is
 
         bytes memory claim = getClaim(market, decimalPrice);
 
-        IERC20 bondCurrency = IERC20(marketGroup.marketParams.bondCurrency);
+        IERC20 bondCurrency = IERC20(market.marketParams.bondCurrency);
 
         // If the market is bridged, use the bridge to assert truth
         if (marketGroup.bridgedSettlement) {
-            IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(
-                marketGroup.marketParams.optimisticOracleV3
-            );
+            IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(market.marketParams.optimisticOracleV3);
 
             market.assertionId = bridge.forwardAssertTruth(
                 address(this),
                 params.marketId,
                 claim,
                 params.asserter,
-                marketGroup.marketParams.assertionLiveness,
-                marketGroup.marketParams.bondCurrency,
-                marketGroup.marketParams.bondAmount
+                market.marketParams.assertionLiveness,
+                market.marketParams.bondCurrency,
+                market.marketParams.bondAmount
             );
         } else {
             // If the market is not bridged, use the optimistic oracle to assert truth and send the bond to the oracle
-            OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                    marketGroup.marketParams.optimisticOracleV3
-                );
+            OptimisticOracleV3Interface optimisticOracleV3 =
+                OptimisticOracleV3Interface(market.marketParams.optimisticOracleV3);
 
-            bondCurrency.safeTransferFrom(
-                msg.sender,
-                address(this),
-                marketGroup.marketParams.bondAmount
-            );
-            bondCurrency.forceApprove(
-                address(optimisticOracleV3),
-                marketGroup.marketParams.bondAmount
-            );
+            bondCurrency.safeTransferFrom(msg.sender, address(this), market.marketParams.bondAmount);
+            bondCurrency.forceApprove(address(optimisticOracleV3), market.marketParams.bondAmount);
 
             market.assertionId = optimisticOracleV3.assertTruth(
                 claim,
                 params.asserter,
                 address(this),
                 address(0),
-                marketGroup.marketParams.assertionLiveness,
-                IERC20(marketGroup.marketParams.bondCurrency),
-                marketGroup.marketParams.bondAmount,
+                market.marketParams.assertionLiveness,
+                IERC20(market.marketParams.bondCurrency),
+                market.marketParams.bondAmount,
                 optimisticOracleV3.defaultIdentifier(),
                 bytes32(0)
             );
@@ -104,7 +94,7 @@ contract UMASettlementModule is
         return market.assertionId;
     }
 
-    function assertionResolvedCallback(bytes32 assertionId, bool) external {
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         uint256 marketId = marketGroup.marketIdByAssertionId[assertionId];
         Market.Data storage market = Market.load(marketId);
@@ -113,12 +103,9 @@ contract UMASettlementModule is
 
         Market.Settlement storage settlement = market.settlement;
 
-        if (!market.settlement.disputed) {
-            market.setSettlementPriceInRange(
-                DecimalPrice.sqrtRatioX96ToPrice(
-                    settlement.settlementPriceSqrtX96
-                )
-            );
+        // Only settle if the assertion was truthful and not disputed
+        if (assertedTruthfully && !market.settlement.disputed) {
+            market.setSettlementPriceInRange(DecimalPrice.sqrtRatioX96ToPrice(settlement.settlementPriceSqrtX96));
 
             emit MarketSettled(
                 marketId,
@@ -162,15 +149,9 @@ contract UMASettlementModule is
         );
     }
 
-    function validateUMACallback(
-        Market.Data storage market,
-        address caller,
-        bytes32 assertionId
-    ) internal view {
-        MarketGroup.Data storage marketGroup = MarketGroup.load();
-        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                marketGroup.marketParams.optimisticOracleV3
-            );
+    function validateUMACallback(Market.Data storage market, address caller, bytes32 assertionId) internal view {
+        OptimisticOracleV3Interface optimisticOracleV3 =
+            OptimisticOracleV3Interface(market.marketParams.optimisticOracleV3);
 
         require(
             block.timestamp > market.endTime,

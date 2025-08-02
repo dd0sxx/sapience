@@ -7,7 +7,6 @@ import "../storage/ERC721EnumerableStorage.sol";
 import "../storage/Trade.sol";
 import "../storage/Market.sol";
 import "../storage/MarketGroup.sol";
-import "../libraries/DecimalMath.sol";
 import "../libraries/DecimalPrice.sol";
 import { ISapiencePositionEvents } from "../interfaces/ISapiencePositionEvents.sol";
 import { ISapienceStructs } from "../interfaces/ISapienceStructs.sol";
@@ -26,8 +25,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     using Market for Market.Data;
     using Position for Position.Data;
     using MarketGroup for MarketGroup.Data;
-    using DecimalMath for uint256;
-    using DecimalMath for int256;
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
@@ -338,8 +335,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             outputParams.sqrtPriceX96After
         );
 
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
         return (
-            outputParams.requiredCollateral,
+            marketGroup.denormalizeCollateralAmount(outputParams.requiredCollateral),
             outputParams.tradeRatioD18,
             price18DigitsAfter
         );

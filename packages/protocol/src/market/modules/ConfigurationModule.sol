@@ -2,7 +2,6 @@
 pragma solidity >=0.8.25 <0.9.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "../external/FeeCollectorNft.sol";
 import "../interfaces/IConfigurationModule.sol";
 import "../storage/Market.sol";
 import "../storage/MarketGroup.sol";
@@ -35,26 +34,16 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable
      */
     function initializeMarketGroup(
         address initialOwner,
-        address collateralAsset, 
-        address[] calldata feeCollectors,
+        address collateralAsset,
         uint256 minTradeSize,
         bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams
     ) external override nonReentrant {
-        address feeCollectorNFT;
-        if (feeCollectors.length > 0) {
-            feeCollectorNFT = address(new FeeCollectorNft("FeeCollectorNFT", "FCNFT"));
-            for (uint256 i = 0; i < feeCollectors.length; i++) {
-                address feeCollector = feeCollectors[i];
-                FeeCollectorNft(feeCollectorNFT).mint(feeCollector);
-            }
-        }
-
         MarketGroup.createValid(
-            initialOwner, collateralAsset, feeCollectorNFT, minTradeSize, bridgedSettlement, marketParams
+            initialOwner, collateralAsset, minTradeSize, bridgedSettlement, marketParams
         );
         emit MarketGroupInitialized(
-            initialOwner, collateralAsset, feeCollectorNFT, minTradeSize, bridgedSettlement, marketParams
+            initialOwner, collateralAsset, minTradeSize, bridgedSettlement, marketParams
         );
     }
 

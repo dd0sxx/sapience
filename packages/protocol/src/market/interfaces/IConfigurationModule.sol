@@ -7,7 +7,6 @@ interface IConfigurationModule {
     event MarketGroupInitialized(
         address initialOwner,
         address collateralAsset,
-        address feeCollectorNFT,
         uint256 minTradeSize,
         bool bridgedSettlement,
         ISapienceStructs.MarketParams marketParams
@@ -32,7 +31,6 @@ interface IConfigurationModule {
      * @notice Initializes a market group
      * @param owner Address of a market group owner, which can update the configurations and submit a settlement price
      * @param collateralAsset Address of the collateral used by the market group. This cannot be a rebase token.
-     * @param feeCollectors Addresses of fee collectors
      * @param minTradeSize Minimum trade size for a position
      * @param bridgedSettlement Whether the market group uses bridged settlement
      * @param marketParams Parameters used when new markets are created
@@ -40,7 +38,6 @@ interface IConfigurationModule {
     function initializeMarketGroup(
         address owner,
         address collateralAsset,
-        address[] calldata feeCollectors,
         uint256 minTradeSize,
         bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams

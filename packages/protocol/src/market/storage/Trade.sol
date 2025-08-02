@@ -40,7 +40,6 @@ library Trade {
             revert Errors.InvalidData("At least one token should be traded");
         }
 
-        MarketGroup.Data storage marketGroup = MarketGroup.load();
 
         address tokenIn;
         address tokenOut;
@@ -63,16 +62,16 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amountIn: amountIn,
-                    fee: marketGroup.marketParams.feeRate,
+                    fee: market.marketParams.feeRate,
                     sqrtPriceLimitX96: 0
                 });
             (amountOut, sqrtPriceX96After, , ) = IQuoterV2(
-                marketGroup.marketParams.uniswapQuoter
+                market.marketParams.uniswapQuoter
             ).quoteExactInputSingle(params);
         } else {
             ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter
                 .ExactInputSingleParams({
-                    fee: marketGroup.marketParams.feeRate,
+                    fee: market.marketParams.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     tokenIn: tokenIn,
@@ -84,7 +83,7 @@ library Trade {
                 });
 
             try
-                ISwapRouter(marketGroup.marketParams.uniswapSwapRouter)
+                ISwapRouter(market.marketParams.uniswapSwapRouter)
                     .exactInputSingle(swapParams)
             returns (uint256 amountOutResult) {
                 amountOut = amountOutResult;
@@ -121,7 +120,6 @@ library Trade {
             revert Errors.InvalidData("At least one token should be traded");
         }
 
-        MarketGroup.Data storage marketGroup = MarketGroup.load();
 
         address tokenIn;
         address tokenOut;
@@ -144,12 +142,12 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amount: amountOut,
-                    fee: marketGroup.marketParams.feeRate,
+                    fee: market.marketParams.feeRate,
                     sqrtPriceLimitX96: 0
                 });
 
             (amountIn, sqrtPriceX96After, , ) = IQuoterV2(
-                marketGroup.marketParams.uniswapQuoter
+                market.marketParams.uniswapQuoter
             ).quoteExactOutputSingle(params);
         } else {
             ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
@@ -157,7 +155,7 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amountOut: amountOut,
-                    fee: marketGroup.marketParams.feeRate,
+                    fee: market.marketParams.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
@@ -166,7 +164,7 @@ library Trade {
                 });
 
             try
-                ISwapRouter(marketGroup.marketParams.uniswapSwapRouter)
+                ISwapRouter(market.marketParams.uniswapSwapRouter)
                     .exactOutputSingle(swapParams)
             returns (uint256 amountInResult) {
                 amountIn = amountInResult;
@@ -266,21 +264,18 @@ library Trade {
             params.oldPosition
         );
 
-        // Check if the tradeRatioD18 is within the bounds
-        if (runtime.tradeRatioD18RoundDown < market.minPriceD18) {
-            revert Errors.TradePriceOutOfBounds(
-                runtime.tradeRatioD18RoundDown,
-                market.minPriceD18,
-                market.maxPriceD18
-            );
-        }
+        // Check for dust trade (1 wei of base, at most 2 wei of quote, and final position is flat)
+        bool isDustClose = runtime.tradedVBase == 1 && runtime.tradedVQuote <= 2 && params.targetSize == 0;
 
-        if (runtime.tradeRatioD18RoundUp > market.maxPriceD18) {
-            revert Errors.TradePriceOutOfBounds(
-                runtime.tradeRatioD18RoundUp,
-                market.minPriceD18,
-                market.maxPriceD18
-            );
+        // Check if the tradeRatioD18 is within the bounds (skip for dust trades)
+        if (!isDustClose) {
+            if (runtime.tradeRatioD18RoundDown < market.minPriceD18) {
+                revert Errors.TradePriceOutOfBounds(runtime.tradeRatioD18RoundDown, market.minPriceD18, market.maxPriceD18);
+            }
+
+            if (runtime.tradeRatioD18RoundUp > market.maxPriceD18) {
+                revert Errors.TradePriceOutOfBounds(runtime.tradeRatioD18RoundUp, market.minPriceD18, market.maxPriceD18);
+            }
         }
 
         // Use the truncated value as the tradeRatioD18 (used later in the event, the difference between roundDown and roundUp is not important in the event and quote functions as it is informative)

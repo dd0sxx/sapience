@@ -239,7 +239,7 @@ library Market {
                 )
             );
             try
-                new VirtualToken{ salt: bytes32(salt) }(
+                new VirtualToken{salt: bytes32(salt)}(
                     address(this),
                     name,
                     symbol
@@ -641,10 +641,7 @@ library Market {
         Data storage self,
         uint256 settlementPriceD18
     ) internal returns (uint256) {
-        // Special case: allow exact 0 for complete loss scenarios (e.g., "No" outcome in yes/no markets)
-        if (settlementPriceD18 == 0) {
-            self.settlementPriceD18 = 0;
-        } else if (settlementPriceD18 > self.maxPriceD18) {
+        if (settlementPriceD18 > self.maxPriceD18) {
             self.settlementPriceD18 = self.maxPriceD18;
         } else if (settlementPriceD18 < self.minPriceD18) {
             self.settlementPriceD18 = self.minPriceD18;

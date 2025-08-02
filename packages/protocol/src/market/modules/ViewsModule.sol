@@ -8,7 +8,6 @@ import "../storage/Trade.sol";
 import "../interfaces/IViewsModule.sol";
 import "../interfaces/ISapienceStructs.sol";
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-import {DecimalMath} from "../libraries/DecimalMath.sol";
 import {DecimalPrice} from "../libraries/DecimalPrice.sol";
 
 contract ViewsModule is IViewsModule {
@@ -16,7 +15,6 @@ contract ViewsModule is IViewsModule {
     using Market for Market.Data;
     using MarketGroup for MarketGroup.Data;
     using SafeCastU256 for uint256;
-    using DecimalMath for int256;
 
     function getMarketGroup()
         external
@@ -25,7 +23,6 @@ contract ViewsModule is IViewsModule {
         returns (
             address owner,
             address collateralAsset,
-            address feeCollectorNFT,
             ISapienceStructs.MarketParams memory marketParams
         )
     {
@@ -33,16 +30,20 @@ contract ViewsModule is IViewsModule {
         return (
             marketGroup.owner,
             address(marketGroup.collateralAsset),
-            address(marketGroup.feeCollectorNFT),
             marketGroup.marketParams
         );
     }
 
-    function getMarket(uint256 id)
+    function getMarket(
+        uint256 id
+    )
         external
         view
         override
-        returns (ISapienceStructs.MarketData memory marketData, ISapienceStructs.MarketParams memory params)
+        returns (
+            ISapienceStructs.MarketData memory marketData,
+            ISapienceStructs.MarketParams memory params
+        )
     {
         Market.Data storage market = Market.load(id);
         marketData = ISapienceStructs.MarketData({
@@ -70,7 +71,10 @@ contract ViewsModule is IViewsModule {
         external
         view
         override
-        returns (ISapienceStructs.MarketData memory marketData, ISapienceStructs.MarketParams memory params)
+        returns (
+            ISapienceStructs.MarketData memory marketData,
+            ISapienceStructs.MarketParams memory params
+        )
     {
         uint256 marketId = MarketGroup.load().lastMarketId;
 
@@ -99,11 +103,15 @@ contract ViewsModule is IViewsModule {
         return (marketData, market.marketParams);
     }
 
-    function getPosition(uint256 positionId) external pure override returns (Position.Data memory) {
+    function getPosition(
+        uint256 positionId
+    ) external pure override returns (Position.Data memory) {
         return Position.load(positionId);
     }
 
-    function getPositionSize(uint256 positionId) external view override returns (int256) {
+    function getPositionSize(
+        uint256 positionId
+    ) external view override returns (int256) {
         Position.Data storage position = Position.load(positionId);
         return position.positionSize();
     }
@@ -111,29 +119,37 @@ contract ViewsModule is IViewsModule {
     /**
      * @inheritdoc IViewsModule
      */
-    function getSqrtPriceX96(uint256 marketId) external view override returns (uint160 sqrtPriceX96) {
+    function getSqrtPriceX96(
+        uint256 marketId
+    ) external view override returns (uint160 sqrtPriceX96) {
         Market.Data storage market = Market.load(marketId);
 
         if (!market.settled) {
-            (sqrtPriceX96,,,,,,) = market.pool.slot0();
+            (sqrtPriceX96, , , , , , ) = market.pool.slot0();
         }
     }
 
     /**
      * @inheritdoc IViewsModule
      */
-    function getReferencePrice(uint256 marketId) external view override returns (uint256 price18Digits) {
+    function getReferencePrice(
+        uint256 marketId
+    ) external view override returns (uint256 price18Digits) {
         return Market.load(marketId).getReferencePrice();
     }
 
-    function getPositionPnl(uint256 positionId) external view override returns (int256 pnl) {
+    function getPositionPnl(
+        uint256 positionId
+    ) external view override returns (int256 pnl) {
         return Position.load(positionId).getPnl();
     }
 
     /**
      * @inheritdoc IViewsModule
      */
-    function getPositionCollateralValue(uint256 positionId) external view override returns (uint256 collateralValue) {
+    function getPositionCollateralValue(
+        uint256 positionId
+    ) external view override returns (uint256 collateralValue) {
         // Load the position data and ensure it's valid
         Position.Data storage position = Position.loadValid(positionId);
 
@@ -142,16 +158,28 @@ contract ViewsModule is IViewsModule {
         // Get the deposited collateral amount as an integer
         int256 depositedCollateral = position.depositedCollateralAmount.toInt();
 
-        collateralValue = (depositedCollateral + totalNetValue) > 0 ? uint256(depositedCollateral + totalNetValue) : 0;
+        collateralValue = (depositedCollateral + totalNetValue) > 0
+            ? uint256(depositedCollateral + totalNetValue)
+            : 0;
 
         return collateralValue;
     }
 
-    function getMarketGroupTickSpacing() external view override returns (int24) {
-        return Market.getTickSpacingForFee(MarketGroup.load().marketParams.feeRate);
+    function getMarketGroupTickSpacing()
+        external
+        view
+        override
+        returns (int24)
+    {
+        return
+            Market.getTickSpacingForFee(
+                MarketGroup.load().marketParams.feeRate
+            );
     }
 
-    function getDecimalPriceFromSqrtPriceX96(uint160 sqrtPriceX96) external pure override returns (uint256) {
+    function getDecimalPriceFromSqrtPriceX96(
+        uint160 sqrtPriceX96
+    ) external pure override returns (uint256) {
         return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
     }
 }

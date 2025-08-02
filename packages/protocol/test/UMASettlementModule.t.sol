@@ -42,7 +42,7 @@ contract UmaSettleMarket is TestMarket {
         uint160 startingSqrtPriceX96 = SQRT_PRICE_10Eth; // 10
         (sapience,) = createMarket(16000, 29800, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote");
 
-        (owner,,,) = sapience.getMarketGroup();
+        (owner,,) = sapience.getMarketGroup();
         (ISapienceStructs.MarketData memory _initialMarketData, ISapienceStructs.MarketParams memory _marketParams) =
             sapience.getLatestMarket();
         marketId = _initialMarketData.marketId;

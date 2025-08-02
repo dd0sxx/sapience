@@ -3,7 +3,6 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../interfaces/ISapienceStructs.sol";
 import {Errors} from "./Errors.sol";
@@ -15,7 +14,6 @@ library MarketGroup {
         address owner;
         address pendingOwner;
         IERC20 collateralAsset;
-        IERC721 feeCollectorNFT;
         uint256 lastMarketId;
         ISapienceStructs.MarketParams marketParams;
         mapping(bytes32 => uint256) marketIdByAssertionId;
@@ -36,7 +34,6 @@ library MarketGroup {
     function createValid(
         address owner,
         address collateralAsset,
-        address feeCollectorNFT,
         uint256 minTradeSize,
         bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams
@@ -55,7 +52,6 @@ library MarketGroup {
 
         marketGroup.owner = owner;
         marketGroup.collateralAsset = IERC20(collateralAsset);
-        marketGroup.feeCollectorNFT = IERC721(feeCollectorNFT);
         marketGroup.minTradeSize = minTradeSize;
         marketGroup.marketParams = marketParams;
         marketGroup.bridgedSettlement = bridgedSettlement;
@@ -123,7 +119,8 @@ library MarketGroup {
 
         self.collateralAsset.safeTransfer(user, withdrawnAmountDenormalized);
 
-        // Return the amount in 18 decimals for consistency
+        // Return the amount in 18 decimals for internal accounting
+        // Note: There may be slight precision loss when converting back from token decimals
         withdrawnAmount = normalizeCollateralAmount(self, withdrawnAmountDenormalized);
     }
 
@@ -140,9 +137,6 @@ library MarketGroup {
         delete self.pendingOwner;
     }
 
-    function isFeeCollector(Data storage self, address user) internal view returns (bool) {
-        return address(self.feeCollectorNFT) != address(0) && self.feeCollectorNFT.balanceOf(user) > 0;
-    }
 
     /**
      * @notice Normalizes a collateral amount to 18 decimals for internal calculations

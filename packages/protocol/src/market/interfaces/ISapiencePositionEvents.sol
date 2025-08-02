@@ -85,19 +85,6 @@ interface ISapiencePositionEvents {
         int256 deltaCollateral
     );
 
-    event CollateralDeposited(
-        address indexed sender,
-        uint256 indexed marketId,
-        uint256 indexed positionId,
-        // Position State
-        uint256 positionCollateralAmount,
-        uint256 positionVquoteAmount,
-        uint256 positionVbaseAmount,
-        uint256 positionBorrowedVquote,
-        uint256 positionBorrowedVbase,
-        // Delta Collateral
-        int256 deltaCollateral
-    );
 
     struct LiquidityPositionCreatedEventData {
         address sender;

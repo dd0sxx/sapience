@@ -27,7 +27,6 @@ contract MarketGroupFactoryTest is Test {
 
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
     uint256 constant BOND_AMOUNT = 100 ether;
-    address[] feeCollectors = new address[](0);
     address uniswapPositionManager;
     address uniswapSwapRouter;
     address uniswapQuoter;
@@ -48,7 +47,6 @@ contract MarketGroupFactoryTest is Test {
         vm.startPrank(safeOwner);
         address marketGroup = marketGroupFactory.cloneAndInitializeMarketGroup(
             address(collateralAsset),
-            feeCollectors,
             MIN_TRADE_SIZE,
             false,
             ISapienceStructs.MarketParams({
@@ -66,7 +64,6 @@ contract MarketGroupFactoryTest is Test {
 
         address marketGroup2 = marketGroupFactory.cloneAndInitializeMarketGroup(
             address(collateralAsset),
-            feeCollectors,
             MIN_TRADE_SIZE,
             false,
             ISapienceStructs.MarketParams({
@@ -95,7 +92,6 @@ contract MarketGroupFactoryTest is Test {
         vm.expectRevert(); // Note, expected error looks similar in the console log, but fails to catch it properly
         marketGroupFactory.cloneAndInitializeMarketGroup(
             address(collateralAsset),
-            feeCollectors,
             MIN_TRADE_SIZE,
             false,
             ISapienceStructs.MarketParams({
@@ -117,7 +113,6 @@ contract MarketGroupFactoryTest is Test {
         vm.startPrank(safeOwner);
         address marketGroup = marketGroupFactory.cloneAndInitializeMarketGroup(
             address(collateralAsset),
-            feeCollectors,
             MIN_TRADE_SIZE,
             false,
             ISapienceStructs.MarketParams({
@@ -138,7 +133,6 @@ contract MarketGroupFactoryTest is Test {
         ISapience(marketGroup).initializeMarketGroup(
             safeOwner,
             address(collateralAsset),
-            feeCollectors,
             MIN_TRADE_SIZE,
             false,
             ISapienceStructs.MarketParams({
