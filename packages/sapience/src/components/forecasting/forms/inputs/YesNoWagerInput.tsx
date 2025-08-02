@@ -37,7 +37,7 @@ export default function YesNoWagerInput({
                 shouldValidate: true,
               })
             }
-            className={`py-6 text-lg font-normal ${
+            className={`${
               predictionValue === YES_SQRT_PRICE_X96
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -52,7 +52,7 @@ export default function YesNoWagerInput({
                 shouldValidate: true,
               })
             }
-            className={`py-6 text-lg font-normal ${
+            className={`${
               predictionValue === NO_SQRT_PRICE_X96
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'

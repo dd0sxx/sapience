@@ -22,7 +22,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import ModeToggle from './ModeToggle';
-import BetSlipPopover from './BetSlipPopover';
+import Betslip from './Betslip';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -161,7 +161,7 @@ const Header = () => {
             <div className="block">
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
-            {ready && <BetSlipPopover />}
+            {ready && <Betslip />}
             {!ready && null /* Render nothing while Privy is loading */}
             {ready && authenticated && (
               <DropdownMenu>
