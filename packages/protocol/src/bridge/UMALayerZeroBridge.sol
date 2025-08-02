@@ -103,8 +103,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         bytes memory commandPayload = Encoder.encodeFromUMAResolved(marketData.bridgeAssertionId, assertedTruthfully);
 
         // Send message using contract's ETH balance
-        (MessagingReceipt memory receipt,) =
-            _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK, commandPayload, false);
+        _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK, commandPayload, false);
 
         // Notice: the bond is sent back to the submitter, not to the bridge, that's why we don't update the balance here.
 
@@ -129,8 +128,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         bytes memory commandPayload = Encoder.encodeFromUMADisputed(marketData.bridgeAssertionId);
 
         // Send message using contract's ETH balance
-        (MessagingReceipt memory receipt,) =
-            _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK, commandPayload, false);
+        _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK, commandPayload, false);
 
         // We don't need to update the balance since it was already deducted when the assertion was submitted
     }

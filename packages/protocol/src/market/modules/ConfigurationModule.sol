@@ -27,7 +27,6 @@ contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable
      * @notice Initialize a new market group
      * @param initialOwner The initial owner of the market group
      * @param collateralAsset The collateral asset for the market group. Notice: Fee on transfer is not supported for this asset.
-     * @param feeCollectors The fee collectors for the market group
      * @param minTradeSize The minimum trade size for the market group
      * @param bridgedSettlement Whether the market group uses bridged settlement
      * @param marketParams The initial market parameters
