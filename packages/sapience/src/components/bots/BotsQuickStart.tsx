@@ -10,7 +10,7 @@ export default function BotsQuickStart() {
           <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
             {/* Left side: Explanatory text and CTAs */}
             <div className="w-full lg:w-3/5 lg:max-w-[360px] text-left lg:text-inherit">
-              <div className="mb-2 lg:mb-6">
+              <div className="mb-6">
                 <Image
                   src="/elizaos-logo.svg"
                   alt="Eliza OS"
@@ -61,7 +61,7 @@ export default function BotsQuickStart() {
             </div>
 
             {/* Right side: Video background with centered hero image */}
-            <div className="w-full lg:w-2/5">
+            <div className="w-full lg:w-2/5 mb-6 lg:mb-0">
               <div
                 className="relative w-full rounded-lg overflow-hidden flex items-end justify-center inner-shadow"
                 style={{ paddingBottom: '60%' /* Taller aspect ratio */ }}

@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Label } from '@sapience/ui/components/ui/label';
 import type { MarketGroupType } from '@sapience/ui/types';
 import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -202,12 +201,11 @@ export default function PredictForm({
         {renderCategoryInput()}
 
         {/* Comment field */}
-        <div>
-          <Label htmlFor="comment">Comment</Label>
+        <div className="pt-3">
           <textarea
             id="comment"
-            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="What is your prediction?"
+            className="w-full min-h-[80px] rounded-md border border-input bg-background px-4 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="What’s your prediction?"
             {...methods.register('comment')}
           />
         </div>

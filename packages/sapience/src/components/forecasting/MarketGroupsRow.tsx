@@ -244,7 +244,7 @@ const MarketGroupsRow = ({
           </div>
 
           {/* Right Side: Action Buttons */}
-          <div className="flex flex-row-reverse items-center gap-3 self-start md:flex-row md:ml-6 md:self-auto">
+          <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:ml-6 md:self-auto">
             {marketClassification ===
             MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (
               // For multichoice markets, show Details + dropdown
@@ -275,7 +275,7 @@ const MarketGroupsRow = ({
             ) : (
               // For non-multichoice markets, show Details + Wager buttons for the active market
               activeMarket && (
-                <div className="flex flex-row-reverse items-center gap-3 md:flex-row">
+                <div className="flex flex-row-reverse items-center md:gap-3 md:flex-row">
                   <Button
                     variant="link"
                     size="xs"
@@ -351,7 +351,7 @@ const MarketGroupsRow = ({
 
                             {/* Right Side: Actions */}
                             <div className="flex items-center gap-3 self-start md:self-auto">
-                              <div className="flex flex-row-reverse items-center gap-3 md:flex-row">
+                              <div className="flex flex-row-reverse items-center md:gap-3 md:flex-row">
                                 <Button
                                   variant="link"
                                   size="xs"

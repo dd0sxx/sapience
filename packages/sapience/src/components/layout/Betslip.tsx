@@ -22,6 +22,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { DollarSign, SquareStack } from 'lucide-react';
+import { usePrivy } from '@privy-io/react-auth';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
@@ -314,6 +315,7 @@ const Betslip = () => {
 
   const [isParlayMode, setIsParlayMode] = useState(false);
   const isMobile = useIsMobile();
+  const { login, authenticated } = usePrivy();
 
   // Create a map of unique market identifiers to avoid duplicate queries
   const uniqueMarkets = useMemo(() => {
@@ -432,10 +434,18 @@ const Betslip = () => {
   });
 
   const handleIndividualSubmit = () => {
+    if (!authenticated) {
+      login();
+      return;
+    }
     // TODO: Implement individual wager submission logic
   };
 
   const handleParlaySubmit = () => {
+    if (!authenticated) {
+      login();
+      return;
+    }
     // TODO: Implement parlay submission logic
   };
 
