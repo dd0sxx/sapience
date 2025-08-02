@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {IMarketLayerZeroBridge} from "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import {IMarketLayerZeroBridge} from "../../../src/bridge/interfaces/IMarketLayerZeroBridge.sol";
 import {IUMASettlementModule} from "../../../src/market/interfaces/IUMASettlementModule.sol";
 import {ISapienceStructs} from "../../../src/market/interfaces/ISapienceStructs.sol";
-// import {console2} from "forge-std/console2.sol";
 
 /**
  * @title MockMarketGroup
@@ -83,7 +82,6 @@ contract MockMarketGroup is IUMASettlementModule {
      * @param assertedTruthfully Whether the assertion was truthful
      */
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
-        //   console2.log("assertionResolvedCallback");
         // Mark the assertion as resolved
         assertionData[assertionId].resolved = true;
         assertionData[assertionId].assertedTruthfully = assertedTruthfully;

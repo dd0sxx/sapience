@@ -59,4 +59,5 @@ library Errors {
     );
     error InvalidBondAmount(uint256 bondAmount, uint256 minBond);
     error InvalidSlippage(uint256 liquiditySlippage, uint256 tradeSlippage);
+    error SwapFailed(bytes reason);
 }

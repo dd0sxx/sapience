@@ -8,14 +8,14 @@ import "../storage/Trade.sol";
 import "../storage/Market.sol";
 import "../storage/MarketGroup.sol";
 import "../libraries/DecimalPrice.sol";
-import {ISapiencePositionEvents} from "../interfaces/ISapiencePositionEvents.sol";
-import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
-import {Errors} from "../storage/Errors.sol";
+import { ISapiencePositionEvents } from "../interfaces/ISapiencePositionEvents.sol";
+import { ISapienceStructs } from "../interfaces/ISapienceStructs.sol";
+import { Errors } from "../storage/Errors.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-import {ITradeModule} from "../interfaces/ITradeModule.sol";
+import { SafeCastI256 } from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
+import { SafeCastU256 } from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
+import { ITradeModule } from "../interfaces/ITradeModule.sol";
 
 /**
  * @title Module for trade positions.
@@ -208,21 +208,21 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             // Closing the position. No need to check collateral limit
             // We need to:
 
-            // 1. Confirm no vgas tokens
+            // 1. Confirm no vbase tokens
             if (position.vBaseAmount > 0) {
                 // Notice. This error should not happen. If it's here it means something went wrong
                 revert Errors.InvalidData(
-                    "Cannot close position with vGas tokens"
+                    "Cannot close position with vBase tokens"
                 );
             }
             if (position.borrowedVBase > 0) {
                 // Notice. This error should not happen. If it's here it means something went wrong
                 revert Errors.InvalidData(
-                    "Cannot close position with borrowed vGas tokens"
+                    "Cannot close position with borrowed vBase tokens"
                 );
             }
 
-            // 2. Confirm collateral is enough to pay for borrowed veth
+            // 2. Confirm collateral is enough to pay for borrowed vquote
             if (
                 position.borrowedVQuote > 0 &&
                 position.borrowedVQuote > position.depositedCollateralAmount

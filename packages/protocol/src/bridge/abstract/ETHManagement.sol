@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import {FeeManagement} from "./FeeManagement.sol";
-import {IETHManagement} from "../interfaces/ILayerZeroBridge.sol";
+import {IETHManagement} from "../interfaces/IETHManagement.sol";
 
 /**
  * @title ETHManagement
@@ -35,7 +35,12 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      */
     function withdrawETH(uint256 amount) external onlyOwner {
         require(amount <= address(this).balance, "Insufficient balance");
-        payable(owner()).transfer(amount);
+
+        (bool success, ) = payable(owner()).call{value: amount}("");
+        if (!success) {
+            revert ETHTransferFailed(owner(), amount);
+        }
+
         emit ETHWithdrawn(owner(), amount);
 
         // Check gas thresholds after withdrawal
@@ -55,7 +60,7 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      * @dev This function is called when ETH is sent to the contract
      */
     receive() external payable virtual {
-        emit ETHDeposited(msg.sender, msg.value);
+        // do nothing. Just accept ETH.
     }
 
     /**
@@ -63,7 +68,10 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      * @param requiredFee The fee amount to check against
      */
     function _requireSufficientETH(uint256 requiredFee) internal view {
-        require(address(this).balance >= requiredFee, "Insufficient ETH balance for fee");
+        require(
+            address(this).balance >= requiredFee,
+            "Insufficient ETH balance for fee"
+        );
     }
 
     /**

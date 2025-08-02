@@ -9,12 +9,12 @@ import "../external/VirtualToken.sol";
 import "../libraries/DecimalPrice.sol";
 import "../libraries/Quote.sol";
 import "../external/univ3/LiquidityAmounts.sol";
-import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
+import { INonfungiblePositionManager } from "../interfaces/external/INonfungiblePositionManager.sol";
 import "./Debt.sol";
 import "./Errors.sol";
 import "./MarketGroup.sol";
-import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
+import { SafeCastI256, SafeCastU256 } from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
+import { ISapienceStructs } from "../interfaces/ISapienceStructs.sol";
 
 library Market {
     using DecimalMath for uint256;
@@ -37,7 +37,6 @@ library Market {
         IUniswapV3Pool pool;
         bool settled;
         uint256 settlementPriceD18;
-        mapping(uint256 => Debt.Data) lpDebtPositions;
         bytes32 assertionId;
         Settlement settlement;
         ISapienceStructs.MarketParams marketParams; // snapshotting market params
@@ -142,11 +141,11 @@ library Market {
                 market.marketParams.bondAmount = minUMABond;
             }
         }
-        VirtualToken tokenA = _createVirtualToken(salt, "Base Token", "vBase");
+        VirtualToken tokenA = _createVirtualToken(salt, "Token A", "vTokenA");
         VirtualToken tokenB = _createVirtualToken(
             salt + 1,
-            "Quote Token",
-            "vQuote"
+            "Token B",
+            "vTokenB"
         );
 
         if (address(tokenA) < address(tokenB)) {

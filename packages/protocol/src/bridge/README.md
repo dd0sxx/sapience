@@ -40,7 +40,7 @@ The implementation uses several abstract contracts to share common functionality
 - Manages bond token deposits and withdrawals
 - Implements withdrawal intent system with delay
 - Tracks bond balances and withdrawal intents
-- Provides bond management functions
+- Provides bond management functions including withdrawal intent removal
 - Inherits from `ReentrancyGuard`
 
 ## Data Structures
@@ -59,6 +59,17 @@ struct WithdrawalIntent {
     uint256 amount;
     uint256 timestamp;
     bool executed;
+}
+```
+
+### Assertion Market Data (UMA-Side)
+```solidity
+struct AssertionMarketData {
+    bytes32 assertionId;
+    uint256 bridgeAssertionId;
+    address submitter;
+    address bondToken;
+    uint256 bondAmount;
 }
 ```
 
@@ -154,6 +165,7 @@ The bridge implements an escrow-based bond management system:
 ```solidity
 function depositBond(address bondToken, uint256 amount) external returns (MessagingReceipt memory);
 function intentToWithdrawBond(address bondToken, uint256 amount) external returns (MessagingReceipt memory);
+function removeWithdrawalIntent(address bondToken) external returns (MessagingReceipt memory);
 function executeWithdrawal(address bondToken) external returns (MessagingReceipt memory);
 function getBondBalance(address submitter, address bondToken) external view returns (uint256);
 function getPendingWithdrawal(address submitter, address bondToken) external view returns (uint256, uint256);
@@ -198,7 +210,7 @@ The bridge implements real-time balance synchronization via LayerZero messages:
    - When a bond is deposited: `CMD_FROM_ESCROW_DEPOSIT`
    - When a withdrawal intent is created: `CMD_FROM_ESCROW_INTENT_TO_WITHDRAW`
    - When a withdrawal is executed: `CMD_FROM_ESCROW_WITHDRAW`
-   - When a bond is returned: `CMD_FROM_ESCROW_BOND_RECEIVED`
+   - When a withdrawal intent is removed: `CMD_FROM_ESCROW_REMOVE_WITHDRAWAL_INTENT`
 
 2. **Message Structure**
    ```solidity
@@ -221,7 +233,7 @@ uint16 constant CMD_FROM_UMA_DISPUTED_CALLBACK = 3;             // UMA -> Market
 uint16 constant CMD_FROM_ESCROW_DEPOSIT = 4;                    // UMA -> Market
 uint16 constant CMD_FROM_ESCROW_INTENT_TO_WITHDRAW = 5;         // UMA -> Market
 uint16 constant CMD_FROM_ESCROW_WITHDRAW = 6;                   // UMA -> Market
-uint16 constant CMD_FROM_ESCROW_BOND_RECEIVED = 8;              // UMA -> Market
+uint16 constant CMD_FROM_ESCROW_REMOVE_WITHDRAWAL_INTENT = 7;   // UMA -> Market
 ```
 
 ## Market Group Management
@@ -268,9 +280,13 @@ Each bridge contract requires the following configuration:
 struct BridgeConfig {
     uint32 remoteEid;    // LayerZero chain ID of the other bridge
     address remoteBridge;    // Address of the other bridge contract
-    address settlementModule; // Settlement module address
 }
 ```
+
+### UMA-Side Bridge Additional Configuration
+- `enabledBondToken`: The bond token that is enabled for the bridge
+- `minimumDepositAmount`: The minimum deposit amount for the bridge
+- `optimisticOracleV3Address`: The UMA OptimisticOracleV3 contract address
 
 ## Events
 
@@ -279,6 +295,7 @@ The bridge contracts emit various events for monitoring:
 ### Bond Management Events
 - `BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount)`
 - `BondWithdrawalIntentCreated(address indexed submitter, address indexed bondToken, uint256 amount, uint256 timestamp)`
+- `BondWithdrawalIntentRemoved(address indexed submitter, address indexed bondToken, uint256 amount)`
 - `WithdrawalExecuted(address indexed submitter, address indexed bondToken, uint256 amount)`
 
 ### ETH Management Events
@@ -293,6 +310,7 @@ The bridge contracts emit various events for monitoring:
 - `BridgeConfigUpdated(BridgeTypes.BridgeConfig config)`
 - `AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId)`
 - `BondWithdrawn(address indexed submitter, address indexed bondToken, uint256 amount)`
+- `OptimisticOracleV3Updated(address indexed optimisticOracleV3)`
 
 ## Integration
 
@@ -300,10 +318,11 @@ To integrate with the bridge:
 
 1. Deploy both bridge contracts on their respective networks
 2. Configure the bridge parameters using `setBridgeConfig()`
-3. Pre-fund the gas reserves using `depositETH()`
-4. Pre-fund bond tokens on UMA-side using `depositBond()`
-5. Enable market groups on Market-side using `enableMarketGroup()`
-6. The UMASettlementModule will work as usual, interacting with the bridge instead of UMA
+3. Set the OptimisticOracleV3 address on UMA-side using `setOptimisticOracleV3()`
+4. Pre-fund the gas reserves using `depositETH()`
+5. Pre-fund bond tokens on UMA-side using `depositBond()`
+6. Enable market groups on Market-side using `enableMarketGroup()`
+7. The UMASettlementModule will work as usual, interacting with the bridge instead of UMA
 
 ## Maintenance
 
@@ -314,6 +333,8 @@ Regular maintenance tasks:
 3. Check for any failed cross-chain messages
 4. Verify UMA assertion statuses
 5. Handle any disputed settlements
+6. Monitor withdrawal intents and ensure proper delay periods
+7. Check bond token validity and minimum deposit amounts
 
 ## Security Considerations
 
@@ -323,3 +344,5 @@ Regular maintenance tasks:
 4. Have a plan for handling disputed settlements
 5. Regular security audits of the bridge contracts
 6. Monitor withdrawal intents and ensure proper delay periods
+7. Validate bond tokens and minimum deposit amounts
+8. Ensure proper access control for bridge configuration
