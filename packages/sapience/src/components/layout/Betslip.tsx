@@ -107,11 +107,12 @@ const BetslipContent = ({
                 )}
                 className="p-3 max-h-96 overflow-y-auto"
               >
-                {positionsWithMarketData.map((positionData) => {
+                {positionsWithMarketData.map((positionData, index) => {
+                  const isLast = index === positionsWithMarketData.length - 1;
                   return (
                     <div
                       key={positionData.position.id}
-                      className="border-b border-border mb-4 last:border-b-0 last:pb-0 last:mb-0"
+                      className={`mb-4 ${!isLast ? 'border-b border-border' : ''} ${isLast ? 'mb-0' : ''}`}
                     >
                       {/* Show loading state */}
                       {positionData.isLoading && (
@@ -277,7 +278,13 @@ const BetslipContent = ({
                 </div>
 
                 <div className="pt-2">
-                  <Button className="w-full" disabled type="submit" size="lg">
+                  <Button 
+                    className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90" 
+                    disabled 
+                    type="submit" 
+                    size="lg"
+                    variant="default"
+                  >
                     Quote Unavailable
                   </Button>
                 </div>
