@@ -6,14 +6,13 @@ import {
 } from '@sapience/ui/components/charts';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, LineChart, BarChart2, DatabaseIcon } from 'lucide-react';
+import { ChevronLeft, DatabaseIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
-import { ChartType, LineType, TimeInterval } from '@sapience/ui/types/charts';
+import { LineType, TimeInterval } from '@sapience/ui/types/charts';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
@@ -134,7 +133,7 @@ const ForecastContent = () => {
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
   );
-  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
   const [selectedPrices, setSelectedPrices] = useState<
     Record<LineType, boolean>
@@ -194,7 +193,7 @@ const ForecastContent = () => {
     tickSpacing,
     quoteTokenName,
     baseTokenName,
-    enabled: chartType === ChartType.ORDER_BOOK,
+    enabled: true,
   });
   // ---- End: Hoisted OrderBook Data Fetching ----
 
@@ -233,9 +232,9 @@ const ForecastContent = () => {
   }
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-32">
-      <div className="container mx-auto max-w-6xl flex flex-col">
-        <div className="flex flex-col px-4 md:px-3 flex-1">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-12">
+      <div className="container mx-auto max-w-6xl lg:max-w-none flex flex-col">
+        <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div>
             {marketClassification ===
               MarketGroupClassification.MULTIPLE_CHOICE &&
@@ -298,117 +297,48 @@ const ForecastContent = () => {
             <div className="flex flex-col lg:flex-row lg:gap-8">
               <div className="flex flex-col w-full relative">
                 <div className="w-full h-[500px] relative">
-                  <AnimatePresence>
-                    {chartType === ChartType.PRICE && (
-                      <motion.div
-                        key="price-chart"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.1 }}
-                        className="w-full h-full absolute top-0 left-0"
-                      >
-                        <PriceChart
-                          market={{
-                            marketId: numericMarketId!,
-                            chainId: chainId!,
-                            address: marketAddress!,
-                            quoteTokenName:
-                              marketData?.marketGroup?.quoteTokenName ||
-                              undefined,
-                            startTimestamp: marketData?.startTimestamp,
-                            endTimestamp: marketData?.endTimestamp,
-                          }}
-                          selectedInterval={selectedInterval}
-                          selectedPrices={selectedPrices}
-                          resourceSlug={resourceSlug}
-                        />
-                      </motion.div>
-                    )}
-                    {chartType === ChartType.ORDER_BOOK && (
-                      <motion.div
-                        key="orderbook-chart"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.1 }}
-                        className="w-full h-full absolute top-0 left-0"
-                      >
-                        <OrderBookChart
-                          quoteTokenName={quoteTokenName}
-                          baseTokenName={baseTokenName}
-                          className="h-full"
-                          asks={asks}
-                          bids={bids}
-                          lastPrice={lastPrice}
-                          isLoadingPool={isLoadingPool}
-                          isErrorPool={isErrorPool}
-                          isLoadingBook={isLoadingBook}
-                          isErrorBook={isErrorBook}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <PriceChart
+                    market={{
+                      marketId: numericMarketId!,
+                      chainId: chainId!,
+                      address: marketAddress!,
+                      quoteTokenName:
+                        marketData?.marketGroup?.quoteTokenName || undefined,
+                      startTimestamp: marketData?.startTimestamp,
+                      endTimestamp: marketData?.endTimestamp,
+                    }}
+                    selectedInterval={selectedInterval}
+                    selectedPrices={selectedPrices}
+                    resourceSlug={resourceSlug}
+                  />
                 </div>
                 <div className="flex flex-col lg:flex-row justify-between w-full items-start lg:items-center my-4 gap-4">
                   <div className="flex flex-row flex-wrap gap-3 w-full items-center">
-                    <div className="order-1 sm:order-1">
-                      <div className="flex rounded-md overflow-hidden">
-                        <Button
-                          variant={
-                            chartType === ChartType.PRICE
-                              ? 'default'
-                              : 'outline'
-                          }
-                          className="rounded-r-none px-4"
-                          onClick={() => setChartType(ChartType.PRICE)}
-                        >
-                          <LineChart className="h-4 w-4" />
-                          {ChartType.PRICE}
-                        </Button>
-                        <Button
-                          variant={
-                            chartType === ChartType.ORDER_BOOK
-                              ? 'default'
-                              : 'outline'
-                          }
-                          className="rounded-l-none px-4"
-                          onClick={() => setChartType(ChartType.ORDER_BOOK)}
-                        >
-                          <BarChart2 className="h-4 w-4 rotate-90" />
-                          {ChartType.ORDER_BOOK}
-                        </Button>
-                      </div>
+                    {/* Easy Mode Button - Left Side */}
+                    <div className="order-1">
+                      <Button
+                        variant="outline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          router.push(`/markets/${chainShortName}`);
+                        }}
+                        className="flex items-center gap-1"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        Easy Mode
+                      </Button>
                     </div>
 
                     <div className="order-2 sm:order-2 ml-auto flex flex-wrap gap-3">
-                      {chartType === ChartType.PRICE && (
-                        <>
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.1 }}
-                          >
-                            <IntervalSelector
-                              selectedInterval={selectedInterval}
-                              setSelectedInterval={setSelectedInterval}
-                            />
-                          </motion.div>
-                          {marketData?.marketGroup?.resource?.slug && (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.1 }}
-                            >
-                              <PriceSelector
-                                selectedPrices={selectedPrices}
-                                setSelectedPrices={handlePriceSelection}
-                              />
-                            </motion.div>
-                          )}
-                        </>
+                      <IntervalSelector
+                        selectedInterval={selectedInterval}
+                        setSelectedInterval={setSelectedInterval}
+                      />
+                      {marketData?.marketGroup?.resource?.slug && (
+                        <PriceSelector
+                          selectedPrices={selectedPrices}
+                          setSelectedPrices={handlePriceSelection}
+                        />
                       )}
 
                       <DataDrawer
@@ -422,14 +352,23 @@ const ForecastContent = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Comments Section */}
+                <div className="border border-border rounded shadow-sm dark:bg-muted/50 mt-4">
+                  <div className="p-4 border-b border-border">
+                    <h3 className="text-lg font-medium">Forecasts</h3>
+                  </div>
+                  <Comments
+                    selectedCategory={CommentFilters.SelectedQuestion}
+                    question={marketData?.question?.toString()}
+                    refetchTrigger={userPositionsTrigger}
+                  />
+                </div>
               </div>
 
               <div className="w-full lg:max-w-[340px] pb-4">
                 <div className="bg-card p-6 rounded border mb-5 overflow-auto">
                   <div className="w-full">
-                    <h3 className="text-3xl font-normal mb-4">
-                      Prediction Market
-                    </h3>
                     <PositionSelector />
                     {!positionId && (
                       <div className="flex w-full border-b">
@@ -487,18 +426,21 @@ const ForecastContent = () => {
                     </div>
                   </div>
                 </div>
-                {/* Easy Mode Link */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    router.push(`/markets/${chainShortName}`);
-                  }}
-                  className="ml-auto text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  EASY MODE
-                </button>
+                {/* Order Book */}
+                <div className="h-[400px]">
+                  <OrderBookChart
+                    quoteTokenName={quoteTokenName}
+                    baseTokenName={baseTokenName}
+                    className="h-full"
+                    asks={asks}
+                    bids={bids}
+                    lastPrice={lastPrice}
+                    isLoadingPool={isLoadingPool}
+                    isErrorPool={isErrorPool}
+                    isLoadingBook={isLoadingBook}
+                    isErrorBook={isErrorBook}
+                  />
+                </div>
               </div>
             </div>
 
@@ -520,18 +462,6 @@ const ForecastContent = () => {
                 </div>
               );
             })()}
-
-            {/* Comments Section */}
-            <div className="border border-border rounded shadow-sm dark:bg-muted/50">
-              <div className="p-4 border-b border-border">
-                <h3 className="text-lg font-medium">Forecasts</h3>
-              </div>
-              <Comments
-                selectedCategory={CommentFilters.SelectedQuestion}
-                question={marketData?.question?.toString()}
-                refetchTrigger={userPositionsTrigger}
-              />
-            </div>
 
             {/* Market Rules */}
             {marketData?.rules && (
