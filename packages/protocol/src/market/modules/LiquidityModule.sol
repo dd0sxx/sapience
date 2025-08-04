@@ -162,7 +162,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             deadline: params.deadline
         });
 
-        INonfungiblePositionManager(
+        (decreasedAmount0, decreasedAmount1) = INonfungiblePositionManager(
             market.marketParams.uniswapPositionManager
         ).decreaseLiquidity(stack.decreaseParams);
 
