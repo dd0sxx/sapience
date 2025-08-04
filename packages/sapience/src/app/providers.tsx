@@ -10,6 +10,7 @@ import { injected } from 'wagmi/connectors';
 
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
+import { BetSlipProvider } from '~/lib/context/BetSlipContext';
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,24 @@ const cannonAtLocalhost = {
     default: { http: ['http://localhost:8545'] },
   },
 };
+
+const converge = {
+  id: 432,
+  name: 'Converge',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Converge',
+    symbol: 'CONVERGE',
+  },
+  rpcUrls: {
+    default: {
+      http: [process.env.NEXT_PUBLIC_RPC_URL || ''],
+    },
+    public: {
+      http: [process.env.NEXT_PUBLIC_RPC_URL || ''],
+    },
+  },
+} as const satisfies Chain;
 
 const transports: Record<number, HttpTransport> = {
   [sepolia.id]: http(
@@ -32,10 +51,11 @@ const transports: Record<number, HttpTransport> = {
       ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
       : 'https://base-rpc.publicnode.com'
   ),
+  [converge.id]: http(process.env.NEXT_PUBLIC_RPC_URL || ''),
 };
 
 // Use mutable array type Chain[] initially
-const chains: Chain[] = [base];
+const chains: Chain[] = [base, converge];
 
 if (process.env.NODE_ENV !== 'production') {
   transports[cannonAtLocalhost.id] = http('http://localhost:8545');
@@ -70,7 +90,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       >
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={config}>
-            <SapienceProvider>{children}</SapienceProvider>
+            <SapienceProvider>
+              <BetSlipProvider>{children}</BetSlipProvider>
+            </SapienceProvider>
           </WagmiProvider>
         </QueryClientProvider>
       </ThemeProvider>

@@ -1,13 +1,12 @@
-import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef } from 'react';
 import { parseUnits } from 'viem';
+import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 
 // Define type for quoter response data
 export interface QuoteData {
   direction: 'LONG' | 'SHORT';
   maxSize: string; // BigInt string
-  currentPrice: string; // Decimal string
   expectedPrice: string; // Decimal string
   collateralAvailable: string; // BigInt string
 }

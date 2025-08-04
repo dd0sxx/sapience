@@ -3,11 +3,11 @@ import 'tsconfig-paths/register';
 import prisma from '../db';
 import { decodeEventLog, Log } from 'viem';
 import {
-  EpochCreatedEventLog,
+  MarketCreatedEventLog,
   EventType,
-  MarketCreatedUpdatedEventLog,
+  MarketGroupCreatedUpdatedEventLog,
   LogData,
-  MarketInfo,
+  marketInfo,
 } from '../interfaces';
 import {
   getProviderForChain,
@@ -17,8 +17,8 @@ import {
   getContractCreationBlock,
 } from '../utils/utils';
 import {
-  createEpochFromEvent,
-  createOrUpdateMarketFromEvent,
+  createMarketFromEvent,
+  createOrUpdateMarketGroupFromEvent,
   createOrModifyPositionFromTransaction,
   handleTransferEvent,
   handlePositionSettledEvent,
@@ -29,47 +29,81 @@ import {
   insertMarketPrice,
   updateTransactionFromPositionSettledEvent,
   insertCollateralTransfer,
-  createOrUpdateEpochFromContract,
+  createOrUpdateMarketFromContract,
   updateCollateralData,
 } from './marketHelpers';
 import { alertEvent } from '../workers/discordBot';
-import Foil from '@sapience/protocol/deployments/Foil.json';
+import Sapience from '@sapience/protocol/deployments/Sapience.json';
 import { PublicClient } from 'viem';
 import Sentry from '../instrument';
-import { transaction } from '../../generated/prisma';
-import { Decimal } from 'generated/prisma/runtime/library';
+import { Transaction } from '../../generated/prisma';
 
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
-export const initializeMarket = async (marketInfo: MarketInfo) => {
+export const initializeMarket = async (marketInfo: marketInfo) => {
   const client = getProviderForChain(marketInfo.marketChainId);
 
   const marketReadResult = (await client.readContract({
     address: marketInfo.deployment.address as `0x${string}`,
-    abi: Foil.abi,
-    functionName: 'getMarket',
-  })) as [string, string, string, string, any];
+    abi: Sapience.abi,
+    functionName: 'getMarketGroup',
+  })) as [string, string, string, any];
+
+  /* 
+  marketReadResult[0] = owner
+  marketReadResult[1] = collateralAsset
+  marketReadResult[2] = feeCollectorNFT
+  marketReadResult[3] = marketParams
+
+  marketParams = {
+        uint24 feeRate;
+        uint64 assertionLiveness;
+        uint256 bondAmount;
+        address bondCurrency;
+        address uniswapPositionManager;
+        address uniswapSwapRouter;
+        address uniswapQuoter;
+        address optimisticOracleV3;
+  }
+  */
+
+  const marketParams = {
+    feeRate: marketReadResult[3].feeRate,
+    assertionLiveness: BigInt(marketReadResult[3].assertionLiveness).toString(),
+    bondAmount: BigInt(marketReadResult[3].bondAmount).toString(),
+    bondCurrency: marketReadResult[3].bondCurrency,
+    uniswapPositionManager: marketReadResult[3].uniswapPositionManager,
+    uniswapSwapRouter: marketReadResult[3].uniswapSwapRouter,
+    uniswapQuoter: marketReadResult[3].uniswapQuoter,
+    optimisticOracleV3: marketReadResult[3].optimisticOracleV3,
+  };
 
   const updatedMarketData = {
     address: marketInfo.deployment.address.toLowerCase(),
-    vaultAddress: marketInfo.vaultAddress ?? '',
-    isYin: marketInfo.isYin ?? true,
     isCumulative: marketInfo.isCumulative ?? false,
+    isBridged: marketInfo.isBridged ?? false,
     deployTxnBlockNumber: Number(marketInfo.deployment.deployTxnBlockNumber),
     deployTimestamp: Number(marketInfo.deployment.deployTimestamp),
     chainId: marketInfo.marketChainId,
     owner: marketReadResult[0].toLowerCase(),
     collateralAsset: marketReadResult[1],
     collateralDecimals: null as number | null,
-    marketParamsFeerate: null as number | null,
-    marketParamsAssertionliveness: null,
-    marketParamsBondcurrency: null,
-    marketParamsBondamount: null,
-    marketParamsClaimstatement: null,
-    marketParamsUniswappositionmanager: null,
-    marketParamsUniswapswaprouter: null,
-    marketParamsUniswapquoter: null,
-    marketParamsOptimisticoraclev3: null,
+    marketParamsFeerate: marketParams.feeRate as number | null,
+    marketParamsAssertionliveness: marketParams.assertionLiveness as
+      | string
+      | null,
+    marketParamsBondcurrency: marketParams.bondCurrency as string | null,
+    marketParamsBondamount: marketParams.bondAmount as string | null,
+    marketParamsUniswappositionmanager: marketParams.uniswapPositionManager as
+      | string
+      | null,
+    marketParamsUniswapswaprouter: marketParams.uniswapSwapRouter as
+      | string
+      | null,
+    marketParamsUniswapquoter: marketParams.uniswapQuoter as string | null,
+    marketParamsOptimisticoraclev3: marketParams.optimisticOracleV3 as
+      | string
+      | null,
   };
 
   if (updatedMarketData.collateralAsset) {
@@ -98,7 +132,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     }
   }
 
-  const marketParamsRaw = marketReadResult[4];
+  const marketParamsRaw = marketReadResult[3];
   if (marketParamsRaw) {
     updatedMarketData.marketParamsFeerate = marketParamsRaw.feeRate || null;
     updatedMarketData.marketParamsAssertionliveness =
@@ -107,8 +141,6 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
       marketParamsRaw.bondCurrency || null;
     updatedMarketData.marketParamsBondamount =
       marketParamsRaw.bondAmount?.toString() || null;
-    updatedMarketData.marketParamsClaimstatement =
-      marketParamsRaw.claimStatement || null;
     updatedMarketData.marketParamsUniswappositionmanager =
       marketParamsRaw.uniswapPositionManager || null;
     updatedMarketData.marketParamsUniswapswaprouter =
@@ -119,7 +151,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
       marketParamsRaw.optimisticOracleV3 || null;
   }
 
-  const updatedMarket = await prisma.market_group.upsert({
+  const updatedMarket = await prisma.marketGroup.upsert({
     where: {
       address_chainId: {
         address: updatedMarketData.address,
@@ -137,57 +169,55 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 // Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
 
 /**
- * Extract only the market_group table fields from a market object, excluding relations
+ * Extract only the market_group table fields from a market group object, excluding relations
  */
-const extractMarketGroupFields = (market: any) => {
+const extractMarketGroupFields = (marketGroup: any) => {
   return {
-    address: market.address,
-    vaultAddress: market.vaultAddress,
-    isYin: market.isYin,
-    chainId: market.chainId,
-    deployTimestamp: market.deployTimestamp,
-    deployTxnBlockNumber: market.deployTxnBlockNumber,
-    owner: market.owner,
-    collateralAsset: market.collateralAsset,
-    resourceId: market.resourceId,
-    marketParamsFeerate: market.marketParamsFeerate,
-    marketParamsAssertionliveness: market.marketParamsAssertionliveness,
-    marketParamsBondcurrency: market.marketParamsBondcurrency,
-    marketParamsBondamount: market.marketParamsBondamount,
-    marketParamsClaimstatement: market.marketParamsClaimstatement,
+    address: marketGroup.address,
+    chainId: marketGroup.chainId,
+    deployTimestamp: marketGroup.deployTimestamp,
+    deployTxnBlockNumber: marketGroup.deployTxnBlockNumber,
+    owner: marketGroup.owner,
+    collateralAsset: marketGroup.collateralAsset,
+    resourceId: marketGroup.resourceId,
+    marketParamsFeerate: marketGroup.marketParamsFeerate,
+    marketParamsAssertionliveness: marketGroup.marketParamsAssertionliveness,
+    marketParamsBondcurrency: marketGroup.marketParamsBondcurrency,
+    marketParamsBondamount: marketGroup.marketParamsBondamount,
     marketParamsUniswappositionmanager:
-      market.marketParamsUniswappositionmanager,
-    marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
-    marketParamsUniswapquoter: market.marketParamsUniswapquoter,
-    marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
-    isCumulative: market.isCumulative,
-    categoryId: market.categoryId,
-    question: market.question,
-    baseTokenName: market.baseTokenName,
-    quoteTokenName: market.quoteTokenName,
-    collateralDecimals: market.collateralDecimals,
-    collateralSymbol: market.collateralSymbol,
-    initializationNonce: market.initializationNonce,
-    factoryAddress: market.factoryAddress,
-    minTradeSize: market.minTradeSize,
+      marketGroup.marketParamsUniswappositionmanager,
+    marketParamsUniswapswaprouter: marketGroup.marketParamsUniswapswaprouter,
+    marketParamsUniswapquoter: marketGroup.marketParamsUniswapquoter,
+    marketParamsOptimisticoraclev3: marketGroup.marketParamsOptimisticoraclev3,
+    isCumulative: marketGroup.isCumulative,
+    isBridged: marketGroup.isBridged,
+    categoryId: marketGroup.categoryId,
+    question: marketGroup.question,
+    baseTokenName: marketGroup.baseTokenName,
+    quoteTokenName: marketGroup.quoteTokenName,
+    collateralDecimals: marketGroup.collateralDecimals,
+    collateralSymbol: marketGroup.collateralSymbol,
+    initializationNonce: marketGroup.initializationNonce,
+    factoryAddress: marketGroup.factoryAddress,
+    minTradeSize: marketGroup.minTradeSize,
   };
 };
 
 export const indexMarketGroupEvents = async (
-  market: any, // Using any for now since this depends on helper functions
+  marketGroup: any, // Using any for now since this depends on helper functions
   client: PublicClient
 ): Promise<() => void> => {
   const chainId = await client.getChainId();
 
   try {
-    await updateCollateralData(client, market);
-    await prisma.market_group.update({
-      where: { id: market.id },
-      data: extractMarketGroupFields(market),
+    await updateCollateralData(client, marketGroup);
+    await prisma.marketGroup.update({
+      where: { id: marketGroup.id },
+      data: extractMarketGroupFields(marketGroup),
     });
   } catch (err) {
     console.error(
-      `Failed to update collateral data for market ${market.address}:`,
+      `Failed to update collateral data for market group ${marketGroup.address}:`,
       err
     );
   }
@@ -198,7 +228,7 @@ export const indexMarketGroupEvents = async (
   let currentUnwatch: (() => void) | null = null;
   let isActive = true; // To allow permanent stop
 
-  const descriptiveName = `market ${market.address} on chain ${chainId}`;
+  const descriptiveName = `market group ${marketGroup.address} on chain ${chainId}`;
 
   const processLogs = async (logs: Log[]) => {
     console.log(
@@ -213,14 +243,14 @@ export const indexMarketGroupEvents = async (
         });
         const logIndex = log.logIndex || 0;
         const logData = JSON.parse(serializedLog);
-        const epochId = logData.args?.epochId || 0;
+        const marketId = logData.args?.marketId || 0;
 
-        await alertEvent(chainId, market.address, logData);
+        await alertEvent(chainId, marketGroup.address, logData);
 
         await upsertEvent(
           chainId,
-          market.address,
-          epochId,
+          marketGroup.address,
+          marketId,
           blockNumber,
           block.timestamp,
           logIndex,
@@ -237,7 +267,7 @@ export const indexMarketGroupEvents = async (
           log
         );
         Sentry.withScope((scope) => {
-          scope.setExtra('marketAddress', market.address);
+          scope.setExtra('marketAddress', marketGroup.address);
           scope.setExtra('chainId', chainId);
           scope.setExtra('log', log);
           Sentry.captureException(error);
@@ -248,7 +278,7 @@ export const indexMarketGroupEvents = async (
     }
   };
 
-  const startMarketWatcher = () => {
+  const startMarketGroupWatcher = () => {
     if (!isActive) {
       console.log(
         `[MarketEventWatcher] Watcher for ${descriptiveName} is permanently stopped. Not restarting.`
@@ -262,8 +292,8 @@ export const indexMarketGroupEvents = async (
 
     try {
       currentUnwatch = client.watchContractEvent({
-        address: market.address as `0x${string}`,
-        abi: Foil.abi, // Assuming Foil.abi is the correct ABI for market events
+        address: marketGroup.address as `0x${string}`,
+        abi: Sapience.abi,
         onLogs: processLogs,
         onError: (error) => {
           console.error(
@@ -271,7 +301,7 @@ export const indexMarketGroupEvents = async (
             error
           );
           Sentry.withScope((scope) => {
-            scope.setExtra('marketAddress', market.address);
+            scope.setExtra('marketAddress', marketGroup.address);
             scope.setExtra('chainId', chainId);
             Sentry.captureException(error);
           });
@@ -296,7 +326,7 @@ export const indexMarketGroupEvents = async (
               `[MarketEventWatcher] Attempting to reconnect for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`
             );
             setTimeout(() => {
-              startMarketWatcher();
+              startMarketGroupWatcher();
             }, delay);
           } else {
             console.error(
@@ -318,7 +348,7 @@ export const indexMarketGroupEvents = async (
         error
       );
       Sentry.withScope((scope) => {
-        scope.setExtra('marketAddress', market.address);
+        scope.setExtra('marketAddress', marketGroup.address);
         scope.setExtra('chainId', chainId);
         Sentry.captureException(error);
       });
@@ -332,7 +362,7 @@ export const indexMarketGroupEvents = async (
           `[MarketEventWatcher] Attempting to reconnect (after setup error) for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`
         );
         setTimeout(() => {
-          startMarketWatcher();
+          startMarketGroupWatcher();
         }, delay);
       } else {
         console.error(
@@ -346,7 +376,7 @@ export const indexMarketGroupEvents = async (
     }
   };
 
-  startMarketWatcher();
+  startMarketGroupWatcher();
 
   return () => {
     console.log(
@@ -365,7 +395,7 @@ export const indexMarketGroupEvents = async (
           error
         );
         Sentry.withScope((scope) => {
-          scope.setExtra('marketAddress', market.address);
+          scope.setExtra('marketAddress', marketGroup.address);
           scope.setExtra('chainId', chainId);
           Sentry.captureException(error);
         });
@@ -375,23 +405,28 @@ export const indexMarketGroupEvents = async (
   };
 };
 
-// Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (market: any) => {
-  const client = getProviderForChain(market.chainId);
+// Iterates over all blocks from the market group's deploy block to the current block and calls upsertEvent for each one.
+export const reindexMarketGroupEvents = async (marketGroup: any) => {
+  const client = getProviderForChain(marketGroup.chainId);
   const chainId = await client.getChainId();
+
+  // TODO: Get market group data from contract
 
   // Update collateral data
 
-  await updateCollateralData(client, market);
-  await prisma.market_group.update({
-    where: { id: market.id },
-    data: extractMarketGroupFields(market),
+  await updateCollateralData(client, marketGroup);
+  await prisma.marketGroup.update({
+    where: { id: marketGroup.id },
+    data: extractMarketGroupFields(marketGroup),
   });
 
   // Get the contract deployment time and us it as initial lookback start time
   let deploymentBlock;
   try {
-    deploymentBlock = await getContractCreationBlock(client, market.address);
+    deploymentBlock = await getContractCreationBlock(
+      client,
+      marketGroup.address
+    );
   } catch (err) {
     const error = err as Error;
     console.error(`Failed to get contract creation block: ${error.message}`);
@@ -400,11 +435,11 @@ export const reindexMarketEvents = async (market: any) => {
 
   // Use the later of the deployment block or the lookback start block
   const startBlock = Math.max(
-    Number(market.deployTxnBlockNumber || 0),
+    Number(marketGroup.deployTxnBlockNumber || 0),
     Number(deploymentBlock.block.number)
   );
 
-  // Get the end block using the sooner of epoch end time and current time
+  // Get the end block using the sooner of market end time and current time
   const currentTime = Math.floor(Date.now() / 1000);
   const endTime = currentTime;
 
@@ -437,7 +472,7 @@ export const reindexMarketEvents = async (market: any) => {
   const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
 
   console.log(
-    `Reindexing market events for market ${market.address} from block ${startBlock} to ${endBlock.number}`
+    `Reindexing market group events for market group ${marketGroup.address} from block ${startBlock} to ${endBlock.number}`
   );
 
   // Function to process logs regardless of how they were fetched
@@ -445,7 +480,7 @@ export const reindexMarketEvents = async (market: any) => {
     for (const log of logs) {
       try {
         const decodedLog = decodeEventLog({
-          abi: Foil.abi,
+          abi: Sapience.abi,
           data: log.data,
           topics: log.topics,
         });
@@ -465,13 +500,13 @@ export const reindexMarketEvents = async (market: any) => {
           data: log.data || '',
         };
 
-        // Extract epochId from logData
-        const eventEpochId = logData.args?.epochId || 0;
+        // Extract marketId from logData
+        const eventMarketId = logData.args?.marketId || 0;
 
         await upsertEvent(
           chainId,
-          market.address,
-          eventEpochId,
+          marketGroup.address,
+          eventMarketId,
           logBlockNumber,
           block.timestamp,
           logIndex,
@@ -501,7 +536,7 @@ export const reindexMarketEvents = async (market: any) => {
         `Fetching logs for blocks ${currentBlock} to ${chunkEndBlock}`
       );
       const logs = await client.getLogs({
-        address: market.address as `0x${string}`,
+        address: marketGroup.address as `0x${string}`,
         fromBlock: BigInt(currentBlock),
         toBlock: BigInt(chunkEndBlock),
       });
@@ -533,7 +568,7 @@ export const reindexMarketEvents = async (market: any) => {
       ) {
         try {
           const logs = await client.getLogs({
-            address: market.address as `0x${string}`,
+            address: marketGroup.address as `0x${string}`,
             fromBlock: BigInt(blockNumber),
             toBlock: BigInt(blockNumber),
           });
@@ -556,14 +591,14 @@ export const reindexMarketEvents = async (market: any) => {
   }
 
   console.log(
-    `Completed indexing for market ${market.address}. Processed ${totalLogsProcessed} logs.`
+    `Completed indexing for market group ${marketGroup.address}. Processed ${totalLogsProcessed} logs.`
   );
 };
 
 // Upserts an event into the database using the proper helper function.
 const upsertEvent = async (
   chainId: number,
-  marketGroupAddress: string,
+  market_groupAddress: string,
   marketId: number,
   blockNumber: bigint,
   timeStamp: bigint,
@@ -572,8 +607,8 @@ const upsertEvent = async (
 ) => {
   console.log('handling event upsert:', {
     chainId,
-    address: marketGroupAddress,
-    epochId: marketId,
+    address: market_groupAddress,
+    marketId: marketId,
     blockNumber,
     timeStamp,
     logIndex,
@@ -581,13 +616,13 @@ const upsertEvent = async (
   });
 
   // Find market group
-  const marketGroup = await prisma.market_group.findFirst({
-    where: { chainId, address: marketGroupAddress.toLowerCase() },
+  const market_group = await prisma.marketGroup.findFirst({
+    where: { chainId, address: market_groupAddress.toLowerCase() },
   });
 
-  if (!marketGroup) {
+  if (!market_group) {
     throw new Error(
-      `Market group not found for chainId ${chainId} and address ${marketGroupAddress}. Cannot upsert event into db.`
+      `Market group not found for chainId ${chainId} and address ${market_groupAddress}. Cannot upsert event into db.`
     );
   }
 
@@ -596,7 +631,7 @@ const upsertEvent = async (
     const existingEvent = await prisma.event.findFirst({
       where: {
         transactionHash: logData.transactionHash,
-        marketGroupId: marketGroup.id,
+        marketGroupId: market_group.id,
         blockNumber: Number(blockNumber),
         logIndex: logIndex,
       },
@@ -617,7 +652,7 @@ const upsertEvent = async (
 
       await upsertEntitiesFromEvent(
         updatedEvent,
-        marketGroupAddress,
+        market_groupAddress,
         marketId,
         chainId
       );
@@ -627,7 +662,7 @@ const upsertEvent = async (
     console.log('inserting new event..');
     const newEvent = await prisma.event.create({
       data: {
-        marketGroupId: marketGroup.id,
+        marketGroupId: market_group.id,
         blockNumber: Number(blockNumber),
         timestamp: BigInt(timeStamp.toString()),
         logIndex: logIndex,
@@ -639,7 +674,7 @@ const upsertEvent = async (
 
     await upsertEntitiesFromEvent(
       newEvent,
-      marketGroupAddress,
+      market_groupAddress,
       marketId,
       chainId
     );
@@ -653,7 +688,7 @@ const upsertEvent = async (
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
 export const upsertEntitiesFromEvent = async (
   event: any, // Using any for now since this depends on helper functions that need migration
-  marketGroupAddress: string,
+  market_groupAddress: string,
   marketId: number,
   chainId: number
 ) => {
@@ -669,7 +704,7 @@ export const upsertEntitiesFromEvent = async (
   }
 
   let skipTransaction = false;
-  const newTransaction: transaction & {
+  const newTransaction: Transaction & {
     event: any;
     position?: any;
   } = {
@@ -679,7 +714,7 @@ export const upsertEntitiesFromEvent = async (
     quoteToken: null,
     borrowedBaseToken: null,
     borrowedQuoteToken: null,
-    collateral: new Decimal('0'),
+    collateral: '0',
     lpBaseDeltaToken: null,
     lpQuoteDeltaToken: null,
     tradeRatioD18: null,
@@ -694,18 +729,20 @@ export const upsertEntitiesFromEvent = async (
 
   // Process the event based on its type
   switch (event.logData.eventName) {
-    // Market events
-    case EventType.MarketInitialized: {
-      console.log('initializing market. event: ', event);
-      const marketCreatedArgs = {
-        uniswapPositionManager: event.logData.args.uniswapPositionManager,
-        uniswapSwapRouter: event.logData.args.uniswapSwapRouter,
-        optimisticOracleV3: event.logData.args.optimisticOracleV3,
+    // Market Group events
+    case EventType.MarketGroupInitialized: {
+      console.log('initializing market group. event: ', event);
+      const marketGroupCreatedArgs = {
+        initialOwner: event.logData.args.initialOwner,
+        collateralAsset: event.logData.args.collateralAsset,
+        feeCollectorNFT: event.logData.args.feeCollectorNFT,
+        minTradeSize: event.logData.args.minTradeSize,
+        isBridged: event.logData.args.bridgedSettlement,
         marketParams: event.logData.args.marketParams,
-      } as MarketCreatedUpdatedEventLog;
+      } as MarketGroupCreatedUpdatedEventLog;
 
-      await createOrUpdateMarketFromEvent(
-        marketCreatedArgs,
+      await createOrUpdateMarketGroupFromEvent(
+        marketGroupCreatedArgs,
         event.market_group.chainId,
         event.market_group.address,
         event.market_group
@@ -713,16 +750,13 @@ export const upsertEntitiesFromEvent = async (
       skipTransaction = true;
       break;
     }
-    case EventType.MarketUpdated: {
+    case EventType.MarketGroupUpdated: {
       console.log('updating market. event: ', event);
       const marketUpdatedArgs = {
-        uniswapPositionManager: event.logData.args.uniswapPositionManager,
-        uniswapSwapRouter: event.logData.args.uniswapSwapRouter,
-        optimisticOracleV3: event.logData.args.optimisticOracleV3,
         marketParams: event.logData.args.marketParams,
-      } as MarketCreatedUpdatedEventLog;
+      } as MarketGroupCreatedUpdatedEventLog;
 
-      await createOrUpdateMarketFromEvent(
+      await createOrUpdateMarketGroupFromEvent(
         marketUpdatedArgs,
         event.market_group.chainId,
         event.market_group.address,
@@ -732,38 +766,41 @@ export const upsertEntitiesFromEvent = async (
       break;
     }
 
-    // Epoch events
-    case EventType.EpochCreated: {
-      console.log('creating epoch. event: ', event);
-      const epochCreatedArgs = {
-        epochId: event.logData.args.epochId,
+    // Market events
+    case EventType.MarketCreated: {
+      console.log('creating market. event: ', event);
+      const marketCreatedArgs = {
+        marketId: event.logData.args.marketId,
         startTime: event.logData.args.startTime,
         endTime: event.logData.args.endTime,
         startingSqrtPriceX96: event.logData.args.startingSqrtPriceX96,
-      } as EpochCreatedEventLog;
+        claimStatementYesOrNumeric:
+          event.logData.args.claimStatementYesOrNumeric,
+        claimStatementNo: event.logData.args.claimStatementNo,
+      } as MarketCreatedEventLog;
 
-      await createEpochFromEvent(epochCreatedArgs, event.market_group);
-      await createOrUpdateEpochFromContract(
+      await createMarketFromEvent(marketCreatedArgs, event.market_group);
+      await createOrUpdateMarketFromContract(
         event.market_group,
-        Number(epochCreatedArgs.epochId)
+        Number(marketCreatedArgs.marketId)
       );
       skipTransaction = true;
       break;
     }
-    case EventType.EpochSettled: {
+    case EventType.MarketSettled: {
       console.log('Market settled event. event: ', event);
-      const epoch = await prisma.market.findFirst({
+      const market = await prisma.market.findFirst({
         where: {
           market_group: {
             address: event.market_group.address.toLowerCase(),
             chainId: event.market_group.chainId,
           },
-          marketId: Number(event.logData.args.epochId),
+          marketId: Number(event.logData.args.marketId),
         },
         include: { market_group: true },
       });
 
-      if (epoch) {
+      if (market) {
         const settlementSqrtPriceX96: bigint = BigInt(
           (event.logData.args.settlementSqrtPriceX96 as string)?.toString() ??
             '0'
@@ -773,14 +810,14 @@ export const upsertEntitiesFromEvent = async (
         );
 
         await prisma.market.update({
-          where: { id: epoch.id },
+          where: { id: market.id },
           data: {
             settled: true,
             settlementPriceD18: settlementPriceD18.toString(),
           },
         });
       } else {
-        console.error('Epoch not found for market: ', event.market_group);
+        console.error('Market not found for market: ', event.market_group);
       }
       skipTransaction = true;
       break;
@@ -802,7 +839,7 @@ export const upsertEntitiesFromEvent = async (
         updateTransactionFromPositionSettledEvent(
           newTransaction,
           event,
-          marketGroupAddress,
+          market_groupAddress,
           marketId,
           chainId
         ),
@@ -848,18 +885,16 @@ export const upsertEntitiesFromEvent = async (
       break;
 
     default:
+      console.log('Unhandled event: ', event.logData.eventName);
       skipTransaction = true;
       break;
   }
 
   if (!skipTransaction) {
     try {
-      await insertCollateralTransfer(newTransaction);
-      await insertMarketPrice(newTransaction);
-
       // Ensure collateral is set to a default value if not present
       if (!newTransaction.collateral) {
-        newTransaction.collateral = new Decimal('0');
+        newTransaction.collateral = '0';
       }
 
       // Ensure all required fields have values
@@ -875,7 +910,8 @@ export const upsertEntitiesFromEvent = async (
       console.log('Saving new transaction: ', newTransaction);
       const savedTransaction = await prisma.transaction.create({
         data: {
-          ...newTransaction,
+          eventId: newTransaction.eventId,
+          type: newTransaction.type,
           baseToken: newTransaction.baseToken,
           quoteToken: newTransaction.quoteToken,
           borrowedBaseToken: newTransaction.borrowedBaseToken,
@@ -884,8 +920,16 @@ export const upsertEntitiesFromEvent = async (
           lpBaseDeltaToken: newTransaction.lpBaseDeltaToken,
           lpQuoteDeltaToken: newTransaction.lpQuoteDeltaToken,
           tradeRatioD18: newTransaction.tradeRatioD18,
+          positionId: newTransaction.positionId,
+          marketPriceId: newTransaction.marketPriceId,
+          collateralTransferId: newTransaction.collateralTransferId,
         },
       });
+
+      newTransaction.id = savedTransaction.id;
+
+      await insertCollateralTransfer(newTransaction);
+      await insertMarketPrice(newTransaction);
 
       // Then create or modify the position with the saved transaction
       try {

@@ -73,15 +73,6 @@ interface ILiquidityModule {
         view
         returns (uint256 requiredCollateral);
 
-    /**
-     * @notice Increases the deposited collateral for a liquidity position
-     * @dev Only the fee collector can increase the deposited collateral
-     * @dev The fee collector is maybe an L2 sequencer that deposits its fees periodically instead of
-     *      having upfront capital.  it's like a smart/trusted margin account
-     * @param positionId The ID of the liquidity position (fee collector has to be owner)
-     * @param collateralAmount The amount of collateral to increase
-     */
-    function depositCollateral(uint256 positionId, uint256 collateralAmount) external;
 
     /**
      * @notice Gets the amount of tokens from liquidity

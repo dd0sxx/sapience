@@ -19,7 +19,25 @@ import * as viem from 'viem';
 import * as viemChains from 'viem/chains';
 import * as Sentry from '@sentry/node';
 
-export const chains: viem.Chain[] = [...Object.values(viemChains)];
+// Custom chain definition for Converge (chainId 432)
+export const convergeChain: viem.Chain = {
+  id: 432,
+  name: 'Converge',
+  nativeCurrency: {
+    name: 'Converge',
+    symbol: 'CVG',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: { http: [process.env.RPC_URL || ''] },
+    public: { http: [process.env.RPC_URL || ''] },
+  },
+};
+
+export const chains: viem.Chain[] = [
+  ...Object.values(viemChains),
+  convergeChain,
+];
 
 export function getChainById(id: number): viem.Chain | undefined {
   const chain = viem.extractChain({
@@ -60,8 +78,18 @@ const createChainClient = (
   chain: viem.Chain,
   network: string,
   useLocalhost = false
-) =>
-  createPublicClient({
+) => {
+  // Special handling for Converge (chainId 432)
+  if (chain.id === 432 && process.env.RPC_URL) {
+    return createPublicClient({
+      chain,
+      transport: http(process.env.RPC_URL),
+      batch: {
+        multicall: true,
+      },
+    });
+  }
+  return createPublicClient({
     chain,
     transport: useLocalhost
       ? http('http://localhost:8545')
@@ -72,6 +100,7 @@ const createChainClient = (
       multicall: true,
     },
   });
+};
 
 export const mainnetPublicClient = createChainClient(mainnet, 'mainnet');
 export const basePublicClient = createChainClient(base, 'base-mainnet');
@@ -104,6 +133,9 @@ export function getProviderForChain(chainId: number): PublicClient {
       break;
     case 42161:
       newClient = arbitrumPublicClient as PublicClient;
+      break;
+    case 432:
+      newClient = createChainClient(convergeChain, 'converge');
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);
@@ -138,28 +170,28 @@ export const getTimestampsForReindex = async (
   client: PublicClient,
   contractDeployment: Deployment,
   chainId: number,
-  epochId?: number
+  marketId?: number
 ) => {
   const now = Math.round(new Date().getTime() / 1000);
 
-  // if no epoch is provided, get the latest one from the contract
-  if (!epochId) {
-    const latestEpoch = (await client.readContract({
+  // if no market is provided, get the latest one from the contract
+  if (!marketId) {
+    const latestMarket = (await client.readContract({
       address: contractDeployment.address.toLowerCase() as `0x${string}`,
       abi: contractDeployment.abi,
-      functionName: 'getLatestEpoch',
+      functionName: 'getLatestMarket',
     })) as [number, number, number];
-    epochId = Number(latestEpoch[0]);
+    marketId = Number(latestMarket[0]);
     return {
-      startTimestamp: Number(latestEpoch[1]),
-      endTimestamp: Math.min(Number(latestEpoch[2]), now),
+      startTimestamp: Number(latestMarket[1]),
+      endTimestamp: Math.min(Number(latestMarket[2]), now),
     };
   }
 
   // get info from database
   const market = await prisma.market.findFirst({
     where: {
-      marketId: epochId,
+      marketId: marketId,
       market_group: {
         address: contractDeployment.address.toLowerCase(),
         chainId,
@@ -172,16 +204,16 @@ export const getTimestampsForReindex = async (
 
   if (!market || !market.startTimestamp || !market.endTimestamp) {
     // get info from contract
-    console.log('fetching epoch from contract to get timestamps...');
-    const epochContract = (await client.readContract({
+    console.log('fetching market from contract to get timestamps...');
+    const marketContract = (await client.readContract({
       address: contractDeployment.address.toLowerCase() as `0x${string}`,
       abi: contractDeployment.abi,
-      functionName: 'getEpoch',
-      args: [`${epochId}`],
+      functionName: 'getMarket',
+      args: [`${marketId}`],
     })) as [number, number, number];
     return {
-      startTimestamp: Number(epochContract[0]),
-      endTimestamp: Math.min(Number(epochContract[1]), now),
+      startTimestamp: Number(marketContract[0]),
+      endTimestamp: Math.min(Number(marketContract[1]), now),
     };
   }
 

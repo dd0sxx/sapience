@@ -1,22 +1,22 @@
 import { basePublicClient } from '../utils/utils';
-import FoilABI from '@sapience/protocol/deployments/Foil.json';
+import SapienceABI from '@sapience/protocol/deployments/Sapience.json';
 import type { Abi } from 'abitype';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
 
-const FOIL_ABI = FoilABI.abi as unknown as Abi;
+const SAPIENCE_ABI = SapienceABI.abi as unknown as Abi;
 
 const client = basePublicClient;
 
 interface PositionData {
   id: bigint;
   kind: number;
-  epochId: bigint;
+  marketId: bigint;
   depositedCollateralAmount: bigint;
-  borrowedVEth: bigint;
-  borrowedVGas: bigint;
-  vEthAmount: bigint;
-  vGasAmount: bigint;
+  borrowedVQuote: bigint;
+  borrowedVBase: bigint;
+  vQuoteAmount: bigint;
+  vBaseAmount: bigint;
   uniswapPositionId: bigint;
   isSettled: boolean;
 }
@@ -58,7 +58,7 @@ interface PositionData {
 // }
 
 // interface RawEpochData {
-//   epochId: bigint;
+//   marketId: bigint;
 //   startTime: bigint;
 //   endTime: bigint;
 //   pool: `0x${string}`;
@@ -108,7 +108,7 @@ interface PositionData {
 //     try {
 //       const marketGroupInfo = (await client.readContract({
 //         address: args.marketGroupAddress as `0x${string}`,
-//         abi: FOIL_ABI,
+//         abi: SAPIENCE_ABI,
 //         functionName: 'getMarket',
 //       })) as readonly [
 //         `0x${string}`,
@@ -119,10 +119,10 @@ interface PositionData {
 //       ];
 
 //       const formattedInfo: MarketGroupData = {
-//         owner: marketGroupInfo[0],
-//         collateralAsset: marketGroupInfo[1],
-//         feeCollectorNFT: marketGroupInfo[2],
-//         callbackRecipient: marketGroupInfo[3],
+//         owner: MarketGroupInfo[0],
+//         collateralAsset: MarketGroupInfo[1],
+//         feeCollectorNFT: MarketGroupInfo[2],
+//         callbackRecipient: MarketGroupInfo[3],
 //         marketParams: formatMarketParams(marketGroupInfo[4]),
 //       };
 
@@ -168,7 +168,7 @@ interface PositionData {
 //     try {
 //       const marketDetailsResult = (await client.readContract({
 //         address: args.marketGroupAddress as `0x${string}`,
-//         abi: FOIL_ABI,
+//         abi: SAPIENCE_ABI,
 //         functionName: 'getEpoch',
 //         args: [BigInt(args.marketId)],
 //       })) as readonly [RawEpochData, MarketParams];
@@ -178,27 +178,27 @@ interface PositionData {
 //       }
 
 //       const formattedInfo: MarketDetailsData = {
-//         marketData: marketDetailsResult[0]
+//         marketData: MarketDetailsResult[0]
 //           ? {
-//               id: marketDetailsResult[0].epochId,
-//               startTime: marketDetailsResult[0].startTime,
-//               endTime: marketDetailsResult[0].endTime,
-//               pool: marketDetailsResult[0].pool,
-//               ethToken: marketDetailsResult[0].ethToken,
-//               gasToken: marketDetailsResult[0].gasToken,
-//               minPriceD18: marketDetailsResult[0].minPriceD18,
-//               maxPriceD18: marketDetailsResult[0].maxPriceD18,
+//               id: MarketDetailsResult[0].epochId,
+//               startTime: MarketDetailsResult[0].startTime,
+//               endTime: MarketDetailsResult[0].endTime,
+//               pool: MarketDetailsResult[0].pool,
+//               ethToken: MarketDetailsResult[0].ethToken,
+//               gasToken: MarketDetailsResult[0].gasToken,
+//               minPriceD18: MarketDetailsResult[0].minPriceD18,
+//               maxPriceD18: MarketDetailsResult[0].maxPriceD18,
 //               baseAssetMinPriceTick:
 //                 marketDetailsResult[0].baseAssetMinPriceTick,
 //               baseAssetMaxPriceTick:
 //                 marketDetailsResult[0].baseAssetMaxPriceTick,
-//               settled: marketDetailsResult[0].settled,
-//               settlementPriceD18: marketDetailsResult[0].settlementPriceD18,
-//               assertionId: marketDetailsResult[0].assertionId,
-//               claimStatement: marketDetailsResult[0].claimStatement,
+//               settled: MarketDetailsResult[0].settled,
+//               settlementPriceD18: MarketDetailsResult[0].settlementPriceD18,
+//               assertionId: MarketDetailsResult[0].assertionId,
+//               claimStatement: MarketDetailsResult[0].claimStatement,
 //             }
 //           : null,
-//         marketGroupParams: marketDetailsResult[1]
+//         marketGroupParams: MarketDetailsResult[1]
 //           ? formatMarketParams(marketDetailsResult[1])
 //           : null,
 //       };
@@ -241,7 +241,7 @@ interface PositionData {
 //     try {
 //       const marketDetailsResult = (await client.readContract({
 //         address: args.marketGroupAddress as `0x${string}`,
-//         abi: FOIL_ABI,
+//         abi: SAPIENCE_ABI,
 //         functionName: 'getLatestEpoch',
 //       })) as readonly [RawEpochData, MarketParams];
 
@@ -250,27 +250,27 @@ interface PositionData {
 //       }
 
 //       const formattedInfo: MarketDetailsData = {
-//         marketData: marketDetailsResult[0]
+//         marketData: MarketDetailsResult[0]
 //           ? {
-//               id: marketDetailsResult[0].epochId,
-//               startTime: marketDetailsResult[0].startTime,
-//               endTime: marketDetailsResult[0].endTime,
-//               pool: marketDetailsResult[0].pool,
-//               ethToken: marketDetailsResult[0].ethToken,
-//               gasToken: marketDetailsResult[0].gasToken,
-//               minPriceD18: marketDetailsResult[0].minPriceD18,
-//               maxPriceD18: marketDetailsResult[0].maxPriceD18,
+//               id: MarketDetailsResult[0].epochId,
+//               startTime: MarketDetailsResult[0].startTime,
+//               endTime: MarketDetailsResult[0].endTime,
+//               pool: MarketDetailsResult[0].pool,
+//               ethToken: MarketDetailsResult[0].ethToken,
+//               gasToken: MarketDetailsResult[0].gasToken,
+//               minPriceD18: MarketDetailsResult[0].minPriceD18,
+//               maxPriceD18: MarketDetailsResult[0].maxPriceD18,
 //               baseAssetMinPriceTick:
 //                 marketDetailsResult[0].baseAssetMinPriceTick,
 //               baseAssetMaxPriceTick:
 //                 marketDetailsResult[0].baseAssetMaxPriceTick,
-//               settled: marketDetailsResult[0].settled,
-//               settlementPriceD18: marketDetailsResult[0].settlementPriceD18,
-//               assertionId: marketDetailsResult[0].assertionId,
-//               claimStatement: marketDetailsResult[0].claimStatement,
+//               settled: MarketDetailsResult[0].settled,
+//               settlementPriceD18: MarketDetailsResult[0].settlementPriceD18,
+//               assertionId: MarketDetailsResult[0].assertionId,
+//               claimStatement: MarketDetailsResult[0].claimStatement,
 //             }
 //           : null,
-//         marketGroupParams: marketDetailsResult[1]
+//         marketGroupParams: MarketDetailsResult[1]
 //           ? formatMarketParams(marketDetailsResult[1])
 //           : null,
 //       };
@@ -315,7 +315,7 @@ export const getTokenOwner = {
     try {
       const owner = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'ownerOf',
         args: [BigInt(args.tokenId)],
       })) as `0x${string}`;
@@ -360,7 +360,7 @@ export const getTokenByIndex = {
     try {
       const tokenId = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'tokenByIndex',
         args: [BigInt(args.index)],
       })) as bigint;
@@ -407,7 +407,7 @@ export const getMarketReferencePrice = {
     try {
       const referencePrice = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'getReferencePrice',
         args: [BigInt(args.marketId)],
       })) as bigint;
@@ -458,7 +458,7 @@ export const getPosition = {
     try {
       const position = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'getPosition',
         args: [BigInt(args.positionId)],
       })) as PositionData;
@@ -471,13 +471,13 @@ export const getPosition = {
               {
                 id: position.id.toString(),
                 kind: position.kind,
-                marketId: position.epochId.toString(),
+                marketId: position.marketId.toString(),
                 depositedCollateralAmount:
                   position.depositedCollateralAmount.toString(),
-                borrowedVEth: position.borrowedVEth.toString(),
-                borrowedVGas: position.borrowedVGas.toString(),
-                vEthAmount: position.vEthAmount.toString(),
-                vGasAmount: position.vGasAmount.toString(),
+                borrowedVQuote: position.borrowedVQuote.toString(),
+                borrowedVBase: position.borrowedVBase.toString(),
+                vQuoteAmount: position.vQuoteAmount.toString(),
+                vBaseAmount: position.vBaseAmount.toString(),
                 uniswapPositionId: position.uniswapPositionId.toString(),
                 isSettled: position.isSettled,
               },
@@ -521,7 +521,7 @@ export const getPositionCollateralValue = {
     try {
       const collateralValue = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'getPositionCollateralValue',
         args: [BigInt(args.positionId)],
       })) as bigint;
@@ -570,7 +570,7 @@ export const getPositionPnl = {
     try {
       const pnl = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'getPositionPnl',
         args: [BigInt(args.positionId)],
       })) as bigint;
@@ -615,7 +615,7 @@ export const getPositionSize = {
     try {
       const size = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'getPositionSize',
         args: [BigInt(args.positionId)],
       })) as bigint;
@@ -662,7 +662,7 @@ export const getMarketSqrtPrice = {
     try {
       const sqrtPriceX96 = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'getSqrtPriceX96',
         args: [BigInt(args.marketId)],
       })) as bigint;
@@ -711,7 +711,7 @@ export const getDecimalPriceFromSqrtPriceX96 = {
     try {
       const decimalPrice = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'getDecimalPriceFromSqrtPriceX96',
         args: [BigInt(args.sqrtPriceX96)],
       })) as bigint;
@@ -758,7 +758,7 @@ export const getMarketGroupTickSpacing = {
     try {
       const tickSpacing = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'getMarketTickSpacing',
       })) as number;
 
@@ -790,7 +790,7 @@ export const getMarketGroupTickSpacing = {
 
 export const getTotalSupply = {
   name: 'get_sapience_total_supply',
-  description: 'Gets the total supply of Foil tokens',
+  description: 'Gets the total supply of Sapience tokens',
   parameters: {
     properties: {
       marketGroupAddress: z
@@ -804,7 +804,7 @@ export const getTotalSupply = {
     try {
       const totalSupply = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'totalSupply',
       })) as bigint;
 
@@ -836,7 +836,7 @@ export const getTotalSupply = {
 
 export const getBalanceOf = {
   name: 'get_sapience_balance_of',
-  description: 'Gets the balance of Foil tokens for a specific holder',
+  description: 'Gets the balance of Sapience tokens for a specific holder',
   parameters: {
     properties: {
       marketGroupAddress: z
@@ -852,7 +852,7 @@ export const getBalanceOf = {
     try {
       const balance = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
+        abi: SAPIENCE_ABI,
         functionName: 'balanceOf',
         args: [args.holder as `0x${string}`],
       })) as bigint;

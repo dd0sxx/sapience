@@ -15,13 +15,14 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import ModeToggle from './ModeToggle';
+import Betslip from './Betslip';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -63,14 +64,32 @@ const NavLinks = ({
   };
 
   return (
-    <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-60 pl-4">
-      <Link href="/forecasting" passHref className="flex w-fit">
+    <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-48 pl-4">
+      <Link href="/forecast" passHref className="flex w-fit">
         <Button
           variant="ghost"
-          className={`${linkClass} ${isActive('/forecasting', pathname) ? activeClass : ''}`}
+          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
           Forecasting
+        </Button>
+      </Link>
+      <Link href="/markets" passHref className="flex w-fit">
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/markets', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          Prediction Markets
+        </Button>
+      </Link>
+      <Link href="/vaults" passHref className="flex w-fit">
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/vaults', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          Vaults
         </Button>
       </Link>
       <Link href="/leaderboard" passHref className="flex w-fit">
@@ -89,26 +108,6 @@ const NavLinks = ({
           onClick={handleLinkClick}
         >
           Build Bots
-        </Button>
-      </Link>
-      <Link href="/agents" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/agents', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Use Agents
-        </Button>
-      </Link>
-      <Link
-        href="https://docs.sapience.xyz"
-        passHref
-        className="flex w-fit"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button variant="ghost" className={linkClass} onClick={handleLinkClick}>
-          Docs
         </Button>
       </Link>
     </nav>
@@ -162,6 +161,7 @@ const Header = () => {
             <div className="block">
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
+            {ready && <Betslip />}
             {!ready && null /* Render nothing while Privy is loading */}
             {ready && authenticated && (
               <DropdownMenu>
@@ -216,31 +216,41 @@ const Header = () => {
           <NavLinks />
         </SidebarContent>
         <SidebarFooter>
-          <div className="flex items-start gap-2 text-xs w-full ml-2 rounded-lg max-w-[160px]">
-            <span>🏗️</span>
-            <div>
-              We&apos;re{' '}
+          <div className="flex flex-col gap-2 text-xs w-full ml-4 rounded-lg">
+            <div className="flex flex-col items-start gap-2 mb-2">
+              <span>Powered by</span>
               <a
-                href="https://github.com/sapiencexyz/sapience/tree/main/packages/sapience"
+                href="https://ethena.fi"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline-offset-2 underline"
               >
-                building in public
-              </a>{' '}
-              and{' '}
-              <a
-                href="https://discord.gg/sapience"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline-offset-2 underline"
-              >
-                want your feedback
+                <Image
+                  src="/ethena.svg"
+                  alt="Ethena"
+                  width={80}
+                  height={24}
+                  className="dark:invert opacity-90 hover:opacity-100 transition-opacity duration-200"
+                />
               </a>
-              .
+            </div>
+            <div className="flex flex-col items-start gap-2 mb-0.5">
+              <span>Built on</span>
+              <a
+                href="https://convergeonchain.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image
+                  src="/converge.svg"
+                  alt="Converge"
+                  width={80}
+                  height={24}
+                  className="dark:invert opacity-80 hover:opacity-100 transition-opacity duration-200"
+                />
+              </a>
             </div>
           </div>
-          <div className="flex items-center gap-2 p-2">
+          <div className="flex items-center gap-2 p-2 pl-4 pb-4 pt-4">
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
                 href="https://github.com/sapiencexyz/sapience"
@@ -284,6 +294,15 @@ const Header = () => {
                   width={12}
                   height={12}
                 />
+              </a>
+            </Button>
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://docs.sapience.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <BookOpen className="h-3 w-3 scale-[85%]" />
               </a>
             </Button>
           </div>

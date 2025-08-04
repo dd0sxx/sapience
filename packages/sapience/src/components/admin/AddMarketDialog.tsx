@@ -16,9 +16,8 @@ import type { Address } from 'viem';
 import { useSignMessage } from 'wagmi';
 import { z } from 'zod';
 
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
-
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
+import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
@@ -97,7 +96,8 @@ const createEmptyMarket = (id: number): MarketInput => {
     startingPrice: '0.5',
     lowTickPrice: '0.00009908435194807992',
     highTickPrice: '1',
-    claimStatement: '',
+    claimStatementYesOrNumeric: '',
+    claimStatementNo: '',
     rules: '',
   };
 };
@@ -170,7 +170,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
     e.preventDefault();
 
     // Prepare data for validation (excluding client-side 'id')
-    const { id, ...marketDataToValidate } = market;
+    const { id: _id, ...marketDataToValidate } = market;
     const validationResult = marketApiSchema.safeParse(marketDataToValidate);
 
     if (!validationResult.success) {

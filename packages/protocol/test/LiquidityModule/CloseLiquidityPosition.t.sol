@@ -28,7 +28,7 @@ contract DecreaseLiquidityPosition is TestTrade {
     int24 constant MAX_TICK = 29800;
     uint256 constant INITIAL_LP_BALANCE = 100_000_000 ether;
     uint256 constant INITIAL_COLLATERAL_AMOUNT = 100 ether;
-    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
     uint256 positionId;
 
     function setUp() public {
@@ -228,7 +228,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         (uint256 amount0, uint256 amount1,) = sapience.closeLiquidityPosition(
             ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
-                liquiditySlippage: 1e18,
+                amount0Min: 0,
+                amount1Min: 0,
                 tradeSlippage: 1e18,
                 deadline: block.timestamp + 30 minutes
             })
@@ -258,34 +259,19 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.stopPrank();
     }
 
-    function test_revertWhenLiquiditySlippageParamIsWrong_closeLiquidityPosition_closeTrade() public {
-        // This test confirms that by using the closeLiquidityPosition function with the wrong parameters (slippage > 1e18) it reverts with the slippage error.
-
-        vm.startPrank(lp1);
-
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSlippage.selector, 1e18 + 1, 1e18));
-        sapience.closeLiquidityPosition(
-            ISapienceStructs.LiquidityCloseParams({
-                positionId: positionId,
-                liquiditySlippage: 1e18 + 1,
-                tradeSlippage: 1e18,
-                deadline: block.timestamp + 30 minutes
-            })
-        );
-
-        vm.stopPrank();
-    }
+    // Test removed - liquiditySlippage parameter no longer exists
 
     function test_revertWhenTradeSlippageParamIsWrong_closeLiquidityPosition_closeTrade() public {
         // This test confirms that by using the closeLiquidityPosition function with the wrong parameters (slippage > 1e18) it reverts with the slippage error.
 
         vm.startPrank(lp1);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSlippage.selector, 1e18, 1e18 + 1));
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSlippage.selector, 0, 1e18 + 1));
         sapience.closeLiquidityPosition(
             ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
-                liquiditySlippage: 1e18,
+                amount0Min: 0,
+                amount1Min: 0,
                 tradeSlippage: 1e18 + 1,
                 deadline: block.timestamp + 30 minutes
             })
@@ -309,7 +295,8 @@ contract DecreaseLiquidityPosition is TestTrade {
     //     sapience.closeLiquidityPosition(
     //         ISapienceStructs.LiquidityCloseParams({
     //             positionId: positionId,
-    //             liquiditySlippage: 0.01  * 1e18, // 1% slippage
+    //             amount0Min: 0, // TODO: calculate proper min amounts
+    //             amount1Min: 0,
     //             tradeSlippage: 1e18,
     //             deadline: block.timestamp + 30 minutes
     //         })
@@ -332,7 +319,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         sapience.closeLiquidityPosition(
             ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
-                liquiditySlippage: 1e18,
+                amount0Min: 0,
+                amount1Min: 0,
                 tradeSlippage: 0.001 * 1e18, // 1% slippage
                 deadline: block.timestamp + 30 minutes
             })

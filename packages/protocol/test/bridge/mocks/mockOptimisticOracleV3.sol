@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {IUMALayerZeroBridge} from "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import {IUMALayerZeroBridge} from "../../../src/bridge/interfaces/IUMALayerZeroBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OptimisticOracleV3Interface} from

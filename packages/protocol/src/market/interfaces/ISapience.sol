@@ -10,6 +10,7 @@ import "./IViewsModule.sol";
 import "./IUMASettlementModule.sol";
 import "./ISettlementModule.sol";
 import "./ISapiencePositionEvents.sol";
+import "./IERC721Enumerable.sol";
 
 interface ISapience is
     ILiquidityModule,
@@ -18,5 +19,6 @@ interface ISapience is
     IViewsModule,
     IUMASettlementModule,
     ISettlementModule,
-    ISapiencePositionEvents
+    ISapiencePositionEvents,
+    IERC721Enumerable
 {}

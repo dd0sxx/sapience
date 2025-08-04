@@ -3,19 +3,19 @@ import { initializeMarket } from '../../controllers/market';
 import { getMarketStartEndBlock } from '../../controllers/marketHelpers';
 import * as Sentry from '@sentry/node';
 import { INDEXERS } from '../../fixtures';
-import type { resource } from '../../../generated/prisma';
+import type { Resource } from '../../../generated/prisma';
 
 export async function reindexMissingBlocks(
   chainId: number,
   address: string,
-  epochId: string
+  marketId: string
 ) {
   try {
     console.log(
-      `Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`
+      `Starting reindex of missing resource blocks for market ${chainId}:${address}, market ${marketId}`
     );
 
-    const marketEntity = await prisma.market_group.findFirst({
+    const marketEntity = await prisma.marketGroup.findFirst({
       where: {
         chainId,
         address: address.toLowerCase(),
@@ -58,7 +58,7 @@ export async function reindexMissingBlocks(
       const { startBlockNumber, endBlockNumber, error } =
         await getMarketStartEndBlock(
           market,
-          epochId,
+          marketId,
           marketInfo.resource.priceIndexer.client
         );
 
@@ -66,7 +66,7 @@ export async function reindexMissingBlocks(
         return { missingBlockNumbers: null, error };
       }
 
-      const resourcePrices = await prisma.resource_price.findMany({
+      const resourcePrices = await prisma.resourcePrice.findMany({
         where: {
           resourceId: market.resource?.id,
           blockNumber: {
@@ -96,7 +96,7 @@ export async function reindexMissingBlocks(
 
     if (marketInfo.resource && marketInfo.resource?.priceIndexer) {
       await marketInfo.resource.priceIndexer.indexBlocks(
-        market.resource as resource,
+        market.resource as Resource,
         missingBlockNumbers
       );
     }
@@ -109,7 +109,7 @@ export async function reindexMissingBlocks(
     Sentry.withScope((scope: Sentry.Scope) => {
       scope.setExtra('chainId', chainId);
       scope.setExtra('address', address);
-      scope.setExtra('epochId', epochId);
+      scope.setExtra('marketId', marketId);
       Sentry.captureException(error);
     });
     throw error;

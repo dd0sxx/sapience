@@ -1,19 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { foilAbi } from '@sapience/ui/lib/abi';
-import type { MarketGroupType } from '@sapience/ui/types';
+import { sapienceAbi } from '@sapience/ui/lib/abi';
+
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import MultipleChoicePredict from '../inputs/MultipleChoicePredict';
+import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
+import QuoteDisplay from '../shared/QuoteDisplay';
+import MultipleChoiceWagerChoiceSelect from '../inputs/MultipleChoiceWager';
+import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-
-import PermittedAlert from './PermittedAlert';
+import { MarketGroupClassification } from '~/lib/types';
 
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -30,9 +32,9 @@ export default function MultipleChoiceWagerForm({
   const successHandled = useRef(false);
 
   // Form validation schema
-  const formSchema = useMemo(() => {
+  const formSchema: z.ZodType = useMemo(() => {
     return z.object({
-      predictionValue: z.string().min(0, 'Please select an option'),
+      predictionValue: z.string().min(1, 'Please select an option'),
       wagerAmount: wagerAmountSchema,
     });
   }, []);
@@ -45,7 +47,7 @@ export default function MultipleChoiceWagerForm({
         marketGroupData.markets?.[0]?.marketId?.toString() ?? '0', // first market
       wagerAmount: '',
     },
-    mode: 'onChange', // Validate on change for immediate feedback
+    mode: 'onChange',
   });
 
   // Get form values
@@ -71,7 +73,7 @@ export default function MultipleChoiceWagerForm({
     reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
-    marketAbi: foilAbi().abi,
+    marketAbi: sapienceAbi().abi,
     chainId: marketGroupData.chainId,
     numericMarketId: Number(predictionValue),
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
@@ -139,39 +141,22 @@ export default function MultipleChoiceWagerForm({
     return 'Submit Wager';
   };
 
-  // Render quote data if available
-  const renderQuoteData = () => {
-    if (!quoteData || quoteError) return null;
-
-    // Get the selected option name based on predictionValue
-    const selectedOptionName = (marketGroupData.markets || []).find(
-      (market) => market.marketId === Number(predictionValue)
-    )?.optionName;
-
-    return (
-      <div className="mt-2 text-sm text-muted-foreground">
-        <p>
-          If this market resolves to{' '}
-          <span className="font-medium">{selectedOptionName}</span>, you will
-          receive approximately{' '}
-          <span className="font-medium">
-            <NumberDisplay value={BigInt(quoteData.maxSize)} precision={4} />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
-          </span>
-        </p>
-      </div>
-    );
-  };
+  // Quote data is now handled by the shared QuoteDisplay component
 
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
-        <MultipleChoicePredict
-          options={(marketGroupData.markets || []).map((market) => ({
-            name: market.optionName || '',
-            marketId: market.marketId,
-          }))}
-        />
+        <div className="space-y-4">
+          <div>
+            <Label>Your Prediction</Label>
+            <MultipleChoiceWagerChoiceSelect
+              options={(marketGroupData.markets || []).map((market) => ({
+                name: market.optionName || '',
+                marketId: market.marketId,
+              }))}
+            />
+          </div>
+        </div>
         <div>
           <WagerInput
             collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
@@ -179,12 +164,16 @@ export default function MultipleChoiceWagerForm({
             chainId={marketGroupData.chainId}
           />
 
-          {quoteError && (
-            <p className="text-destructive text-sm">{quoteError}</p>
-          )}
-
-          {renderQuoteData()}
+          <QuoteDisplay
+            quoteData={quoteData}
+            quoteError={quoteError}
+            isLoading={isQuoteLoading}
+            marketGroupData={marketGroupData}
+            marketClassification={MarketGroupClassification.MULTIPLE_CHOICE}
+            predictionValue={predictionValue}
+          />
         </div>
+
         <PermittedAlert isPermitted={isPermitted} />
 
         <Button

@@ -8,12 +8,19 @@ import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 
+// Simple ERC20 token for testing
+contract TestToken is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+}
+
 contract BridgeTestBondEscrow is TestHelperOz5 {
     using Cannon for Vm;
+
 
     // Users
     address private umaUser = address(0x1);
@@ -43,6 +50,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
 
         super.setUp();
         setUpEndpoints(2, LibraryType.UltraLightNode);
+        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
         marketBridge = MarketLayerZeroBridge(
             payable(
@@ -55,7 +63,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         umaBridge = UMALayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
+                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this), address(bondCurrency), 500000000)
                 )
             )
         );
@@ -77,7 +85,6 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         vm.deal(address(umaBridge), 100 ether);
         vm.deal(address(marketBridge), 100 ether);
 
-        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
@@ -87,8 +94,17 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
 
     function test_failsIfWrongDepositAmount() public {
         vm.startPrank(umaUser);
-        vm.expectRevert("Amount must be greater than 0");
-        umaBridge.depositBond(address(bondCurrency), 0);
+        vm.expectRevert("Amount must be greater than minimum deposit amount");
+        umaBridge.depositBond(address(bondCurrency), 499999999);
+        vm.stopPrank();
+    }
+
+    function test_failsIfWrongDepositToken() public {
+        // Deploy a different token to test wrong deposit token
+        TestToken wrongToken = new TestToken("Wrong Token", "WRONG");
+        vm.startPrank(umaUser);
+        vm.expectRevert("Invalid bond token");
+        umaBridge.depositBond(address(wrongToken), 1 ether);
         vm.stopPrank();
     }
 
@@ -141,7 +157,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         vm.warp(block.timestamp + 1 days);
         umaBridge.executeWithdrawal(address(bondCurrency));
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
-        vm.expectRevert("Withdrawal already executed");
+        vm.expectRevert("No withdrawal intent");
         umaBridge.executeWithdrawal(address(bondCurrency));
         vm.stopPrank();
     }
@@ -322,6 +338,165 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
             initialRemoteUserWithdrawalIntent - 0.5 ether,
             "Message is propagated through LZ (intent)"
         );
+    }
+
+    function test_newIntentCanBeSetAfterWithdrawalExecuted() public {
+        _depositBond(umaUser, 1 ether);
+        
+        // Set initial withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.5 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Wait for withdrawal intent to expire and execute it
+        vm.warp(block.timestamp + 1 days);
+        vm.startPrank(umaUser);
+        umaBridge.executeWithdrawal(address(bondCurrency));
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Verify that the withdrawal intent is cleared
+        (uint256 pendingWithdrawal, uint256 pendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
+        assertEq(pendingWithdrawal, 0, "Pending withdrawal should be cleared after execution");
+        assertEq(pendingWithdrawalTimestamp, 0, "Pending withdrawal timestamp should be cleared after execution");
+        
+        // Set a new withdrawal intent for the remaining balance
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.3 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Verify that the new intent is set correctly
+        (pendingWithdrawal, pendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
+        assertEq(pendingWithdrawal, 0.3 ether, "New withdrawal intent should be set");
+        assertEq(pendingWithdrawalTimestamp, block.timestamp, "New withdrawal intent timestamp should be set");
+        
+        // Verify remote bridge also has the new intent
+        uint256 remoteWithdrawalIntent = marketBridge.getRemoteSubmitterWithdrawalIntent(address(umaUser), address(bondCurrency));
+        assertEq(remoteWithdrawalIntent, 0.3 ether, "Remote bridge should have the new withdrawal intent");
+    }    
+
+    function test_removeWithdrawalIntent_success() public {
+        _depositBond(umaUser, 1 ether);
+        
+        // Create withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.5 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Verify intent is set
+        (uint256 initialPendingWithdrawal, uint256 initialPendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
+        assertEq(initialPendingWithdrawal, 0.5 ether, "Withdrawal intent should be set");
+        assertEq(initialPendingWithdrawalTimestamp, block.timestamp, "Withdrawal intent timestamp should be set");
+        
+        // Wait for withdrawal delay period
+        vm.warp(block.timestamp + 1 days);
+        
+        // Remove withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.removeWithdrawalIntent(address(bondCurrency));
+        vm.stopPrank();
+        
+        // Verify intent is cleared locally
+        (uint256 finalPendingWithdrawal, uint256 finalPendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
+        assertEq(finalPendingWithdrawal, 0, "Withdrawal intent should be cleared");
+        assertEq(finalPendingWithdrawalTimestamp, 0, "Withdrawal intent timestamp should be cleared");
+        
+        // Verify message is propagated to remote bridge
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Verify remote bridge intent is also cleared
+        uint256 remoteWithdrawalIntent = marketBridge.getRemoteSubmitterWithdrawalIntent(address(umaUser), address(bondCurrency));
+        assertEq(remoteWithdrawalIntent, 0, "Remote bridge withdrawal intent should be cleared");
+    }
+
+    function test_removeWithdrawalIntent_failsIfZeroAddress() public {
+        vm.startPrank(umaUser);
+        vm.expectRevert("Bond token cannot be zero address");
+        umaBridge.removeWithdrawalIntent(address(0));
+        vm.stopPrank();
+    }
+
+    function test_removeWithdrawalIntent_failsIfWaitingPeriodNotOver() public {
+        _depositBond(umaUser, 1 ether);
+        
+        // Create withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.5 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Try to remove intent before waiting period is over
+        vm.startPrank(umaUser);
+        vm.expectRevert("Waiting period not over");
+        umaBridge.removeWithdrawalIntent(address(bondCurrency));
+        vm.stopPrank();
+    }
+
+    function test_removeWithdrawalIntent_failsIfNoWithdrawalIntent() public {
+        vm.startPrank(umaUser);
+        vm.expectRevert("No withdrawal intent");
+        umaBridge.removeWithdrawalIntent(address(bondCurrency));
+        vm.stopPrank();
+    }
+
+    function test_removeWithdrawalIntent_afterPartialExecution() public {
+        _depositBond(umaUser, 1 ether);
+        
+        // Create withdrawal intent for full amount
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 1 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Wait for withdrawal delay period
+        vm.warp(block.timestamp + 1 days);
+        
+        // Execute partial withdrawal
+        vm.startPrank(umaUser);
+        umaBridge.executeWithdrawal(address(bondCurrency));
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Verify intent is cleared after execution
+        (uint256 pendingWithdrawal, uint256 pendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
+        assertEq(pendingWithdrawal, 0, "Withdrawal intent should be cleared after execution");
+        assertEq(pendingWithdrawalTimestamp, 0, "Withdrawal intent timestamp should be cleared after execution");
+        
+        // Try to remove withdrawal intent (should fail as there's no intent)
+        vm.startPrank(umaUser);
+        vm.expectRevert("No withdrawal intent");
+        umaBridge.removeWithdrawalIntent(address(bondCurrency));
+        vm.stopPrank();
+    }
+
+    function test_removeWithdrawalIntent_preservesBondBalance() public {
+        _depositBond(umaUser, 1 ether);
+        
+        // Create withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.5 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Record initial bond balance
+        uint256 initialBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
+        assertEq(initialBondBalance, 1 ether, "Initial bond balance should be 1 ether");
+        
+        // Wait for withdrawal delay period
+        vm.warp(block.timestamp + 1 days);
+        
+        // Remove withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.removeWithdrawalIntent(address(bondCurrency));
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Verify bond balance is unchanged
+        uint256 finalBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
+        assertEq(finalBondBalance, initialBondBalance, "Bond balance should remain unchanged after removing intent");
     }
 
     function _depositBond(address _user, uint256 _amount) internal {

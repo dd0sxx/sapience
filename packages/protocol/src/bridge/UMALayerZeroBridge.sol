@@ -6,14 +6,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OptimisticOracleV3Interface} from
     "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import {IUMALayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
+import {IUMALayerZeroBridge} from "./interfaces/IUMALayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import {ETHManagement} from "./abstract/ETHManagement.sol";
 import {BondManagement} from "./abstract/BondManagement.sol";
-// import {console2} from "forge-std/console2.sol";
 
 struct AssertionMarketData {
     bytes32 assertionId;
@@ -31,6 +30,7 @@ struct AssertionMarketData {
  * 2. Interacts with UMA's OptimisticOracleV3
  * 3. Manages bond tokens and gas fees
  * 4. Sends verification results back to Converge
+ * @notice onlyOwner protected functions don't use 2 step ownership transfer. If the EOA is not valid and new onlyOwner functions need to be called, a new bridge should be set.
  */
 contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondManagement {
     using SafeERC20 for IERC20;
@@ -41,11 +41,28 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
     // State variables
     BridgeTypes.BridgeConfig private bridgeConfig;
     address private optimisticOracleV3Address;
+    address private enabledBondToken;
+    uint256 private minimumDepositAmount;
 
     mapping(bytes32 => AssertionMarketData) private assertionIdToMarketData; // assertionId => marketData
 
     // Constructor and initialization
-    constructor(address _endpoint, address _owner) OApp(_endpoint, _owner) ETHManagement(_owner) {}
+
+    /**
+     * @notice Constructor
+     * @param _endpoint The LayerZero endpoint address
+     * @param _owner The owner of the contract
+     * @param _enabledBondToken The bond token that is enabled for the bridge
+     * @param _minimumDepositAmount The minimum deposit amount for the bridge
+     * @dev The bridge is initialized with the default LayerZero endpoint and owner.
+     * After deployment, the default LayerZero configuration values are used for:
+     * - LZ send and receive libraries.
+     * - LZ DVN and Executor settings.
+     */
+    constructor(address _endpoint, address _owner, address _enabledBondToken, uint256 _minimumDepositAmount) OApp(_endpoint, _owner) ETHManagement(_owner) {
+        enabledBondToken = _enabledBondToken;
+        minimumDepositAmount = _minimumDepositAmount;
+    }
 
     // Configuration functions
     function setBridgeConfig(BridgeTypes.BridgeConfig calldata newConfig) external override onlyOwner {
@@ -59,6 +76,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
 
     function setOptimisticOracleV3(address _optimisticOracleV3) external override onlyOwner {
         optimisticOracleV3Address = _optimisticOracleV3;
+        emit OptimisticOracleV3Updated(_optimisticOracleV3);
     }
 
     function getOptimisticOracleV3() external view override returns (address) {
@@ -70,7 +88,6 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         external
         override
         nonReentrant
-        returns (MessagingReceipt memory)
     {
         AssertionMarketData storage marketData = assertionIdToMarketData[assertionId];
 
@@ -86,19 +103,16 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         bytes memory commandPayload = Encoder.encodeFromUMAResolved(marketData.bridgeAssertionId, assertedTruthfully);
 
         // Send message using contract's ETH balance
-        (MessagingReceipt memory receipt,) =
-            _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK, commandPayload, false);
+        _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK, commandPayload, false);
 
         // Notice: the bond is sent back to the submitter, not to the bridge, that's why we don't update the balance here.
 
-        return receipt;
     }
 
     function assertionDisputedCallback(bytes32 assertionId)
         external
         override
         nonReentrant
-        returns (MessagingReceipt memory)
     {
         AssertionMarketData storage marketData = assertionIdToMarketData[assertionId];
 
@@ -114,12 +128,9 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         bytes memory commandPayload = Encoder.encodeFromUMADisputed(marketData.bridgeAssertionId);
 
         // Send message using contract's ETH balance
-        (MessagingReceipt memory receipt,) =
-            _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK, commandPayload, false);
+        _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK, commandPayload, false);
 
         // We don't need to update the balance since it was already deducted when the assertion was submitted
-
-        return receipt;
     }
 
     // LayerZero message handling
@@ -200,7 +211,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
 
         IERC20 bondToken = IERC20(bondTokenAddress);
 
-        bondToken.approve(address(optimisticOracleV3), bondAmount);
+        bondToken.forceApprove(address(optimisticOracleV3), bondAmount);
 
         bytes32 umaAssertionId = optimisticOracleV3.assertTruth(
             claim,
@@ -229,11 +240,10 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         uint16 commandType,
         address submitter,
         address bondToken,
-        uint256 finalAmount,
         uint256 deltaAmount
     ) internal override returns (MessagingReceipt memory) {
         // Make balance update data for UMA side via LayerZero
-        bytes memory commandPayload = Encoder.encodeFromBalanceUpdate(submitter, bondToken, finalAmount, deltaAmount);
+        bytes memory commandPayload = Encoder.encodeFromBalanceUpdate(submitter, bondToken, deltaAmount);
 
         // Send message using contract's ETH balance
         (MessagingReceipt memory receipt,) = _sendLayerZeroMessageWithQuote(commandType, commandPayload, false);
@@ -241,16 +251,11 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         return receipt;
     }
 
-    // Implementation of command type functions
-    function _getDepositCommandType() internal pure override returns (uint16) {
-        return Encoder.CMD_FROM_ESCROW_DEPOSIT;
+    function _getMinimumDepositAmount() internal view override returns (uint256) {
+        return minimumDepositAmount;
     }
 
-    function _getIntentToWithdrawCommandType() internal pure override returns (uint16) {
-        return Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW;
-    }
-
-    function _getWithdrawCommandType() internal pure override returns (uint16) {
-        return Encoder.CMD_FROM_ESCROW_WITHDRAW;
+    function _isValidToken(address _bondToken) internal view override returns (bool) {
+        return _bondToken == enabledBondToken;
     }
 }

@@ -1,29 +1,30 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { foilAbi } from '@sapience/ui/lib/abi';
-import type { MarketGroupType } from '@sapience/ui/types';
+import { sapienceAbi } from '@sapience/ui/lib/abi';
+
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
-import YesNoPredict from '../inputs/YesNoPredict';
+import QuoteDisplay from '../shared/QuoteDisplay';
+import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-
-import PermittedAlert from './PermittedAlert';
+import { MarketGroupClassification } from '~/lib/types';
+import {
+  YES_SQRT_PRICE_X96,
+  NO_SQRT_PRICE_X96,
+} from '~/lib/utils/betslipUtils';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
   isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
-
-// Define constants for sqrtPriceX96 values
-const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
-const NO_SQRT_PRICE_X96 = '0';
 
 export default function YesNoWagerForm({
   marketGroupData,
@@ -34,7 +35,7 @@ export default function YesNoWagerForm({
   const successHandled = useRef(false);
 
   // Form validation schema
-  const formSchema = useMemo(() => {
+  const formSchema: z.ZodType = useMemo(() => {
     return z.object({
       predictionValue: z.enum([YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96], {
         required_error: 'Please select Yes or No',
@@ -76,7 +77,7 @@ export default function YesNoWagerForm({
     reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
-    marketAbi: foilAbi().abi,
+    marketAbi: sapienceAbi().abi,
     chainId: marketGroupData.chainId,
     numericMarketId: marketGroupData.markets?.[0]?.marketId ?? 0,
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
@@ -144,34 +145,51 @@ export default function YesNoWagerForm({
     return 'Submit Wager';
   };
 
-  // Render quote data if available
-  const renderQuoteData = () => {
-    if (!quoteData || quoteError) return null;
-
-    return (
-      <div className="mt-2 text-sm text-muted-foreground">
-        <p>
-          If this market resolves to{' '}
-          <span className="font-medium">
-            {predictionValue === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'}
-          </span>
-          , you will receive approximately{' '}
-          <span className="font-medium">
-            <NumberDisplay
-              value={BigInt(Math.abs(Number(quoteData.maxSize)))}
-              precision={4}
-            />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
-          </span>
-        </p>
-      </div>
-    );
-  };
+  // Quote data is now handled by the shared QuoteDisplay component
 
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
-        <YesNoPredict />
+        <div className="space-y-4">
+          <div>
+            <Label>Your Prediction</Label>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <Button
+                type="button"
+                onClick={() =>
+                  methods.setValue('predictionValue', YES_SQRT_PRICE_X96, {
+                    shouldValidate: true,
+                  })
+                }
+                className={`py-6 text-lg font-normal ${
+                  predictionValue === YES_SQRT_PRICE_X96
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                Yes
+              </Button>
+              <Button
+                type="button"
+                onClick={() =>
+                  methods.setValue('predictionValue', NO_SQRT_PRICE_X96, {
+                    shouldValidate: true,
+                  })
+                }
+                className={`py-6 text-lg font-normal ${
+                  predictionValue === NO_SQRT_PRICE_X96
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                No
+              </Button>
+            </div>
+
+            {/* Hidden input for form submission */}
+            <input type="hidden" {...methods.register('predictionValue')} />
+          </div>
+        </div>
         <div>
           <WagerInput
             collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
@@ -179,12 +197,16 @@ export default function YesNoWagerForm({
             chainId={marketGroupData.chainId}
           />
 
-          {quoteError && (
-            <p className="text-destructive text-sm">{quoteError}</p>
-          )}
-
-          {renderQuoteData()}
+          <QuoteDisplay
+            quoteData={quoteData}
+            quoteError={quoteError}
+            isLoading={isQuoteLoading}
+            marketGroupData={marketGroupData}
+            marketClassification={MarketGroupClassification.YES_NO}
+            predictionValue={predictionValue}
+          />
         </div>
+
         <PermittedAlert isPermitted={isPermitted} />
 
         <Button

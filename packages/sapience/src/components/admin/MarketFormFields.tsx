@@ -37,10 +37,10 @@ interface MarketGroupCopyData {
   question?: string | null;
   category?: {
     slug?: string | null;
-    id?: string | null;
+    id?: string | number | null;
   } | null;
   resource?: {
-    id?: string | null;
+    id?: string | number | null;
   } | null;
   baseTokenName?: string | null;
   quoteTokenName?: string | null;
@@ -75,7 +75,8 @@ export interface MarketInput {
   startingSqrtPriceX96: string;
   baseAssetMinPriceTick: string;
   baseAssetMaxPriceTick: string;
-  claimStatement: string;
+  claimStatementYesOrNumeric: string;
+  claimStatementNo: string;
   rules?: string;
 }
 
@@ -180,7 +181,7 @@ const MarketFormFields = ({
     marketGroups.forEach((group) => {
       if (group.category) {
         categories.set(group.category.slug, {
-          id: group.category.id,
+          id: group.category.id.toString(),
           name: group.category.name,
           slug: group.category.slug,
         });
@@ -720,12 +721,12 @@ const MarketFormFields = ({
 
     try {
       const selectedMarketGroup = marketGroups.find(
-        (group) => group.id === selectedMarketGroupId
+        (group) => group.id.toString() === selectedMarketGroupId
       );
       if (!selectedMarketGroup) return;
 
       const selectedMarket = selectedMarketGroup.markets.find(
-        (marketItem) => marketItem.id === selectedMarketId
+        (marketItem) => marketItem.id.toString() === selectedMarketId
       );
       if (!selectedMarket) return;
 
@@ -764,17 +765,29 @@ const MarketFormFields = ({
       }
 
       // Copy claim statement - try multiple sources
-      let claimStatement = '';
+      let claimStatementYesOrNumeric = '';
 
-      if (selectedMarketGroup.marketParamsClaimstatement) {
-        claimStatement = selectedMarketGroup.marketParamsClaimstatement;
-      } else if (selectedMarket.marketParamsClaimstatement) {
-        claimStatement = selectedMarket.marketParamsClaimstatement;
+      if (selectedMarket.claimStatementYesOrNumeric) {
+        claimStatementYesOrNumeric = selectedMarket.claimStatementYesOrNumeric;
       }
 
-      if (claimStatement) {
-        const decodedClaimStatement = decodeClaimStatement(claimStatement);
-        onMarketChange('claimStatement', decodedClaimStatement);
+      if (claimStatementYesOrNumeric) {
+        const decodedClaimStatement = decodeClaimStatement(
+          claimStatementYesOrNumeric
+        );
+        onMarketChange('claimStatementYesOrNumeric', decodedClaimStatement);
+      }
+
+      // Copy claim statement - try multiple sources
+      let claimStatementNo = '';
+
+      if (selectedMarket.claimStatementNo) {
+        claimStatementNo = selectedMarket.claimStatementNo;
+      }
+
+      if (claimStatementNo) {
+        const decodedClaimStatement = decodeClaimStatement(claimStatementNo);
+        onMarketChange('claimStatementNo', decodedClaimStatement);
       }
 
       // Clear selections after copying
@@ -834,8 +847,9 @@ const MarketFormFields = ({
               type="text"
               value={
                 selectedMarketGroupId
-                  ? marketGroups?.find((g) => g.id === selectedMarketGroupId)
-                      ?.question || `Market Group ${selectedMarketGroupId}`
+                  ? marketGroups?.find(
+                      (g) => g.id.toString() === selectedMarketGroupId
+                    )?.question || `Market Group ${selectedMarketGroupId}`
                   : searchQuery
               }
               onChange={(e) => {
@@ -886,7 +900,7 @@ const MarketFormFields = ({
                     ) {
                       const selectedGroup =
                         filteredMarketGroups[selectedDropdownIndex];
-                      setSelectedMarketGroupId(selectedGroup.id);
+                      setSelectedMarketGroupId(selectedGroup.id.toString());
                       setShowMarketGroupDropdown(false);
                       setSelectedDropdownIndex(-1);
                     }
@@ -958,7 +972,7 @@ const MarketFormFields = ({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setSelectedMarketGroupId(group.id);
+                      setSelectedMarketGroupId(group.id.toString());
                       setShowMarketGroupDropdown(false);
                       setSelectedDropdownIndex(-1);
                     }}
@@ -1007,7 +1021,7 @@ const MarketFormFields = ({
                 <SelectContent>
                   {(() => {
                     const selectedGroup = marketGroups?.find(
-                      (group) => group.id === selectedMarketGroupId
+                      (group) => group.id.toString() === selectedMarketGroupId
                     );
                     if (!selectedGroup) return null;
 
@@ -1020,7 +1034,10 @@ const MarketFormFields = ({
                     }
 
                     return selectedGroup.markets.map((marketItem) => (
-                      <SelectItem key={marketItem.id} value={marketItem.id}>
+                      <SelectItem
+                        key={marketItem.id}
+                        value={marketItem.id.toString()}
+                      >
                         {marketItem.optionName ||
                           marketItem.question ||
                           `Market ${marketItem.marketId}`}
@@ -1124,16 +1141,39 @@ const MarketFormFields = ({
         </div>
       </div>
 
-      {/* Claim Statement */}
+      {/* Claim Statement Yes or Numeric */}
       <div>
-        <Label htmlFor={fieldId('claimStatement')}>Claim Statement</Label>
+        <Label htmlFor={fieldId('claimStatementYesOrNumeric')}>
+          Claim Statement (Yes or Numeric)
+        </Label>
         <Input
-          id={fieldId('claimStatement')}
+          id={fieldId('claimStatementYesOrNumeric')}
           type="text"
-          value={market.claimStatement}
-          onChange={(e) => onMarketChange('claimStatement', e.target.value)}
+          value={market.claimStatementYesOrNumeric}
+          onChange={(e) =>
+            onMarketChange('claimStatementYesOrNumeric', e.target.value)
+          }
           placeholder="e.g. The average cost of gas in June 2025..."
           required
+        />
+        {!isCompact && (
+          <p className="text-sm text-muted-foreground mt-1">
+            This will be followed by the settlement value in UMA.
+          </p>
+        )}
+      </div>
+
+      {/* Claim Statement No */}
+      <div>
+        <Label htmlFor={fieldId('claimStatementNo')}>
+          Claim Statement (No) (Optional)
+        </Label>
+        <Input
+          id={fieldId('claimStatementNo')}
+          type="text"
+          value={market.claimStatementNo}
+          onChange={(e) => onMarketChange('claimStatementNo', e.target.value)}
+          placeholder="e.g. The average cost of gas in June 2025..."
         />
         {!isCompact && (
           <p className="text-sm text-muted-foreground mt-1">
@@ -1166,7 +1206,7 @@ const MarketFormFields = ({
             onChange={(timestamp: number) =>
               handleDateTimeChange('startTime', timestamp)
             }
-            min={0}
+            min={1}
             max={endTimestamp > 0 ? endTimestamp : undefined}
             timePart={getTimePart(startTimestamp)}
           />

@@ -5,7 +5,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import type { MarketType } from '@sapience/ui/types';
 import { format, formatDistanceToNow, fromUnixTime } from 'date-fns';
 import {
   MoveHorizontal,
@@ -18,6 +17,7 @@ import { IoDocumentTextOutline } from 'react-icons/io5';
 import { LiaRulerVerticalSolid } from 'react-icons/lia';
 import * as chains from 'viem/chains';
 
+import type { MarketType } from '@sapience/ui/types';
 import NumberDisplay from '../shared/NumberDisplay';
 import {
   useTotalVolume,
@@ -27,12 +27,12 @@ import type { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
 interface MarketDataContract {
-  epochId: bigint;
+  marketId: bigint;
   startTime: bigint;
   endTime: bigint;
   pool: string;
-  ethToken: string;
-  gasToken: string;
+  quoteToken: string;
+  baseToken: string;
   minPriceD18: bigint;
   maxPriceD18: bigint;
   baseAssetMinPriceTick: number;
@@ -51,6 +51,7 @@ interface MarketHeaderProps {
   collateralAssetAddress: string | undefined;
   baseTokenName: string;
   quoteTokenName: string;
+  collateralSymbol: string;
   minTick: number;
   maxTick: number;
 }
@@ -60,7 +61,8 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
   chainId,
   marketAddress,
   collateralAssetAddress,
-  quoteTokenName,
+  baseTokenName,
+  collateralSymbol,
   minTick,
   maxTick,
 }) => {
@@ -121,54 +123,12 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
   const minPrice = minTick ? tickToPrice(minTick) : undefined;
   const maxPrice = maxTick ? tickToPrice(maxTick) : undefined;
 
-  const unitDisplay = quoteTokenName || 'USD';
+  // Use collateral symbol for volume/open interest, base token for price ranges
+  const collateralUnitDisplay = collateralSymbol || 'USD';
+  const priceUnitDisplay = baseTokenName || 'USD';
 
   const links = (
-    <>
-      {totalVolume !== null && totalVolume !== undefined && (
-        <div className="inline-flex items-center">
-          <span className="inline-block mr-1.5">
-            <TrendingUp className="w-4 h-4 opacity-80" />
-          </span>
-          <span className="font-medium mr-1">Volume:</span>
-          <NumberDisplay value={totalVolume} />
-          <span className="ml-1">{unitDisplay}</span>
-        </div>
-      )}
-
-      {openInterest !== null && openInterest !== undefined && (
-        <div className="inline-flex items-center">
-          <span className="inline-block mr-1.5">
-            <DollarSign className="w-4 h-4 opacity-80" />
-          </span>
-          <span className="font-medium mr-1">Open Interest:</span>
-          <NumberDisplay value={openInterest} />
-          <span className="ml-1">{unitDisplay}</span>
-        </div>
-      )}
-
-      {startTimeString && endTimeString && (
-        <div className="inline-flex items-center">
-          <span className="inline-block mr-1.5">
-            <FaRegCalendar className="opacity-80" />
-          </span>
-          <span className="font-medium mr-1">Period:</span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>{startTimeString}</TooltipTrigger>
-              <TooltipContent>{startTimeTooltip}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <ArrowRight className="w-3 h-3 mx-1" />
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>{endTimeString}</TooltipTrigger>
-              <TooltipContent>{endTimeTooltip}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )}
-
+    <div className="flex flex-wrap gap-y-4 gap-x-4 items-center">
       <a
         className="hover:no-underline inline-flex items-center"
         target="_blank"
@@ -199,19 +159,63 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
         </a>
       )}
 
+      {totalVolume !== null && totalVolume !== undefined && (
+        <div className="inline-flex items-center">
+          <span className="inline-block mr-1.5">
+            <TrendingUp className="w-4 h-4 opacity-80" />
+          </span>
+          <span className="font-medium mr-1">Volume:</span>
+          <NumberDisplay value={totalVolume} />
+          <span className="ml-1">{collateralUnitDisplay}</span>
+        </div>
+      )}
+
+      {openInterest !== null && openInterest !== undefined && (
+        <div className="inline-flex items-center">
+          <span className="inline-block mr-1">
+            <DollarSign className="w-4 h-4 opacity-80" />
+          </span>
+          <span className="font-medium mr-1">Open Interest:</span>
+          <NumberDisplay value={openInterest} />
+          <span className="ml-1">{collateralUnitDisplay}</span>
+        </div>
+      )}
+
+      {startTimeString && endTimeString && (
+        <div className="inline-flex items-center">
+          <span className="inline-block mr-1.5">
+            <FaRegCalendar className="opacity-80" />
+          </span>
+          <span className="font-medium mr-1">Period:</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>{startTimeString}</TooltipTrigger>
+              <TooltipContent>{startTimeTooltip}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <ArrowRight className="w-3 h-3 mx-1" />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>{endTimeString}</TooltipTrigger>
+              <TooltipContent>{endTimeTooltip}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+
       {minPrice && maxPrice && (
         <div className="inline-flex items-center">
           <span className="inline-block mr-1">
             <LiaRulerVerticalSolid />
           </span>
-          <span className="font-medium mr-1">Market Price Range:</span>
+          <span className="font-medium mr-1">Range:</span>
           <NumberDisplay value={minPrice} />
           <MoveHorizontal className="w-3 h-3 mx-1" />
           <NumberDisplay value={maxPrice} />
-          <span className="ml-1">{unitDisplay}</span>
+          <span className="ml-1">{priceUnitDisplay}</span>
         </div>
       )}
-    </>
+    </div>
   );
 
   const displayQuestion =

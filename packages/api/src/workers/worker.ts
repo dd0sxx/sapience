@@ -5,6 +5,7 @@ import { initializeFixtures, INDEXERS } from '../fixtures';
 import { handleJobCommand } from './jobs';
 import { startIndexingAndWatchingMarketGroups as indexMarketsJob } from './jobs/indexMarkets';
 import { createResilientProcess } from '../utils/utils';
+import { Resource } from 'generated/prisma';
 
 async function main() {
   await initializeDataSource();
@@ -21,7 +22,7 @@ async function main() {
 }
 
 async function startMarketIndexers(): Promise<Promise<void | (() => void)>[]> {
-  const distinctChainIdsResult = await prisma.market_group.findMany({
+  const distinctChainIdsResult = await prisma.marketGroup.findMany({
     select: { chainId: true },
     distinct: ['chainId'],
   });
@@ -47,11 +48,27 @@ async function startResourceIndexers(): Promise<
   const resourceJobs: Promise<void | (() => void)>[] = [];
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
+    let useEmptyResourceForIndexer = false;
+    let resource: Resource | null = null;
+    if (resourceSlug === 'attestation-prediction-market') {
+      useEmptyResourceForIndexer = true;
+    }
+
     // Find the resource in the database
-    const resource = await prisma.resource.findFirst({
+    resource = await prisma.resource.findFirst({
       where: { slug: resourceSlug },
     });
 
+    if (!resource && useEmptyResourceForIndexer) {
+      resource = {
+        id: 0,
+        slug: 'attestation-prediction-market',
+        name: 'attestation-prediction-market',
+        description: 'Attestation prediction market',
+        createdAt: new Date(),
+        categoryId: 1,
+      } as Resource;
+    }
     if (!resource) {
       console.log(`Resource not found: ${resourceSlug}`);
       continue;

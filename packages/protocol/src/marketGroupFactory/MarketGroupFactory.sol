@@ -10,7 +10,7 @@ contract MarketGroupFactory {
 
     address public immutable implementation;
 
-    event MarketGroupInitialized(address indexed sender, address indexed marketGroup, uint256 nonce);
+    event MarketGroupDeployed(address indexed sender, address indexed marketGroup, uint256 nonce);
 
     constructor(address _implementation) {
         implementation = _implementation;
@@ -18,7 +18,6 @@ contract MarketGroupFactory {
 
     function cloneAndInitializeMarketGroup(
         address collateralAsset,
-        address[] calldata feeCollectors,
         uint256 minTradeSize,
         bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams,
@@ -27,10 +26,10 @@ contract MarketGroupFactory {
         address marketGroup = implementation.clone();
 
         IConfigurationModule(marketGroup).initializeMarketGroup(
-            msg.sender, collateralAsset, feeCollectors, minTradeSize, bridgedSettlement, marketParams
+            msg.sender, collateralAsset, minTradeSize, bridgedSettlement, marketParams
         );
 
-        emit MarketGroupInitialized(msg.sender, marketGroup, nonce);
+        emit MarketGroupDeployed(msg.sender, marketGroup, nonce);
 
         return marketGroup;
     }

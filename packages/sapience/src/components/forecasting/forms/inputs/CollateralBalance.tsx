@@ -2,6 +2,7 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useAccount, useBalance } from 'wagmi';
+import { usePrivy } from '@privy-io/react-auth';
 
 interface CollateralBalanceProps {
   collateralSymbol?: string;
@@ -19,6 +20,7 @@ export default function CollateralBalance({
   chainShortName,
 }: CollateralBalanceProps) {
   const { address: accountAddress, isConnected } = useAccount();
+  const { login, authenticated } = usePrivy();
 
   const {
     data: balanceData,
@@ -30,17 +32,34 @@ export default function CollateralBalance({
     chainId,
     query: {
       enabled:
-        isConnected && !!accountAddress && !!collateralAddress && !!chainId,
+        authenticated &&
+        isConnected &&
+        !!accountAddress &&
+        !!collateralAddress &&
+        !!chainId,
     },
   });
 
   const fetchedBalance = balanceData?.formatted ?? '0';
 
   useEffect(() => {
-    if (isConnected && !!accountAddress && !!collateralAddress && !!chainId) {
+    if (
+      authenticated &&
+      isConnected &&
+      !!accountAddress &&
+      !!collateralAddress &&
+      !!chainId
+    ) {
       refetchBalance();
     }
-  }, [isConnected, accountAddress, collateralAddress, chainId, refetchBalance]);
+  }, [
+    authenticated,
+    isConnected,
+    accountAddress,
+    collateralAddress,
+    chainId,
+    refetchBalance,
+  ]);
 
   const numericBalance = parseFloat(fetchedBalance);
 
@@ -51,11 +70,29 @@ export default function CollateralBalance({
     }
   };
 
+  // Show "Get collateralSymbol" button that opens Privy login if wallet not connected
+  if (!authenticated || !isConnected || !accountAddress) {
+    return (
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="default"
+          size="xs"
+          className="text-xs"
+          onClick={login}
+          type="button"
+        >
+          Get {collateralSymbol}
+        </Button>
+      </div>
+    );
+  }
+
+  // Show "Get collateralSymbol" button if connected but no balance
   if (
-    !isConnected ||
-    (isConnected &&
-      !isBalanceLoading &&
-      (numericBalance === 0 || Number.isNaN(numericBalance)))
+    authenticated &&
+    isConnected &&
+    !isBalanceLoading &&
+    (numericBalance === 0 || Number.isNaN(numericBalance))
   ) {
     return (
       <div className="flex items-center space-x-2">
@@ -64,7 +101,7 @@ export default function CollateralBalance({
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Button variant="outline" size="xs" className="text-xs" type="button">
+          <Button variant="default" size="xs" className="text-xs" type="button">
             Get {collateralSymbol}
           </Button>
         </a>

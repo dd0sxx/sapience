@@ -145,7 +145,8 @@ contract WBTCIntegrationTest is TestMarket {
         (,, uint256 collateralReturned) = sapience.closeLiquidityPosition(
             ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
-                liquiditySlippage: 0.01 ether, // 1%
+                amount0Min: 0, // TODO: calculate proper min amounts
+                amount1Min: 0,
                 tradeSlippage: 0.01 ether,
                 deadline: block.timestamp + 1 hours
             })

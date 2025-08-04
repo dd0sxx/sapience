@@ -11,7 +11,7 @@ contract DeployUMALZBridge is Script {
         address owner = 0xdb5Af497A73620d881561eDb508012A5f84e9BA2;
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-        UMALayerZeroBridge uma = new UMALayerZeroBridge(endpoint, owner);
+        UMALayerZeroBridge uma = new UMALayerZeroBridge(endpoint, owner, 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8, 500000000); // 500 USDC
         vm.stopBroadcast();
 
         console.log("UMALayerZeroBridge deployed to:", address(uma));

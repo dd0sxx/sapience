@@ -34,7 +34,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         INonfungiblePositionManager.DecreaseLiquidityParams decreaseParams;
         uint256 tokensOwed0;
         uint256 tokensOwed1;
-        bool isFeeCollector;
         uint256 requiredCollateralAmount;
         uint256 newCollateralAmount;
         uint256 loanAmount0;
@@ -50,7 +49,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         INonfungiblePositionManager.IncreaseLiquidityParams increaseParams;
         uint256 tokensOwed0;
         uint256 tokensOwed1;
-        bool isFeeCollector;
         uint256 requiredCollateralAmount;
         uint256 loanAmount0;
         uint256 loanAmount1;
@@ -70,9 +68,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 addedAmount1
         )
     {
-        if (params.deadline < block.timestamp) {
-            revert Errors.TransactionExpired(params.deadline, block.timestamp);
-        }
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
@@ -88,12 +83,12 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 normalizedCollateral = marketGroup.normalizeCollateralAmount(params.collateralAmount);
 
         (uniswapNftId, liquidity, addedAmount0, addedAmount1) = INonfungiblePositionManager(
-            marketGroup.marketParams.uniswapPositionManager
+            market.marketParams.uniswapPositionManager
         ).mint(
             INonfungiblePositionManager.MintParams({
                 token0: address(market.baseToken),
                 token1: address(market.quoteToken),
-                fee: marketGroup.marketParams.feeRate,
+                fee: market.marketParams.feeRate,
                 tickLower: params.lowerTick,
                 tickUpper: params.upperTick,
                 amount0Desired: params.amountBaseToken,
@@ -116,8 +111,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 lowerTick: params.lowerTick,
                 upperTick: params.upperTick,
                 tokensOwed0: 0,
-                tokensOwed1: 0,
-                isFeeCollector: marketGroup.isFeeCollector(msg.sender)
+                tokensOwed1: 0
             })
         );
 
@@ -149,13 +143,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         nonReentrant
         returns (uint256 decreasedAmount0, uint256 decreasedAmount1, uint256 collateralAmount)
     {
-        if (params.deadline < block.timestamp) {
-            revert Errors.TransactionExpired(params.deadline, block.timestamp);
-        }
 
         DecreaseLiquidityPositionStack memory stack;
 
-        MarketGroup.Data storage marketGroup = MarketGroup.load();
         Position.Data storage position = Position.loadValid(params.positionId);
         Market.Data storage market = Market.loadValid(position.marketId);
 
@@ -172,8 +162,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             deadline: params.deadline
         });
 
-        (decreasedAmount0, decreasedAmount1) = INonfungiblePositionManager(
-            marketGroup.marketParams.uniswapPositionManager
+        INonfungiblePositionManager(
+            market.marketParams.uniswapPositionManager
         ).decreaseLiquidity(stack.decreaseParams);
 
         // if all liquidity is removed, close the position and return
@@ -184,10 +174,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         // otherwise, validate the decreased liquidity and update the position
         // get tokens owed
         (,,,,,,,,,, stack.tokensOwed0, stack.tokensOwed1) = INonfungiblePositionManager(
-            marketGroup.marketParams.uniswapPositionManager
+            market.marketParams.uniswapPositionManager
         ).positions(position.uniswapPositionId);
 
-        stack.isFeeCollector = marketGroup.isFeeCollector(msg.sender);
         (stack.requiredCollateralAmount, stack.newCollateralAmount, stack.loanAmount0, stack.loanAmount1) = position
             .updateValidLp(
             market,
@@ -200,8 +189,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 lowerTick: stack.lowerTick,
                 upperTick: stack.upperTick,
                 tokensOwed0: stack.tokensOwed0, // decreased token0 + any fees accrued
-                tokensOwed1: stack.tokensOwed1, // decreased token1 + any fees accrued
-                isFeeCollector: stack.isFeeCollector
+                tokensOwed1: stack.tokensOwed1 // decreased token1 + any fees accrued
             })
         );
 
@@ -243,17 +231,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         nonReentrant
         returns (uint256 decreasedAmount0, uint256 decreasedAmount1, uint256 collateralAmount)
     {
-        if (params.deadline < block.timestamp) {
-            revert Errors.TransactionExpired(params.deadline, block.timestamp);
-        }
 
-        if (params.liquiditySlippage > DecimalMath.UNIT || params.tradeSlippage > DecimalMath.UNIT) {
-            revert Errors.InvalidSlippage(params.liquiditySlippage, params.tradeSlippage);
+        if (params.tradeSlippage > DecimalMath.UNIT) {
+            revert Errors.InvalidSlippage(0, params.tradeSlippage);
         }
 
         DecreaseLiquidityPositionStack memory stack;
 
-        MarketGroup.Data storage marketGroup = MarketGroup.load();
         Position.Data storage position = Position.loadValid(params.positionId);
         Market.Data storage market = Market.loadValid(position.marketId);
 
@@ -265,13 +249,13 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         stack.decreaseParams = INonfungiblePositionManager.DecreaseLiquidityParams({
             tokenId: position.uniswapPositionId,
             liquidity: stack.previousLiquidity,
-            amount0Min: stack.previousAmount0.mulDecimal(DecimalMath.UNIT - params.liquiditySlippage),
-            amount1Min: stack.previousAmount1.mulDecimal(DecimalMath.UNIT - params.liquiditySlippage),
+            amount0Min: params.amount0Min,
+            amount1Min: params.amount1Min,
             deadline: params.deadline
         });
 
-        (decreasedAmount0, decreasedAmount1) = INonfungiblePositionManager(
-            marketGroup.marketParams.uniswapPositionManager
+        INonfungiblePositionManager(
+            market.marketParams.uniswapPositionManager
         ).decreaseLiquidity(stack.decreaseParams);
 
         return _closeLiquidityPosition(market, position, true, params.tradeSlippage);
@@ -288,9 +272,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 totalDepositedCollateralAmount
         )
     {
-        if (params.deadline < block.timestamp) {
-            revert Errors.TransactionExpired(params.deadline, block.timestamp);
-        }
 
         IncreaseLiquidityPositionStack memory stack;
 
@@ -313,15 +294,14 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             deadline: params.deadline
         });
 
-        (liquidity, amount0, amount1) = INonfungiblePositionManager(marketGroup.marketParams.uniswapPositionManager)
+        (liquidity, amount0, amount1) = INonfungiblePositionManager(market.marketParams.uniswapPositionManager)
             .increaseLiquidity(stack.increaseParams);
 
         // get tokens owed
         (,,,,,,,,,, stack.tokensOwed0, stack.tokensOwed1) = INonfungiblePositionManager(
-            marketGroup.marketParams.uniswapPositionManager
+            market.marketParams.uniswapPositionManager
         ).positions(position.uniswapPositionId);
 
-        stack.isFeeCollector = marketGroup.isFeeCollector(msg.sender);
         (requiredCollateralAmount, totalDepositedCollateralAmount, stack.loanAmount0, stack.loanAmount1) = position
             .updateValidLp(
             market,
@@ -334,8 +314,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 lowerTick: stack.lowerTick,
                 upperTick: stack.upperTick,
                 tokensOwed0: stack.tokensOwed0,
-                tokensOwed1: stack.tokensOwed1,
-                isFeeCollector: stack.isFeeCollector
+                tokensOwed1: stack.tokensOwed1
             })
         );
 
@@ -385,12 +364,11 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     {
         Position.Data storage position = Position.loadValid(positionId);
         Market.Data storage market = Market.loadValid(position.marketId);
-        MarketGroup.Data storage marketGroup = MarketGroup.load();
 
         QuoteCollateralStack memory stack;
 
         (,,,,, stack.lowerTick, stack.upperTick, stack.currentLiquidity,,, stack.tokensOwed0, stack.tokensOwed1) =
-        INonfungiblePositionManager(marketGroup.marketParams.uniswapPositionManager).positions(
+        INonfungiblePositionManager(market.marketParams.uniswapPositionManager).positions(
             position.uniswapPositionId
         );
 
@@ -435,6 +413,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint160 sqrtPriceBX96
     ) external view override returns (uint256 amount0, uint256 amount1, uint128 liquidity) {
         Market.Data storage market = Market.load(marketId);
+        
+        // Normalize the input collateral amount
+        depositedCollateralAmount = MarketGroup.load().normalizeCollateralAmount(depositedCollateralAmount);
 
         // calculate for unit
         uint128 unitLiquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -463,32 +444,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
     }
 
-    function depositCollateral(uint256 positionId, uint256 collateralAmount) external override {
-        MarketGroup.Data storage marketGroup = MarketGroup.load();
-        if (!marketGroup.isFeeCollector(msg.sender)) {
-            revert Errors.OnlyFeeCollector();
-        }
-
-        Position.Data storage position = Position.loadValid(positionId);
-        position.validateLp();
-
-        // add to the collateral instead of updating
-        int256 deltaCollateral = position.updateCollateral(
-            position.depositedCollateralAmount + marketGroup.normalizeCollateralAmount(collateralAmount)
-        );
-
-        emit ISapiencePositionEvents.CollateralDeposited(
-            msg.sender,
-            position.marketId,
-            position.id,
-            position.depositedCollateralAmount,
-            position.vQuoteAmount,
-            position.vBaseAmount,
-            position.borrowedVQuote,
-            position.borrowedVBase,
-            deltaCollateral
-        );
-    }
 
     function getTokensFromLiquidity(
         uint128 liquidity,
@@ -508,7 +463,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         // Collect fees and remaining tokens
         (collectedAmount0, collectedAmount1) = INonfungiblePositionManager(
-            marketGroup.marketParams.uniswapPositionManager
+            market.marketParams.uniswapPositionManager
         ).collect(
             INonfungiblePositionManager.CollectParams({
                 tokenId: position.uniswapPositionId,
@@ -518,7 +473,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             })
         );
         // Burn the Uniswap position
-        INonfungiblePositionManager(marketGroup.marketParams.uniswapPositionManager).burn(position.uniswapPositionId);
+        INonfungiblePositionManager(market.marketParams.uniswapPositionManager).burn(position.uniswapPositionId);
         position.uniswapPositionId = 0;
 
         // due to rounding on the uniswap side, 1 wei is left over on loan amount when opening & immediately closing position
@@ -552,7 +507,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             }
         }
 
-        // if all debt is paid off, and no vGAS, withdraw collateral to user
+        // if all debt is paid off, and no vBase, withdraw collateral to user
         // otherwise, transition user to trader and user can trade through pool to close position
         // in a subsequent tx
         int256 deltaCollateral;
@@ -619,8 +574,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         // Ensures that the position only have single side tokens
         position.rebalanceVirtualTokens();
 
-        // 1. Confirm no vgas tokens (no need to check for borrowedVGas or vGasAmount since they are zero because targetSize is zero
-        // 2. Confirm collateral is enough to pay for borrowed veth (no need to check because borrowedVEth is zero because targetSize is zero)
+        // 1. Confirm no vbase tokens (no need to check for borrowedVBase or vBaseAmount since they are zero because targetSize is zero
+        // 2. Confirm collateral is enough to pay for borrowed vquote (no need to check because borrowedVQuote is zero because targetSize is zero)
 
         // 3. Reconcile collateral (again)
         position.rebalanceCollateral();

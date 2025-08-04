@@ -1,8 +1,8 @@
-import { useFoilAbi } from '@sapience/ui/hooks/useFoilAbi';
-import type { MarketType } from '@sapience/ui/types';
+import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useMemo } from 'react';
 import type { Abi, Address } from 'viem';
+import type { MarketType } from '@sapience/ui/types';
 
 import type { UsePositionsResult } from '~/hooks/contract';
 import {
@@ -15,12 +15,12 @@ import type { MarketGroupClassification } from '~/lib/types';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 
 interface MarketDataContract {
-  epochId: bigint;
+  marketId: bigint;
   startTime: bigint;
   endTime: bigint;
   pool: Address;
-  ethToken: Address;
-  gasToken: Address;
+  quoteToken: Address;
+  baseToken: Address;
   minPriceD18: bigint;
   maxPriceD18: bigint;
   baseAssetMinPriceTick: number;
@@ -108,7 +108,7 @@ export function MarketPageProvider({
   } = useMarket({ chainId, marketAddress, marketId });
 
   // Get ABI for contracts
-  const { abi } = useFoilAbi();
+  const { abi } = useSapienceAbi();
 
   // Get market data from the contract
   const {
@@ -141,7 +141,7 @@ export function MarketPageProvider({
   } = usePositions({
     marketAddress: marketAddress as `0x${string}`,
     chainId,
-    foilAbi: abi,
+    sapienceAbi: abi,
     marketId,
   });
 
@@ -165,8 +165,8 @@ export function MarketPageProvider({
     }
 
     // Assuming GraphQL provides marketData.marketGroup structured appropriately
-    // for all cases, including single markets (e.g., marketGroup.markets = [singleMarket]).
-    // getMarketGroupClassification handles cases where marketGroup.markets is undefined or empty.
+    // for all cases, including single markets (e.g., marketGroup.market = [singleMarket]).
+    // getMarketGroupClassification handles cases where marketGroup.market is undefined or empty.
     return getMarketGroupClassification(marketData.marketGroup || {});
   }, [marketData]);
 

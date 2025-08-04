@@ -25,10 +25,12 @@ import {
   ArrowLeftRightIcon,
   DropletsIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
+import DataDrawerFilter from './DataDrawerFilter';
+import MarketLeaderboard from './MarketLeaderboard';
 import LpPositionsTable from '~/components/profile/LpPositionsTable';
 import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
@@ -36,12 +38,43 @@ import NumberDisplay from '~/components/shared/NumberDisplay';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 
-import DataDrawerFilter from './DataDrawerFilter';
-import MarketLeaderboard from './MarketLeaderboard';
-
 interface DataDrawerProps {
   trigger?: React.ReactNode;
 }
+
+const CenteredMessage = ({
+  children,
+  className = 'text-muted-foreground',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div className={`w-full py-8 text-center ${className}`}>
+    <p>{children}</p>
+  </div>
+);
+
+const getTransactionTypeDisplay = (type: string) => {
+  switch (type) {
+    case 'ADD_LIQUIDITY':
+    case 'addLiquidity':
+      return { label: 'Add Liquidity', variant: 'outline' as const };
+    case 'REMOVE_LIQUIDITY':
+    case 'removeLiquidity':
+      return { label: 'Remove Liquidity', variant: 'outline' as const };
+    case 'LONG':
+    case 'long':
+      return { label: 'Long', variant: 'default' as const };
+    case 'SHORT':
+    case 'short':
+      return { label: 'Short', variant: 'default' as const };
+    case 'SETTLE_POSITION':
+    case 'settlePosition':
+      return { label: 'Settle', variant: 'secondary' as const };
+    default:
+      return { label: type, variant: 'outline' as const };
+  }
+};
 
 const DataDrawer = ({ trigger }: DataDrawerProps) => {
   const { address } = useAccount();
@@ -52,21 +85,29 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
   const [selectedTab, setSelectedTab] = useState('transactions');
 
   // Get market context data
-  const { marketAddress, chainId, numericMarketId, collateralAssetTicker } =
-    useMarketPage();
+  const {
+    marketAddress,
+    chainId,
+    numericMarketId,
+    collateralAssetTicker,
+    marketData,
+  } = useMarketPage();
+
+  useEffect(() => {
+    setWalletAddress(address || null);
+  }, [address]);
 
   // Fetch GraphQL-based positions (includes transaction data)
-  const targetAddress = walletAddress || address;
+  const targetAddress = walletAddress?.toLowerCase() || address?.toLowerCase();
+
   const {
     data: allPositions = [],
     isLoading: isLoadingPositions,
     error: positionsError,
   } = usePositions({
     address: targetAddress || undefined,
-    marketAddress: marketAddress || undefined,
-    chainId: chainId || undefined,
+    marketAddress: marketData?.marketGroup?.address || undefined,
   });
-
   // Filter positions by type
   const lpPositions = allPositions.filter((pos) => pos.isLP);
   const traderPositions = allPositions.filter((pos) => !pos.isLP);
@@ -81,29 +122,11 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
           positionType: position.isLP ? 'LP' : 'Trader',
         })) || []
     )
-    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-  const getTransactionTypeDisplay = (type: string) => {
-    switch (type) {
-      case 'ADD_LIQUIDITY':
-      case 'addLiquidity':
-        return { label: 'Add Liquidity', variant: 'outline' as const };
-      case 'REMOVE_LIQUIDITY':
-      case 'removeLiquidity':
-        return { label: 'Remove Liquidity', variant: 'outline' as const };
-      case 'LONG':
-      case 'long':
-        return { label: 'Long', variant: 'default' as const };
-      case 'SHORT':
-      case 'short':
-        return { label: 'Short', variant: 'default' as const };
-      case 'SETTLE_POSITION':
-      case 'settlePosition':
-        return { label: 'Settle', variant: 'secondary' as const };
-      default:
-        return { label: type, variant: 'outline' as const };
-    }
-  };
+    .sort(
+      (a, b) =>
+        (new Date(b.createdAt).getTime() || 0) -
+        (new Date(a.createdAt).getTime() || 0)
+    );
 
   const tabTitles: { [key: string]: string } = {
     leaderboard: 'Leaderboard',
@@ -114,29 +137,23 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
 
   const renderTransactionTable = () => {
     if (isLoadingPositions) {
-      return (
-        <div className="w-full py-8 text-center text-muted-foreground">
-          <p>Loading transactions...</p>
-        </div>
-      );
+      return <CenteredMessage>Loading transactions...</CenteredMessage>;
     }
 
     if (positionsError) {
       return (
-        <div className="w-full py-8 text-center text-destructive">
-          <p>Error loading transactions: {positionsError.message}</p>
-        </div>
+        <CenteredMessage className="text-destructive">
+          Error loading transactions: {positionsError.message}
+        </CenteredMessage>
       );
     }
 
     if (allTransactions.length === 0) {
       return (
-        <div className="w-full py-8 text-center text-muted-foreground">
-          <p>No transactions found</p>
-          <p className="text-sm mt-2">
-            {walletAddress ? `for address ${walletAddress}` : 'for this market'}
-          </p>
-        </div>
+        <CenteredMessage>
+          No transactions found{' '}
+          {walletAddress ? `for address ${walletAddress}` : 'for this market'}
+        </CenteredMessage>
       );
     }
 
@@ -164,12 +181,9 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
                   <TableRow key={tx.id}>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(
-                          new Date((tx.timestamp || 0) * 1000),
-                          {
-                            addSuffix: true,
-                          }
-                        )}
+                        {formatDistanceToNow(new Date(tx.createdAt), {
+                          addSuffix: true,
+                        })}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -200,6 +214,50 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
           </Table>
         </div>
       </div>
+    );
+  };
+
+  const renderPositionsContent = (
+    positions: typeof lpPositions,
+    positionType: 'trader' | 'liquidity'
+  ) => {
+    if (isLoadingPositions) {
+      return <CenteredMessage>Loading positions...</CenteredMessage>;
+    }
+    if (positionsError) {
+      return (
+        <CenteredMessage className="text-destructive">
+          Error loading positions: {positionsError.message}
+        </CenteredMessage>
+      );
+    }
+    if (positions.length === 0) {
+      return (
+        <CenteredMessage>
+          No {positionType} positions found{' '}
+          {walletAddress ? `for address ${walletAddress}` : 'for this market'}
+        </CenteredMessage>
+      );
+    }
+    if (positionType === 'trader') {
+      return (
+        <TraderPositionsTable
+          positions={traderPositions}
+          parentMarketAddress={marketAddress || undefined}
+          parentChainId={chainId || undefined}
+          parentMarketId={numericMarketId || undefined}
+          showHeader={false}
+        />
+      );
+    }
+    return (
+      <LpPositionsTable
+        positions={lpPositions}
+        parentMarketAddress={marketAddress || undefined}
+        parentChainId={chainId || undefined}
+        parentMarketId={numericMarketId || undefined}
+        showHeader={false}
+      />
     );
   };
 
@@ -256,36 +314,12 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
             </TabsContent>
             <TabsContent value="trader-positions">
               <div className="max-h-96 overflow-y-auto">
-                {isLoadingPositions ? (
-                  <div className="w-full py-8 text-center text-muted-foreground">
-                    <p>Loading positions...</p>
-                  </div>
-                ) : (
-                  <TraderPositionsTable
-                    positions={traderPositions}
-                    parentMarketAddress={marketAddress || undefined}
-                    parentChainId={chainId || undefined}
-                    parentMarketId={numericMarketId || undefined}
-                    showHeader={false}
-                  />
-                )}
+                {renderPositionsContent(traderPositions, 'trader')}
               </div>
             </TabsContent>
             <TabsContent value="lp-positions">
               <div className="max-h-96 overflow-y-auto">
-                {isLoadingPositions ? (
-                  <div className="w-full py-8 text-center text-muted-foreground">
-                    <p>Loading positions...</p>
-                  </div>
-                ) : (
-                  <LpPositionsTable
-                    positions={lpPositions}
-                    parentMarketAddress={marketAddress || undefined}
-                    parentChainId={chainId || undefined}
-                    parentMarketId={numericMarketId || undefined}
-                    showHeader={false}
-                  />
-                )}
+                {renderPositionsContent(lpPositions, 'liquidity')}
               </div>
             </TabsContent>
           </Tabs>

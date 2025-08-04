@@ -113,16 +113,16 @@ export function useModifyLP({
   const callIncreaseLiquidity = useCallback(
     async (deadline: bigint) => {
       const increaseParams = {
-        positionId: BigInt(positionId!),
+        positionId: BigInt(positionId),
         collateralAmount: parsedCollateralDelta,
-        gasTokenAmount: amount0,
-        ethTokenAmount: amount1,
-        minGasAmount: minAmount0,
-        minEthAmount: minAmount1,
+        baseTokenAmount: amount0,
+        quoteTokenAmount: amount1,
+        minBaseAmount: minAmount0,
+        minQuoteAmount: minAmount1,
         deadline,
       };
       return writeContractAsync({
-        address: marketAddress!,
+        address: marketAddress,
         abi: marketAbi,
         functionName: 'increaseLiquidityPosition',
         chainId,
@@ -147,14 +147,14 @@ export function useModifyLP({
   const callDecreaseLiquidity = useCallback(
     async (deadline: bigint) => {
       const decreaseParams = {
-        positionId: BigInt(positionId!),
+        positionId: BigInt(positionId),
         liquidity: liquidityDelta,
-        minGasAmount: minAmount0,
-        minEthAmount: minAmount1,
+        minBaseAmount: minAmount0,
+        minQuoteAmount: minAmount1,
         deadline,
       };
       return writeContractAsync({
-        address: marketAddress!,
+        address: marketAddress,
         abi: marketAbi,
         functionName: 'decreaseLiquidityPosition',
         chainId,

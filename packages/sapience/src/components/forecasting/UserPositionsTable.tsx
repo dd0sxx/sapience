@@ -7,13 +7,12 @@ import { useEffect } from 'react';
 import type { Address } from 'viem';
 
 import ErrorState from '../profile/ErrorState'; // Assuming similar loading/error components
-import LoadingState from '../profile/LoadingState'; // Assuming similar loading/error components
 import LpPositionsTable from '../profile/LpPositionsTable';
 import PredictionPositionsTable from '../profile/PredictionPositionsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
-import { SCHEMA_UID } from '~/lib/constants/eas';
+import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
 
 interface UserPositionsTableProps {
   account: Address;
@@ -59,25 +58,24 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
 
   const {
     data: positionsData,
-    isLoading: isLoadingPositions,
+    isLoading: _isLoadingPositions,
     error: positionsError,
     refetch: refetchPositions,
   } = usePositions(positionVars);
 
   const {
     data: attestationsData,
-    isLoading: isLoadingAttestations,
+    isLoading: _isLoadingAttestations,
     error: attestationsError,
     refetch: refetchAttestations,
   } = usePredictions({
     attesterAddress: account,
-    schemaId: SCHEMA_UID,
+    schemaId: CONVERGE_SCHEMA_UID,
     marketAddress,
     chainId,
     marketId,
   });
 
-  const isLoading = isLoadingPositions || isLoadingAttestations;
   const error = positionsError || attestationsError;
 
   useEffect(() => {
@@ -86,10 +84,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       refetchAttestations();
     }
   }, [refetchUserPositions, refetchPositions, refetchAttestations]);
-
-  if (isLoading) {
-    return <LoadingState />;
-  }
 
   if (error) {
     // It's good practice to log the error as well

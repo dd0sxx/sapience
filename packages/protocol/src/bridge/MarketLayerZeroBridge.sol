@@ -4,7 +4,7 @@ pragma solidity ^0.8.22;
 import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IUMASettlementModule} from "../market/interfaces/IUMASettlementModule.sol";
-import {IMarketLayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
+import {IMarketLayerZeroBridge} from "./interfaces/IMarketLayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
@@ -18,6 +18,7 @@ import {ETHManagement} from "./abstract/ETHManagement.sol";
  * 2. Tracks remote balances
  * 3. Processes verifications
  * 4. Receives and processes verifications
+ * @notice onlyOwner protected functions don't use 2 step ownership transfer. If the EOA is not valid and new onlyOwner functions need to be called, a new bridge should be set.
  */
 contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge, ETHManagement {
     using Encoder for bytes;
@@ -34,6 +35,15 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
     uint256 private lastAssertionId; // Internal assertionId that is sent to UMA and to the marketGroup as bytes32
 
     // Constructor and initialization
+    /**
+     * @notice Constructor
+     * @param _endpoint The LayerZero endpoint address
+     * @param _owner The owner of the contract
+     * @dev The bridge is initialized with the default LayerZero endpoint and owner.
+     * After deployment, the default LayerZero configuration values are used for:
+     * - LZ send and receive libraries.
+     * - LZ DVN and Executor settings.
+     */
     constructor(address _endpoint, address _owner) OApp(_endpoint, _owner) ETHManagement(_owner) {}
 
     // Configuration functions
@@ -48,10 +58,12 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
 
     function enableMarketGroup(address marketGroup) external override onlyOwner {
         enabledMarketGroups[marketGroup] = true;
+        emit MarketGroupEnabled(marketGroup);
     }
 
     function disableMarketGroup(address marketGroup) external override onlyOwner {
         enabledMarketGroups[marketGroup] = false;
+        emit MarketGroupDisabled(marketGroup);
     }
 
     function isMarketGroupEnabled(address marketGroup) external view override returns (bool) {
@@ -70,18 +82,22 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         (uint16 commandType, bytes memory data) = _message.decodeType();
 
         if (commandType == Encoder.CMD_FROM_ESCROW_DEPOSIT) {
-            (address submitter, address bondToken,, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
             emit BondDeposited(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW) {
-            (address submitter, address bondToken,, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
             remoteSubmitterWithdrawalIntent[submitter][bondToken] = deltaAmount; // Only one intent per pair submitter/bond allowed at a time
-            emit BondWithdrawn(submitter, bondToken, deltaAmount);
+            emit BondIntentToWithdraw(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_ESCROW_WITHDRAW) {
-            (address submitter, address bondToken,, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
             remoteSubmitterWithdrawalIntent[submitter][bondToken] -= deltaAmount;
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
+        } else if (commandType == Encoder.CMD_FROM_ESCROW_REMOVE_WITHDRAWAL_INTENT) {
+            (address submitter, address bondToken, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
+            remoteSubmitterWithdrawalIntent[submitter][bondToken] -= deltaAmount;
+            emit BondIntentToWithdrawRemoved(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
             (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
             address marketGroup = assertionIdToMarketGroup[assertionId];
@@ -119,11 +135,11 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         // Check if contract has enough ETH
         _requireSufficientETH(fee.nativeFee);
 
-        // Check gas thresholds and emit alerts before sending
-        _checkGasThresholds();
-
         // Send the message using the external send function with ETH from contract
         receipt = this._sendMessageWithETH{value: fee.nativeFee}(bridgeConfig.remoteEid, message, options, fee);
+
+        // Check gas thresholds and emit alerts before sending
+        _checkGasThresholds();
 
         return (receipt, fee);
     }

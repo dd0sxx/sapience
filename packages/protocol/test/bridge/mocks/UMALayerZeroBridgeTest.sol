@@ -9,7 +9,7 @@ import {
 } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 
 contract UMALayerZeroBridgeTest is UMALayerZeroBridge {
-    constructor(address _endpoint, address _owner) UMALayerZeroBridge(_endpoint, _owner) {}
+    constructor(address _endpoint, address _owner) UMALayerZeroBridge(_endpoint, _owner, 0x750ba8b76187092B0D1E87E28daaf484d1b5273b, 500000000) {}
 
     function exposed_lzReceive(
         Origin calldata _origin,

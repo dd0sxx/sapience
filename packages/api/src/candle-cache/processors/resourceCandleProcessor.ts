@@ -1,10 +1,10 @@
 import type {
-  resource_price,
-  cache_candle,
-  resource,
+  ResourcePrice,
+  CacheCandle,
+  Resource,
 } from '../../../generated/prisma';
 
-type ResourcePriceWithResource = resource_price & { resource: resource };
+type ResourcePriceWithResource = ResourcePrice & { resource: Resource };
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { BNMax, BNMin, getTimtestampCandleInterval } from '../candleUtils';
@@ -28,7 +28,7 @@ export class ResourceCandleProcessor {
     candleEndTimestamp: number,
     price: ResourcePriceWithResource,
     resourceSlug: string
-  ): Promise<cache_candle> {
+  ): Promise<CacheCandle> {
     const candle = await getOrCreateCandle({
       candleType: CANDLE_TYPES.RESOURCE,
       interval: interval,
@@ -38,17 +38,18 @@ export class ResourceCandleProcessor {
       timestamp: candleTimestamp,
     });
 
+    const priceValue = price.value; // Cast since schema updated but types not regenerated
     const open =
       this.lastClosePricesByResourceAndInterval[resourceSlug][interval] ??
-      price.value.toString();
+      priceValue;
 
     // CANDLE VALUES
     candle.endTimestamp = candleEndTimestamp;
     candle.lastUpdatedTimestamp = price.timestamp;
     candle.open = open;
-    candle.high = BNMax(open, price.value.toString());
-    candle.low = BNMin(open, price.value.toString());
-    candle.close = price.value.toString();
+    candle.high = BNMax(open, priceValue);
+    candle.low = BNMin(open, priceValue);
+    candle.close = priceValue;
     return candle;
   }
 
@@ -71,11 +72,11 @@ export class ResourceCandleProcessor {
         if (lastPrice) {
           this.lastClosePricesByResourceAndInterval[price.resource.slug][
             interval
-          ] = lastPrice.value.toString();
+          ] = lastPrice.value;
         } else {
           this.lastClosePricesByResourceAndInterval[price.resource.slug][
             interval
-          ] = price.value.toString();
+          ] = price.value;
         }
       }
 
@@ -132,9 +133,10 @@ export class ResourceCandleProcessor {
         }
       } else {
         // Update existing candle
-        candle.high = BNMax(candle.high, price.value.toString());
-        candle.low = BNMin(candle.low, price.value.toString());
-        candle.close = price.value.toString();
+        const priceValue = price.value;
+        candle.high = BNMax(candle.high, priceValue);
+        candle.low = BNMin(candle.low, priceValue);
+        candle.close = priceValue;
         candle.lastUpdatedTimestamp = price.timestamp;
       }
     }
