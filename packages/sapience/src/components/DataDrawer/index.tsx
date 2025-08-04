@@ -1,10 +1,5 @@
 import { Badge } from '@sapience/ui/components/ui/badge';
 import {
-  Drawer,
-  DrawerContent,
-  DrawerTrigger,
-} from '@sapience/ui/components/ui/drawer';
-import {
   Table,
   TableBody,
   TableCell,
@@ -37,10 +32,6 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
-
-interface DataDrawerProps {
-  trigger?: React.ReactNode;
-}
 
 const CenteredMessage = ({
   children,
@@ -76,12 +67,11 @@ const getTransactionTypeDisplay = (type: string) => {
   }
 };
 
-const DataDrawer = ({ trigger }: DataDrawerProps) => {
+const MarketDataTables = () => {
   const { address } = useAccount();
   const [walletAddress, setWalletAddress] = useState<string | null>(
     address || null
   );
-  const [showTable, setShowTable] = useState(false);
   const [selectedTab, setSelectedTab] = useState('transactions');
 
   // Get market context data
@@ -262,71 +252,66 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
   };
 
   return (
-    <Drawer open={showTable} onOpenChange={setShowTable}>
-      {trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
-      <DrawerContent>
-        <div className="px-4 py-4">
-          <Tabs
-            defaultValue="transactions"
-            className="w-full"
-            onValueChange={setSelectedTab}
-          >
-            <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
-              <TabsList>
-                <TabsTrigger value="leaderboard">
-                  <TrophyIcon className="h-4 w-4 md:hidden" />
-                  <span className="hidden md:inline">Leaderboard</span>
-                </TabsTrigger>
-                <TabsTrigger value="transactions">
-                  <ListIcon className="h-4 w-4 md:hidden" />
-                  <span className="hidden md:inline">Transactions</span>
-                </TabsTrigger>
-                <TabsTrigger value="trader-positions">
-                  <ArrowLeftRightIcon className="h-4 w-4 md:hidden" />
-                  <span className="hidden md:inline">Trader Positions</span>
-                </TabsTrigger>
-                <TabsTrigger value="lp-positions">
-                  <DropletsIcon className="h-4 w-4 md:hidden" />
-                  <span className="hidden md:inline">Liquidity Positions</span>
-                </TabsTrigger>
-              </TabsList>
-              <DataDrawerFilter
-                address={walletAddress}
-                onAddressChange={setWalletAddress}
-              />
-            </div>
-            <h2 className="text-2xl font-semibold mt-6 md:hidden">
-              {tabTitles[selectedTab]}
-            </h2>
-            <TabsContent value="leaderboard">
-              <div className="max-h-96 overflow-y-auto">
-                <MarketLeaderboard
-                  marketAddress={marketAddress}
-                  chainId={chainId}
-                  marketId={numericMarketId?.toString() || null}
-                />
-              </div>
-            </TabsContent>
-            <TabsContent value="transactions">
-              <div className="max-h-96 overflow-y-auto">
-                {renderTransactionTable()}
-              </div>
-            </TabsContent>
-            <TabsContent value="trader-positions">
-              <div className="max-h-96 overflow-y-auto">
-                {renderPositionsContent(traderPositions, 'trader')}
-              </div>
-            </TabsContent>
-            <TabsContent value="lp-positions">
-              <div className="max-h-96 overflow-y-auto">
-                {renderPositionsContent(lpPositions, 'liquidity')}
-              </div>
-            </TabsContent>
-          </Tabs>
+    <div>
+      <Tabs
+        defaultValue="transactions"
+        className="w-full"
+        onValueChange={setSelectedTab}
+      >
+        <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
+          <TabsList>
+            <TabsTrigger value="leaderboard">
+              <TrophyIcon className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">Leaderboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="transactions">
+              <ListIcon className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">Transactions</span>
+            </TabsTrigger>
+            <TabsTrigger value="trader-positions">
+              <ArrowLeftRightIcon className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">Trader Positions</span>
+            </TabsTrigger>
+            <TabsTrigger value="lp-positions">
+              <DropletsIcon className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">Liquidity Positions</span>
+            </TabsTrigger>
+          </TabsList>
+          <DataDrawerFilter
+            address={walletAddress}
+            onAddressChange={setWalletAddress}
+          />
         </div>
-      </DrawerContent>
-    </Drawer>
+        <h2 className="text-2xl font-semibold mt-6 md:hidden">
+          {tabTitles[selectedTab]}
+        </h2>
+        <TabsContent value="leaderboard">
+          <div className="max-h-96 overflow-y-auto">
+            <MarketLeaderboard
+              marketAddress={marketAddress}
+              chainId={chainId}
+              marketId={numericMarketId?.toString() || null}
+            />
+          </div>
+        </TabsContent>
+        <TabsContent value="transactions">
+          <div className="max-h-96 overflow-y-auto">
+            {renderTransactionTable()}
+          </div>
+        </TabsContent>
+        <TabsContent value="trader-positions">
+          <div className="max-h-96 overflow-y-auto">
+            {renderPositionsContent(traderPositions, 'trader')}
+          </div>
+        </TabsContent>
+        <TabsContent value="lp-positions">
+          <div className="max-h-96 overflow-y-auto">
+            {renderPositionsContent(lpPositions, 'liquidity')}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
-export default DataDrawer;
+export default MarketDataTables;

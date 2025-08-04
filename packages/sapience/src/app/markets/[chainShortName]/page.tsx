@@ -20,6 +20,7 @@ import { useParams, usePathname } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
+import { ChevronRight } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
@@ -363,6 +364,7 @@ const MarketGroupPageContent = () => {
                     className="text-lg font-medium text-muted-foreground hover:text-primary px-0 flex items-center gap-1 transition-colors"
                   >
                     Details
+                    <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               </div>

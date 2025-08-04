@@ -5,42 +5,30 @@ import {
   PriceSelector,
 } from '@sapience/ui/components/charts';
 import { Button } from '@sapience/ui/components/ui/button';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '@sapience/ui/components/ui/tabs';
-import { ChevronLeft, DatabaseIcon } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import { ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
-import { useAccount } from 'wagmi';
+import { useEffect, useState } from 'react';
 import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
 import { LineType, TimeInterval } from '@sapience/ui/types/charts';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
-import DataDrawer from '~/components/DataDrawer';
+import MarketDataTables from '~/components/DataDrawer';
 import MarketHeader from '~/components/forecasting/MarketHeader';
 import PositionSelector from '~/components/forecasting/PositionSelector';
-import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
+
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { PositionKind } from '~/hooks/contract/usePositions';
-import { usePositions } from '~/hooks/graphql/usePositions';
+
 import {
   MarketPageProvider,
   useMarketPage,
 } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
 import { parseUrlParameter } from '~/lib/utils/util';
-import { CommentFilters } from '~/components/shared/Comments';
-
-// Dynamically import Comments component
-const Comments = dynamic(() => import('~/components/shared/Comments'), {
-  ssr: false,
-});
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -109,7 +97,6 @@ const MarketStatusDisplay = ({
 
 // Main content component that consumes the forecast context
 const ForecastContent = () => {
-  const { address } = useAccount();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -140,7 +127,7 @@ const ForecastContent = () => {
   );
 
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
-  const [activeContentTab, setActiveContentTab] = useState<string>('forecasts');
+
   const [selectedPrices, setSelectedPrices] = useState<
     Record<LineType, boolean>
   >({
@@ -148,22 +135,6 @@ const ForecastContent = () => {
     [LineType.IndexPrice]: true,
     [LineType.ResourcePrice]: false,
     [LineType.TrailingAvgPrice]: false,
-  });
-
-  const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
-
-  // Bump the trigger when we want the child <UserPositionsTable /> to refresh
-  const handleUserPositionsRefetch = useCallback(() => {
-    setUserPositionsTrigger((prev) => prev + 1);
-  }, []);
-
-  // A memoised callback whose identity changes when the trigger changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const refetchUserPositions = useCallback(() => {}, [userPositionsTrigger]);
-
-  const { isLoading: _isUserPositionsLoading } = usePositions({
-    address: address || '',
-    marketAddress: marketAddress || undefined,
   });
 
   // Extract resource slug
@@ -346,126 +317,52 @@ const ForecastContent = () => {
                           setSelectedPrices={handlePriceSelection}
                         />
                       )}
-
-                      <DataDrawer
-                        trigger={
-                          <Button className="w-full sm:w-auto">
-                            <DatabaseIcon className="w-4 h-4 mr-0.5" />
-                            Data
-                          </Button>
-                        }
-                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Forecasts and Positions Tabs */}
-                <div className="border border-border rounded shadow-sm dark:bg-muted/50 mt-4">
-                  <Tabs
-                    value={activeContentTab}
-                    onValueChange={setActiveContentTab}
-                  >
-                    <div className="p-4 border-b border-border">
-                      <TabsList className="h-auto p-0 bg-transparent">
-                        <TabsTrigger
-                          value="forecasts"
-                          className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
-                        >
-                          Forecasts
-                        </TabsTrigger>
-                        {address && (
-                          <TabsTrigger
-                            value="positions"
-                            className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0"
-                          >
-                            Your Positions
-                          </TabsTrigger>
-                        )}
-                      </TabsList>
-                    </div>
-                    <TabsContent value="forecasts" className="mt-0">
-                      <Comments
-                        selectedCategory={CommentFilters.SelectedQuestion}
-                        question={marketData?.question?.toString()}
-                        refetchTrigger={userPositionsTrigger}
-                      />
-                    </TabsContent>
-                    {address && (
-                      <TabsContent value="positions" className="mt-0">
-                        <div className="p-4">
-                          <UserPositionsTable
-                            account={address}
-                            marketAddress={marketAddress!}
-                            chainId={chainId === null ? undefined : chainId}
-                            marketId={
-                              numericMarketId === null
-                                ? undefined
-                                : numericMarketId
-                            }
-                            refetchUserPositions={refetchUserPositions}
-                          />
-                        </div>
-                      </TabsContent>
-                    )}
-                  </Tabs>
-                </div>
+                <MarketDataTables />
               </div>
 
               <div className="w-full lg:max-w-[340px] pb-4">
-                <div className="bg-card p-6 rounded border mb-5 overflow-auto">
+                <div className="bg-card p-6 rounded border mb-6 overflow-auto">
                   <div className="w-full">
                     {!positionId && (
-                      <div className="flex w-full border-b">
-                        <button
-                          type="button"
-                          className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                            activeFormTab === 'trade'
-                              ? 'border-b-2 border-primary text-primary'
-                              : 'text-muted-foreground hover:bg-muted/40'
-                          }`}
-                          onClick={() => setActiveFormTab('trade')}
-                        >
-                          Trade
-                        </button>
-                        <button
-                          type="button"
-                          className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                            activeFormTab === 'liquidity'
-                              ? 'border-b-2 border-primary text-primary'
-                              : 'text-muted-foreground hover:bg-muted/40'
-                          }`}
-                          onClick={() => setActiveFormTab('liquidity')}
-                        >
-                          Liquidity
-                        </button>
-                      </div>
+                      <Tabs
+                        value={activeFormTab}
+                        onValueChange={(value) => setActiveFormTab(value)}
+                        className="w-full"
+                      >
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="trade">Trade</TabsTrigger>
+                          <TabsTrigger value="liquidity">Liquidity</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
                     )}
-                    <PositionSelector />
+                    <div className="mt-4">
+                      <PositionSelector />
+                    </div>
                     <div className="mt-4 relative">
                       {selectedPosition &&
                         selectedPosition.kind === PositionKind.Trade && (
                           <SimpleTradeWrapper
                             positionId={positionId || undefined}
-                            onActionComplete={handleUserPositionsRefetch}
                           />
                         )}
                       {selectedPosition &&
                         selectedPosition.kind === PositionKind.Liquidity && (
                           <SimpleLiquidityWrapper
                             positionId={positionId || undefined}
-                            onActionComplete={handleUserPositionsRefetch}
                           />
                         )}
                       {!selectedPosition && activeFormTab === 'trade' && (
                         <SimpleTradeWrapper
                           positionId={positionId || undefined}
-                          onActionComplete={handleUserPositionsRefetch}
                         />
                       )}
                       {!selectedPosition && activeFormTab === 'liquidity' && (
                         <SimpleLiquidityWrapper
                           positionId={positionId || undefined}
-                          onActionComplete={handleUserPositionsRefetch}
                         />
                       )}
                     </div>
