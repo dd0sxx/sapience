@@ -16,10 +16,10 @@ export interface FoilPosition {
   kind: PositionKind;
   marketId: bigint; // Same as marketId
   depositedCollateralAmount: bigint;
-  borrowedVEth: bigint;
-  borrowedVGas: bigint;
-  vEthAmount: bigint;
-  vGasAmount: bigint;
+  borrowedVBase: bigint;
+  borrowedVQuote: bigint;
+  vBaseAmount: bigint;
+  vQuoteAmount: bigint;
   uniswapPositionId: bigint;
   isSettled: boolean;
 }
@@ -165,7 +165,6 @@ export function usePositions({
     if (!positionsData) return result;
 
     for (const response of positionsData) {
-      // eslint-disable-next-line no-continue
       if (!response.result) continue;
 
       const position = response.result as unknown as FoilPosition;
@@ -177,7 +176,6 @@ export function usePositions({
         position.marketId !== undefined &&
         position.marketId.toString() !== marketId.toString()
       ) {
-        // eslint-disable-next-line no-continue
         continue;
       }
 

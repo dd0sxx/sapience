@@ -1,29 +1,20 @@
-import { gql } from '@apollo/client';
+import { graphqlRequest } from '@sapience/ui/lib';
+import { useQuery } from '@tanstack/react-query';
+import { formatUnits } from 'viem';
 import type {
   Market as MarketType,
   MarketGroup as MarketGroupType,
   Category as CategoryType,
   Position as PositionType,
 } from '@sapience/ui/types/graphql';
-import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
-import { formatUnits } from 'viem';
 
 import { FOCUS_AREAS, DEFAULT_FOCUS_AREA } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
-import { foilApi } from '~/lib/utils/util';
-
-// Define the structure of the data returned by the category query
-interface GetCategoriesApiResponse {
-  data: {
-    categories: CategoryType[];
-  };
-}
 
 // GraphQL query to fetch categories
-const GET_CATEGORIES = gql`
-  query GetCategories {
+const GET_CATEGORIES = /* GraphQL */ `
+  query Categories {
     categories {
       id
       name
@@ -38,42 +29,34 @@ const GET_CATEGORIES = gql`
 // Custom hook to fetch categories using Tanstack Query
 export const useCategories = () => {
   return useQuery<CategoryType[], Error>({
-    // Specify return type and error type
-    queryKey: ['categories'], // Define a query key
+    queryKey: ['categories'],
     queryFn: async (): Promise<CategoryType[]> => {
-      // Define the async function
       try {
-        const response: GetCategoriesApiResponse = await foilApi.post(
-          '/graphql',
-          {
-            query: print(GET_CATEGORIES),
-          }
-        );
-        // Ensure the response structure is as expected
-        if (
-          response &&
-          response.data &&
-          Array.isArray(response.data.categories)
-        ) {
-          return response.data.categories;
+        type CategoriesQueryResult = {
+          categories: CategoryType[];
+        };
+
+        const data =
+          await graphqlRequest<CategoriesQueryResult>(GET_CATEGORIES);
+
+        if (!data || !Array.isArray(data.categories)) {
+          console.error(
+            'Unexpected API response structure for categories:',
+            data
+          );
+          throw new Error(
+            'Failed to fetch categories: Invalid response structure'
+          );
         }
-        console.error(
-          'Unexpected API response structure for categories:',
-          response
-        );
-        throw new Error(
-          'Failed to fetch categories: Invalid response structure'
-        );
+
+        return data.categories;
       } catch (err) {
         console.error('Error fetching categories:', err);
-        // Re-throw the error or return a default value like an empty array
-        // Re-throwing ensures error state is propagated by react-query
         throw err instanceof Error
           ? err
           : new Error('An unknown error occurred while fetching categories');
       }
     },
-    // Add other react-query options if needed (e.g., staleTime, refetchOnWindowFocus)
   });
 };
 
@@ -93,15 +76,22 @@ export interface Candle {
   close: string;
 }
 
-const LATEST_INDEX_PRICE_QUERY = gql`
-  query GetLatestIndexPrice($address: String!, $chainId: Int!, $marketId: String!) {
-    indexCandlesFromCache(
+const LATEST_INDEX_PRICE_QUERY = /* GraphQL */ `
+  query LatestIndexPrice(
+    $address: String!
+    $chainId: Int!
+    $marketId: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    indexCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
-      from: ${Math.floor(Date.now() / 1000) - 300}  # Last 5 minutes
-      to: ${Math.floor(Date.now() / 1000)}
-      interval: 60  # 1 minute intervals
+      from: $from
+      to: $to
+      interval: $interval
     ) {
       data {
         timestamp
@@ -112,8 +102,8 @@ const LATEST_INDEX_PRICE_QUERY = gql`
   }
 `;
 
-const MARKETS_QUERY = gql`
-  query GetMarkets {
+const MARKETS_QUERY = /* GraphQL */ `
+  query Markets {
     marketGroups {
       id
       address
@@ -141,8 +131,6 @@ const MARKETS_QUERY = gql`
       marketParamsAssertionliveness
       marketParamsBondcurrency
       marketParamsBondamount
-      marketParamsClaimstatementYesOrNumeric
-      marketParamsClaimstatementNo
       marketParamsUniswappositionmanager
       marketParamsUniswapswaprouter
       marketParamsUniswapquoter
@@ -163,7 +151,6 @@ const MARKETS_QUERY = gql`
         poolAddress
         settlementPriceD18
         optionName
-        currentPrice
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
         startingSqrtPriceX96
@@ -171,8 +158,8 @@ const MARKETS_QUERY = gql`
         marketParamsAssertionliveness
         marketParamsBondcurrency
         marketParamsBondamount
-        marketParamsClaimstatementYesOrNumeric
-        marketParamsClaimstatementNo
+        claimStatementYesOrNumeric
+        claimStatementNo
         marketParamsUniswappositionmanager
         marketParamsUniswapswaprouter
         marketParamsUniswapquoter
@@ -182,8 +169,8 @@ const MARKETS_QUERY = gql`
   }
 `;
 
-const MARKET_CANDLES_QUERY = gql`
-  query GetMarketCandlesFromCache(
+const MARKET_CANDLES_QUERY = /* GraphQL */ `
+  query MarketCandles(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -191,7 +178,7 @@ const MARKET_CANDLES_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandlesFromCache(
+    marketCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -211,12 +198,8 @@ const MARKET_CANDLES_QUERY = gql`
   }
 `;
 
-const TOTAL_VOLUME_QUERY = gql`
-  query GetTotalVolume(
-    $marketAddress: String!
-    $chainId: Int!
-    $marketId: Int!
-  ) {
+const TOTAL_VOLUME_QUERY = /* GraphQL */ `
+  query TotalVolume($marketAddress: String!, $chainId: Int!, $marketId: Int!) {
     totalVolumeByMarket(
       marketAddress: $marketAddress
       chainId: $chainId
@@ -225,9 +208,23 @@ const TOTAL_VOLUME_QUERY = gql`
   }
 `;
 
-const OPEN_INTEREST_QUERY = gql`
-  query GetOpenInterest($marketAddress: String, $chainId: Int) {
-    positions(marketAddress: $marketAddress, chainId: $chainId) {
+const OPEN_INTEREST_QUERY = /* GraphQL */ `
+  query OpenInterest($marketAddress: String!, $chainId: Int!, $marketId: Int!) {
+    positions(
+      where: {
+        market: {
+          is: {
+            marketGroup: {
+              is: {
+                address: { equals: $marketAddress }
+                chainId: { equals: $chainId }
+              }
+            }
+            marketId: { equals: $marketId }
+          }
+        }
+      }
+    ) {
       id
       positionId
       collateral
@@ -235,7 +232,7 @@ const OPEN_INTEREST_QUERY = gql`
       market {
         id
         marketId
-        market_group {
+        marketGroup {
           id
           collateralDecimals
         }
@@ -246,10 +243,8 @@ const OPEN_INTEREST_QUERY = gql`
 
 // Rename the hook to reflect its output
 export const useEnrichedMarketGroups = () => {
-  // Update the return type to use EnrichedMarketGroup[]
   return useQuery<EnrichedMarketGroup[]>({
-    // Ensure this matches the actual return
-    queryKey: ['enrichedMarketGroups'], // Reverted queryKey
+    queryKey: ['enrichedMarketGroups'],
     queryFn: async () => {
       // Create a lookup map for focus areas using their ID (which matches category slug)
       const focusAreaMap = new Map<
@@ -265,11 +260,13 @@ export const useEnrichedMarketGroups = () => {
       });
 
       // --- Fetch initial market group data ---
-      const { data: apiResponseData } = await foilApi.post('/graphql', {
-        query: print(MARKETS_QUERY),
-      });
+      type MarketGroupsQueryResult = {
+        marketGroups: MarketGroupType[];
+      };
 
-      if (!apiResponseData || !apiResponseData.marketGroups) {
+      const data = await graphqlRequest<MarketGroupsQueryResult>(MARKETS_QUERY);
+
+      if (!data || !data.marketGroups) {
         console.error(
           '[useEnrichedMarketGroups] No market groups data received from API or data structure invalid.'
         );
@@ -277,26 +274,25 @@ export const useEnrichedMarketGroups = () => {
       }
 
       // --- Process market groups (enrichment only) ---
-      return apiResponseData.marketGroups.map(
+      return data.marketGroups.map(
         (marketGroup: MarketGroupType): EnrichedMarketGroup => {
-          // marketGroup is now MarketGroupType
           let categoryInfo: CategoryType & { iconSvg?: string; color?: string };
 
           if (marketGroup.category) {
             const focusAreaData = focusAreaMap.get(marketGroup.category.slug);
             categoryInfo = {
-              id: marketGroup.category.id,
-              name: focusAreaData?.name || marketGroup.category.name,
-              slug: marketGroup.category.slug,
+              ...marketGroup.category,
               marketGroups: marketGroup.category.marketGroups,
               iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
               color: focusAreaData?.color || '#9CA3AF', // Tailwind gray-400
             };
           } else {
             categoryInfo = {
-              id: 'unknown',
+              id: -1,
               name: 'Unknown',
               slug: 'unknown',
+              createdAt: new Date().toISOString(),
+              resources: [],
               marketGroups: [],
               iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
               color: '#9CA3AF', // Tailwind gray-400
@@ -304,9 +300,9 @@ export const useEnrichedMarketGroups = () => {
           }
 
           const mappedMarkets = (marketGroup.markets || []).map(
-            (market): MarketType => ({
+            (market: MarketType): MarketType => ({
               ...market,
-              id: market.id.toString(),
+              id: market.id,
               positions: market.positions || [],
             })
           );
@@ -324,7 +320,6 @@ export const useEnrichedMarketGroups = () => {
         }
       );
     },
-    // Consider adding staleTime or gcTime if needed
   });
 };
 
@@ -345,19 +340,26 @@ export const useLatestIndexPrice = (market: {
       }
 
       try {
-        const { data: indexPriceApiResponse } = await foilApi.post('/graphql', {
-          query: print(LATEST_INDEX_PRICE_QUERY),
-          variables: {
+        type IndexPriceQueryResult = {
+          indexCandles: {
+            data: Candle[];
+            lastUpdateTimestamp: number;
+          };
+        };
+
+        const data = await graphqlRequest<IndexPriceQueryResult>(
+          LATEST_INDEX_PRICE_QUERY,
+          {
             address: market.address,
             chainId: market.chainId,
             marketId: market.marketId.toString(),
             from: Math.floor(Date.now() / 1000) - 300,
             to: Math.floor(Date.now() / 1000),
             interval: 60,
-          },
-        });
+          }
+        );
 
-        const indexCandlesData = indexPriceApiResponse.indexCandlesFromCache;
+        const indexCandlesData = data.indexCandles;
         if (
           !indexCandlesData ||
           !indexCandlesData.data ||
@@ -415,19 +417,26 @@ export const useMarketCandles = (market: {
       }
 
       try {
-        const { data } = await foilApi.post('/graphql', {
-          query: print(MARKET_CANDLES_QUERY),
-          variables: {
+        type MarketCandlesQueryResult = {
+          marketCandles: {
+            data: Candle[];
+            lastUpdateTimestamp: number;
+          };
+        };
+
+        const data = await graphqlRequest<MarketCandlesQueryResult>(
+          MARKET_CANDLES_QUERY,
+          {
             address: market.address,
             chainId: market.chainId,
             marketId: market.marketId.toString(),
             from,
             to,
             interval,
-          },
-        });
+          }
+        );
 
-        return data.marketCandlesFromCache.data || [];
+        return data.marketCandles.data || [];
       } catch (error) {
         console.error('Error fetching market candles:', error);
         return null;
@@ -455,14 +464,19 @@ export const useTotalVolume = (market: {
       }
 
       try {
-        const { data } = await foilApi.post('/graphql', {
-          query: print(TOTAL_VOLUME_QUERY),
-          variables: {
+        type TotalVolumeQueryResult = {
+          totalVolumeByMarket: number;
+        };
+
+        const data = await graphqlRequest<TotalVolumeQueryResult>(
+          TOTAL_VOLUME_QUERY,
+          {
             marketAddress: market.address,
             chainId: market.chainId,
             marketId: market.marketId,
-          },
-        });
+          }
+        );
+
         return data.totalVolumeByMarket;
       } catch (error) {
         console.error('Error fetching total volume:', error);
@@ -491,18 +505,18 @@ export const useOpenInterest = (market: {
       }
 
       try {
-        const { data, errors } = await foilApi.post('/graphql', {
-          query: print(OPEN_INTEREST_QUERY),
-          variables: {
+        type OpenInterestQueryResult = {
+          positions: PositionType[];
+        };
+
+        const data = await graphqlRequest<OpenInterestQueryResult>(
+          OPEN_INTEREST_QUERY,
+          {
             marketAddress: market.address,
             chainId: market.chainId,
-          },
-        });
-
-        if (errors) {
-          console.error('GraphQL errors:', errors);
-          return null;
-        }
+            marketId: market.marketId,
+          }
+        );
 
         if (!data || !data.positions) {
           console.log('No positions data received');
@@ -510,10 +524,7 @@ export const useOpenInterest = (market: {
         }
 
         // Filter positions for this specific market and sum collateral for unsettled positions
-        const marketPositions = data.positions.filter(
-          (position: PositionType) =>
-            position.market && position.market.marketId === market.marketId
-        );
+        const marketPositions = data.positions;
 
         const unsettledPositions = marketPositions.filter(
           (position: PositionType) =>
@@ -523,7 +534,7 @@ export const useOpenInterest = (market: {
         // Get collateral decimals from the first position (they should all be the same market group)
         const collateralDecimals =
           marketPositions.length > 0
-            ? marketPositions[0].market.market_group.collateralDecimals || 18
+            ? marketPositions[0].market?.marketGroup?.collateralDecimals || 18
             : 18;
 
         return unsettledPositions.reduce(

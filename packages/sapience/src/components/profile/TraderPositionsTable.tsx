@@ -1,4 +1,3 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
@@ -8,16 +7,15 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
-import type { PositionType } from '@sapience/ui/types';
 import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
+import type { PositionType } from '@sapience/ui/types';
 import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
-import { MarketGroupClassification } from '~/lib/types';
-import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import {
   calculateEffectiveEntryPrice,
   getChainShortName,
@@ -31,60 +29,9 @@ interface TraderPositionsTableProps {
   showHeader?: boolean;
 }
 
-function PositionCell({ position }: { position: PositionType }) {
-  const baseTokenBI = BigInt(position.baseToken || '0');
-  const borrowedBaseTokenBI = BigInt(position.borrowedBaseToken || '0');
-  const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
-  const value = Number(formatEther(netPositionBI));
-  const absValue = Math.abs(value);
-  const baseTokenName = position.market?.market_group?.baseTokenName;
-  const marketClassification = position.market?.market_group
-    ? getMarketGroupClassification(position.market.market_group)
-    : MarketGroupClassification.NUMERIC;
-
-  // For non-numeric markets, show just the number and Yes/No without badge
-  if (marketClassification !== MarketGroupClassification.NUMERIC) {
-    return (
-      <span className="flex items-center space-x-1.5">
-        <NumberDisplay value={absValue} />
-        <span>{value >= 0 ? 'Yes' : 'No'}</span>
-      </span>
-    );
-  }
-
-  if (value >= 0) {
-    // Long Position
-    return (
-      <span className="flex items-center space-x-1.5">
-        <Badge
-          variant="outline"
-          className="px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0"
-        >
-          Long
-        </Badge>
-        <NumberDisplay value={absValue} />
-        <span>{baseTokenName || 'Tokens'}</span>
-      </span>
-    );
-  }
-  // Short Position
-  return (
-    <span className="flex items-center space-x-1.5">
-      <Badge
-        variant="outline"
-        className="px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0"
-      >
-        Short
-      </Badge>
-      <NumberDisplay value={absValue} />
-      <span>{baseTokenName || 'Tokens'}</span>
-    </span>
-  );
-}
-
 function MaxPayoutCell({ position }: { position: PositionType }) {
-  const baseTokenName = position.market?.market_group?.baseTokenName;
-  const collateralSymbol = position.market?.market_group?.collateralSymbol;
+  const baseTokenName = position.market?.marketGroup?.baseTokenName;
+  const collateralSymbol = position.market?.marketGroup?.collateralSymbol;
 
   if (baseTokenName === 'Yes') {
     const baseTokenBI = BigInt(position.baseToken || '0');
@@ -113,7 +60,7 @@ function MaxPayoutCell({ position }: { position: PositionType }) {
 function PositionValueCell({ position }: { position: PositionType }) {
   const { transactions } = position;
   const marketId = position.market?.marketId;
-  const marketGroup = position.market?.market_group;
+  const marketGroup = position.market?.marketGroup;
   const address = marketGroup?.address || '';
   const chainId = marketGroup?.chainId || 0;
   const baseTokenName = marketGroup?.baseTokenName;
@@ -234,9 +181,9 @@ export default function TraderPositionsTable({
     // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
     displayQuestionColumn = validPositions.some(
       (p) =>
-        p.market?.market_group &&
-        p.market?.market_group?.markets &&
-        p.market?.market_group?.markets.length > 1
+        p.market?.marketGroup &&
+        p.market?.marketGroup?.markets &&
+        p.market?.marketGroup?.markets.length > 1
     );
   }
 
@@ -277,9 +224,9 @@ export default function TraderPositionsTable({
 
               const isClosed = Number(position.collateral) === 0;
               const chainShortName = getChainShortName(
-                position.market.market_group?.chainId || 0
+                position.market.marketGroup?.chainId || 0
               );
-              const marketAddress = position.market.market_group?.address || '';
+              const marketAddress = position.market.marketGroup?.address || '';
 
               // Determine if the position is expired and settled
               const endTimestamp = position.market?.endTimestamp;
@@ -308,7 +255,7 @@ export default function TraderPositionsTable({
                   ) : (
                     <>
                       <TableCell>
-                        <PositionCell position={position} />
+                        <PositionBadge positions={[position]} />
                       </TableCell>
                       <TableCell>
                         <NumberDisplay
@@ -316,7 +263,7 @@ export default function TraderPositionsTable({
                             formatEther(BigInt(position.collateral || '0'))
                           )}
                         />{' '}
-                        {position.market.market_group?.collateralSymbol ||
+                        {position.market.marketGroup?.collateralSymbol ||
                           'Unknown'}
                       </TableCell>
                       <TableCell>
@@ -333,7 +280,7 @@ export default function TraderPositionsTable({
                                 positionId={position.positionId.toString()}
                                 marketAddress={marketAddress}
                                 chainId={
-                                  position.market.market_group?.chainId || 0
+                                  position.market.marketGroup?.chainId || 0
                                 }
                                 onSuccess={() => {
                                   console.log(
@@ -345,7 +292,7 @@ export default function TraderPositionsTable({
                               // Render Sell button only if not on Market Page
                               !isMarketPage && (
                                 <Link
-                                  href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
+                                  href={`/markets/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
                                   passHref
                                 >
                                   <Button size="xs" variant="outline">

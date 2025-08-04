@@ -1,16 +1,15 @@
 import type {
-  resource_price,
-  cache_candle,
-  resource,
+  ResourcePrice,
+  CacheCandle,
+  Resource,
 } from '../../../generated/prisma';
 
-type ResourcePriceWithResource = resource_price & { resource: resource };
+type ResourcePriceWithResource = ResourcePrice & { resource: Resource };
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { TrailingAvgHistoryStore } from '../trailingAvgHistoryStore';
 import { startOfInterval, startOfNextInterval } from '../candleUtils';
-import { Decimal } from '../../../generated/prisma/runtime/library';
 
 export class TrailingAvgCandleProcessor {
   constructor(
@@ -27,7 +26,7 @@ export class TrailingAvgCandleProcessor {
     sumUsed: bigint,
     sumFeePaid: bigint,
     startOfTrailingWindow: number
-  ): Promise<cache_candle> {
+  ): Promise<CacheCandle> {
     const candle = await getOrCreateCandle({
       candleType: CANDLE_TYPES.TRAILING_AVG,
       interval: interval,
@@ -46,8 +45,8 @@ export class TrailingAvgCandleProcessor {
     candle.high = avg.toString();
     candle.low = avg.toString();
     candle.close = avg.toString();
-    candle.sumUsed = new Decimal(sumUsed.toString());
-    candle.sumFeePaid = new Decimal(sumFeePaid.toString());
+    candle.sumUsed = sumUsed.toString();
+    candle.sumFeePaid = sumFeePaid.toString();
     candle.trailingStartTimestamp = startOfTrailingWindow;
     return candle;
   }
@@ -96,8 +95,8 @@ export class TrailingAvgCandleProcessor {
         candle.high = avg.toString();
         candle.low = avg.toString();
         candle.close = avg.toString();
-        candle.sumUsed = new Decimal(sumUsed.toString());
-        candle.sumFeePaid = new Decimal(sumFeePaid.toString());
+        candle.sumUsed = sumUsed.toString();
+        candle.sumFeePaid = sumFeePaid.toString();
         candle.trailingStartTimestamp = startOfTrailingWindow;
         candle.lastUpdatedTimestamp = price.timestamp;
       }

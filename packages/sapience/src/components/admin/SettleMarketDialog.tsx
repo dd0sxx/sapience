@@ -1,5 +1,3 @@
-/* eslint-disable sonarjs/cognitive-complexity */
-
 import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Privy
 import { Button } from '@sapience/ui/components/ui/button'; // Import Button
 import { Input } from '@sapience/ui/components/ui/input'; // Import Input
@@ -7,16 +5,13 @@ import { Label } from '@sapience/ui/components/ui/label'; // Import Label
 import { Separator } from '@sapience/ui/components/ui/separator'; // Import Separator
 import { useToast } from '@sapience/ui/hooks/use-toast'; // Import useToast
 import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi'; // Import the hook
-import type {
-  MarketType as Market,
-  MarketGroupType as MarketGroup,
-} from '@sapience/ui/types'; // Import types
 import { Loader2 } from 'lucide-react'; // Import Loader2
 import { useState } from 'react'; // Import useState and useMemo
 import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex
 import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
+import type { MarketType as Market } from '@sapience/ui/types'; // Import types
 
-import { NO_SQRT_RATIO, YES_SQRT_RATIO } from '~/lib/constants/numbers';
+import { NO_SQRT_X96_PRICE, YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
 // Define MarketParams interface (consider moving to a shared location if needed)
 interface MarketParams {
@@ -36,8 +31,8 @@ interface MarketData {
   startTime: bigint;
   endTime: bigint;
   pool: `0x${string}`;
-  ethToken: `0x${string}`;
-  gasToken: `0x${string}`;
+  quoteToken: `0x${string}`;
+  baseToken: `0x${string}`;
   minPriceD18: bigint;
   maxPriceD18: bigint;
   baseAssetMinPriceTick: number;
@@ -45,7 +40,8 @@ interface MarketData {
   settled: boolean;
   settlementPriceD18: bigint;
   assertionId: `0x${string}`;
-  claimStatement: `0x${string}`; // This is a hex string for bytes
+  claimStatementYesOrNumeric: `0x${string}`;
+  claimStatementNo?: `0x${string}`; // This is a hex string for bytes
 }
 
 // Helper function (copied from PredictionInput) - Needs refinement for BigInt math
@@ -158,7 +154,13 @@ const BondInfoSection = ({
 
 interface SettleMarketDialogProps {
   market: Market; // Assume Market type includes baseTokenName/quoteTokenName or similar
-  marketGroup: MarketGroup;
+  marketGroup: {
+    address?: string | null;
+    chainId: number;
+    owner?: string | null;
+    baseTokenName?: string | null;
+    quoteTokenName?: string | null;
+  };
 }
 
 const SettleMarketDialog = ({
@@ -199,7 +201,7 @@ const SettleMarketDialog = ({
         market.marketId !== null,
     },
   });
-
+  console.log('marketResult', marketResult);
   // Destructure the result from getMarket with type safety
   const marketData: MarketData | undefined =
     Array.isArray(marketResult) && marketResult.length > 0
@@ -372,11 +374,17 @@ const SettleMarketDialog = ({
         return;
       }
 
+      const args = {
+        marketId,
+        asserter: connectedAddress,
+        settlementSqrtPriceX96: price,
+      };
+
       settleWrite({
         address: marketGroup.address as `0x${string}`, // Settle is called on the market group address
         abi: sapienceAbi, // Use the dynamically loaded ABI
         functionName: 'submitSettlementPrice', // Corrected function name
-        args: [marketId, connectedAddress, price], // Add asserter (connectedAddress)
+        args: [args],
         chainId: marketGroup.chainId,
       });
     } catch (settlePrepareError: unknown) {
@@ -463,7 +471,7 @@ const SettleMarketDialog = ({
             connectedAddress={connectedAddress}
             isYesNoMarket={isYesNoMarket}
             settlementValue={settlementValue}
-            claimStatement={marketData?.claimStatement ?? ''}
+            claimStatement={marketData?.claimStatementYesOrNumeric ?? ''}
           />
 
           {/* Submit Button */}
@@ -595,9 +603,9 @@ const SettlementParamsDisplay = ({
 
   if (isYesNoMarket) {
     if (settlementValue === '1') {
-      settlementDisplayValue = YES_SQRT_RATIO.toString();
+      settlementDisplayValue = YES_SQRT_X96_PRICE.toString();
     } else {
-      settlementDisplayValue = NO_SQRT_RATIO.toString();
+      settlementDisplayValue = NO_SQRT_X96_PRICE.toString();
     }
   } else {
     const numericValue = Number(settlementValue);

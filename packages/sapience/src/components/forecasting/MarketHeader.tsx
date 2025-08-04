@@ -5,7 +5,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import type { MarketType } from '@sapience/ui/types';
 import { format, formatDistanceToNow, fromUnixTime } from 'date-fns';
 import {
   MoveHorizontal,
@@ -18,6 +17,7 @@ import { IoDocumentTextOutline } from 'react-icons/io5';
 import { LiaRulerVerticalSolid } from 'react-icons/lia';
 import * as chains from 'viem/chains';
 
+import type { MarketType } from '@sapience/ui/types';
 import NumberDisplay from '../shared/NumberDisplay';
 import {
   useTotalVolume,
@@ -31,8 +31,8 @@ interface MarketDataContract {
   startTime: bigint;
   endTime: bigint;
   pool: string;
-  ethToken: string;
-  gasToken: string;
+  quoteToken: string;
+  baseToken: string;
   minPriceD18: bigint;
   maxPriceD18: bigint;
   baseAssetMinPriceTick: number;
@@ -61,7 +61,7 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
   chainId,
   marketAddress,
   collateralAssetAddress,
-  quoteTokenName,
+  baseTokenName,
   collateralSymbol,
   minTick,
   maxTick,
@@ -123,12 +123,12 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
   const minPrice = minTick ? tickToPrice(minTick) : undefined;
   const maxPrice = maxTick ? tickToPrice(maxTick) : undefined;
 
-  // Use collateral symbol for volume/open interest, quote token for price ranges
+  // Use collateral symbol for volume/open interest, base token for price ranges
   const collateralUnitDisplay = collateralSymbol || 'USD';
-  const priceUnitDisplay = quoteTokenName || 'USD';
+  const priceUnitDisplay = baseTokenName || 'USD';
 
   const links = (
-    <>
+    <div className="flex flex-wrap gap-y-4 gap-x-4 items-center">
       <a
         className="hover:no-underline inline-flex items-center"
         target="_blank"
@@ -143,6 +143,22 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
         </span>
       </a>
 
+      {collateralAssetAddress && (
+        <a
+          className="hover:no-underline inline-flex items-center"
+          target="_blank"
+          rel="noopener noreferrer"
+          href={`${chain?.blockExplorers?.default.url}/address/${collateralAssetAddress}`}
+        >
+          <span className="inline-block mr-1.5">
+            <FaCubes />
+          </span>
+          <span className="border-b border-dotted border-current font-medium">
+            Collateral Token
+          </span>
+        </a>
+      )}
+
       {totalVolume !== null && totalVolume !== undefined && (
         <div className="inline-flex items-center">
           <span className="inline-block mr-1.5">
@@ -156,7 +172,7 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
 
       {openInterest !== null && openInterest !== undefined && (
         <div className="inline-flex items-center">
-          <span className="inline-block mr-1.5">
+          <span className="inline-block mr-1">
             <DollarSign className="w-4 h-4 opacity-80" />
           </span>
           <span className="font-medium mr-1">Open Interest:</span>
@@ -187,40 +203,24 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
         </div>
       )}
 
-      {collateralAssetAddress && (
-        <a
-          className="hover:no-underline inline-flex items-center"
-          target="_blank"
-          rel="noopener noreferrer"
-          href={`${chain?.blockExplorers?.default.url}/address/${collateralAssetAddress}`}
-        >
-          <span className="inline-block mr-1.5">
-            <FaCubes />
-          </span>
-          <span className="border-b border-dotted border-current font-medium">
-            Collateral Token
-          </span>
-        </a>
-      )}
-
       {minPrice && maxPrice && (
         <div className="inline-flex items-center">
           <span className="inline-block mr-1">
             <LiaRulerVerticalSolid />
           </span>
-          <span className="font-medium mr-1">Market Price Range:</span>
+          <span className="font-medium mr-1">Range:</span>
           <NumberDisplay value={minPrice} />
           <MoveHorizontal className="w-3 h-3 mx-1" />
           <NumberDisplay value={maxPrice} />
           <span className="ml-1">{priceUnitDisplay}</span>
         </div>
       )}
-    </>
+    </div>
   );
 
   const displayQuestion =
     marketData?.question ||
-    `${marketData?.market_group?.resource?.name} Market ${marketData?.marketId}`;
+    `${marketData?.marketGroup?.resource?.name} Market ${marketData?.marketId}`;
 
   return (
     <div className="w-full pt-6 pb-4 md:py-6">

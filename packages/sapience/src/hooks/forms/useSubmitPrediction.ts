@@ -9,17 +9,17 @@ import {
 } from 'wagmi';
 
 import { MarketGroupClassification } from '../../lib/types';
-import { EAS_CONTRACT_ADDRESS, SCHEMA_UID } from '~/lib/constants/eas';
+import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
 
-// Constant for 2^96 as a BigInt, which is used for sqrt(1) * 2^96
-const BIGINT_2_POW_96 = BigInt('79228162514264337593543950336');
+const CONVERGE_CHAIN_ID = 432;
 
 interface UseSubmitPredictionProps {
   marketAddress: string;
   marketClassification: MarketGroupClassification;
   submissionValue: string; // Value from the form (e.g. "1.23" for numeric, "marketId" for MCQ, pre-calc sqrtPriceX96 for Yes/No)
   marketId: number; // Specific market ID for the attestation (for MCQ, this is the ID of the chosen option)
-  targetChainId: number; // Added targetChainId prop
+  comment?: string; // Optional comment field
+  onSuccess?: () => void; // Callback for successful submission
 }
 
 export function useSubmitPrediction({
@@ -27,7 +27,8 @@ export function useSubmitPrediction({
   marketClassification,
   submissionValue,
   marketId,
-  targetChainId,
+  comment = '',
+  onSuccess,
 }: UseSubmitPredictionProps) {
   const { address, chainId: currentChainId } = useAccount();
   const { toast } = useToast();
@@ -40,14 +41,20 @@ export function useSubmitPrediction({
 
   const {
     writeContract,
-    data: attestData,
+    data: transactionHash,
     isPending: isAttesting,
     error: writeError,
     reset,
   } = useWriteContract();
 
-  const { data: txReceipt, isSuccess: txSuccess } = useTransaction({
-    hash: attestData,
+  const {
+    data: txReceipt,
+    isSuccess: txSuccess,
+    status: _status,
+    error: _error,
+  } = useTransaction({
+    hash: transactionHash,
+    chainId: CONVERGE_CHAIN_ID,
   });
 
   const { switchChainAsync } = useSwitchChain();
@@ -57,7 +64,8 @@ export function useSubmitPrediction({
       _marketAddress: string,
       _marketId: string,
       predictionInput: string,
-      classification: MarketGroupClassification
+      classification: MarketGroupClassification,
+      _comment: string
     ) => {
       try {
         let finalPredictionBigInt: bigint;
@@ -65,6 +73,7 @@ export function useSubmitPrediction({
 
         switch (classification) {
           case MarketGroupClassification.NUMERIC: {
+            console.log('predictionInput numeric', predictionInput);
             const inputNum = parseFloat(predictionInput);
             if (Number.isNaN(inputNum) || inputNum < 0) {
               throw new Error(
@@ -78,10 +87,12 @@ export function useSubmitPrediction({
             break;
           }
           case MarketGroupClassification.YES_NO:
+            console.log('predictionInput yes no', predictionInput);
             finalPredictionBigInt = BigInt(predictionInput);
             break;
           case MarketGroupClassification.MULTIPLE_CHOICE:
-            finalPredictionBigInt = BIGINT_2_POW_96;
+            console.log('predictionInput multiple choice', predictionInput);
+            finalPredictionBigInt = BigInt(predictionInput);
             break;
           default: {
             // This will catch any unhandled enum members at compile time
@@ -94,12 +105,14 @@ export function useSubmitPrediction({
 
         return encodeAbiParameters(
           parseAbiParameters(
-            'address marketAddress, uint256 marketId, uint160 prediction'
+            'address marketAddress, uint256 marketId, bytes32 questionId, uint160 prediction, string comment'
           ),
           [
             _marketAddress as `0x${string}`,
             BigInt(_marketId),
+            `0x0000000000000000000000000000000000000000000000000000000000000000` as `0x${string}`, // TODO: fix this, it is a stub!
             finalPredictionBigInt,
+            _comment,
           ]
         );
       } catch (error) {
@@ -134,14 +147,14 @@ export function useSubmitPrediction({
         );
       }
 
-      if (currentChainId !== targetChainId) {
+      if (currentChainId !== CONVERGE_CHAIN_ID) {
         if (!switchChainAsync) {
           throw new Error(
             'Chain switching functionality is not available. Please switch manually in your wallet.'
           );
         }
         try {
-          await switchChainAsync({ chainId: targetChainId });
+          await switchChainAsync({ chainId: CONVERGE_CHAIN_ID });
         } catch (switchError) {
           setIsLoading(false);
           console.error('Failed to switch chain:', switchError);
@@ -165,11 +178,12 @@ export function useSubmitPrediction({
         marketAddress,
         marketId.toString(),
         submissionValue,
-        marketClassification
+        marketClassification,
+        comment
       );
 
       writeContract({
-        address: EAS_CONTRACT_ADDRESS as `0x${string}`,
+        address: '0x1ABeF822A38CC8906557cD73788ab23A607ae104',
         abi: [
           {
             name: 'attest',
@@ -202,7 +216,7 @@ export function useSubmitPrediction({
         functionName: 'attest',
         args: [
           {
-            schema: SCHEMA_UID as `0x${string}`,
+            schema: CONVERGE_SCHEMA_UID as `0x${string}`,
             data: {
               recipient:
                 '0x0000000000000000000000000000000000000000' as `0x${string}`,
@@ -229,6 +243,7 @@ export function useSubmitPrediction({
     marketClassification,
     submissionValue,
     marketId,
+    comment,
     encodeSchemaData,
     writeContract,
     reset,
@@ -237,7 +252,6 @@ export function useSubmitPrediction({
     toast,
     setIsLoading,
     currentChainId,
-    targetChainId,
     switchChainAsync,
   ]);
 
@@ -267,8 +281,11 @@ export function useSubmitPrediction({
           'Your position will appear on this page and your profile shortly.',
         duration: 5000,
       });
+
+      // Call the onSuccess callback to trigger refetch
+      onSuccess?.();
     }
-  }, [txSuccess, txReceipt, address, toast, setIsLoading]);
+  }, [txSuccess, txReceipt, address, toast, setIsLoading, onSuccess]);
 
   const resetStatus = useCallback(() => {
     setAttestationError(null);

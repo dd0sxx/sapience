@@ -5,33 +5,38 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import { Loader2, WalletIcon, ArrowRightIcon } from 'lucide-react';
+import { Loader2, ArrowRightIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
-import { useAccount } from 'wagmi';
 
-import { mainnetClient, shortenAddress } from '~/lib/utils/util';
+import { mainnetClient } from '~/lib/utils/util';
 
 interface WalletAddressPopoverProps {
   onWalletSelect: (address: string | null) => void;
   selectedAddress: string;
+  trigger: React.ReactNode;
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  side?: 'top' | 'bottom';
 }
 
 const WalletAddressPopover = ({
   onWalletSelect,
   selectedAddress,
+  trigger,
+  isOpen,
+  setIsOpen,
+  side = 'top',
 }: WalletAddressPopoverProps) => {
-  const { address } = useAccount();
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputAddress, setInputAddress] = useState<string>(address || '');
+  const [inputAddress, setInputAddress] = useState<string>(
+    selectedAddress || ''
+  );
   const [addressError, setAddressError] = useState<string>('');
   const [isResolvingEns, setIsResolvingEns] = useState(false);
 
   useEffect(() => {
-    if (address) {
-      setInputAddress(address);
-    }
-  }, [address]);
+    setInputAddress(selectedAddress);
+  }, [selectedAddress]);
 
   const handleWalletSubmit = async () => {
     if (!inputAddress) {
@@ -56,7 +61,7 @@ const WalletAddressPopover = ({
           }
 
           resolvedAddress = ensAddress;
-        } catch (error) {
+        } catch (_error) {
           setAddressError('Error resolving ENS address');
           return;
         } finally {
@@ -80,16 +85,8 @@ const WalletAddressPopover = ({
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={`flex items-center gap-2 ${selectedAddress ? 'bg-secondary' : ''}`}
-        >
-          <WalletIcon className="w-4 h-4" />
-          {selectedAddress ? shortenAddress(selectedAddress) : 'Select Wallet'}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80" side="top" align="end" sideOffset={4}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent className="w-80" side={side} align="end" sideOffset={4}>
         <form
           onSubmit={(e) => {
             e.preventDefault();

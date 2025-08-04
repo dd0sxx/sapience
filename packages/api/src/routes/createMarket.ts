@@ -58,8 +58,8 @@ async function createSingleMarket(
       question: marketQuestion,
       optionName: optionName || null,
       rules: rules || null,
-      marketParamsClaimstatementYesOrNumeric: claimStatementYesOrNumeric,
-      marketParamsClaimstatementNo: claimStatementNo,
+      claimStatementYesOrNumeric: claimStatementYesOrNumeric,
+      claimStatementNo: claimStatementNo,
       startTimestamp: parseInt(String(startTime), 10),
       endTimestamp: parseInt(String(endTime), 10),
       startingSqrtPriceX96: startingSqrtPriceX96,
@@ -147,7 +147,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Check if market group already exists
-    const existingMarketGroup = await prisma.market_group.findFirst({
+    const existingMarketGroup = await prisma.marketGroup.findFirst({
       where: {
         chainId: parseInt(chainId, 10),
         factoryAddress: factoryAddress.toLowerCase(),
@@ -186,7 +186,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Create market group using Prisma
-    const savedMarketGroup = await prisma.market_group.create({
+    const savedMarketGroup = await prisma.marketGroup.create({
       data: {
         chainId: parseInt(chainId, 10),
         question: question,
@@ -213,7 +213,7 @@ router.post('/', async (req: Request, res: Response) => {
     });
 
     // Check for new factory address
-    const existingFactoryAddresses = await prisma.market_group.findMany({
+    const existingFactoryAddresses = await prisma.marketGroup.findMany({
       where: {
         chainId: parseInt(chainId, 10),
         factoryAddress: factoryAddress.toLowerCase(),
@@ -325,13 +325,13 @@ router.post(
       if (!marketData || typeof marketData !== 'object' || !bodyChainId) {
         return res
           .status(400)
-          .json({ message: 'Missing required fields: marketData, chainId' });
+          .json({ message: 'Missing required fields: MarketData, chainId' });
       }
 
       const chainId = parseInt(bodyChainId, 10);
 
       // Find existing market group
-      const marketGroup = await prisma.market_group.findFirst({
+      const marketGroup = await prisma.marketGroup.findFirst({
         where: {
           address: marketGroupAddressParam.toLowerCase(),
           chainId: chainId,

@@ -1,3 +1,4 @@
+import { graphqlRequest } from '@sapience/ui/lib';
 import { useQuery } from '@tanstack/react-query';
 
 import { foilApi } from '~/lib/utils/util';
@@ -17,9 +18,17 @@ interface RawMarketLeaderboardEntry {
   positionCount: number;
 }
 
-const GET_MARKET_LEADERBOARD = `
-  query GetMarketLeaderboard($chainId: Int!, $address: String!, $marketId: String!) {
-    getMarketLeaderboard(chainId: $chainId, address: $address, marketId: $marketId) {
+const GET_MARKET_LEADERBOARD = /* GraphQL */ `
+  query MarketLeaderboard(
+    $chainId: Int!
+    $address: String!
+    $marketId: String!
+  ) {
+    getMarketLeaderboard(
+      chainId: $chainId
+      address: $address
+      marketId: $marketId
+    ) {
       marketId
       owner
       totalPnL
@@ -30,6 +39,11 @@ const GET_MARKET_LEADERBOARD = `
     }
   }
 `;
+
+// Type definition for GraphQL response
+type MarketLeaderboardQueryResponse = {
+  getMarketLeaderboard: RawMarketLeaderboardEntry[];
+};
 
 const useCryptoPrices = () => {
   return useQuery({
@@ -115,26 +129,17 @@ export const useMarketLeaderboard = (
         return [];
       }
 
-      const graphqlEndpoint =
-        process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || '/graphql';
-
       try {
-        const response = await foilApi.post(graphqlEndpoint, {
-          query: GET_MARKET_LEADERBOARD,
-          variables: {
+        const data = await graphqlRequest<MarketLeaderboardQueryResponse>(
+          GET_MARKET_LEADERBOARD,
+          {
             chainId,
             address: marketAddress,
             marketId: String(marketId),
-          },
-        });
+          }
+        );
 
-        if (response.errors) {
-          console.error('GraphQL Errors:', response.errors);
-          throw new Error('Failed to fetch market leaderboard');
-        }
-
-        const rawData: RawMarketLeaderboardEntry[] =
-          response.data?.getMarketLeaderboard || [];
+        const rawData = data?.getMarketLeaderboard || [];
 
         const processedData: MarketLeaderboardEntry[] = rawData
           .map((entry) => {

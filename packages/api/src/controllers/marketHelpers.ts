@@ -3,15 +3,14 @@ import prisma from '../db';
 import { PublicClient, erc20Abi } from 'viem';
 import { Decimal } from 'generated/prisma/runtime/library';
 import type {
-  transaction,
-  event,
-  market_group,
-  position,
-  market,
+  Transaction,
+  Event,
+  Position,
+  Market,
+  MarketGroup,
 } from '../../generated/prisma';
 import { transaction_type_enum as TransactionType } from '../../generated/prisma';
 import {
-  Deployment,
   MarketCreatedEventLog,
   MarketGroupCreatedUpdatedEventLog,
   TradePositionEventLog,
@@ -27,19 +26,19 @@ import Sapience from '@sapience/protocol/deployments/Sapience.json';
  * @param event The Transfer event
  */
 export const handleTransferEvent = async (
-  event: event & { market_group: market_group }
+  event: Event & { market_group: MarketGroup }
 ) => {
   const args = getLogDataArgs(event.logData);
   const { to, tokenId } = args;
 
   if (!to || !tokenId) {
-    console.log('Missing required fields in transfer event:', event);
+    console.log('Missing required fields in transfer event:', Event);
     return;
   }
 
   const existingPosition = await prisma.position.findFirst({
     where: {
-      positionId: Number(tokenId),
+      positionId: Number(tokenId), // TODO: Check if this is correct, looks wrong. How tokenId from transfer event is related to positionId ?
       market: {
         market_group: {
           address: event.market_group.address?.toLowerCase(),
@@ -67,12 +66,12 @@ export const handleTransferEvent = async (
  * Handles a Transfer event by updating the owner of the corresponding Position.
  * @param event The Transfer event
  */
-export const handlePositionSettledEvent = async (event: event) => {
+export const handlePositionSettledEvent = async (event: Event) => {
   const args = getLogDataArgs(event.logData);
   const { positionId } = args;
 
   if (!positionId) {
-    console.log('Missing positionId in settled event:', event);
+    console.log('Missing positionId in settled event:', Event);
     return;
   }
 
@@ -84,7 +83,7 @@ export const handlePositionSettledEvent = async (event: event) => {
 
   if (!existingPosition) {
     // Ignore the settled event until the position is created from another event
-    console.log('Position not found for settled event: ', event);
+    console.log('Position not found for settled event: ', Event);
     return;
   }
 
@@ -101,15 +100,15 @@ export const handlePositionSettledEvent = async (event: event) => {
  * @param transaction the Transaction to use for creating/modifying the position
  */
 export const createOrModifyPositionFromTransaction = async (
-  transaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  transaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   }
 ) => {
   try {
     const eventArgs = getLogDataArgs(transaction.event.logData);
     let marketId = eventArgs.marketId;
-    let market: market | undefined;
+    let market: Market | undefined;
 
     if (!marketId) {
       const positionId = eventArgs.positionId;
@@ -129,7 +128,7 @@ export const createOrModifyPositionFromTransaction = async (
       let found = false;
       for (const currentMarket of markets) {
         const position = currentMarket.position.find(
-          (p: position) => p.positionId === Number(positionId)
+          (p: Position) => p.positionId === Number(positionId)
         );
         if (position) {
           market = currentMarket;
@@ -200,7 +199,7 @@ export const createOrModifyPositionFromTransaction = async (
       },
     });
 
-    let savedPosition: position;
+    let savedPosition: Position;
 
     if (existingPosition) {
       console.log('Found existing position:', existingPosition.id);
@@ -217,15 +216,15 @@ export const createOrModifyPositionFromTransaction = async (
             ''
           ).toLowerCase(),
           isLP: isLpPosition(transaction),
-          baseToken: toDecimal(eventArgs.positionVgasAmount || '0'),
-          quoteToken: toDecimal(eventArgs.positionVethAmount || '0'),
-          borrowedBaseToken: toDecimal(eventArgs.positionBorrowedVgas || '0'),
-          borrowedQuoteToken: toDecimal(eventArgs.positionBorrowedVeth || '0'),
-          collateral: toDecimal(eventArgs.positionCollateralAmount || '0'),
-          lpBaseToken: toDecimal(
+          baseToken: String(eventArgs.positionVbaseAmount || '0'),
+          quoteToken: String(eventArgs.positionVquoteAmount || '0'),
+          borrowedBaseToken: String(eventArgs.positionBorrowedVbase || '0'),
+          borrowedQuoteToken: String(eventArgs.positionBorrowedVquote || '0'),
+          collateral: String(eventArgs.positionCollateralAmount || '0'),
+          lpBaseToken: String(
             eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'
           ),
-          lpQuoteToken: toDecimal(
+          lpQuoteToken: String(
             eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0'
           ),
           highPriceTick: toDecimal(
@@ -247,15 +246,15 @@ export const createOrModifyPositionFromTransaction = async (
           marketId: market.id,
           owner: ((eventArgs.sender as string) || '').toLowerCase(),
           isLP: isLpPosition(transaction),
-          baseToken: toDecimal(eventArgs.positionVgasAmount || '0'),
-          quoteToken: toDecimal(eventArgs.positionVethAmount || '0'),
-          borrowedBaseToken: toDecimal(eventArgs.positionBorrowedVgas || '0'),
-          borrowedQuoteToken: toDecimal(eventArgs.positionBorrowedVeth || '0'),
-          collateral: toDecimal(eventArgs.positionCollateralAmount || '0'),
-          lpBaseToken: toDecimal(
+          baseToken: String(eventArgs.positionVbaseAmount || '0'),
+          quoteToken: String(eventArgs.positionVquoteAmount || '0'),
+          borrowedBaseToken: String(eventArgs.positionBorrowedVbase || '0'),
+          borrowedQuoteToken: String(eventArgs.positionBorrowedVquote || '0'),
+          collateral: String(eventArgs.positionCollateralAmount || '0'),
+          lpBaseToken: String(
             eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'
           ),
-          lpQuoteToken: toDecimal(
+          lpQuoteToken: String(
             eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0'
           ),
           highPriceTick: toDecimal(eventArgs.upperTick || '0'),
@@ -280,27 +279,25 @@ export const createOrModifyPositionFromTransaction = async (
 };
 
 const updateTransactionStateFromEvent = (
-  transaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  transaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   },
-  event: event
+  event: Event
 ) => {
   const eventArgs = getLogDataArgs(event.logData);
 
   // Latest position state
-  transaction.baseToken = toDecimal(eventArgs.positionVgasAmount || '0');
-  transaction.quoteToken = toDecimal(eventArgs.positionVethAmount || '0');
-  transaction.borrowedBaseToken = toDecimal(
-    eventArgs.positionBorrowedVgas || '0'
+  transaction.baseToken = String(eventArgs.positionVbaseAmount || '0');
+  transaction.quoteToken = String(eventArgs.positionVquoteAmount || '0');
+  transaction.borrowedBaseToken = String(eventArgs.positionBorrowedVbase || '0');
+  transaction.borrowedQuoteToken = String(
+    eventArgs.positionBorrowedVquote || '0'
   );
-  transaction.borrowedQuoteToken = toDecimal(
-    eventArgs.positionBorrowedVeth || '0'
-  );
-  transaction.collateral = toDecimal(eventArgs.positionCollateralAmount || '0');
+  transaction.collateral = String(eventArgs.positionCollateralAmount || '0');
 
   if (eventArgs.tradeRatio) {
-    transaction.tradeRatioD18 = toDecimal(eventArgs.tradeRatio);
+    transaction.tradeRatioD18 = String(eventArgs.tradeRatio);
   }
 };
 
@@ -309,9 +306,9 @@ const updateTransactionStateFromEvent = (
  * @param transaction the Transaction to find or create a CollateralTransfer for
  */
 export const insertCollateralTransfer = async (
-  transaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  transaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   }
 ) => {
   const eventArgs = getLogDataArgs(transaction.event.logData);
@@ -322,7 +319,7 @@ export const insertCollateralTransfer = async (
   }
 
   // Check if a collateral transfer already exists for this transaction hash
-  const existingTransfer = await prisma.collateral_transfer.findFirst({
+  const existingTransfer = await prisma.collateralTransfer.findFirst({
     where: { transactionHash: transaction.event.transactionHash },
   });
 
@@ -336,12 +333,12 @@ export const insertCollateralTransfer = async (
   }
 
   // Create a new one if it doesn't exist
-  const transfer = await prisma.collateral_transfer.create({
+  const transfer = await prisma.collateralTransfer.create({
     data: {
       transactionHash: transaction.event.transactionHash,
       timestamp: Number(transaction.event.timestamp),
       owner: ((eventArgs.sender as string) || '').toLowerCase(),
-      collateral: toDecimal(eventArgs.deltaCollateral),
+      collateral: String(eventArgs.deltaCollateral),
     },
   });
 
@@ -357,9 +354,9 @@ export const insertCollateralTransfer = async (
  * @param transaction the Transaction to create a MarketPrice for
  */
 export const insertMarketPrice = async (
-  transaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  transaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   }
 ) => {
   if (
@@ -369,7 +366,7 @@ export const insertMarketPrice = async (
     const args = getLogDataArgs(transaction.event.logData);
 
     // Create a new market price
-    const newMp = await prisma.market_price.create({
+    const newMp = await prisma.marketPrice.create({
       data: {
         value: toDecimal(args.finalPrice || '0'),
         timestamp: transaction.event.timestamp,
@@ -391,7 +388,7 @@ export const insertMarketPrice = async (
  */
 export const updateCollateralData = async (
   client: PublicClient,
-  market: market_group
+  market: MarketGroup
 ) => {
   if (market.collateralAsset) {
     try {
@@ -406,7 +403,7 @@ export const updateCollateralData = async (
         functionName: 'symbol',
       });
 
-      await prisma.market_group.update({
+      await prisma.marketGroup.update({
         where: { id: market.id },
         data: {
           collateralDecimals: Number(decimals),
@@ -422,113 +419,30 @@ export const updateCollateralData = async (
   }
 };
 
-export const createOrUpdateMarketGroupFromContract = async (
-  client: PublicClient,
-  contractDeployment: Deployment,
-  chainId: number,
-  initialMarketGroup?: market_group
-) => {
-  const address = contractDeployment.address.toLowerCase();
-  // get market group and market from contract
-  const marketGroupReadResult = await client.readContract({
-    address: address as `0x${string}`,
-    abi: contractDeployment.abi,
-    functionName: 'getMarketGroup',
-  });
-  console.log('marketGroupReadResult', marketGroupReadResult);
-
-  let updatedMarketGroup: market_group;
-
-  if (initialMarketGroup) {
-    updatedMarketGroup = initialMarketGroup;
-  } else {
-    // check if market already exists in db
-    const existingMarketGroup = await prisma.market_group.findFirst({
-      where: { address: address.toLowerCase(), chainId },
-      include: {
-        market: true,
-      },
-    });
-
-    if (existingMarketGroup) {
-      updatedMarketGroup = existingMarketGroup;
-    } else {
-      // Create new market
-      updatedMarketGroup = await prisma.market_group.create({
-        data: {
-          address: address.toLowerCase(),
-          deployTxnBlockNumber: Number(contractDeployment.deployTxnBlockNumber),
-          deployTimestamp: Number(contractDeployment.deployTimestamp),
-          chainId,
-          owner: (
-            (marketGroupReadResult as MarketGroupReadResult)[0] as string
-          ).toLowerCase(),
-          collateralAsset: (marketGroupReadResult as MarketGroupReadResult)[1],
-        },
-      });
-    }
-  }
-
-  // Update collateral data
-  await updateCollateralData(client, updatedMarketGroup);
-
-  const marketParamsRaw = (marketGroupReadResult as MarketGroupReadResult)[4];
-
-  // Update market with new data
-  updatedMarketGroup = await prisma.market_group.update({
-    where: { id: updatedMarketGroup.id },
-    data: {
-      address: address.toLowerCase(),
-      deployTxnBlockNumber: Number(contractDeployment.deployTxnBlockNumber),
-      deployTimestamp: Number(contractDeployment.deployTimestamp),
-      chainId,
-      owner: (
-        (marketGroupReadResult as MarketGroupReadResult)[0] as string
-      ).toLowerCase(),
-      collateralAsset: (marketGroupReadResult as MarketGroupReadResult)[1],
-      marketParamsFeerate: marketParamsRaw.feeRate || null,
-      marketParamsAssertionliveness:
-        marketParamsRaw.assertionLiveness?.toString() || null,
-      marketParamsBondcurrency: marketParamsRaw.bondCurrency || null,
-      marketParamsBondamount: marketParamsRaw.bondAmount?.toString() || null,
-      marketParamsClaimstatementYesOrNumeric:
-        marketParamsRaw.claimStatementYesOrNumeric || null,
-      marketParamsClaimstatementNo: marketParamsRaw.claimStatementNo || null,
-      marketParamsUniswappositionmanager:
-        marketParamsRaw.uniswapPositionManager || null,
-      marketParamsUniswapswaprouter: marketParamsRaw.uniswapSwapRouter || null,
-      marketParamsUniswapquoter: marketParamsRaw.uniswapQuoter || null,
-      marketParamsOptimisticoraclev3:
-        marketParamsRaw.optimisticOracleV3 || null,
-    },
-  });
-
-  return updatedMarketGroup;
-};
-
 export const createOrUpdateMarketFromContract = async (
-  market: market_group,
+  marketGroup: MarketGroup,
   marketId?: number
 ) => {
   const functionName = marketId ? 'getMarket' : 'getLatestMarket';
   const args = marketId ? [marketId] : [];
 
-  const client = getProviderForChain(market.chainId);
+  const client = getProviderForChain(marketGroup.chainId);
   // get market from contract
   const marketReadResult = await client.readContract({
-    address: market.address as `0x${string}`,
+    address: marketGroup.address as `0x${string}`,
     abi: Sapience.abi,
     functionName,
     args,
   });
   const marketData: MarketData = (marketReadResult as MarketReadResult)[0];
+  const marketGroupParams = (marketReadResult as MarketReadResult)[1];
 
   const _marketId = marketId || Number(marketData.marketId);
 
   // check if market already exists in db
   const existingMarket = await prisma.market.findFirst({
     where: {
-      market_group: { address: market.address?.toLowerCase() },
+      market_group: { address: marketGroup.address?.toLowerCase() },
       marketId: _marketId,
     },
   });
@@ -548,18 +462,21 @@ export const createOrUpdateMarketFromContract = async (
         maxPriceD18: toDecimal(marketData.maxPriceD18.toString()),
         minPriceD18: toDecimal(marketData.minPriceD18.toString()),
         poolAddress: marketData.pool,
-        marketParamsFeerate: market.marketParamsFeerate,
-        marketParamsAssertionliveness: market.marketParamsAssertionliveness,
-        marketParamsBondcurrency: market.marketParamsBondcurrency,
-        marketParamsBondamount: market.marketParamsBondamount,
-        marketParamsClaimstatementYesOrNumeric:
-          market.marketParamsClaimstatementYesOrNumeric,
-        marketParamsClaimstatementNo: market.marketParamsClaimstatementNo,
+        claimStatementYesOrNumeric: marketData.claimStatementYesOrNumeric,
+        claimStatementNo: marketData.claimStatementNo,
+        marketParamsFeerate: marketGroupParams.feeRate,
+        marketParamsAssertionliveness: toDecimal(
+          marketGroupParams.assertionLiveness.toString()
+        ),
+        marketParamsBondcurrency: marketGroupParams.bondCurrency,
+        marketParamsBondamount: toDecimal(
+          marketGroupParams.bondAmount.toString()
+        ),
         marketParamsUniswappositionmanager:
-          market.marketParamsUniswappositionmanager,
-        marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
-        marketParamsUniswapquoter: market.marketParamsUniswapquoter,
-        marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
+          marketGroupParams.uniswapPositionManager,
+        marketParamsUniswapswaprouter: marketGroupParams.uniswapSwapRouter,
+        marketParamsUniswapquoter: marketGroupParams.uniswapQuoter,
+        marketParamsOptimisticoraclev3: marketGroupParams.optimisticOracleV3,
       },
     });
   } else {
@@ -576,19 +493,22 @@ export const createOrUpdateMarketFromContract = async (
         maxPriceD18: toDecimal(marketData.maxPriceD18.toString()),
         minPriceD18: toDecimal(marketData.minPriceD18.toString()),
         poolAddress: marketData.pool,
-        marketGroupId: market.id,
-        marketParamsFeerate: market.marketParamsFeerate,
-        marketParamsAssertionliveness: market.marketParamsAssertionliveness,
-        marketParamsBondcurrency: market.marketParamsBondcurrency,
-        marketParamsBondamount: market.marketParamsBondamount,
-        marketParamsClaimstatementYesOrNumeric:
-          market.marketParamsClaimstatementYesOrNumeric,
-        marketParamsClaimstatementNo: market.marketParamsClaimstatementNo,
+        marketGroupId: marketGroup.id,
+        claimStatementYesOrNumeric: marketData.claimStatementYesOrNumeric,
+        claimStatementNo: marketData.claimStatementNo,
+        marketParamsFeerate: marketGroupParams.feeRate,
+        marketParamsAssertionliveness: toDecimal(
+          marketGroupParams.assertionLiveness.toString()
+        ),
+        marketParamsBondcurrency: marketGroupParams.bondCurrency,
+        marketParamsBondamount: toDecimal(
+          marketGroupParams.bondAmount.toString()
+        ),
         marketParamsUniswappositionmanager:
-          market.marketParamsUniswappositionmanager,
-        marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
-        marketParamsUniswapquoter: market.marketParamsUniswapquoter,
-        marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
+          marketGroupParams.uniswapPositionManager,
+        marketParamsUniswapswaprouter: marketGroupParams.uniswapSwapRouter,
+        marketParamsUniswapquoter: marketGroupParams.uniswapQuoter,
+        marketParamsOptimisticoraclev3: marketGroupParams.optimisticOracleV3,
       },
     });
   }
@@ -607,15 +527,15 @@ export const createOrUpdateMarketGroupFromEvent = async (
   eventArgs: MarketGroupCreatedUpdatedEventLog,
   chainId: number,
   address: string,
-  originalMarket?: market_group | null
+  originalMarket?: MarketGroup | null
 ) => {
-  let marketGroup: market_group;
+  let marketGroup: MarketGroup;
 
   if (originalMarket) {
     marketGroup = originalMarket;
   } else {
     // Create new market
-    marketGroup = await prisma.market_group.create({
+    marketGroup = await prisma.marketGroup.create({
       data: {
         chainId,
         address: address.toLowerCase(),
@@ -626,22 +546,20 @@ export const createOrUpdateMarketGroupFromEvent = async (
         marketParamsBondcurrency: eventArgs?.marketParams?.bondCurrency || null,
         marketParamsBondamount:
           eventArgs?.marketParams?.bondAmount?.toString() || null,
-        marketParamsClaimstatementYesOrNumeric:
-          eventArgs?.marketParams?.claimStatementYesOrNumeric || null,
-        marketParamsClaimstatementNo:
-          eventArgs?.marketParams?.claimStatementNo || null,
         marketParamsUniswappositionmanager:
-          eventArgs?.uniswapPositionManager || null,
-        marketParamsUniswapswaprouter: eventArgs?.uniswapSwapRouter || null,
+          eventArgs?.marketParams?.uniswapPositionManager || null,
+        marketParamsUniswapswaprouter:
+          eventArgs?.marketParams?.uniswapSwapRouter || null,
         marketParamsUniswapquoter:
           eventArgs?.marketParams?.uniswapQuoter || null,
-        marketParamsOptimisticoraclev3: eventArgs?.optimisticOracleV3 || null,
+        marketParamsOptimisticoraclev3:
+          eventArgs?.marketParams?.optimisticOracleV3 || null,
       },
     });
   }
 
   // Update market data
-  const updateData: Partial<market_group> = {};
+  const updateData: Partial<MarketGroup> = {};
 
   if (eventArgs.collateralAsset) {
     updateData.collateralAsset = eventArgs.collateralAsset;
@@ -651,7 +569,7 @@ export const createOrUpdateMarketGroupFromEvent = async (
   }
 
   if (Object.keys(updateData).length > 0) {
-    marketGroup = await prisma.market_group.update({
+    marketGroup = await prisma.marketGroup.update({
       where: { id: marketGroup.id },
       data: updateData,
     });
@@ -673,43 +591,43 @@ export const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
  * @param event the Event containing the LiquidityPositionCreatedEventLog args
  */
 export const updateTransactionFromAddLiquidityEvent = (
-  newTransaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  newTransaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   },
-  event: event
+  event: Event
 ) => {
   newTransaction.type = TransactionType.addLiquidity;
 
   updateTransactionStateFromEvent(newTransaction, event);
 
   const args = getLogDataArgs(event.logData);
-  newTransaction.lpBaseDeltaToken = toDecimal(args.addedAmount0 || '0');
-  newTransaction.lpQuoteDeltaToken = toDecimal(args.addedAmount1 || '0');
+  newTransaction.lpBaseDeltaToken = String(args.addedAmount0 || '0');
+  newTransaction.lpQuoteDeltaToken = String(args.addedAmount1 || '0');
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 
   if (!newTransaction.tradeRatioD18) {
-    newTransaction.tradeRatioD18 = new Decimal('0');
+    newTransaction.tradeRatioD18 = '0';
   }
 };
 
@@ -720,43 +638,43 @@ export const updateTransactionFromAddLiquidityEvent = (
  * @param isDecrease whether the event is a decrease or increase in liquidity
  */
 export const updateTransactionFromLiquidityClosedEvent = async (
-  newTransaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  newTransaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   },
-  event: event
+  event: Event
 ) => {
   newTransaction.type = TransactionType.removeLiquidity;
 
   updateTransactionStateFromEvent(newTransaction, event);
 
   const args = getLogDataArgs(event.logData);
-  newTransaction.lpBaseDeltaToken = toDecimal(args.collectedAmount0 || '0');
-  newTransaction.lpQuoteDeltaToken = toDecimal(args.collectedAmount1 || '0');
+  newTransaction.lpBaseDeltaToken = String(args.collectedAmount0 || '0');
+  newTransaction.lpQuoteDeltaToken = String(args.collectedAmount1 || '0');
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 
   if (!newTransaction.tradeRatioD18) {
-    newTransaction.tradeRatioD18 = new Decimal('0');
+    newTransaction.tradeRatioD18 = '0';
   }
 };
 
@@ -767,11 +685,11 @@ export const updateTransactionFromLiquidityClosedEvent = async (
  * @param isDecrease whether the event is a decrease or increase in liquidity
  */
 export const updateTransactionFromLiquidityModifiedEvent = async (
-  newTransaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  newTransaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   },
-  event: event,
+  event: Event,
   isDecrease?: boolean
 ) => {
   newTransaction.type = isDecrease
@@ -783,40 +701,36 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
   const args = getLogDataArgs(event.logData);
 
   newTransaction.lpBaseDeltaToken = isDecrease
-    ? toDecimal(
-        (BigInt(String(args.decreasedAmount0 || '0')) * BigInt(-1)).toString()
-      )
-    : toDecimal(String(args.increasedAmount0 || '0'));
+    ? (BigInt(String(args.decreasedAmount0 || '0')) * BigInt(-1)).toString()
+    : String(args.increasedAmount0 || '0');
 
   newTransaction.lpQuoteDeltaToken = isDecrease
-    ? toDecimal(
-        (BigInt(String(args.decreasedAmount1 || '0')) * BigInt(-1)).toString()
-      )
-    : toDecimal(String(args.increasedAmount1 || '0'));
+    ? (BigInt(String(args.decreasedAmount1 || '0')) * BigInt(-1)).toString()
+    : String(args.increasedAmount1 || '0');
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 
   if (!newTransaction.tradeRatioD18) {
-    newTransaction.tradeRatioD18 = new Decimal('0');
+    newTransaction.tradeRatioD18 = '0';
   }
 };
 
@@ -826,11 +740,11 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
  * @param event the Event containing the TradePositionModifiedEventLog args
  */
 export const updateTransactionFromTradeModifiedEvent = async (
-  newTransaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  newTransaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   },
-  event: event
+  event: Event
 ) => {
   const args = getLogDataArgs(event.logData);
   newTransaction.type = getTradeTypeFromEvent({
@@ -842,38 +756,38 @@ export const updateTransactionFromTradeModifiedEvent = async (
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 
   if (!newTransaction.tradeRatioD18 && args.tradeRatio) {
-    newTransaction.tradeRatioD18 = toDecimal(args.tradeRatio);
+    newTransaction.tradeRatioD18 = String(args.tradeRatio);
   } else if (!newTransaction.tradeRatioD18) {
-    newTransaction.tradeRatioD18 = new Decimal('0');
+    newTransaction.tradeRatioD18 = '0';
   }
 };
 
 export const updateTransactionFromPositionSettledEvent = async (
-  newTransaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  newTransaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   },
-  event: event,
+  event: Event,
   marketGroupAddress: string,
   marketId: number,
   chainId: number
@@ -898,12 +812,12 @@ export const updateTransactionFromPositionSettledEvent = async (
   let found = false;
   for (const market of markets) {
     const position = market.position.find(
-      (p: position) => p.positionId === Number(positionId)
+      (p: Position) => p.positionId === Number(positionId)
     );
     if (position) {
       updateTransactionStateFromEvent(newTransaction, event);
       newTransaction.tradeRatioD18 =
-        market.settlementPriceD18 || new Decimal('0');
+        market.settlementPriceD18?.toString() || '0';
       found = true;
       break;
     }
@@ -915,43 +829,43 @@ export const updateTransactionFromPositionSettledEvent = async (
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 };
 
 /**
  * Creates a new Market from a given event
  * @param eventArgs The event arguments from the MarketCreated event.
- * @param market The market associated with the market.
+ * @param marketGroup The market group associated with the market.
  * @returns The newly created or updated market.
  */
 export const createMarketFromEvent = async (
   eventArgs: MarketCreatedEventLog,
-  market: market_group
+  marketGroup: MarketGroup
 ) => {
   // first check if there's an existing market in the database before creating a new one
   const existingMarket = await prisma.market.findFirst({
     where: {
       marketId: Number(eventArgs.marketId),
       market_group: {
-        address: market.address?.toLowerCase(),
-        chainId: market.chainId,
+        address: marketGroup.address?.toLowerCase(),
+        chainId: marketGroup.chainId,
       },
     },
   });
@@ -964,19 +878,21 @@ export const createMarketFromEvent = async (
         marketId: Number(eventArgs.marketId),
         startTimestamp: Number(eventArgs.startTime),
         endTimestamp: Number(eventArgs.endTime),
-        startingSqrtPriceX96: eventArgs.startingSqrtPriceX96,
-        marketParamsFeerate: market.marketParamsFeerate,
-        marketParamsAssertionliveness: market.marketParamsAssertionliveness,
-        marketParamsBondcurrency: market.marketParamsBondcurrency,
-        marketParamsBondamount: market.marketParamsBondamount,
-        marketParamsClaimstatementYesOrNumeric:
-          market.marketParamsClaimstatementYesOrNumeric,
-        marketParamsClaimstatementNo: market.marketParamsClaimstatementNo,
+        startingSqrtPriceX96: eventArgs.startingSqrtPriceX96?.toString(),
+        marketParamsFeerate: marketGroup.marketParamsFeerate,
+        marketParamsAssertionliveness:
+          marketGroup.marketParamsAssertionliveness,
+        marketParamsBondcurrency: marketGroup.marketParamsBondcurrency,
+        marketParamsBondamount: marketGroup.marketParamsBondamount,
+        claimStatementYesOrNumeric: eventArgs.claimStatementYesOrNumeric,
+        claimStatementNo: eventArgs.claimStatementNo,
         marketParamsUniswappositionmanager:
-          market.marketParamsUniswappositionmanager,
-        marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
-        marketParamsUniswapquoter: market.marketParamsUniswapquoter,
-        marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
+          marketGroup.marketParamsUniswappositionmanager,
+        marketParamsUniswapswaprouter:
+          marketGroup.marketParamsUniswapswaprouter,
+        marketParamsUniswapquoter: marketGroup.marketParamsUniswapquoter,
+        marketParamsOptimisticoraclev3:
+          marketGroup.marketParamsOptimisticoraclev3,
       },
     });
     return existingMarket;
@@ -985,22 +901,24 @@ export const createMarketFromEvent = async (
     const newMarket = await prisma.market.create({
       data: {
         marketId: Number(eventArgs.marketId),
-        marketGroupId: market.id,
+        marketGroupId: marketGroup.id,
         startTimestamp: Number(eventArgs.startTime),
         endTimestamp: Number(eventArgs.endTime),
-        startingSqrtPriceX96: eventArgs.startingSqrtPriceX96,
-        marketParamsFeerate: market.marketParamsFeerate,
-        marketParamsAssertionliveness: market.marketParamsAssertionliveness,
-        marketParamsBondcurrency: market.marketParamsBondcurrency,
-        marketParamsBondamount: market.marketParamsBondamount,
-        marketParamsClaimstatementYesOrNumeric:
-          market.marketParamsClaimstatementYesOrNumeric,
-        marketParamsClaimstatementNo: market.marketParamsClaimstatementNo,
+        startingSqrtPriceX96: eventArgs.startingSqrtPriceX96?.toString(),
+        marketParamsFeerate: marketGroup.marketParamsFeerate,
+        marketParamsAssertionliveness:
+          marketGroup.marketParamsAssertionliveness,
+        marketParamsBondcurrency: marketGroup.marketParamsBondcurrency,
+        marketParamsBondamount: marketGroup.marketParamsBondamount,
+        claimStatementYesOrNumeric: eventArgs.claimStatementYesOrNumeric,
+        claimStatementNo: eventArgs.claimStatementNo,
         marketParamsUniswappositionmanager:
-          market.marketParamsUniswappositionmanager,
-        marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
-        marketParamsUniswapquoter: market.marketParamsUniswapquoter,
-        marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
+          marketGroup.marketParamsUniswappositionmanager,
+        marketParamsUniswapswaprouter:
+          marketGroup.marketParamsUniswapswaprouter,
+        marketParamsUniswapquoter: marketGroup.marketParamsUniswapquoter,
+        marketParamsOptimisticoraclev3:
+          marketGroup.marketParamsOptimisticoraclev3,
       },
     });
     return newMarket;
@@ -1008,7 +926,7 @@ export const createMarketFromEvent = async (
 };
 
 export const getMarketStartEndBlock = async (
-  marketGroup: market_group,
+  marketGroup: MarketGroup,
   marketId: string,
   overrideClient?: PublicClient
 ) => {
@@ -1046,9 +964,9 @@ export const getMarketStartEndBlock = async (
 };
 
 const isLpPosition = (
-  transaction: transaction & {
-    event: event & { market_group: market_group };
-    position?: position | null;
+  transaction: Transaction & {
+    event: Event & { market_group: MarketGroup };
+    position?: Position | null;
   }
 ) => {
   if (transaction.type === TransactionType.addLiquidity) {
@@ -1084,15 +1002,6 @@ const getLogDataArgs = (logData: unknown): Record<string, unknown> => {
   const logDataObj = logData as Record<string, unknown>;
   return (logDataObj.args as Record<string, unknown>) || {};
 };
-
-// Define contract return types as tuples with specific types
-type MarketGroupReadResult = readonly [
-  owner: string,
-  collateralAsset: string,
-  paused: boolean,
-  initialized: boolean,
-  marketParams: MarketParams,
-];
 
 type MarketReadResult = readonly [
   marketData: MarketData,

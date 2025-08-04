@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Reset environment variables if they are already set
-unset DB_HOST DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER
+unset DB_HOST DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER BACKUP_DIR
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -36,6 +36,7 @@ else
     echo "DB_USER=your_username"
     echo "DB_PASSWORD=your_password"
     echo "LOCAL_USER=your_local_postgres_user"
+    echo "BACKUP_DIR=your_backup_directory"
     exit 1
 fi
 
@@ -47,8 +48,8 @@ if [ -z "$DB_NAME_LOCAL" ] || [ -z "$LOCAL_USER" ]; then
 fi
 
 # Check if dump file exists
-if [ ! -f "./db_backups/complete_dump.sql" ]; then
-    echo "ERROR: Dump file not found at ./db_backups/complete_dump.sql"
+if [ ! -f "$BACKUP_DIR/complete_dump.sql" ]; then
+    echo "ERROR: Dump file not found at $BACKUP_DIR/complete_dump.sql"
     echo "Please run clone_db.sh first to create the dump file."
     exit 1
 fi
@@ -66,9 +67,39 @@ if [[ "$DB_NAME_LOCAL" == *"$DB_NAME"* ]]; then
     exit 1
 fi
 
+echo "DUMP FILE: $BACKUP_DIR/complete_dump.sql"
+echo "DB_NAME: $DB_NAME"
+echo "DB_NAME_LOCAL: $DB_NAME_LOCAL"
+
 # Replace all instances of the original database name with the local database name
 # This handles cases where the dump contains references to the original database name
-sed -i '' "s/$DB_NAME/$DB_NAME_LOCAL/g" ./db_backups/complete_dump.sql
+if [ -z "$BACKUP_DIR" ]; then
+    echo "ERROR: BACKUP_DIR is not set or is empty"
+    exit 1
+fi
+
+if [ -z "$DB_NAME" ] || [ -z "$DB_NAME_LOCAL" ]; then
+    echo "ERROR: DB_NAME or DB_NAME_LOCAL is not set"
+    echo "DB_NAME: '$DB_NAME'"
+    echo "DB_NAME_LOCAL: '$DB_NAME_LOCAL'"
+    exit 1
+fi
+
+echo "Running sed command: sed -i '' \"s/$DB_NAME/$DB_NAME_LOCAL/g\" \"$BACKUP_DIR/complete_dump.sql\""
+
+# Try different sed implementations for compatibility
+if sed -i '' "s/$DB_NAME/$DB_NAME_LOCAL/g" "$BACKUP_DIR/complete_dump.sql" 2>/dev/null; then
+    echo "sed command completed successfully"
+elif sed -i "s/$DB_NAME/$DB_NAME_LOCAL/g" "$BACKUP_DIR/complete_dump.sql" 2>/dev/null; then
+    echo "sed command completed successfully (without empty string)"
+else
+    echo "ERROR: sed command failed. Trying alternative approach..."
+    # Create a temporary file and replace
+    cp "$BACKUP_DIR/complete_dump.sql" "$BACKUP_DIR/complete_dump.sql.bak"
+    sed "s/$DB_NAME/$DB_NAME_LOCAL/g" "$BACKUP_DIR/complete_dump.sql.bak" > "$BACKUP_DIR/complete_dump.sql"
+    rm "$BACKUP_DIR/complete_dump.sql.bak"
+    echo "sed command completed using alternative approach"
+fi
 
 # Step 1: Drop and recreate local database
 echo "Dropping and recreating local database..."
@@ -80,7 +111,7 @@ psql -U $LOCAL_USER -c "CREATE DATABASE temp_connection_db;"
 
 # Step 2: Restore the database
 echo "Restoring database to local server..."
-psql -U $LOCAL_USER -d $DB_NAME_LOCAL -f ./db_backups/complete_dump.sql
+psql -U $LOCAL_USER -d $DB_NAME_LOCAL -f $BACKUP_DIR/complete_dump.sql
 
 # Step 3: Manually reset sequences to match current data
 echo "Manually resetting sequences..."

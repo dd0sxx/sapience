@@ -1,14 +1,18 @@
-import { gql } from '@apollo/client';
-import type { Position as PositionType } from '@sapience/ui/types/graphql';
+import { graphqlRequest } from '@sapience/ui/lib';
 import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
-
-import { foilApi } from '~/lib/utils/util';
+import type { Position as PositionType } from '@sapience/ui/types/graphql';
 
 // GraphQL query to fetch positions by owner address and optional market address
-export const POSITIONS_QUERY = gql`
-  query GetPositions($owner: String, $marketAddress: String, $chainId: Int) {
-    positions(owner: $owner, marketAddress: $marketAddress, chainId: $chainId) {
+export const POSITIONS_QUERY = /* GraphQL */ `
+  query Positions($owner: String, $marketAddress: String) {
+    positions(
+      where: {
+        market: {
+          is: { marketGroup: { is: { address: { equals: $marketAddress } } } }
+        }
+        owner: { equals: $owner }
+      }
+    ) {
       id
       positionId
       owner
@@ -32,7 +36,7 @@ export const POSITIONS_QUERY = gql`
         settlementPriceD18
         question
         optionName
-        market_group {
+        marketGroup {
           id
           chainId
           address
@@ -52,8 +56,7 @@ export const POSITIONS_QUERY = gql`
       transactions {
         id
         type
-        timestamp
-        transactionHash
+        createdAt
       }
     }
   }
@@ -65,24 +68,19 @@ interface UsePositionsProps {
   chainId?: number; // Added chainId for fetching all market data
 }
 
-export function usePositions({
-  address,
-  marketAddress,
-  chainId,
-}: UsePositionsProps) {
+export function usePositions({ address, marketAddress }: UsePositionsProps) {
   return useQuery<PositionType[]>({
-    queryKey: ['positions', address, marketAddress, chainId],
+    queryKey: ['positions', address, marketAddress],
     queryFn: async () => {
       // Build variables object
       const variables: {
         owner?: string;
         marketAddress?: string;
-        chainId?: number;
       } = {};
 
       // Add owner if address is provided
       if (address && address.trim() !== '') {
-        variables.owner = address;
+        variables.owner = address.toLowerCase();
       }
 
       // Add marketAddress if provided
@@ -90,24 +88,19 @@ export function usePositions({
         variables.marketAddress = marketAddress;
       }
 
-      // Add chainId if provided (for fetching all data for a market)
-      if (chainId) {
-        variables.chainId = chainId;
-      }
+      type PositionsQueryResult = {
+        positions: PositionType[];
+      };
 
-      const { data, errors } = await foilApi.post('/graphql', {
-        query: print(POSITIONS_QUERY),
-        variables,
-      });
-
-      if (errors) {
-        throw new Error(errors[0].message);
-      }
-
+      const data = await graphqlRequest<PositionsQueryResult>(
+        POSITIONS_QUERY,
+        variables
+      );
       return data.positions || [];
     },
-    // Enable query if we have either an address OR both marketAddress and chainId
-    enabled: Boolean(address) || (Boolean(marketAddress) && Boolean(chainId)),
+
+    // Enable query if we have either an address OR a marketAddress
+    enabled: Boolean(address) || Boolean(marketAddress),
     staleTime: 30000, // 30 seconds
     refetchInterval: 4000, // Refetch every 4 seconds
   });

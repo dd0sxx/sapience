@@ -1,27 +1,19 @@
-import { gql } from '@apollo/client'; // Keep for gql tag even if not using Apollo Client hooks
-// Removed useQuery import from @tanstack/react-query
-import type { CandleType } from '@sapience/ui/types/graphql';
-import { print } from 'graphql';
-import { useEffect, useState } from 'react'; // Removed useMemo
+import { graphqlRequest } from '@sapience/ui/lib';
+import { useEffect, useState } from 'react';
 
 // Import the new structures and the processing function
+import type { CandleType } from '@sapience/ui/types/graphql';
 import {
   processCandleData, // Use new data point type
   type MarketCandleDataWithId,
   type MultiMarketChartDataPoint, // Use new data point type
 } from '../../lib/utils/chartUtils';
-import { foilApi, getChainIdFromShortName } from '../../lib/utils/util'; // Import getChainIdFromShortName
+import { getChainIdFromShortName } from '../../lib/utils/util'; // Import getChainIdFromShortName
 import { useSapience } from '~/lib/context/SapienceProvider'; // Import useSapience
 
-// Define minimal GraphQL error type
-interface GraphQLError {
-  message: string;
-  // Add other common fields like locations, path if needed
-}
-
 // Adjust marketId type if needed (String! vs Int!) based on schema
-const GET_MARKET_CANDLES = gql`
-  query MarketCandlesFromCache(
+const GET_MARKET_CANDLES = /* GraphQL */ `
+  query MarketCandles(
     $address: String!
     $chainId: Int!
     $marketId: String! # Assuming String! based on prior schema inspection
@@ -29,7 +21,7 @@ const GET_MARKET_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandlesFromCache(
+    marketCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -50,8 +42,8 @@ const GET_MARKET_CANDLES = gql`
 `;
 
 // Added query for index candles
-const GET_INDEX_CANDLES = gql`
-  query IndexCandlesFromCache(
+const GET_INDEX_CANDLES = /* GraphQL */ `
+  query IndexCandles(
     $address: String!
     $chainId: Int!
     $marketId: String! # Required by schema, using first active market ID
@@ -59,7 +51,7 @@ const GET_INDEX_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    indexCandlesFromCache(
+    indexCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -94,7 +86,7 @@ interface UseMarketGroupChartDataReturn {
 }
 
 interface MarketCandlesResponse {
-  marketCandlesFromCache: {
+  marketCandles: {
     data: CandleType[] | null;
     lastUpdateTimestamp: number;
   } | null;
@@ -103,7 +95,7 @@ interface MarketCandlesResponse {
 // Added interface for IndexCandles response
 interface IndexCandlesResponse {
   // Updated to match the new structure
-  indexCandlesFromCache: {
+  indexCandles: {
     data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
     lastUpdateTimestamp: number;
   } | null;
@@ -161,99 +153,56 @@ export const useMarketGroupChartData = ({
             const marketIdString = String(marketIdNum); // Convert number to string for consistency
             const from = overallStartTime;
             const to = overallEndTime;
-            const response = await foilApi.post('/graphql', {
-              query: print(GET_MARKET_CANDLES),
-              variables: {
-                address: marketAddress, // Use prop directly
-                chainId, // Use chainId calculated outside
-                marketId: marketIdString, // Use string ID here
-                from,
-                to,
-                interval,
-              },
-            });
-            const responseData = response.data as
-              | MarketCandlesResponse
-              | { errors?: GraphQLError[] };
 
-            if (
-              responseData &&
-              'errors' in responseData &&
-              responseData.errors
-            ) {
+            try {
+              const responseData = await graphqlRequest<MarketCandlesResponse>(
+                GET_MARKET_CANDLES,
+                {
+                  address: marketAddress, // Use prop directly
+                  chainId, // Use chainId calculated outside
+                  marketId: marketIdString, // Use string ID here
+                  from,
+                  to,
+                  interval,
+                }
+              );
+
+              return {
+                marketId: marketIdString,
+                candles: responseData.marketCandles?.data ?? [],
+                error: null,
+              };
+            } catch (error) {
               console.error(
-                `GraphQL errors fetching candles for market ${marketIdString}:`,
-                responseData.errors
+                `Error fetching candles for market ${marketIdString}:`,
+                error
               );
               return {
                 marketId: marketIdString,
                 candles: null,
-                error: new Error(
-                  responseData.errors[0]?.message || 'GraphQL error'
-                ),
+                error:
+                  error instanceof Error ? error : new Error('GraphQL error'),
               };
             }
-            if (responseData && 'marketCandlesFromCache' in responseData) {
-              return {
-                marketId: marketIdString,
-                candles: responseData.marketCandlesFromCache?.data ?? [],
-                error: null,
-              };
-            }
-            console.warn(
-              `Unexpected response structure for market ${marketIdString}:`,
-              responseData
-            );
-            return {
-              marketId: marketIdString,
-              candles: [],
-              error: new Error('Unexpected response structure'),
-            };
           }
         );
 
         // Fetch Index Candles (using the first active marketId)
         const firstMarketIdString = String(activeMarketIds[0]);
-        const indexCandlePromise = foilApi
-          .post('/graphql', {
-            query: print(GET_INDEX_CANDLES),
-            variables: {
-              address: marketAddress,
-              chainId,
-              marketId: firstMarketIdString, // Using first market ID
-              from: overallStartTime,
-              to: overallEndTime,
-              interval,
-            },
-          })
-          .then((response) => {
-            const responseData = response.data as
-              | IndexCandlesResponse
-              | { errors?: GraphQLError[] };
-            if (
-              responseData &&
-              'errors' in responseData &&
-              responseData.errors &&
-              responseData.errors.length > 0
-            ) {
-              console.error(
-                `GraphQL errors fetching index candles:`,
-                responseData.errors
-              );
-              throw new Error(
-                responseData.errors[0].message ||
-                  'GraphQL error fetching index candles'
-              );
-            }
-            if (responseData && 'indexCandlesFromCache' in responseData) {
-              // Return raw index candles here
-              return responseData.indexCandlesFromCache?.data ?? [];
-            }
-            console.warn(
-              `Unexpected response structure for index candles:`,
-              responseData
-            );
-            return []; // Return empty array on unexpected structure
+        const indexCandlePromise = graphqlRequest<IndexCandlesResponse>(
+          GET_INDEX_CANDLES,
+          {
+            address: marketAddress,
+            chainId,
+            marketId: firstMarketIdString, // Using first market ID
+            from: overallStartTime,
+            to: overallEndTime,
+            interval,
+          }
+        )
+          .then((responseData) => {
+            // Return raw index candles here
+            return responseData.indexCandles?.data ?? [];
           })
           .catch((err) => {
             console.error('Error fetching index candles directly:', err);
@@ -285,7 +234,7 @@ export const useMarketGroupChartData = ({
             .filter((r) => r.candles !== null) // Filter out errors/null data
             .map((r) => ({
               marketId: r.marketId,
-              candles: r.candles as CandleType[], // Safe due to filter
+              candles: r.candles, // Safe due to filter
             }));
 
         // Calculate index multiplier (unchanged)
