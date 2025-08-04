@@ -5,7 +5,12 @@ import {
   PriceSelector,
 } from '@sapience/ui/components/charts';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@sapience/ui/components/ui/tabs';
 import { ChevronLeft, DatabaseIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -135,6 +140,7 @@ const ForecastContent = () => {
   );
 
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
+  const [activeContentTab, setActiveContentTab] = useState<string>('forecasts');
   const [selectedPrices, setSelectedPrices] = useState<
     Record<LineType, boolean>
   >({
@@ -232,7 +238,7 @@ const ForecastContent = () => {
   }
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-12">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-16">
       <div className="container mx-auto max-w-6xl lg:max-w-none flex flex-col">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div>
@@ -325,7 +331,7 @@ const ForecastContent = () => {
                         className="flex items-center gap-1"
                       >
                         <ChevronLeft className="h-3.5 w-3.5" />
-                        Easy Mode
+                        Overview
                       </Button>
                     </div>
 
@@ -353,23 +359,61 @@ const ForecastContent = () => {
                   </div>
                 </div>
 
-                {/* Comments Section */}
+                {/* Forecasts and Positions Tabs */}
                 <div className="border border-border rounded shadow-sm dark:bg-muted/50 mt-4">
-                  <div className="p-4 border-b border-border">
-                    <h3 className="text-lg font-medium">Forecasts</h3>
-                  </div>
-                  <Comments
-                    selectedCategory={CommentFilters.SelectedQuestion}
-                    question={marketData?.question?.toString()}
-                    refetchTrigger={userPositionsTrigger}
-                  />
+                  <Tabs
+                    value={activeContentTab}
+                    onValueChange={setActiveContentTab}
+                  >
+                    <div className="p-4 border-b border-border">
+                      <TabsList className="h-auto p-0 bg-transparent">
+                        <TabsTrigger
+                          value="forecasts"
+                          className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                        >
+                          Forecasts
+                        </TabsTrigger>
+                        {address && (
+                          <TabsTrigger
+                            value="positions"
+                            className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0"
+                          >
+                            Your Positions
+                          </TabsTrigger>
+                        )}
+                      </TabsList>
+                    </div>
+                    <TabsContent value="forecasts" className="mt-0">
+                      <Comments
+                        selectedCategory={CommentFilters.SelectedQuestion}
+                        question={marketData?.question?.toString()}
+                        refetchTrigger={userPositionsTrigger}
+                      />
+                    </TabsContent>
+                    {address && (
+                      <TabsContent value="positions" className="mt-0">
+                        <div className="p-4">
+                          <UserPositionsTable
+                            account={address}
+                            marketAddress={marketAddress!}
+                            chainId={chainId === null ? undefined : chainId}
+                            marketId={
+                              numericMarketId === null
+                                ? undefined
+                                : numericMarketId
+                            }
+                            refetchUserPositions={refetchUserPositions}
+                          />
+                        </div>
+                      </TabsContent>
+                    )}
+                  </Tabs>
                 </div>
               </div>
 
               <div className="w-full lg:max-w-[340px] pb-4">
                 <div className="bg-card p-6 rounded border mb-5 overflow-auto">
                   <div className="w-full">
-                    <PositionSelector />
                     {!positionId && (
                       <div className="flex w-full border-b">
                         <button
@@ -396,6 +440,7 @@ const ForecastContent = () => {
                         </button>
                       </div>
                     )}
+                    <PositionSelector />
                     <div className="mt-4 relative">
                       {selectedPosition &&
                         selectedPosition.kind === PositionKind.Trade && (
@@ -443,25 +488,6 @@ const ForecastContent = () => {
                 </div>
               </div>
             </div>
-
-            {(() => {
-              if (!address) {
-                return null;
-              }
-              return (
-                <div>
-                  <UserPositionsTable
-                    account={address}
-                    marketAddress={marketAddress!}
-                    chainId={chainId === null ? undefined : chainId}
-                    marketId={
-                      numericMarketId === null ? undefined : numericMarketId
-                    }
-                    refetchUserPositions={refetchUserPositions}
-                  />
-                </div>
-              );
-            })()}
 
             {/* Market Rules */}
             {marketData?.rules && (
