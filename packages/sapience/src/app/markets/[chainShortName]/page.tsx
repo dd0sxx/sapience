@@ -28,6 +28,7 @@ import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
+import PredictForm from '~/components/forecasting/forms/PredictForm';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,
@@ -122,8 +123,8 @@ const DynamicWagerFormFactory = dynamic(
   }
 );
 
-// Create a ForecastingForm component to handle the form rendering logic
-const ForecastingForm = ({
+// Create a WagerForm component to handle the wager form rendering logic
+const WagerForm = ({
   marketGroupData,
   marketClassification,
   permitData,
@@ -323,9 +324,9 @@ const MarketGroupPageContent = () => {
               </div>
             </div>
 
-            {/* Form (Right Column) */}
-            <div className="w-full lg:w-[340px] flex flex-col">
-              <ForecastingForm
+            {/* Wager Form (Right Column) */}
+            <div className="w-full lg:w-[340px]">
+              <WagerForm
                 marketGroupData={marketGroupData}
                 marketClassification={marketClassification!}
                 permitData={permitData!}
@@ -369,18 +370,30 @@ const MarketGroupPageContent = () => {
                 </div>
               </div>
               <TabsContent value="forecasts" className="mt-0">
-                <Comments
-                  selectedCategory={
-                    marketClassification ===
-                    MarketGroupClassification.MULTIPLE_CHOICE
-                      ? CommentFilters.AllMultichoiceQuestions
-                      : CommentFilters.SelectedQuestion
-                  }
-                  question={activeMarket?.question?.toString()}
-                  address={address}
-                  refetchTrigger={userPositionsTrigger}
-                  marketGroupAddress={marketGroupData?.address || null}
-                />
+                <div className="p-4">
+                  {/* Prediction Form */}
+                  <div className="mb-6">
+                    <PredictForm
+                      marketGroupData={marketGroupData}
+                      marketClassification={marketClassification!}
+                      onSuccess={handleUserPositionsRefetch}
+                    />
+                  </div>
+                  
+                  {/* Comments */}
+                  <Comments
+                    selectedCategory={
+                      marketClassification ===
+                      MarketGroupClassification.MULTIPLE_CHOICE
+                        ? CommentFilters.AllMultichoiceQuestions
+                        : CommentFilters.SelectedQuestion
+                    }
+                    question={activeMarket?.question?.toString()}
+                    address={address}
+                    refetchTrigger={userPositionsTrigger}
+                    marketGroupAddress={marketGroupData?.address || null}
+                  />
+                </div>
               </TabsContent>
               {address && (
                 <TabsContent value="positions" className="mt-0">
