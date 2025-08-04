@@ -11,7 +11,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 
 const meta: Meta<typeof Tooltip> = {
-  title: "UI/Tooltip",
+  title: "UI / Tooltip",
   component: Tooltip,
   parameters: {
     layout: "centered",
