@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
@@ -261,7 +262,7 @@ const MarketGroupsRow = ({
                 </Button>
 
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   className="h-8 px-3 w-24"
                   onClick={(e) => {
@@ -269,7 +270,14 @@ const MarketGroupsRow = ({
                     setIsExpanded(!isExpanded);
                   }}
                 >
-                  {isExpanded ? 'Hide' : 'Show'}
+                  <span className="flex items-center gap-1">
+                    {isExpanded ? 'Hide' : 'Show'}
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform duration-200 ${
+                        isExpanded ? 'rotate-180' : 'rotate-0'
+                      }`}
+                    />
+                  </span>
                 </Button>
               </>
             ) : (

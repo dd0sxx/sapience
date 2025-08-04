@@ -209,7 +209,7 @@ const ForecastContent = () => {
   }
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-16">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-16">
       <div className="container mx-auto max-w-6xl lg:max-w-none flex flex-col">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div>
@@ -271,8 +271,10 @@ const ForecastContent = () => {
             maxTick={maxTick}
           />
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col lg:flex-row lg:gap-8">
-              <div className="flex flex-col w-full relative">
+            {/* Top Row: Chart, OrderBook, and Forms */}
+            <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
+              {/* Chart Column */}
+              <div className="flex flex-col w-full relative xl:col-span-6">
                 <div className="w-full h-[500px] relative">
                   <PriceChart
                     market={{
@@ -320,12 +322,29 @@ const ForecastContent = () => {
                     </div>
                   </div>
                 </div>
-
-                <MarketDataTables />
               </div>
 
-              <div className="w-full lg:max-w-[340px] pb-4">
-                <div className="bg-card p-6 rounded border mb-6 overflow-auto">
+              {/* OrderBook Column - Shows to the right of chart on xl+ */}
+              <div className="xl:col-span-3 xl:order-2 order-3">
+                <div className="h-[400px] xl:h-[596px]">
+                  <OrderBookChart
+                    quoteTokenName={quoteTokenName}
+                    baseTokenName={baseTokenName}
+                    className="h-full"
+                    asks={asks}
+                    bids={bids}
+                    lastPrice={lastPrice}
+                    isLoadingPool={isLoadingPool}
+                    isErrorPool={isErrorPool}
+                    isLoadingBook={isLoadingBook}
+                    isErrorBook={isErrorBook}
+                  />
+                </div>
+              </div>
+
+              {/* Forms Column */}
+              <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0">
+                <div className="bg-card p-6 rounded border overflow-auto h-full xl:h-[596px]">
                   <div className="w-full">
                     {!positionId && (
                       <Tabs
@@ -368,22 +387,12 @@ const ForecastContent = () => {
                     </div>
                   </div>
                 </div>
-                {/* Order Book */}
-                <div className="h-[400px]">
-                  <OrderBookChart
-                    quoteTokenName={quoteTokenName}
-                    baseTokenName={baseTokenName}
-                    className="h-full"
-                    asks={asks}
-                    bids={bids}
-                    lastPrice={lastPrice}
-                    isLoadingPool={isLoadingPool}
-                    isErrorPool={isErrorPool}
-                    isLoadingBook={isLoadingBook}
-                    isErrorBook={isErrorBook}
-                  />
-                </div>
               </div>
+            </div>
+
+            {/* Full Width Data Tables Below */}
+            <div className="w-full">
+              <MarketDataTables />
             </div>
 
             {/* Market Rules */}
