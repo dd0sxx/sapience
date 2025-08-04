@@ -201,7 +201,6 @@ const Header = () => {
               <Button
                 onClick={login}
                 className="bg-primary hover:bg-primary/90 rounded-full px-8"
-                size="lg"
               >
                 Log In
               </Button>

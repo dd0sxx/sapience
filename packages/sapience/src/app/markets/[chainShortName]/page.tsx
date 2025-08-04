@@ -12,13 +12,14 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@sapience/ui/components/ui/tabs';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
-import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
+import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
@@ -159,14 +160,37 @@ const ForecastingForm = ({
     );
   }
 
+  // Format end time for badge
+  const endTimeBadge = (() => {
+    const endTime = activeMarket?.endTimestamp;
+    if (typeof endTime !== 'number') {
+      return null;
+    }
+
+    try {
+      const date = fromUnixTime(endTime);
+      const displayTime = formatDistanceToNow(date, { addSuffix: true });
+      return <Badge>Ends {displayTime}</Badge>;
+    } catch (error) {
+      console.error('Error formatting relative time:', error);
+      return null;
+    }
+  })();
+
   return (
-    <div className="bg-card p-6 rounded shadow-sm border">
-      <DynamicWagerFormFactory
-        marketClassification={marketClassification}
-        marketGroupData={marketGroupData}
-        isPermitted={!!permitData?.permitted}
-        onSuccess={onWagerSuccess}
-      />
+    <div className="bg-card p-6 rounded shadow-sm border flex flex-col flex-1">
+      <div className="mb-4">
+        <h2 className="text-2xl font-medium mb-2">Place a Wager</h2>
+        {endTimeBadge && <div className="flex mt-3">{endTimeBadge}</div>}
+      </div>
+      <div className="flex-1">
+        <DynamicWagerFormFactory
+          marketClassification={marketClassification}
+          marketGroupData={marketGroupData}
+          isPermitted={!!permitData?.permitted}
+          onSuccess={onWagerSuccess}
+        />
+      </div>
     </div>
   );
 };
@@ -253,7 +277,7 @@ const MarketGroupPageContent = () => {
 
   // Otherwise show the main content
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-24">
       <div className="container mx-auto max-w-4xl flex flex-col">
         <MarketGroupHeader
           marketGroupData={marketGroupData}
@@ -263,14 +287,14 @@ const MarketGroupPageContent = () => {
           chainShortName={chainShortName}
         />
 
-        {/* Main content layout: Apply gap-6 and px-3 from user example */}
-        <div className="flex flex-col gap-6 px-3">
+        {/* Main content layout: Apply gap-12 and px-3 for consistent spacing */}
+        <div className="flex flex-col gap-12 px-3">
           {/* Row 1: Chart/List + Form */}
-          <div className="flex flex-col lg:flex-row gap-12">
+          <div className="flex flex-col lg:flex-row gap-12 lg:items-stretch">
             {/* Left Column (Chart/List) */}
             <div className="flex flex-col w-full md:flex-1">
-              <div className="border border-border rounded flex flex-col flex-1 shadow-sm">
-                <div className="flex-1 min-h-[400px]">
+              <div className="border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
+                <div className="flex-1">
                   <MarketGroupChart
                     chainShortName={chainShortName}
                     marketAddress={marketAddress}
@@ -299,7 +323,7 @@ const MarketGroupPageContent = () => {
             </div>
 
             {/* Form (Right Column) */}
-            <div className="w-full lg:w-[340px]">
+            <div className="w-full lg:w-[340px] flex flex-col">
               <ForecastingForm
                 marketGroupData={marketGroupData}
                 marketClassification={marketClassification!}
@@ -314,7 +338,7 @@ const MarketGroupPageContent = () => {
           <div className="border border-border rounded shadow-sm dark:bg-muted/50">
             <Tabs value={activeContentTab} onValueChange={setActiveContentTab}>
               <div className="p-4 border-b border-border">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center">
                   <TabsList className="h-auto p-0 bg-transparent">
                     <TabsTrigger
                       value="forecasts"
@@ -325,21 +349,20 @@ const MarketGroupPageContent = () => {
                     {address && (
                       <TabsTrigger
                         value="positions"
-                        className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0"
+                        className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
                       >
                         Your Positions
                       </TabsTrigger>
                     )}
                   </TabsList>
 
-                  {/* Advanced View button (Right side of tabs) */}
+                  {/* Advanced View tab-like link (After tabs) */}
                   <button
                     type="button"
                     onClick={() => setShowMarketSelector(true)}
-                    className="px-4 py-2 text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md flex items-center gap-2 transition-colors"
+                    className="text-lg font-medium text-muted-foreground hover:text-primary px-0 flex items-center gap-1 transition-colors"
                   >
-                    Advanced View
-                    <ChevronRight className="h-4 w-4" />
+                    Details
                   </button>
                 </div>
               </div>
@@ -361,6 +384,7 @@ const MarketGroupPageContent = () => {
                 <TabsContent value="positions" className="mt-0">
                   <div className="p-4">
                     <UserPositionsTable
+                      showHeaderText={false}
                       account={address}
                       marketAddress={marketAddress}
                       chainId={chainId}
