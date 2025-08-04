@@ -379,7 +379,7 @@ const MarketGroupPageContent = () => {
                       onSuccess={handleUserPositionsRefetch}
                     />
                   </div>
-                  
+
                   {/* Comments */}
                   <Comments
                     selectedCategory={
