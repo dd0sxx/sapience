@@ -274,8 +274,8 @@ const ForecastContent = () => {
             {/* Top Row: Chart, OrderBook, and Forms */}
             <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
               {/* Chart Column */}
-              <div className="flex flex-col w-full relative xl:col-span-6">
-                <div className="w-full h-[500px] relative">
+              <div className="flex flex-col w-full relative xl:col-span-6 h-[460px]">
+                <div className="w-full flex-1 relative mb-4">
                   <PriceChart
                     market={{
                       marketId: numericMarketId!,
@@ -291,7 +291,7 @@ const ForecastContent = () => {
                     resourceSlug={resourceSlug}
                   />
                 </div>
-                <div className="flex flex-col lg:flex-row justify-between w-full items-start lg:items-center my-4 gap-4">
+                <div className="flex flex-col lg:flex-row justify-between w-full items-start lg:items-center gap-2 flex-shrink-0">
                   <div className="flex flex-row flex-wrap gap-3 w-full items-center">
                     {/* Easy Mode Button - Left Side */}
                     <div className="order-1">
@@ -326,7 +326,7 @@ const ForecastContent = () => {
 
               {/* OrderBook Column - Shows to the right of chart on xl+ */}
               <div className="xl:col-span-3 xl:order-2 order-3">
-                <div className="h-[400px] xl:h-[596px]">
+                <div className="h-[460px]">
                   <OrderBookChart
                     quoteTokenName={quoteTokenName}
                     baseTokenName={baseTokenName}
@@ -344,7 +344,7 @@ const ForecastContent = () => {
 
               {/* Forms Column */}
               <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0">
-                <div className="bg-card p-6 rounded border overflow-auto h-full xl:h-[596px]">
+                <div className="bg-card p-4 rounded border overflow-auto h-[460px]">
                   <div className="w-full">
                     {!positionId && (
                       <Tabs
@@ -358,10 +358,10 @@ const ForecastContent = () => {
                         </TabsList>
                       </Tabs>
                     )}
-                    <div className="mt-4">
+                    <div className="mt-3">
                       <PositionSelector />
                     </div>
-                    <div className="mt-4 relative">
+                    <div className="mt-3 relative">
                       {selectedPosition &&
                         selectedPosition.kind === PositionKind.Trade && (
                           <SimpleTradeWrapper
