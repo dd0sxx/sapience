@@ -2,10 +2,10 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import "./interfaces/IParlayPool.sol";
 import "./interfaces/IParlayNFT.sol";
 
@@ -13,16 +13,15 @@ import "./interfaces/IParlayNFT.sol";
  * @title ParlayPool
  * @notice Implementation of the Parlay Pool contract with orderbook functionality
  */
-contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
-    using Counters for Counters.Counter;
-
+contract ParlayPool is IParlayPool, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     // ============ State Variables ============
     
     Settings public config;
     
-    Counters.Counter private _requestIdCounter;
-    Counters.Counter private _playerNftCounter;
-    Counters.Counter private _lpNftCounter;
+    uint256 private _requestIdCounter;
+    uint256 private _playerNftCounter;
+    uint256 private _lpNftCounter;
     
     // Mapping from request ID to parlay request
     mapping(uint256 => ParlayRequest) public parlayRequests;
@@ -50,68 +49,76 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         _;
     }
     
-    modifier onlyValidExpirationTime(uint256 orderExpirationTime, uint256 parlayExpirationTime) {
+    modifier onlyValidExpirationTime(uint256 orderExpirationTime) {
         require(orderExpirationTime > block.timestamp, "Order expiration must be in future");
-        require(parlayExpirationTime > orderExpirationTime, "Parlay expiration must be after order expiration");
-        require(parlayExpirationTime <= block.timestamp + config.maxRequestExpirationTime, "Parlay expiration too far");
+        // require(parlayExpirationTime > orderExpirationTime, "Parlay expiration must be after order expiration");
+        // require(parlayExpirationTime <= block.timestamp + config.maxRequestExpirationTime, "Parlay expiration too far");
         _;
     }
     
     // ============ Constructor ============
     
     constructor(
-        address _principleToken,
+        address _collateralToken,
         address _playerNft,
         address _lpNft,
-        uint256 _minRequestPayout,
+        uint256 _minCollateral,
         uint256 _minRequestExpirationTime,
         uint256 _maxRequestExpirationTime,
         uint256 _parlayAfterExpirationTime
     ) {
+        require(_collateralToken != address(0), "Invalid collateral token");
+        require(_playerNft != address(0), "Invalid player NFT");
+        require(_lpNft != address(0), "Invalid LP NFT");
+        require(_minCollateral > 0, "Invalid min collateral");
+        require(_minRequestExpirationTime > 0, "Invalid min expiration time");
+        require(_maxRequestExpirationTime > _minRequestExpirationTime, "Invalid max expiration time");
+        require(_parlayAfterExpirationTime > 0, "Invalid parlay after expiration time");
+
         config = Settings({
-            principleToken: _principleToken,
+            collateralToken: _collateralToken,
             playerNft: _playerNft,
             lpNft: _lpNft,
-            minRequestPayout: _minRequestPayout,
+            minCollateral: _minCollateral,
             minRequestExpirationTime: _minRequestExpirationTime,
-            maxRequestExpirationTime: _maxRequestExpirationTime,
-            parlayAfterExpirationTime: _parlayAfterExpirationTime
+            maxRequestExpirationTime: _maxRequestExpirationTime
         });
+
+        _requestIdCounter = 0;
+        _playerNftCounter = 0;
+        _lpNftCounter = 0;
     }
     
     // ============ Parlay Order Functions ============
     
     function submitParlayOrder(
-        Market[] calldata markets,
-        bool[] calldata outcomes,
-        uint256 principle,
+        PredictedOutcome[] calldata predictedOutcomes,
+        uint256 collateral,
         uint256 minPayout,
-        uint256 orderExpirationTime,
-        uint256 parlayExpirationTime
-    ) external onlyValidExpirationTime(orderExpirationTime, parlayExpirationTime) nonReentrant returns (uint256 requestId) {
-        require(markets.length > 0, "Must have at least one market");
-        require(markets.length == outcomes.length, "Markets and outcomes length mismatch");
-        require(principle >= config.minPrinciple, "Principle below minimum");
-        require(minPayout >= config.minPrinciple, "Payout below minimum");
+        uint256 orderExpirationTime
+        // uint256 parlayExpirationTime
+    ) external onlyValidExpirationTime(orderExpirationTime) nonReentrant returns (uint256 requestId) {
+        require(predictedOutcomes.length > 0, "Must have at least one market");
+        require(collateral >= config.minCollateral, "Collateral below minimum");
+        require(minPayout >= config.minCollateral, "Payout below minimum");
         
-        _requestIdCounter.increment();
-        requestId = _requestIdCounter.current();
+        _requestIdCounter++;
+        requestId = _requestIdCounter;
 
-        uint256 balanceBefore = IERC20(config.principleToken).balanceOf(address(this));
+        uint256 balanceBefore = IERC20(config.collateralToken).balanceOf(address(this));
         
-        IERC20(config.principleToken).safeTransferFrom(msg.sender, address(this), principle);
+        IERC20(config.collateralToken).safeTransferFrom(msg.sender, address(this), collateral);
         
-        uint256 balanceAfter = IERC20(config.principleToken).balanceOf(address(this));
-        require(balanceAfter - balanceBefore == principle, "Principle transfer failed");
+        uint256 balanceAfter = IERC20(config.collateralToken).balanceOf(address(this));
+        require(balanceAfter - balanceBefore == collateral, "Collateral transfer failed");
         
         parlayRequests[requestId] = ParlayRequest({
             player: msg.sender,
-            markets: markets,
-            outcomes: outcomes,
-            principle: principle,
+            predictedOutcomes: predictedOutcomes,
+            collateral: collateral,
             minPayout: minPayout,
             orderExpirationTime: orderExpirationTime,
-            parlayExpirationTime: parlayExpirationTime,
+            // parlayExpirationTime: parlayExpirationTime,
             filled: false,
             filledBy: address(0),
             filledPayout: 0,
@@ -121,12 +128,11 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         emit ParlayOrderSubmitted(
             msg.sender,
             requestId,
-            markets,
-            outcomes,
-            principle,
+            predictedOutcomes,
+            collateral,
             minPayout,
-            orderExpirationTime,
-            parlayExpirationTime
+            orderExpirationTime
+            // parlayExpirationTime
         );
     }
     
@@ -141,13 +147,13 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         require(payout >= request.minPayout, "Payout below minimum");
         
         // Check if LP has sufficient balance by looking at their token balance
-        uint256 lpBalance = IERC20(config.principleToken).balanceOf(msg.sender);
+        uint256 lpBalance = IERC20(config.collateralToken).balanceOf(msg.sender);
         require(lpBalance >= payout, "Insufficient LP balance");
         
         // Transfer payout from LP to contract
-        uint256 balanceBefore = IERC20(config.principleToken).balanceOf(address(this));
-        IERC20(config.principleToken).safeTransferFrom(msg.sender, address(this), payout);
-        uint256 balanceAfter = IERC20(config.principleToken).balanceOf(address(this));
+        uint256 balanceBefore = IERC20(config.collateralToken).balanceOf(address(this));
+        IERC20(config.collateralToken).safeTransferFrom(msg.sender, address(this), payout);
+        uint256 balanceAfter = IERC20(config.collateralToken).balanceOf(address(this));
         require(balanceAfter - balanceBefore == payout, "Payout transfer failed");
         
         // Mark request as filled
@@ -160,21 +166,21 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         lpUsedAmounts[msg.sender] += payout;
         
         // Mint NFTs
-        _playerNftCounter.increment();
-        _lpNftCounter.increment();
+        _playerNftCounter++;
+        _lpNftCounter++;
         
-        uint256 playerNftTokenId = _playerNftCounter.current();
-        uint256 lpNftTokenId = _lpNftCounter.current();
+        uint256 playerNftTokenId = _playerNftCounter;
+        uint256 lpNftTokenId = _lpNftCounter;
         
         // Create parlay
         parlays[playerNftTokenId] = Parlay({
             playerNftTokenId: playerNftTokenId,
             lpNftTokenId: lpNftTokenId,
-            principle: request.principle,
-            potentialPayout: payout,
+            collateral: request.collateral,
+            // potentialPayout: payout,
             payout: 0,
             createdAt: block.timestamp,
-            expirationTime: request.parlayExpirationTime,
+            // expirationTime: request.parlayExpirationTime,
             settled: false,
             predictedOutcomes: request.predictedOutcomes
         });
@@ -191,54 +197,11 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
             msg.sender,
             playerNftTokenId,
             lpNftTokenId,
-            request.principle,
+            request.collateral,
             payout
         );
     }
-        
-        // Mint NFTs
-        _playerNftCounter.increment();
-        _lpNftCounter.increment();
-        
-        uint256 playerNftTokenId = _playerNftCounter.current();
-        uint256 lpNftTokenId = _lpNftCounter.current();
-        
-        // Create parlay
-        parlays[playerNftTokenId] = Parlay({
-            playerNftTokenId: playerNftTokenId,
-            lpNftTokenId: lpNftTokenId,
-            principle: request.principle,
-            potentialPayout: bestIntent.payout,
-            payout: 0,
-            createdAt: block.timestamp,
-            expirationTime: request.parlayExpirationTime,
-            settled: false,
-            predictedOutcomes: request.predictedOutcomes
-        });
-        
-        parlays[lpNftTokenId] = parlays[playerNftTokenId];
-        
-        // Update LP used amount
-        lpUsedAmounts[request.bestFillLP] += bestIntent.payout;
-        
-        // Mark request as filled
-        request.filled = true;
-        
-        // Mint NFTs to respective owners
-        IParlayNFT(config.playerNft).mint(request.player, playerNftTokenId, "");
-        IParlayNFT(config.lpNft).mint(request.bestFillLP, lpNftTokenId, "");
-        
-        emit ParlayOrderFilled(
-            requestId,
-            request.player,
-            request.bestFillLP,
-            playerNftTokenId,
-            lpNftTokenId,
-            request.principle,
-            bestIntent.payout
-        );
-    }
-    
+            
     // ============ Parlay Settlement Functions ============
     
     function settleParlay(uint256 tokenId) external onlyValidParlay(tokenId) {
@@ -251,7 +214,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         bool playerWon = true; // This should be determined by actual market resolution
         
         if (playerWon) {
-            parlay.payout = parlay.principle + parlay.potentialPayout;
+            parlay.payout = parlay.collateral + parlay.potentialPayout;
         } else {
             parlay.payout = 0;
         }
@@ -292,7 +255,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         parlay.payout = 0;
         
         // Transfer payout
-        IERC20(config.principleToken).safeTransfer(msg.sender, withdrawAmount);
+        IERC20(config.collateralToken).safeTransfer(msg.sender, withdrawAmount);
         
         emit ParlayPrincipleWithdrawn(tokenId, msg.sender, withdrawAmount);
     }
@@ -307,7 +270,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         // Return principle to player (in this implementation, principle is held by the contract)
         // In a real implementation, you might need to transfer tokens back to the player
         
-        emit OrderExpired(requestId, request.player, request.principle);
+        emit OrderExpired(requestId, request.player, request.collateral);
     }
     
     function sweepExpiredParlay(uint256 tokenId) external onlyValidParlay(tokenId) {
@@ -322,7 +285,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
         // Reclaim principle for the pool
         // In this implementation, principle stays in the contract
         
-        emit ParlayExpired(parlay.playerNftTokenId, parlay.lpNftTokenId, parlay.principle);
+        emit ParlayExpired(parlay.playerNftTokenId, parlay.lpNftTokenId, parlay.collateral);
     }
     
 
@@ -401,7 +364,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard, Ownable {
             return (false, 4); // Payout below minimum
         }
         
-        uint256 lpBalance = IERC20(config.principleToken).balanceOf(lp);
+        uint256 lpBalance = IERC20(config.collateralToken).balanceOf(lp);
         if (lpBalance < payout) {
             return (false, 5); // Insufficient LP balance
         }

@@ -9,13 +9,13 @@ interface IParlayPool {
     // ============ Structs ============
 
     struct Settings {
-        address principleToken;
-        address playerNft;
-        address lpNft;
-        uint256 minPrinciple;
-        uint256 minRequestExpirationTime;
-        uint256 maxRequestExpirationTime;
-        uint256 parlayAfterExpirationTime;
+        address collateralToken; // collateral token
+        address playerNft; // NFT for player
+        address lpNft; // NFT for LP
+        uint256 minCollateral; // minimum collateral amount for a parlay
+        uint256 minRequestExpirationTime; // minimum expiration time for a parlay request
+        uint256 maxRequestExpirationTime; // maximum expiration time for a parlay request
+        // uint256 parlayAfterExpirationTime; // time after expiration time for a parlay to be settled
     }
     
     struct Market {
@@ -30,12 +30,11 @@ interface IParlayPool {
 
     struct ParlayRequest {
         address player;
-        Market[] markets;
-        bool[] outcomes;
-        uint256 principle;
+        PredictedOutcome[] predictedOutcomes;
+        uint256 collateral;
         uint256 minPayout;
         uint256 orderExpirationTime;
-        uint256 parlayExpirationTime;
+        // uint256 parlayExpirationTime;
         bool filled;
         address filledBy;
         uint256 filledPayout;
@@ -45,11 +44,11 @@ interface IParlayPool {
     struct Parlay {
         uint256 playerNftTokenId; // NFT token id of the player
         uint256 lpNftTokenId; // NFT token id of the LP
-        uint256 principle; // in principleToken
-        uint256 potentialPayout; // in principleToken
-        uint256 payout; // in principleToken
+        uint256 collateral; // in collateralToken
+        // uint256 potentialPayout; // in collateralToken
+        uint256 payout; // in collateralToken
         uint256 createdAt; // timestamp
-        uint256 expirationTime; // timestamp
+        // uint256 expirationTime; // timestamp
         bool settled; // true if the parlay has been settled
         PredictedOutcome[] predictedOutcomes;
     }
@@ -60,12 +59,11 @@ interface IParlayPool {
     event ParlayOrderSubmitted(
         address indexed player,
         uint256 indexed requestId,
-        Market[] markets,
-        bool[] outcomes,
-        uint256 principle,
+        PredictedOutcome[] predictedOutcomes,
+        uint256 collateral,
         uint256 minPayout,
-        uint256 orderExpirationTime,
-        uint256 parlayExpirationTime
+        uint256 orderExpirationTime
+        // uint256 parlayExpirationTime
     );
 
     event ParlayOrderFilled(
@@ -74,7 +72,7 @@ interface IParlayPool {
         address indexed lp,
         uint256 playerNftTokenId,
         uint256 lpNftTokenId,
-        uint256 principle,
+        uint256 collateral,
         uint256 payout
     );
 
@@ -96,45 +94,40 @@ interface IParlayPool {
     event ParlayExpired(
         uint256 indexed playerNftTokenId,
         uint256 indexed lpNftTokenId,
-        uint256 principleReclaimed
+        uint256 collateralReclaimed
     );
 
     event OrderExpired(
         uint256 indexed requestId,
         address indexed player,
-        uint256 principleReturned
+        uint256 collateralReturned
     );
 
     // ============ Parlay Functions ============
     
     /**
      * @notice Submit a parlay order to the orderbook
-     * @param markets Array of markets to include in parlay
-     * @param outcomes Array of predicted outcomes (true = YES, false = NO)
-     * @param principle Amount of principle to use for the parlay
+     * @param predictedOutcomes Array of predicted outcomes (true = YES, false = NO)
+     * @param collateral Amount of collateral to use for the parlay
      * @param minPayout Minimum acceptable payout for the parlay
      * @param orderExpirationTime Expiration time for the parlay order
-     * @param parlayExpirationTime Expiration time for the parlay
      * @return requestId ID of the parlay request
      */
     function submitParlayOrder(
-        Market[] calldata markets,
-        bool[] calldata outcomes,
-        uint256 principle,
+        PredictedOutcome[] calldata predictedOutcomes,
+        uint256 collateral,
         uint256 minPayout,
-        uint256 orderExpirationTime,
-        uint256 parlayExpirationTime 
+        uint256 orderExpirationTime
+        // uint256 parlayExpirationTime 
     ) external returns (uint256 requestId);
 
     /**
      * @notice Fill a parlay order directly with the specified payout
      * @param requestId ID of the parlay request
-     * @param payout Amount of stablecoins to pay for the parlay (in principleToken)
      * @dev First LP to call this function within orderExpirationTime will fill the order
      */
     function fillParlayOrder(
-        uint256 requestId,
-        uint256 payout
+        uint256 requestId
     ) external;
 
     /**
@@ -146,22 +139,32 @@ interface IParlayPool {
     ) external;
 
     /**
-     * @notice Withdraw the principle and payout of a settled parlay
+     * @notice Withdraw the collateral and payout of a settled parlay
      * @param tokenId The NFT token ID of the parlay (player or lp depending on the result of the parlay)
      */
     function withdrawParlayPrinciple(uint256 tokenId) external;
 
     /**
-     * @notice Cancel an expired parlay order and return principle to player
+     * @notice Settle a parlay after all markets have resolved and withdraw the collateral
+     * @param tokenId The NFT token ID representing the parlay
+     */
+    function settleAndWithdrawParlayPrinciple(
+        uint256 tokenId
+    ) external;
+
+
+    /**
+     * @notice Cancel an expired parlay order and return collateral to player
      * @param requestId ID of the expired parlay request
      */
     function cancelExpiredOrder(uint256 requestId) external;
 
-    /**
-     * @notice Sweep an expired parlay to reclaim principle for the pool
-     * @param tokenId The NFT token ID of the expired parlay
-     */
-    function sweepExpiredParlay(uint256 tokenId) external;
+    // TODO: sweepExpired to send back the collateral to both users instead to the pool (or remove it for good)
+    // /**
+    //  * @notice Sweep an expired parlay to reclaim collateral for the pool
+    //  * @param tokenId The NFT token ID of the expired parlay
+    //  */
+    // function sweepExpiredParlay(uint256 tokenId) external;
 
 
 
