@@ -65,15 +65,6 @@ const NavLinks = ({
 
   return (
     <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-48 pl-4">
-      <Link href="/forecast" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Forecasting
-        </Button>
-      </Link>
       <Link href="/markets" passHref className="flex w-fit">
         <Button
           variant="ghost"
@@ -81,6 +72,15 @@ const NavLinks = ({
           onClick={handleLinkClick}
         >
           Prediction Markets
+        </Button>
+      </Link>
+      <Link href="/forecast" passHref className="flex w-fit">
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          Forecasting
         </Button>
       </Link>
       <Link href="/vaults" passHref className="flex w-fit">
