@@ -11,12 +11,6 @@ import "./interfaces/IParlayNFT.sol";
  */
 contract ParlayNFT is IParlayNFT, ERC721, Ownable {
     
-    // Mapping from token ID to parlay data
-    mapping(uint256 => bytes) private _parlayData;
-    
-    // Mapping from token ID to settlement status
-    mapping(uint256 => bool) private _settled;
-    
     constructor(
         string memory name,
         string memory symbol
@@ -28,10 +22,8 @@ contract ParlayNFT is IParlayNFT, ERC721, Ownable {
      * @param tokenId Token ID for the NFT
      * @param parlayData Encoded parlay data
      */
-    function mint(address to, uint256 tokenId, bytes calldata parlayData) external override onlyOwner {
-        _mint(to, tokenId);
-        _parlayData[tokenId] = parlayData;
-        _settled[tokenId] = false;
+    function mint(address to, uint256 tokenId) external override onlyOwner {
+        _safeMint(to, tokenId);
     }
     
     /**
@@ -40,44 +32,5 @@ contract ParlayNFT is IParlayNFT, ERC721, Ownable {
      */
     function burn(uint256 tokenId) external override onlyOwner {
         _burn(tokenId);
-        delete _parlayData[tokenId];
-        delete _settled[tokenId];
-    }
-    
-    /**
-     * @notice Get parlay data stored in NFT
-     * @param tokenId Token ID
-     * @return parlayData Encoded parlay data
-     */
-    function getParlayData(uint256 tokenId) external view override returns (bytes memory parlayData) {
-        require(_exists(tokenId), "Token does not exist");
-        return _parlayData[tokenId];
-    }
-    
-    /**
-     * @notice Check if a parlay NFT exists and is valid
-     * @param tokenId Token ID to check
-     * @return exists Whether the NFT exists
-     * @return isSettled Whether the parlay has been settled
-     */
-    function parlayStatus(uint256 tokenId) external view override returns (bool exists, bool isSettled) {
-        exists = _exists(tokenId);
-        isSettled = _settled[tokenId];
-    }
-    
-    /**
-     * @notice Mark a parlay as settled (only callable by authorized contracts)
-     * @param tokenId Token ID to mark as settled
-     */
-    function markSettled(uint256 tokenId) external onlyOwner {
-        require(_exists(tokenId), "Token does not exist");
-        _settled[tokenId] = true;
-    }
-    
-    /**
-     * @notice Override _exists to check if token was minted
-     */
-    function _exists(uint256 tokenId) internal view override returns (bool) {
-        return super._exists(tokenId);
     }
 } 

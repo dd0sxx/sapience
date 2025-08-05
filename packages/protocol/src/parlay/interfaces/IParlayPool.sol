@@ -9,8 +9,8 @@ interface IParlayPool {
     // ============ Structs ============
     struct Settings {
         address collateralToken; // collateral token
-        address playerNft; // NFT for player
-        address lpNft; // NFT for LP
+        address makerNft; // NFT for maker
+        address takerNft; // NFT for taker
         uint256 minCollateral; // minimum collateral amount for a parlay
         uint256 minRequestExpirationTime; // minimum expiration time for a parlay request
         uint256 maxRequestExpirationTime; // maximum expiration time for a parlay request
@@ -26,35 +26,33 @@ interface IParlayPool {
         bool prediction; // true for YES, false for NO
     }
 
-    struct ParlayRequest {
-        address player;
-        PredictedOutcome[] predictedOutcomes;
-        uint256 collateral;
-        uint256 expectedPayout;
+    struct ParlayData {
+        // Request data
+        address maker;
         uint256 orderExpirationTime;
-        // uint256 parlayExpirationTime;
         bool filled;
         address filledBy;
         uint256 filledPayout;
         uint256 filledAt;
-    }
-
-    struct Parlay {
-        uint256 playerNftTokenId; // NFT token id of the player
-        uint256 lpNftTokenId; // NFT token id of the LP
-        uint256 collateral; // in collateralToken
-        // uint256 potentialPayout; // in collateralToken
-        uint256 payout; // in collateralToken
+        
+        // Parlay data
+        uint256 makerNftTokenId; // NFT token id of the maker
+        uint256 takerNftTokenId; // NFT token id of the taker
+        // Notice: the maker deposited the collateral in the pool, and the taker escrowed the delta to reach the payout amount
+        uint256 collateral; // in collateralToken (deposited by the maker)
+        uint256 payout; // in collateralToken (total payout to the winner)
         uint256 createdAt; // timestamp
-        // uint256 expirationTime; // timestamp
         bool settled; // true if the parlay has been settled
+        
+        // Shared data
         PredictedOutcome[] predictedOutcomes;
+        uint256 expectedPayout;
     }
 
     // ============ Events ============
 
     event ParlayOrderSubmitted(
-        address indexed player,
+        address indexed maker,
         uint256 indexed requestId,
         PredictedOutcome[] predictedOutcomes,
         uint256 collateral,
@@ -65,19 +63,19 @@ interface IParlayPool {
 
     event ParlayOrderFilled(
         uint256 indexed requestId,
-        address indexed player,
-        address indexed lp,
-        uint256 playerNftTokenId,
-        uint256 lpNftTokenId,
+        address indexed maker,
+        address indexed taker,
+        uint256 makerNftTokenId,
+        uint256 takerNftTokenId,
         uint256 collateral,
         uint256 payout
     );
 
     event ParlaySettled(
-        uint256 indexed playerNftTokenId,
-        uint256 indexed lpNftTokenId,
+        uint256 indexed makerNftTokenId,
+        uint256 indexed takerNftTokenId,
         uint256 payout,
-        bool playerWon
+        bool makerWon
     );
 
     event ParlayPrincipleWithdrawn(
@@ -87,14 +85,14 @@ interface IParlayPool {
     );
 
     event ParlayExpired(
-        uint256 indexed playerNftTokenId,
-        uint256 indexed lpNftTokenId,
+        uint256 indexed makerNftTokenId,
+        uint256 indexed takerNftTokenId,
         uint256 collateralReclaimed
     );
 
     event OrderExpired(
         uint256 indexed requestId,
-        address indexed player,
+        address indexed maker,
         uint256 collateralReturned
     );
 
@@ -169,20 +167,20 @@ interface IParlayPool {
     /**
      * @notice Get parlay information
      * @param tokenId NFT token ID
-     * @return parlay Parlay details
+     * @return parlayData Parlay details
      */
     function getParlay(
         uint256 tokenId
-    ) external view returns (Parlay memory parlay);
+    ) external view returns (ParlayData memory parlayData);
 
     /**
      * @notice Get parlay order information
      * @param requestId ID of the parlay request
-     * @return parlayRequest Parlay request details
+     * @return parlayData Parlay request details
      */
     function getParlayOrder(
         uint256 requestId
-    ) external view returns (ParlayRequest memory parlayRequest);
+    ) external view returns (ParlayData memory parlayData);
 
     /**
      * @notice Get parlay order fill information
