@@ -7,7 +7,6 @@ pragma solidity ^0.8.19;
  */
 interface IParlayPool {
     // ============ Structs ============
-
     struct Settings {
         address collateralToken; // collateral token
         address playerNft; // NFT for player
@@ -15,9 +14,8 @@ interface IParlayPool {
         uint256 minCollateral; // minimum collateral amount for a parlay
         uint256 minRequestExpirationTime; // minimum expiration time for a parlay request
         uint256 maxRequestExpirationTime; // maximum expiration time for a parlay request
-        // uint256 parlayAfterExpirationTime; // time after expiration time for a parlay to be settled
     }
-    
+
     struct Market {
         address marketGroup;
         uint256 marketId;
@@ -53,9 +51,8 @@ interface IParlayPool {
         PredictedOutcome[] predictedOutcomes;
     }
 
-
     // ============ Events ============
-    
+
     event ParlayOrderSubmitted(
         address indexed player,
         uint256 indexed requestId,
@@ -89,8 +86,6 @@ interface IParlayPool {
         uint256 amount
     );
 
-
-
     event ParlayExpired(
         uint256 indexed playerNftTokenId,
         uint256 indexed lpNftTokenId,
@@ -104,7 +99,7 @@ interface IParlayPool {
     );
 
     // ============ Parlay Functions ============
-    
+
     /**
      * @notice Submit a parlay order to the orderbook
      * @param predictedOutcomes Array of predicted outcomes (true = YES, false = NO)
@@ -118,25 +113,25 @@ interface IParlayPool {
         uint256 collateral,
         uint256 expectedPayout,
         uint256 orderExpirationTime
-        // uint256 parlayExpirationTime 
-    ) external returns (uint256 requestId);
+    )
+        external
+        returns (
+            // uint256 parlayExpirationTime
+            uint256 requestId
+        );
 
     /**
      * @notice Fill a parlay order directly with the specified payout
      * @param requestId ID of the parlay request
      * @dev First LP to call this function within orderExpirationTime will fill the order
      */
-    function fillParlayOrder(
-        uint256 requestId
-    ) external;
+    function fillParlayOrder(uint256 requestId) external;
 
     /**
      * @notice Settle a parlay after all markets have resolved
      * @param tokenId The NFT token ID representing the parlay
      */
-    function settleParlay(
-        uint256 tokenId
-    ) external;
+    function settleParlay(uint256 tokenId) external;
 
     /**
      * @notice Withdraw the collateral and payout of a settled parlay
@@ -148,10 +143,7 @@ interface IParlayPool {
      * @notice Settle a parlay after all markets have resolved and withdraw the collateral
      * @param tokenId The NFT token ID representing the parlay
      */
-    function settleAndWithdrawParlayPrinciple(
-        uint256 tokenId
-    ) external;
-
+    function settleAndWithdrawParlayPrinciple(uint256 tokenId) external;
 
     /**
      * @notice Cancel an expired parlay order and return collateral to player
@@ -166,10 +158,8 @@ interface IParlayPool {
     //  */
     // function sweepExpiredParlay(uint256 tokenId) external;
 
-
-
     // ============ View Functions ============
-    
+
     /**
      * @notice Get the pool configuration
      * @return config Pool configuration
@@ -181,14 +171,18 @@ interface IParlayPool {
      * @param tokenId NFT token ID
      * @return parlay Parlay details
      */
-    function getParlay(uint256 tokenId) external view returns (Parlay memory parlay);
+    function getParlay(
+        uint256 tokenId
+    ) external view returns (Parlay memory parlay);
 
     /**
      * @notice Get parlay order information
      * @param requestId ID of the parlay request
      * @return parlayRequest Parlay request details
      */
-    function getParlayOrder(uint256 requestId) external view returns (ParlayRequest memory parlayRequest);
+    function getParlayOrder(
+        uint256 requestId
+    ) external view returns (ParlayRequest memory parlayRequest);
 
     /**
      * @notice Get parlay order fill information
@@ -198,12 +192,17 @@ interface IParlayPool {
      * @return filledPayout Payout amount offered by the LP
      * @return filledAt Timestamp when the order was filled
      */
-    function getParlayOrderFillInfo(uint256 requestId) external view returns (
-        bool filled,
-        address filledBy,
-        uint256 filledPayout,
-        uint256 filledAt
-    );
+    function getParlayOrderFillInfo(
+        uint256 requestId
+    )
+        external
+        view
+        returns (
+            bool filled,
+            address filledBy,
+            uint256 filledPayout,
+            uint256 filledAt
+        );
 
     /**
      * @notice Get LP used amount (locked in unsettled parlays)
@@ -218,7 +217,9 @@ interface IParlayPool {
      * @return canFill Whether the order can be filled
      * @return reason Reason if cannot be filled
      */
-    function canFillParlayOrder(uint256 requestId) external view returns (bool canFill, uint256 reason);
+    function canFillParlayOrder(
+        uint256 requestId
+    ) external view returns (bool canFill, uint256 reason);
 
     /**
      * @notice Check if an LP can fill a parlay order
@@ -233,5 +234,4 @@ interface IParlayPool {
         uint256 requestId,
         uint256 payout
     ) external view returns (bool canFill, uint256 reason);
-
 }
