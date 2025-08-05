@@ -5,7 +5,7 @@ export default function BotsQuickStart() {
   return (
     <div>
       {/* ElizaOS Section */}
-      <section className="pb-24 lg:pb-48 px-4 sm:px-6 w-full">
+      <section className="pt-8 lg:pt-16 pb-16 lg:pb-32 px-4 sm:px-6 w-full">
         <div className="max-w-6xl mx-auto w-full">
           <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
             {/* Left side: Explanatory text and CTAs */}
@@ -16,7 +16,7 @@ export default function BotsQuickStart() {
                   alt="Eliza OS"
                   width={400}
                   height={120}
-                  className="w-auto h-auto max-w-[200px]"
+                  className="w-auto h-auto max-w-[200px] dark:invert"
                 />
               </div>
               <p className="text-muted-foreground text-lg mb-6">
