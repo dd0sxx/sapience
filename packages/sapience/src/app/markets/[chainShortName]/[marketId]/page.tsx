@@ -344,7 +344,7 @@ const ForecastContent = () => {
 
               {/* Forms Column */}
               <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0">
-                <div className="bg-card p-4 rounded border overflow-auto h-[460px]">
+                <div className="bg-card rounded border overflow-auto h-[460px]">
                   <div className="w-full">
                     {!positionId && (
                       <Tabs
@@ -352,58 +352,65 @@ const ForecastContent = () => {
                         onValueChange={(value) => setActiveFormTab(value)}
                         className="w-full"
                       >
-                        <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="trade">Trade</TabsTrigger>
-                          <TabsTrigger value="liquidity">Liquidity</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-2 rounded-none h-12 p-1">
+                          <TabsTrigger value="trade" className="py-2 text-base">
+                            Trade
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="liquidity"
+                            className="py-2 text-base"
+                          >
+                            Liquidity
+                          </TabsTrigger>
                         </TabsList>
                       </Tabs>
                     )}
-                    <div className="mt-3">
+                    <div className="p-4">
                       <PositionSelector />
-                    </div>
-                    <div className="mt-3 relative">
-                      {selectedPosition &&
-                        selectedPosition.kind === PositionKind.Trade && (
+                      <div className="mt-3 relative">
+                        {selectedPosition &&
+                          selectedPosition.kind === PositionKind.Trade && (
+                            <SimpleTradeWrapper
+                              positionId={positionId || undefined}
+                            />
+                          )}
+                        {selectedPosition &&
+                          selectedPosition.kind === PositionKind.Liquidity && (
+                            <SimpleLiquidityWrapper
+                              positionId={positionId || undefined}
+                            />
+                          )}
+                        {!selectedPosition && activeFormTab === 'trade' && (
                           <SimpleTradeWrapper
                             positionId={positionId || undefined}
                           />
                         )}
-                      {selectedPosition &&
-                        selectedPosition.kind === PositionKind.Liquidity && (
+                        {!selectedPosition && activeFormTab === 'liquidity' && (
                           <SimpleLiquidityWrapper
                             positionId={positionId || undefined}
                           />
                         )}
-                      {!selectedPosition && activeFormTab === 'trade' && (
-                        <SimpleTradeWrapper
-                          positionId={positionId || undefined}
-                        />
-                      )}
-                      {!selectedPosition && activeFormTab === 'liquidity' && (
-                        <SimpleLiquidityWrapper
-                          positionId={positionId || undefined}
-                        />
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Full Width Data Tables Below */}
-            <div className="w-full">
-              <MarketDataTables />
-            </div>
-
             {/* Market Rules */}
             {marketData?.rules && (
-              <div className="w-full mb-4">
+              <div className="w-full mt-4">
                 <h3 className="text-lg font-normal mb-2">Rules</h3>
                 <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {marketData.rules}
                 </div>
               </div>
             )}
+
+            {/* Full Width Data Tables Below */}
+            <div className="w-full mt-4">
+              <MarketDataTables />
+            </div>
           </div>
         </div>
       </div>

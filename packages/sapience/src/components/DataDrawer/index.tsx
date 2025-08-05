@@ -45,7 +45,13 @@ const CenteredMessage = ({
   </div>
 );
 
-const getTransactionTypeDisplay = (type: string) => {
+interface TransactionTypeDisplay {
+  label: string;
+  variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  className?: string;
+}
+
+const getTransactionTypeDisplay = (type: string): TransactionTypeDisplay => {
   switch (type) {
     case 'ADD_LIQUIDITY':
     case 'addLiquidity':
@@ -55,10 +61,18 @@ const getTransactionTypeDisplay = (type: string) => {
       return { label: 'Remove Liquidity', variant: 'outline' as const };
     case 'LONG':
     case 'long':
-      return { label: 'Long', variant: 'default' as const };
+      return {
+        label: 'Long',
+        variant: 'outline' as const,
+        className: 'border-green-500/40 bg-green-500/10 text-green-600',
+      };
     case 'SHORT':
     case 'short':
-      return { label: 'Short', variant: 'default' as const };
+      return {
+        label: 'Short',
+        variant: 'outline' as const,
+        className: 'border-red-500/40 bg-red-500/10 text-red-600',
+      };
     case 'SETTLE_POSITION':
     case 'settlePosition':
       return { label: 'Settle', variant: 'secondary' as const };
@@ -88,16 +102,22 @@ const MarketDataTables = () => {
   }, [address]);
 
   // Fetch GraphQL-based positions (includes transaction data)
-  const targetAddress = walletAddress?.toLowerCase() || address?.toLowerCase();
+  // Only use walletAddress if it's explicitly set (not null)
+  // If walletAddress is null, it means "All Market Data" is selected
+  const targetAddress =
+    walletAddress !== null ? walletAddress?.toLowerCase() : undefined;
 
   const {
     data: allPositions = [],
     isLoading: isLoadingPositions,
     error: positionsError,
   } = usePositions({
-    address: targetAddress || undefined,
+    address: targetAddress,
     marketAddress: marketData?.marketGroup?.address || undefined,
   });
+
+  console.log('allPositions', allPositions);
+
   // Filter positions by type
   const lpPositions = allPositions.filter((pos) => pos.isLP);
   const traderPositions = allPositions.filter((pos) => !pos.isLP);
@@ -177,7 +197,10 @@ const MarketDataTables = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={typeDisplay.variant}>
+                      <Badge
+                        variant={typeDisplay.variant}
+                        className={typeDisplay.className}
+                      >
                         {typeDisplay.label}
                       </Badge>
                     </TableCell>
