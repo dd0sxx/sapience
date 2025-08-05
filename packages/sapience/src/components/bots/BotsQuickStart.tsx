@@ -41,7 +41,7 @@ export default function ElizaHomepageFeature() {
                   </Button>
                 </a>
                 <a
-                  href="https://github.com/sapiencexyz/plugin-sapience"
+                  href="https://github.com/sapiencexyz/elizaos-boilerplate"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-3 sm:ml-5"
@@ -54,7 +54,7 @@ export default function ElizaHomepageFeature() {
                       height={16}
                       className="invert dark:invert-0"
                     />
-                    Plug-in Docs
+                    Agent Boilerplate
                   </Button>
                 </a>
               </div>
