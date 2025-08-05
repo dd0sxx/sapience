@@ -358,7 +358,7 @@ const MarketGroupsRow = ({
                             </div>
 
                             {/* Right Side: Actions */}
-                            <div className="flex flex-row-reverse items-center gap-3 self-start md:flex-row md:self-auto">
+                            <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
                               <Button
                                 variant="link"
                                 size="xs"

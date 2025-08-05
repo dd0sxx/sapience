@@ -84,7 +84,7 @@ const BetslipContent = ({
           </p>
           <Button variant="default" size="xs" asChild>
             <Link href="/markets" onClick={() => setIsPopoverOpen(false)}>
-              Browse Prediction Markets
+              Explore Prediction Markets
             </Link>
           </Button>
         </div>
@@ -119,7 +119,7 @@ const BetslipContent = ({
                   return (
                     <div
                       key={positionData.position.id}
-                      className={`pb-4 mb-4 ${!isLast ? 'border-b border-border' : ''} ${isLast ? 'pb-0 mb-0' : ''}`}
+                      className={`mb-4 ${!isLast ? 'border-b border-border pb-4' : ''}`}
                     >
                       {/* Show loading state */}
                       {positionData.isLoading && (
@@ -137,9 +137,6 @@ const BetslipContent = ({
                             >
                               &times;
                             </button>
-                          </div>
-                          <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                            Loading market data...
                           </div>
                         </>
                       )}

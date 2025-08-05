@@ -1,7 +1,7 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import Image from 'next/image';
 
-export default function BotsQuickStart() {
+export default function ElizaHomepageFeature() {
   return (
     <div>
       {/* ElizaOS Section */}

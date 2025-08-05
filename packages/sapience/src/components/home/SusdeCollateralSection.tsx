@@ -10,7 +10,7 @@ export default function SusdeCollateralSection() {
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex flex-col lg:flex-row items-start lg:items-center lg:justify-center gap-8 lg:gap-28">
           {/* Right column with text content */}
-          <div className="w-full lg:w-2/5 mb-8 lg:mb-0 order-2 lg:order-2">
+          <div className="w-full lg:w-2/5 mb-8 lg:mb-0 order-2 lg:order-2 lg:max-w-[360px]">
             <h2 className="font-sans text-2xl lg:text-3xl font-normal mb-4">
               Reward-Bearing Collateral
             </h2>
@@ -25,7 +25,7 @@ export default function SusdeCollateralSection() {
                   Ethena
                 </Link>
                 &apos;s sUSDe token reduces opportunity cost when participating
-                in prediction markets, improving accuracy.
+                in prediction markets, improving their accuracy.
               </p>
 
               <div className="pt-2 gap-2 flex flex-wrap justify-start">
@@ -50,7 +50,7 @@ export default function SusdeCollateralSection() {
           </div>
 
           {/* Left column for image/logo */}
-          <div className="w-full lg:w-3/5 lg:max-w-[360px] flex items-center justify-center order-1">
+          <div className="w-full lg:w-3/5 lg:max-w-[480px] flex items-center justify-center order-1">
             <div className="flex items-center justify-center w-full rounded-lg border shadow-inner overflow-hidden">
               <Image
                 src="/susde.svg"
