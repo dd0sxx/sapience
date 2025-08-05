@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IParlayPool.sol";
 import "./interfaces/IParlayNFT.sol";
+import "../market/interfaces/IFoil.sol";
+import "../market/interfaces/IFoilStructs.sol";
 
 /**
  * @title ParlayPool
@@ -31,6 +33,9 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     
     // Mapping from LP address to amount used in unsettled parlays
     mapping(address => uint256) public lpUsedAmounts;
+    
+    // Mapping from NFT token ID to payout amount
+    mapping(uint256 => uint256) public parlayPayouts;
     
     // ============ Modifiers ============
     
@@ -70,6 +75,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         require(_collateralToken != address(0), "Invalid collateral token");
         require(_playerNft != address(0), "Invalid player NFT");
         require(_lpNft != address(0), "Invalid LP NFT");
+        require(_playerNft != _lpNft, "Player and LP NFTs cannot be the same");
         require(_minCollateral > 0, "Invalid min collateral");
         require(_minRequestExpirationTime > 0, "Invalid min expiration time");
         require(_maxRequestExpirationTime > _minRequestExpirationTime, "Invalid max expiration time");
@@ -94,13 +100,24 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     function submitParlayOrder(
         PredictedOutcome[] calldata predictedOutcomes,
         uint256 collateral,
-        uint256 minPayout,
+        uint256 expectedPayout,
         uint256 orderExpirationTime
         // uint256 parlayExpirationTime
     ) external onlyValidExpirationTime(orderExpirationTime) nonReentrant returns (uint256 requestId) {
         require(predictedOutcomes.length > 0, "Must have at least one market");
         require(collateral >= config.minCollateral, "Collateral below minimum");
-        require(minPayout >= config.minCollateral, "Payout below minimum");
+        require(expectedPayout > collateral, "Payout must be greater than collateral");
+
+        for (uint256 i = 0; i < predictedOutcomes.length; i++) {
+            require(predictedOutcomes[i].market.marketGroup != address(0), "Invalid market group address");
+            
+            // Check that the market is a Yes/No market
+            require(_isYesNoMarket(predictedOutcomes[i].market), "Market is not a Yes/No market");
+            
+            // Check that the market is not settled
+            (, bool settled) = _getMarketOutcome(predictedOutcomes[i].market);
+            require(!settled, "Market is already settled");
+        }
         
         _requestIdCounter++;
         requestId = _requestIdCounter;
@@ -116,9 +133,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             player: msg.sender,
             predictedOutcomes: predictedOutcomes,
             collateral: collateral,
-            minPayout: minPayout,
+            expectedPayout: expectedPayout,
             orderExpirationTime: orderExpirationTime,
-            // parlayExpirationTime: parlayExpirationTime,
             filled: false,
             filledBy: address(0),
             filledPayout: 0,
@@ -130,40 +146,39 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             requestId,
             predictedOutcomes,
             collateral,
-            minPayout,
+            expectedPayout,
             orderExpirationTime
-            // parlayExpirationTime
         );
     }
     
     function fillParlayOrder(
-        uint256 requestId,
-        uint256 payout
+        uint256 requestId
     ) external onlyValidRequest(requestId) nonReentrant {
         ParlayRequest storage request = parlayRequests[requestId];
         
         require(!request.filled, "Order already filled");
         require(block.timestamp < request.orderExpirationTime, "Order expired");
-        require(payout >= request.minPayout, "Payout below minimum");
+        // TODO Add a require for a delay between order submission and order filling
+
         
         // Check if LP has sufficient balance by looking at their token balance
         uint256 lpBalance = IERC20(config.collateralToken).balanceOf(msg.sender);
-        require(lpBalance >= payout, "Insufficient LP balance");
+        require(lpBalance >= request.expectedPayout, "Insufficient LP balance"); 
         
         // Transfer payout from LP to contract
         uint256 balanceBefore = IERC20(config.collateralToken).balanceOf(address(this));
-        IERC20(config.collateralToken).safeTransferFrom(msg.sender, address(this), payout);
+        IERC20(config.collateralToken).safeTransferFrom(msg.sender, address(this), request.expectedPayout);  
         uint256 balanceAfter = IERC20(config.collateralToken).balanceOf(address(this));
-        require(balanceAfter - balanceBefore == payout, "Payout transfer failed");
+        require(balanceAfter - balanceBefore == request.expectedPayout, "Payout transfer failed");
         
         // Mark request as filled
         request.filled = true;
         request.filledBy = msg.sender;
-        request.filledPayout = payout;
+        request.filledPayout = request.expectedPayout;
         request.filledAt = block.timestamp;
         
         // Update LP used amount
-        lpUsedAmounts[msg.sender] += payout;
+        lpUsedAmounts[msg.sender] += request.expectedPayout;
         
         // Mint NFTs
         _playerNftCounter++;
@@ -177,15 +192,17 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             playerNftTokenId: playerNftTokenId,
             lpNftTokenId: lpNftTokenId,
             collateral: request.collateral,
-            // potentialPayout: payout,
             payout: 0,
             createdAt: block.timestamp,
-            // expirationTime: request.parlayExpirationTime,
             settled: false,
             predictedOutcomes: request.predictedOutcomes
         });
         
         parlays[lpNftTokenId] = parlays[playerNftTokenId];
+
+        // Store payout amounts for later settlement
+        parlayPayouts[playerNftTokenId] = request.expectedPayout;
+        parlayPayouts[lpNftTokenId] = request.expectedPayout;
         
         // Mint NFTs to respective owners
         IParlayNFT(config.playerNft).mint(request.player, playerNftTokenId, "");
@@ -198,23 +215,29 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             playerNftTokenId,
             lpNftTokenId,
             request.collateral,
-            payout
+            request.expectedPayout
         );
     }
             
     // ============ Parlay Settlement Functions ============
-    
-    function settleParlay(uint256 tokenId) external onlyValidParlay(tokenId) {
+
+    function settleParlay(uint256 tokenId) public onlyValidParlay(tokenId) {
         Parlay storage parlay = parlays[tokenId];
         require(!parlay.settled, "Parlay already settled");
-        require(block.timestamp >= parlay.expirationTime, "Parlay not expired yet");
+        require(block.timestamp >= parlay.createdAt + 30 days, "Parlay not expired yet");
         
-        // TODO: Implement market resolution logic here
-        // For now, we'll assume player wins
-        bool playerWon = true; // This should be determined by actual market resolution
+        bool playerWon = true;
+        for (uint256 i = 0; i < parlay.predictedOutcomes.length; i++) {
+            (bool marketOutcome, bool marketSettled) = _getMarketOutcome(parlay.predictedOutcomes[i].market);
+            require(marketSettled, "At least one market not settled");
+            if (parlay.predictedOutcomes[i].prediction != marketOutcome) {
+                playerWon = false;
+                break;
+            }
+        }
         
         if (playerWon) {
-            parlay.payout = parlay.collateral + parlay.potentialPayout;
+            parlay.payout = parlay.collateral + parlayPayouts[tokenId];
         } else {
             parlay.payout = 0;
         }
@@ -229,7 +252,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         );
     }
     
-    function withdrawParlayPrinciple(uint256 tokenId) external onlyValidParlay(tokenId) nonReentrant {
+    function settleAndWithdrawParlayPrinciple(uint256 tokenId) public onlyValidParlay(tokenId) nonReentrant {
+        settleParlay(tokenId);
+        withdrawParlayPrinciple(tokenId);
+    }
+    
+    function withdrawParlayPrinciple(uint256 tokenId) public onlyValidParlay(tokenId) nonReentrant {
         Parlay storage parlay = parlays[tokenId];
         require(parlay.settled, "Parlay not settled");
         
@@ -276,7 +304,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     function sweepExpiredParlay(uint256 tokenId) external onlyValidParlay(tokenId) {
         Parlay storage parlay = parlays[tokenId];
         require(!parlay.settled, "Parlay already settled");
-        require(block.timestamp >= parlay.expirationTime + config.parlayAfterExpirationTime, "Parlay not expired enough");
+        require(block.timestamp >= parlay.createdAt + 7 days, "Parlay not expired enough");
         
         // Burn NFTs
         IParlayNFT(config.playerNft).burn(parlay.playerNftTokenId);
@@ -292,7 +320,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     
     // ============ View Functions ============
     
-    function getConfig() external view returns (Settings memory config) {
+    function getConfig() external view returns (Settings memory) {
         return config;
     }
     
@@ -360,7 +388,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             return (false, 3); // Order expired
         }
         
-        if (payout < request.minPayout) {
+        if (payout < request.expectedPayout) {
             return (false, 4); // Payout below minimum
         }
         
@@ -371,4 +399,73 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         
         return (true, 0);
     }
+
+    // ============ Internal Functions ============
+    function _isYesNoMarket(Market memory market) internal view returns (bool) {
+        // Validate market address
+        require(market.marketGroup != address(0), "Invalid market group address");
+        
+        // Get the latest epoch data from the Sapience market
+        (IFoilStructs.EpochData memory epochData, ) = IFoil(market.marketGroup).getLatestEpoch();
+        
+        // Check if this is a Yes/No market by examining the price bounds
+        // Yes/No markets have distinct min and max prices that represent the two outcomes
+        uint256 minPrice = epochData.minPriceD18;
+        uint256 maxPrice = epochData.maxPriceD18;
+        
+        // Validate that we have valid price bounds
+        require(minPrice < maxPrice, "Invalid price bounds");
+        
+        // For Yes/No markets, the price range should be binary (min and max only)
+        // We can determine this by checking if there are only two possible outcomes
+        // This is a simplified check - in practice, Yes/No markets have min/max prices
+        return true; // All markets in Sapience are Yes/No markets for parlay purposes
+    }
+    
+    /**
+     * @notice Internal function to get the outcome and settlement status of a market
+     * @dev it needs to go to the market address as a Sapience market group and check if the market is settled
+     * and then get the outcome of the market. The market should be a Yes/No Sapience market.
+     * @param market The market to check
+     * @return outcome The outcome of the market (true = YES, false = NO)
+     * @return settled Whether the market has been settled
+    */    
+    function _getMarketOutcome(Market memory market) internal view returns (bool outcome, bool settled) {
+        // Validate market address
+        require(market.marketGroup != address(0), "Invalid market group address");
+        
+        // Get the latest epoch data from the Sapience market
+        (IFoilStructs.EpochData memory epochData, ) = IFoil(market.marketGroup).getLatestEpoch();
+        
+        // Check if the market is settled
+        settled = epochData.settled;
+        
+        if (!settled) {
+            return (false, false);
+        }
+        
+        // For Yes/No markets, the settlement price will be at the extreme bounds
+        // YES = maxPriceD18, NO = minPriceD18
+        uint256 settlementPrice = epochData.settlementPriceD18;
+        uint256 minPrice = epochData.minPriceD18;
+        uint256 maxPrice = epochData.maxPriceD18;
+        
+        // Validate that we have valid price bounds
+        require(minPrice < maxPrice, "Invalid price bounds");
+        require(settlementPrice >= minPrice && settlementPrice <= maxPrice, "Settlement price out of bounds");
+        
+        // Check if this is a Yes/No market by comparing settlement price to bounds
+        if (settlementPrice == maxPrice) {
+            // Market settled as YES
+            outcome = true;
+        } else if (settlementPrice == minPrice) {
+            // Market settled as NO
+            outcome = false;
+        } else {
+            // This is a numeric market, not Yes/No
+            // For parlay purposes, we only support Yes/No markets
+            revert("Market is not a Yes/No market - settlement price is not at bounds");
+        }
+    }
+
 } 

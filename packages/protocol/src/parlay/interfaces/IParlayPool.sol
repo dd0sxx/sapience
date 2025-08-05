@@ -32,7 +32,7 @@ interface IParlayPool {
         address player;
         PredictedOutcome[] predictedOutcomes;
         uint256 collateral;
-        uint256 minPayout;
+        uint256 expectedPayout;
         uint256 orderExpirationTime;
         // uint256 parlayExpirationTime;
         bool filled;
@@ -61,7 +61,7 @@ interface IParlayPool {
         uint256 indexed requestId,
         PredictedOutcome[] predictedOutcomes,
         uint256 collateral,
-        uint256 minPayout,
+        uint256 expectedPayout,
         uint256 orderExpirationTime
         // uint256 parlayExpirationTime
     );
@@ -109,14 +109,14 @@ interface IParlayPool {
      * @notice Submit a parlay order to the orderbook
      * @param predictedOutcomes Array of predicted outcomes (true = YES, false = NO)
      * @param collateral Amount of collateral to use for the parlay
-     * @param minPayout Minimum acceptable payout for the parlay
+     * @param expectedPayout Minimum acceptable payout for the parlay
      * @param orderExpirationTime Expiration time for the parlay order
      * @return requestId ID of the parlay request
      */
     function submitParlayOrder(
         PredictedOutcome[] calldata predictedOutcomes,
         uint256 collateral,
-        uint256 minPayout,
+        uint256 expectedPayout,
         uint256 orderExpirationTime
         // uint256 parlayExpirationTime 
     ) external returns (uint256 requestId);
