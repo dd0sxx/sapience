@@ -23,14 +23,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
     uint256 private _parlayIdCounter; // Single ID for both requests and parlays
     uint256 private _nftTokenIdCounter; // Single counter for both maker and taker NFTs
-    
+
     mapping(uint256 => ParlayData) public parlays;
-    
+
     mapping(uint256 => uint256) public makerNftToParlayId; // makerNftTokenId => parlayId
     mapping(uint256 => uint256) public takerNftToParlayId; // takerNftTokenId => parlayId
-    
-    mapping(address => uint256) public takerUsedAmounts;
-    
+
     // ============ Modifiers ============
 
     modifier onlyValidRequest(uint256 requestId) {
@@ -68,6 +66,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         address _collateralToken,
         address _makerNft,
         address _takerNft,
+        uint256 _maxParlayMarkets,
         uint256 _minCollateral,
         uint256 _minRequestExpirationTime,
         uint256 _maxRequestExpirationTime
@@ -75,7 +74,10 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         require(_collateralToken != address(0), "Invalid collateral token");
         require(_makerNft != address(0), "Invalid maker NFT");
         require(_takerNft != address(0), "Invalid taker NFT");
-        require(_makerNft != _takerNft, "Maker and taker NFTs cannot be the same");
+        require(
+            _makerNft != _takerNft,
+            "Maker and taker NFTs cannot be the same"
+        );
         require(_minCollateral > 0, "Invalid min collateral");
         require(_minRequestExpirationTime > 0, "Invalid min expiration time");
         require(
@@ -87,6 +89,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             collateralToken: _collateralToken,
             makerNft: _makerNft,
             takerNft: _takerNft,
+            maxParlayMarkets: _maxParlayMarkets,
             minCollateral: _minCollateral,
             minRequestExpirationTime: _minRequestExpirationTime,
             maxRequestExpirationTime: _maxRequestExpirationTime
@@ -101,7 +104,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     function submitParlayOrder(
         PredictedOutcome[] calldata predictedOutcomes,
         uint256 collateral,
-        uint256 expectedPayout,
+        uint256 payout,
         uint256 orderExpirationTime
     )
         external
@@ -111,12 +114,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         returns (uint256 requestId)
     {
         require(predictedOutcomes.length > 0, "Must have at least one market");
+        require(predictedOutcomes.length <= config.maxParlayMarkets, "Too many markets");
         require(collateral >= config.minCollateral, "Collateral below minimum");
         require(
-            expectedPayout > collateral,
+            payout > collateral,
             "Payout must be greater than collateral"
         );
-
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             require(
                 predictedOutcomes[i].market.marketGroup != address(0),
@@ -163,18 +166,16 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             filledBy: address(0),
             filledPayout: 0,
             filledAt: 0,
-            
             // Parlay data (will be filled later)
             makerNftTokenId: 0,
             takerNftTokenId: 0,
             collateral: collateral,
-            payout: 0,
+            payout: payout,
             createdAt: 0,
             settled: false,
-            
+            makerWon: false, // Will be set during settlement
             // Shared data
-            predictedOutcomes: predictedOutcomes,
-            expectedPayout: expectedPayout
+            predictedOutcomes: predictedOutcomes
         });
 
         emit ParlayOrderSubmitted(
@@ -182,7 +183,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             requestId,
             predictedOutcomes,
             collateral,
-            expectedPayout,
+            payout,
             orderExpirationTime
         );
     }
@@ -196,59 +197,54 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         require(block.timestamp < request.orderExpirationTime, "Order expired");
         // TODO Add a require for a delay between order submission and order filling
 
-        // Calculate the delta (profit amount) that LP needs to provide
-        uint256 lpDelta = request.expectedPayout - request.collateral;
-        
-        // Check if LP has sufficient balance for the delta
-        uint256 lpBalance = IERC20(config.collateralToken).balanceOf(
+        // Calculate the delta (profit amount) that taker needs to provide
+        uint256 delta = request.payout - request.collateral;
+
+        // Check if taker has sufficient balance for the delta
+        uint256 takerBalance = IERC20(config.collateralToken).balanceOf(
             msg.sender
         );
-        require(lpBalance >= lpDelta, "Insufficient LP balance");
+        require(takerBalance >= delta, "Insufficient taker balance");
 
-        // Transfer delta from LP to contract
+        // Transfer delta from taker to contract
         uint256 balanceBefore = IERC20(config.collateralToken).balanceOf(
             address(this)
         );
         IERC20(config.collateralToken).safeTransferFrom(
             msg.sender,
             address(this),
-            lpDelta
+            delta
         );
         uint256 balanceAfter = IERC20(config.collateralToken).balanceOf(
             address(this)
         );
         require(
-            balanceAfter - balanceBefore == lpDelta,
+            balanceAfter - balanceBefore == delta,
             "Delta transfer failed"
         );
 
-                // Mint NFTs with unique token IDs
+        // Mint NFTs with unique token IDs
         _nftTokenIdCounter++;
         uint256 makerNftTokenId = _nftTokenIdCounter;
-        
+
         _nftTokenIdCounter++;
         uint256 takerNftTokenId = _nftTokenIdCounter;
-        
+
         // Mark request as filled and update with parlay data
         request.filled = true;
         request.filledBy = msg.sender;
-        request.filledPayout = lpDelta; // Store the delta amount
+        request.filledPayout = delta; // Store the delta amount
         request.filledAt = block.timestamp;
         request.makerNftTokenId = makerNftTokenId;
         request.takerNftTokenId = takerNftTokenId;
         request.createdAt = block.timestamp;
-        
+
         // Use the same ID - no need to move data
         uint256 parlayId = requestId;
-        
+
         // Map NFT token IDs to parlay ID
         makerNftToParlayId[makerNftTokenId] = parlayId;
         takerNftToParlayId[takerNftTokenId] = parlayId;
-
-
-        
-        // Update taker used amount (only the delta)
-        takerUsedAmounts[msg.sender] += lpDelta;
 
         // Mint NFTs to respective owners
         IParlayNFT(config.makerNft).mint(request.maker, makerNftTokenId);
@@ -261,7 +257,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             makerNftTokenId,
             takerNftTokenId,
             request.collateral,
-            request.expectedPayout
+            delta,
+            request.payout
         );
     }
 
@@ -291,10 +288,10 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         if (makerWon) {
             parlay.payout = parlay.collateral + parlay.filledPayout; // Maker gets collateral + delta
         } else {
-            parlay.payout = parlay.collateral; // Taker gets the collateral when maker loses
-            takerUsedAmounts[parlay.filledBy] -= parlay.filledPayout; // Return delta to taker
+            parlay.payout = parlay.collateral; // Taker gets the collateral
         }
 
+        parlay.makerWon = makerWon;
         parlay.settled = true;
 
         emit ParlaySettled(
@@ -305,14 +302,14 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         );
     }
 
-    function settleAndWithdrawParlayPrinciple(
+    function settleAndWithdrawParlayCollateral(
         uint256 tokenId
     ) public onlyValidParlay(tokenId) nonReentrant {
         settleParlay(tokenId);
-        withdrawParlayPrinciple(tokenId);
+        withdrawParlayCollateral(tokenId);
     }
 
-    function withdrawParlayPrinciple(
+    function withdrawParlayCollateral(
         uint256 tokenId
     ) public onlyValidParlay(tokenId) nonReentrant {
         uint256 parlayId = _getParlayId(tokenId);
@@ -334,11 +331,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
         require(nftOwner == msg.sender, "Not NFT owner");
 
-        // Determine who the winner is based on payout amount
-        bool makerWon = parlay.payout > parlay.collateral;
-        
         // Only allow the winner to withdraw
-        if (makerWon) {
+        if (parlay.makerWon) {
             require(isMakerNFT, "Only maker can withdraw when maker wins");
         } else {
             require(isTakerNFT, "Only taker can withdraw when maker loses");
@@ -353,7 +347,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         // Transfer payout
         IERC20(config.collateralToken).safeTransfer(msg.sender, withdrawAmount);
 
-        emit ParlayPrincipleWithdrawn(tokenId, msg.sender, withdrawAmount);
+        emit ParlayCollateralWithdrawn(tokenId, msg.sender, withdrawAmount);
     }
 
     function cancelExpiredOrder(
@@ -362,6 +356,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         ParlayData storage request = parlays[requestId];
 
         require(!request.filled, "Order already filled");
+        require(request.collateral > 0, "Collateral already withdrawn");
         require(
             block.timestamp >= request.orderExpirationTime,
             "Order not expired yet"
@@ -371,35 +366,17 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             "Only maker can cancel expired order"
         );
 
-        // Return principle to maker (in this implementation, principle is held by the contract)
-        // In a real implementation, you might need to transfer tokens back to the maker
+        uint256 collateral = request.collateral;
 
-        emit OrderExpired(requestId, request.maker, request.collateral);
-    }
+        // Reset request data
+        request.collateral = 0;
+        request.payout = 0;
+        request.maker = address(0);
 
-    function sweepExpiredParlay(
-        uint256 tokenId
-    ) external onlyValidParlay(tokenId) {
-        uint256 parlayId = _getParlayId(tokenId);
-        ParlayData storage parlay = parlays[parlayId];
-        require(!parlay.settled, "Parlay already settled");
-        require(
-            block.timestamp >= parlay.createdAt + 7 days,
-            "Parlay not expired enough"
-        );
+        // Return collateral to maker
+        IERC20(config.collateralToken).safeTransfer(request.maker, collateral);
 
-        // Burn NFTs
-        IParlayNFT(config.makerNft).burn(parlay.makerNftTokenId);
-        IParlayNFT(config.takerNft).burn(parlay.takerNftTokenId);
-
-        // Reclaim principle for the pool
-        // In this implementation, principle stays in the contract
-
-        emit ParlayExpired(
-            parlay.makerNftTokenId,
-            parlay.takerNftTokenId,
-            parlay.collateral
-        );
+        emit OrderExpired(requestId, request.maker, collateral);
     }
 
     // ============ View Functions ============
@@ -415,20 +392,25 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         require(parlayId != 0 && _isParlay(parlayId), "Parlay does not exist");
         return parlays[parlayId];
     }
-    
+
     function getParlayById(
         uint256 parlayId
     ) external view returns (ParlayData memory parlayData) {
-        require(parlayId != 0 && parlayId <= _parlayIdCounter && _isParlay(parlayId), "Parlay does not exist");
+        require(
+            parlayId != 0 &&
+                parlayId <= _parlayIdCounter &&
+                _isParlay(parlayId),
+            "Parlay does not exist"
+        );
         return parlays[parlayId];
     }
-    
+
     function getParlayIdFromMakerNft(
         uint256 makerNftTokenId
     ) external view returns (uint256 parlayId) {
         return makerNftToParlayId[makerNftTokenId];
     }
-    
+
     function getParlayIdFromTakerNft(
         uint256 takerNftTokenId
     ) external view returns (uint256 parlayId) {
@@ -462,12 +444,6 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         );
     }
 
-    function getTakerUsedAmount(
-        address taker
-    ) external view returns (uint256 amount) {
-        return takerUsedAmounts[taker];
-    }
-
     function canFillParlayOrder(
         uint256 requestId
     ) external view returns (bool canFill, uint256 reason) {
@@ -477,68 +453,46 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
         ParlayData storage request = parlays[requestId];
 
-        if (block.timestamp >= request.orderExpirationTime) {
-            return (false, 3); // Order expired
+        if (request.filled) {
+            return (false, 2); // Order already filled
         }
-
-        return (true, 0);
-    }
-
-    function canFillParlayOrder(
-        address lp,
-        uint256 requestId,
-        uint256 delta
-    ) external view returns (bool canFill, uint256 reason) {
-        if (!_isRequest(requestId)) {
-            return (false, 1); // Request does not exist
-        }
-
-        ParlayData storage request = parlays[requestId];
 
         if (block.timestamp >= request.orderExpirationTime) {
             return (false, 3); // Order expired
-        }
-
-        uint256 expectedDelta = request.expectedPayout - request.collateral;
-        if (delta < expectedDelta) {
-            return (false, 4); // Delta below minimum
-        }
-
-        uint256 lpBalance = IERC20(config.collateralToken).balanceOf(lp);
-        if (lpBalance < delta) {
-            return (false, 5); // Insufficient LP balance
         }
 
         return (true, 0);
     }
 
     // ============ Internal Functions ============
-    
-    function _getParlayId(uint256 tokenId) internal view returns (uint256 parlayId) {
+
+    function _getParlayId(
+        uint256 tokenId
+    ) internal view returns (uint256 parlayId) {
         // Check if it's a maker NFT
         parlayId = makerNftToParlayId[tokenId];
         if (parlayId != 0) {
             return parlayId;
         }
-        
+
         // Check if it's a taker NFT
         parlayId = takerNftToParlayId[tokenId];
         if (parlayId != 0) {
             return parlayId;
         }
-        
+
         // Not found
         return 0;
     }
-    
+
     function _isRequest(uint256 id) internal view returns (bool) {
         return parlays[id].maker != address(0) && !parlays[id].filled;
     }
-    
+
     function _isParlay(uint256 id) internal view returns (bool) {
         return parlays[id].maker != address(0) && parlays[id].filled;
     }
-    
+
     function _isYesNoMarket(Market memory market) internal view returns (bool) {
         // Validate market address
         require(
