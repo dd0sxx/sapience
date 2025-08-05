@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import QuestionItem from '../shared/QuestionItem';
 
 interface QuestionSuggestionsProps {
@@ -12,27 +12,56 @@ const QuestionSuggestions = ({
   markets,
   onMarketSelect,
 }: QuestionSuggestionsProps) => {
-  // Get random 3 from the next 12 markets that are ending soonest
-  const suggestedMarkets = useMemo(() => {
-    // Sort markets by end timestamp (ascending - soonest ending first)
-    const sortedByEndTime = [...markets].sort((a, b) => {
-      const aEnd = a.endTimestamp || 0;
-      const bEnd = b.endTimestamp || 0;
-      return aEnd - bEnd;
-    });
+  const suggestionsRef = useRef<any[]>([]);
+  const marketsRef = useRef<any[]>([]);
+  const isInitializedRef = useRef(false);
 
-    // Take the next 12 markets that are ending
-    const next12Ending = sortedByEndTime.slice(0, 12);
+  // Check if markets have actually changed (not just reference)
+  const marketsChanged = useMemo(() => {
+    if (!isInitializedRef.current) {
+      return true;
+    }
 
-    // Randomly select 3 from those 12
-    const shuffled = [...next12Ending].sort(() => Math.random() - 0.5);
-    const suggested = shuffled.slice(0, 3);
+    if (marketsRef.current.length !== markets.length) {
+      return true;
+    }
 
-    return suggested;
+    // Compare market IDs to see if the actual markets changed
+    const currentIds = markets.map((m) => m.id).sort();
+    const previousIds = marketsRef.current.map((m) => m.id).sort();
+
+    return JSON.stringify(currentIds) !== JSON.stringify(previousIds);
   }, [markets]);
 
+  // Generate suggestions synchronously on first render and when markets change
+  const suggestedMarkets = useMemo(() => {
+    if (marketsChanged || !isInitializedRef.current) {
+      // Sort markets by end timestamp (ascending - soonest ending first)
+      const sortedByEndTime = [...markets].sort((a, b) => {
+        const aEnd = a.endTimestamp || 0;
+        const bEnd = b.endTimestamp || 0;
+        return aEnd - bEnd;
+      });
+
+      // Take the next 12 markets that are ending
+      const next12Ending = sortedByEndTime.slice(0, 12);
+
+      // Randomly select 3 from those 12
+      const shuffled = [...next12Ending].sort(() => Math.random() - 0.5);
+      const suggested = shuffled.slice(0, 3);
+
+      suggestionsRef.current = suggested;
+      marketsRef.current = markets;
+      isInitializedRef.current = true;
+
+      return suggested;
+    }
+
+    return suggestionsRef.current;
+  }, [markets, marketsChanged]);
+
   if (suggestedMarkets.length === 0) {
-    return;
+    return null;
   }
 
   return (

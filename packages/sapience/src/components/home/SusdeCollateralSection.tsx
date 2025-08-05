@@ -45,6 +45,23 @@ export default function SusdeCollateralSection() {
                     Learn More
                   </Button>
                 </Link>
+                <Link
+                  href="https://swap.defillama.com/?chain=ethereum&tab=swap&to=0x9d39a5de30e57443bff2a8307a4256c8797a3497"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-3 sm:ml-5"
+                >
+                  <Button variant="outline" className="w-auto">
+                    <Image
+                      src="/susde-icon.svg"
+                      alt="sUSDe"
+                      width={16}
+                      height={16}
+                      className="h-4 w-4"
+                    />
+                    Get sUSDe
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
