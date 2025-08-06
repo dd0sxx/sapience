@@ -4,18 +4,19 @@ pragma solidity ^0.8.22;
 import "forge-std/Script.sol";
 import {ParlayNFT} from "../parlay/ParlayNFT.sol";
 import {ParlayPool} from "../parlay/ParlayPool.sol";
+import {IParlayStructs} from "../parlay/interfaces/IParlayStructs.sol";
 
 contract DeployParlayPool is Script {
     function run() external {
         // Configuration - replace these with your own values
-        address collateralToken = vm.envAddress("COLLATERAL_TOKEN"); // USDC address
+        address collateralToken = vm.envAddress("COLLATERAL_TOKEN"); // sUSDe address
         address deployer = vm.envAddress("DEPLOYER_ADDRESS");
         
         // ParlayPool configuration
         uint256 maxParlayMarkets = 5; // Maximum number of markets per parlay
-        uint256 minCollateral = 100e6; // 100 USDC minimum collateral
-        uint256 minRequestExpirationTime = 60; // 60 seconds minimum
-        uint256 maxRequestExpirationTime = 86400 * 7; // 7 days maximum
+        uint256 minCollateral = 100000000000000000000; // 100 sUSDe (18 decimals)
+        uint256 minRequestExpirationTime = 30; // 30 seconds minimum
+        uint256 maxRequestExpirationTime = 86400; // 1 day maximum
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
@@ -71,23 +72,21 @@ contract DeployParlayPool is Script {
         console.log("Expected owner (ParlayPool):", address(pool));
         
         // Get ParlayPool configuration
-        (address configCollateralToken, address configMakerNft, address configTakerNft, 
-         uint256 configMaxParlayMarkets, uint256 configMinCollateral, 
-         uint256 configMinRequestExpirationTime, uint256 configMaxRequestExpirationTime) = pool.getConfig();
+        IParlayStructs.Settings memory config = pool.getConfig();
         
         console.log("\n=== ParlayPool Configuration ===");
-        console.log("Collateral Token:", configCollateralToken);
-        console.log("Maker NFT:", configMakerNft);
-        console.log("Taker NFT:", configTakerNft);
-        console.log("Max Parlay Markets:", configMaxParlayMarkets);
-        console.log("Min Collateral:", configMinCollateral);
-        console.log("Min Expiration Time:", configMinRequestExpirationTime);
-        console.log("Max Expiration Time:", configMaxRequestExpirationTime);
+        console.log("Collateral Token:", config.collateralToken);
+        console.log("Maker NFT:", config.makerNft);
+        console.log("Taker NFT:", config.takerNft);
+        console.log("Max Parlay Markets:", config.maxParlayMarkets);
+        console.log("Min Collateral:", config.minCollateral);
+        console.log("Min Expiration Time:", config.minRequestExpirationTime);
+        console.log("Max Expiration Time:", config.maxRequestExpirationTime);
         
         console.log("\n=== Deployment Complete ===");
         console.log("ParlayPool system is ready for use!");
         console.log("Users can now:");
-        console.log("1. Approve USDC spending to ParlayPool");
+        console.log("1. Approve sUSDe spending to ParlayPool");
         console.log("2. Submit parlay orders as makers");
         console.log("3. Fill parlay orders as takers");
     }

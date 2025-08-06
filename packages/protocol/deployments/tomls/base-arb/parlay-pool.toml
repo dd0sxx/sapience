@@ -34,7 +34,7 @@ args=[
   "<%= settings.minRequestExpirationTime %>",
   "<%= settings.maxRequestExpirationTime %>"
 ]
-depends=["ParlayNFTMaker", "ParlayNFTTaker"]
+depends=["deploy.ParlayNFTMaker", "deploy.ParlayNFTTaker"]
 highlight=true
 
 [invoke.transferMakerNFTOwnership]
@@ -43,7 +43,7 @@ func="transferOwnership"
 args=[
   "<%= ParlayPool.address %>"
 ]
-depends=["ParlayPool"]
+depends=["deploy.ParlayPool"]
 
 [invoke.transferTakerNFTOwnership]
 target="ParlayNFTTaker"
@@ -51,4 +51,4 @@ func="transferOwnership"
 args=[
   "<%= ParlayPool.address %>"
 ]
-depends=["ParlayPool"] 
+depends=["deploy.ParlayPool"] 
