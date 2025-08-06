@@ -20,7 +20,6 @@ contract ParlayNFT is IParlayNFT, ERC721, Ownable {
      * @notice Mint a new parlay NFT (only callable by authorized contracts)
      * @param to Address to mint the NFT to
      * @param tokenId Token ID for the NFT
-     * @param parlayData Encoded parlay data
      */
     function mint(address to, uint256 tokenId) external override onlyOwner {
         _safeMint(to, tokenId);

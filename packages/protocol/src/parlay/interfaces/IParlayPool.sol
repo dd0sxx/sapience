@@ -1,100 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "./IParlayStructs.sol";
+import "./IParlayEvents.sol";
+
 /**
  * @title IParlayPool
  * @notice Main interface for the Parlay Pool contract
  */
-interface IParlayPool {
-    // ============ Structs ============
-    struct Settings {
-        address collateralToken; // collateral token
-        address makerNft; // NFT for maker
-        address takerNft; // NFT for taker
-        uint256 maxParlayMarkets; // maximum number of markets for a parlay
-        uint256 minCollateral; // minimum collateral amount for a parlay
-        uint256 minRequestExpirationTime; // minimum expiration time for a parlay request
-        uint256 maxRequestExpirationTime; // maximum expiration time for a parlay request
-    }
-
-    struct Market {
-        address marketGroup;
-        uint256 marketId;
-    }
-
-    struct PredictedOutcome {
-        Market market;
-        bool prediction; // true for YES, false for NO
-    }
-
-    struct ParlayData {
-        // Request data
-        address maker;
-        uint256 orderExpirationTime;
-        bool filled;
-        address filledBy;
-        uint256 filledPayout;
-        uint256 filledAt;
-        // Parlay data
-        uint256 makerNftTokenId; // NFT token id of the maker
-        uint256 takerNftTokenId; // NFT token id of the taker
-        // Notice: the maker deposited the collateral in the pool, and the taker escrowed the delta to reach the payout amount
-        uint256 collateral; // in collateralToken (deposited by the maker)
-        uint256 payout; // in collateralToken (total payout to the winner)
-        uint256 createdAt; // timestamp
-        bool settled; // true if the parlay has been settled
-        bool makerWon; // true if maker won, false if taker won (only set after settlement)
-        // Shared data
-        PredictedOutcome[] predictedOutcomes;
-    }
-
-    // ============ Events ============
-
-    event ParlayOrderSubmitted(
-        address indexed maker,
-        uint256 indexed requestId,
-        PredictedOutcome[] predictedOutcomes,
-        uint256 collateral,
-        uint256 payout,
-        uint256 orderExpirationTime
-        // uint256 parlayExpirationTime
-    );
-
-    event ParlayOrderFilled(
-        uint256 indexed requestId,
-        address indexed maker,
-        address indexed taker,
-        uint256 makerNftTokenId,
-        uint256 takerNftTokenId,
-        uint256 collateral, // locked in the pool from maker
-        uint256 delta, // delta paid by taker to reach the payout amount
-        uint256 payout // total payout to the winner
-    );
-
-    event ParlaySettled(
-        uint256 indexed makerNftTokenId,
-        uint256 indexed takerNftTokenId,
-        uint256 payout,
-        bool makerWon
-    );
-
-    event ParlayCollateralWithdrawn(
-        uint256 indexed nftTokenId,
-        address indexed owner,
-        uint256 amount
-    );
-
-    event ParlayExpired(
-        uint256 indexed makerNftTokenId,
-        uint256 indexed takerNftTokenId,
-        uint256 collateralReclaimed
-    );
-
-    event OrderExpired(
-        uint256 indexed requestId,
-        address indexed maker,
-        uint256 collateralReturned
-    );
+interface IParlayPool is IParlayStructs, IParlayEvents {
 
     // ============ Parlay Functions ============
 
@@ -107,7 +21,7 @@ interface IParlayPool {
      * @return requestId ID of the parlay request
      */
     function submitParlayOrder(
-        PredictedOutcome[] calldata predictedOutcomes,
+        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
         uint256 collateral,
         uint256 payout,
         uint256 orderExpirationTime
@@ -155,45 +69,37 @@ interface IParlayPool {
      * @notice Get the pool configuration
      * @return config Pool configuration
      */
-    function getConfig() external view returns (Settings memory config);
+    function getConfig() external view returns (IParlayStructs.Settings memory config);
 
     /**
      * @notice Get parlay information
      * @param tokenId NFT token ID
      * @return parlayData Parlay details
+     * @return predictedOutcomes Array of predicted outcomes
      */
     function getParlay(
         uint256 tokenId
-    ) external view returns (ParlayData memory parlayData);
+    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
+
+    /**
+     * @notice Get parlay information by ID
+     * @param parlayId ID of the parlay
+     * @return parlayData Parlay details
+     * @return predictedOutcomes Array of predicted outcomes
+     */
+    function getParlayById(
+        uint256 parlayId
+    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
 
     /**
      * @notice Get parlay order information
      * @param requestId ID of the parlay request
      * @return parlayData Parlay request details
+     * @return predictedOutcomes Array of predicted outcomes
      */
     function getParlayOrder(
         uint256 requestId
-    ) external view returns (ParlayData memory parlayData);
-
-    /**
-     * @notice Get parlay order fill information
-     * @param requestId ID of the parlay request
-     * @return filled Whether the order has been filled
-     * @return filledBy Address of the LP who filled the order
-     * @return filledPayout Payout amount offered by the LP
-     * @return filledAt Timestamp when the order was filled
-     */
-    function getParlayOrderFillInfo(
-        uint256 requestId
-    )
-        external
-        view
-        returns (
-            bool filled,
-            address filledBy,
-            uint256 filledPayout,
-            uint256 filledAt
-        );
+    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
 
     /**
      * @notice Check if a parlay order can be filled
