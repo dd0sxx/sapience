@@ -232,22 +232,6 @@ const Header = () => {
                 />
               </a>
             </div>
-            <div className="flex flex-col items-start gap-2 mb-0.5">
-              <span>Built on</span>
-              <a
-                href="https://convergeonchain.xyz"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Image
-                  src="/converge.svg"
-                  alt="Converge"
-                  width={80}
-                  height={24}
-                  className="dark:invert opacity-80 hover:opacity-100 transition-opacity duration-200"
-                />
-              </a>
-            </div>
           </div>
           <div className="flex items-center gap-2 p-2 pl-4 pb-4 pt-4">
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
