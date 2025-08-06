@@ -25,6 +25,7 @@ ParlayPool pool = new ParlayPool(
     collateralToken,   // USDC address
     address(makerNFT), // Maker NFT contract
     address(takerNFT), // Taker NFT contract
+    5,                 // maxParlayMarkets (5 markets max per parlay)
     100e6,            // minCollateral (100 USDC)
     60,               // minRequestExpirationTime (60 seconds)
     86400 * 7         // maxRequestExpirationTime (7 days)
@@ -68,18 +69,30 @@ Ana submits her parlay order with 1,000 USDC collateral:
 // Ana approves the pool to spend her USDC
 IERC20(collateralToken).approve(address(pool), 1000e6);
 
+// Ana creates the predicted outcomes array
+IParlayStructs.PredictedOutcome[] memory predictedOutcomes = new IParlayStructs.PredictedOutcome[](2);
+
+// Market 1: Bitcoin market
+predictedOutcomes[0] = IParlayStructs.PredictedOutcome({
+    market: IParlayStructs.Market({
+        marketGroup: marketGroup1, // Bitcoin market group address
+        marketId: 1               // Specific market ID
+    }),
+    prediction: true // YES for Bitcoin
+});
+
+// Market 2: Ethereum market
+predictedOutcomes[1] = IParlayStructs.PredictedOutcome({
+    market: IParlayStructs.Market({
+        marketGroup: marketGroup2, // Ethereum market group address
+        marketId: 2               // Specific market ID
+    }),
+    prediction: true // YES for Ethereum
+});
+
 // Ana submits parlay order
-Market[] memory markets = new Market[](2);
-markets[0] = Market(marketGroup1, 1); // Bitcoin market
-markets[1] = Market(marketGroup2, 2); // Ethereum market
-
-bool[] memory outcomes = new bool[](2);
-outcomes[0] = true;  // YES for Bitcoin
-outcomes[1] = true;  // YES for Ethereum
-
 uint256 requestId = pool.submitParlayOrder(
-    markets,
-    outcomes,
+    predictedOutcomes,
     1000e6,                    // 1,000 USDC collateral
     1200e6,                    // Expected 1,200 USDC payout
     block.timestamp + 60       // Order expires in 60 seconds
@@ -94,8 +107,7 @@ console.log("Parlay order submitted with ID:", requestId);
 ParlayOrderSubmitted(
     maker: ana,
     requestId: 1,
-    markets: [Market1, Market2],
-    outcomes: [true, true],
+    predictedOutcomes: [Bitcoin(YES), Ethereum(YES)],
     collateral: 1000000000,
     payout: 1200000000,
     orderExpirationTime: 1703123456
@@ -128,6 +140,7 @@ ParlayOrderFilled(
     makerNftTokenId: 1,
     takerNftTokenId: 2,
     collateral: 1000000000,
+    delta: 200000000, // 200 USDC delta provided by taker
     payout: 1200000000
 )
 ```
@@ -137,15 +150,26 @@ ParlayOrderFilled(
 The first taker to successfully fill the order within 60 seconds wins. Let's say Bob's transaction was mined first:
 
 ```solidity
-// Check who filled the order
-(bool filled, address filledBy, uint256 filledPayout, uint256 filledAt) = pool.getParlayOrderFillInfo(1);
+// Check if order can be filled
+(bool canFill, uint256 reason) = pool.canFillParlayOrder(1);
+console.log("Can fill order:", canFill);
+console.log("Reason code:", reason);
+// Output: Can fill order: false (after being filled)
+// Output: Reason code: 2 (Order already filled)
 
-console.log("Order filled by:", filledBy);
-console.log("Delta provided:", filledPayout);
-console.log("Filled at:", filledAt);
+// Get parlay data
+(IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes) = pool.getParlayById(1);
+
+console.log("Order filled by:", parlayData.taker);
+console.log("Maker NFT ID:", parlayData.makerNftTokenId);
+console.log("Taker NFT ID:", parlayData.takerNftTokenId);
+console.log("Collateral:", parlayData.collateral);
+console.log("Payout:", parlayData.payout);
 // Output: Order filled by: bob
-// Output: Delta provided: 200000000 (200 USDC delta)
-// Output: Filled at: 1703123456
+// Output: Maker NFT ID: 1
+// Output: Taker NFT ID: 2
+// Output: Collateral: 1000000000
+// Output: Payout: 1200000000
 ```
 
 **What happens:**
@@ -153,17 +177,30 @@ console.log("Filled at:", filledAt);
 - Bob's 200 USDC delta is transferred from Bob to the contract
 - Maker NFT #1 is minted to Ana
 - Taker NFT #2 is minted to Bob
+- The parlay ID is the same as the request ID (1)
 
 ### Step 5: Market Resolution and Settlement
 
-After the markets resolve, the parlay can be settled:
+After the markets resolve, the parlay can be settled, but only after 30 days from creation:
 
 ```solidity
-// Someone calls settleParlay (could be anyone)
+// Check if parlay can be settled (must be 30 days after creation)
+uint256 timeSinceCreation = block.timestamp - parlayData.createdAt;
+console.log("Days since creation:", timeSinceCreation / 86400);
+// Output: Days since creation: 25 (not ready yet)
+
+// Wait for 30 days to pass...
+// block.timestamp >= parlayData.createdAt + 30 days
+
+// Now someone can call settleParlay (could be anyone)
 pool.settleParlay(1); // Using maker NFT token ID
 
-console.log("Parlay settled:", pool.getParlay(1).settled);
+// Check if parlay is settled
+(IParlayStructs.ParlayData memory settledParlay, ) = pool.getParlay(1);
+console.log("Parlay settled:", settledParlay.settled);
+console.log("Maker won:", settledParlay.makerWon);
 // Output: Parlay settled: true
+// Output: Maker won: true (assuming Ana's predictions were correct)
 ```
 
 **Event Emitted:**
@@ -182,7 +219,7 @@ Since Ana won (all predictions were correct), she can withdraw her collateral + 
 
 ```solidity
 // Ana withdraws her winnings using her maker NFT
-pool.withdrawParlayPrinciple(1);
+pool.withdrawParlayCollateral(1);
 
 console.log("Ana's USDC balance after withdrawal:", IERC20(collateralToken).balanceOf(ana));
 // Output: Ana's USDC balance after withdrawal: 1200000000 (1,200 USDC)
@@ -190,7 +227,7 @@ console.log("Ana's USDC balance after withdrawal:", IERC20(collateralToken).bala
 
 **Event Emitted:**
 ```
-ParlayPrincipleWithdrawn(
+ParlayCollateralWithdrawn(
     nftTokenId: 1,
     owner: ana,
     amount: 1200000000
@@ -203,26 +240,13 @@ If Ana's predictions were wrong, Bob (the taker) would win:
 
 ```solidity
 // In settleParlay function, if makerWon = false:
-// parlay.payout = parlay.collateral; // Taker gets the collateral
+// The taker wins and gets the full payout
 
 // Bob withdraws his winnings using his taker NFT
-pool.withdrawParlayPrinciple(2); // Using taker NFT token ID
+pool.withdrawParlayCollateral(2); // Using taker NFT token ID
 
 console.log("Bob's USDC balance after withdrawal:", IERC20(collateralToken).balanceOf(bob));
 // Output: Bob's USDC balance after withdrawal: 1200000000 (1,200 USDC)
-```
-
-## Taker Balance Management
-
-In the new orderbook approach, takers don't need to manage deposits/withdrawals:
-
-```solidity
-// Bob's actual USDC balance (he can spend this freely)
-console.log("Bob's actual balance:", IERC20(collateralToken).balanceOf(bob));
-// Output: Bob's actual balance: 9800000000 (9,800 USDC)
-
-// Bob can use his actual balance for other purposes or to fill more orders
-// No need to withdraw from the pool - funds are only locked when filling orders
 ```
 
 ## Order Expiration Example
@@ -252,7 +276,7 @@ OrderExpired(
 
 ## Parlay Expiration Example
 
-If a parlay expires without being settled:
+If a parlay is not settled within 30 days, it can be swept:
 
 ```solidity
 // Wait for parlay to expire (30 days after creation)
@@ -282,6 +306,7 @@ ParlayExpired(
 - ✅ Set expected payout amount
 - ✅ Get filled by best available taker
 - ✅ Withdraw winnings if predictions correct
+- ✅ Cancel expired orders and recover collateral
 
 ### For Takers (like Bob and Carl):
 - ✅ Approve token spending to participate
@@ -303,11 +328,18 @@ ParlayExpired(
 - ✅ More efficient capital usage
 - ✅ Clear risk/reward structure
 
+### Settlement Timeline:
+- ✅ Parlays can only be settled after 30 days from creation
+- ✅ Markets must be settled before parlay settlement
+- ✅ Only Yes/No markets are supported
+- ✅ Winner takes full payout amount
+
 ### Security Features:
 - ✅ Reentrancy protection
 - ✅ Proper balance tracking
 - ✅ NFT-based ownership verification
 - ✅ Expiration handling
 - ✅ Safe token transfers
+- ✅ Market validation (Yes/No markets only)
 
-This orderbook-style system ensures fair competition among takers while providing makers with the best possible payouts for their parlays. 
+This orderbook-style system ensures fair competition among takers while providing makers with the best possible payouts for their parlays. The 30-day settlement requirement ensures markets have time to resolve before any payouts are distributed. 
