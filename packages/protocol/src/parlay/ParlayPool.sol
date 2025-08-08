@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IParlayPool.sol";
 import "./interfaces/IParlayNFT.sol";
 import "./interfaces/IParlayStructs.sol";
@@ -19,6 +20,7 @@ import "../market/interfaces/ISapienceStructs.sol";
  */
 contract ParlayPool is IParlayPool, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.UintSet;
     // ============ State Variables ============
 
     IParlayStructs.Settings public config;
@@ -27,10 +29,21 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     uint256 private _nftTokenIdCounter; // Single counter for both maker and taker NFTs
 
     mapping(uint256 => IParlayStructs.ParlayData) public parlays;
-    mapping(uint256 => IParlayStructs.PredictedOutcome[]) public parlayPredictedOutcomes;
+    mapping(uint256 => IParlayStructs.PredictedOutcome[])
+        public parlayPredictedOutcomes;
 
     mapping(uint256 => uint256) public makerNftToParlayId; // makerNftTokenId => parlayId
     mapping(uint256 => uint256) public takerNftToParlayId; // takerNftTokenId => parlayId
+
+    // Auxiliary mappings to track unfilled orders
+    EnumerableSet.UintSet private unfilledOrders;
+
+    // Auxiliary mappings to track all orders by maker and taker
+    mapping(address => EnumerableSet.UintSet) private ordersByMaker;
+    mapping(address => EnumerableSet.UintSet) private ordersByTaker;
+
+    // Auxiliary mapping to track approved takers
+    mapping(address => bool) private approvedTakers;
 
     // ============ Modifiers ============
 
@@ -62,7 +75,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         uint256 _maxParlayMarkets,
         uint256 _minCollateral,
         uint256 _minRequestExpirationTime,
-        uint256 _maxRequestExpirationTime
+        uint256 _maxRequestExpirationTime,
+        address[] memory _approvedTakers
     ) {
         require(_collateralToken != address(0), "Invalid collateral token");
         require(_makerNft != address(0), "Invalid maker NFT");
@@ -85,8 +99,13 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             maxParlayMarkets: _maxParlayMarkets,
             minCollateral: _minCollateral,
             minRequestExpirationTime: _minRequestExpirationTime,
-            maxRequestExpirationTime: _maxRequestExpirationTime
+            maxRequestExpirationTime: _maxRequestExpirationTime,
+            approvedTakers: _approvedTakers
         });
+
+        for (uint256 i = 0; i < _approvedTakers.length; i++) {
+            approvedTakers[_approvedTakers[i]] = true;
+        }
 
         _parlayIdCounter = 0;
         _nftTokenIdCounter = 0;
@@ -98,7 +117,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
         uint256 collateral,
         uint256 payout,
-        uint256 orderExpirationTime
+        uint256 orderExpirationTime,
+        bytes32 refCode
     )
         external
         onlyValidExpirationTime(orderExpirationTime)
@@ -131,6 +151,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
         _parlayIdCounter++;
         requestId = _parlayIdCounter;
+
+        // Add request to unfilled orders
+        unfilledOrders.add(requestId);
+
+        // Add request to maker's orders
+        ordersByMaker[msg.sender].add(requestId);
 
         uint256 balanceBefore = IERC20(config.collateralToken).balanceOf(
             address(this)
@@ -177,29 +203,51 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             predictedOutcomes,
             collateral,
             payout,
-            orderExpirationTime
+            orderExpirationTime,
+            refCode
         );
     }
 
-    function fillParlayOrder(
-        uint256 requestId
-    ) external nonReentrant {
-        require(parlays[requestId].maker != address(0), "Request does not exist");
-        
-        IParlayStructs.ParlayData storage request = parlays[requestId];
+    struct FillParlayOrderRuntime {
+        uint256 requestId;
+        bytes32 refCode;
+        IParlayStructs.ParlayData request;
+        uint256 delta;
+        uint256 takerBalance;
+    }
 
-        require(!request.filled, "Order already filled");
-        require(block.timestamp < request.orderExpirationTime, "Order expired");
+    function fillParlayOrder(uint256 requestId, bytes32 refCode) external nonReentrant {
+        require(
+            parlays[requestId].maker != address(0),
+            "Request does not exist"
+        );
+        require(
+            parlays[requestId].maker != msg.sender,
+            "Maker cannot fill their own order"
+        );
+        FillParlayOrderRuntime memory runtime;
+
+        runtime.requestId = requestId;
+        runtime.refCode = refCode;
+        runtime.request = parlays[requestId];
+
+        require(!runtime.request.filled, "Order already filled");
+        require(block.timestamp < runtime.request.orderExpirationTime, "Order expired");
         // TODO Add a require for a delay between order submission and order filling
 
+        // Check if taker is approved (if approved takers list is not empty)
+        if (config.approvedTakers.length > 0) {
+            require(approvedTakers[msg.sender], "Taker not approved for this order");
+        }
+
         // Calculate the delta (profit amount) that taker needs to provide
-        uint256 delta = request.payout - request.collateral;
+        runtime.delta = runtime.request.payout - runtime.request.collateral;
 
         // Check if taker has sufficient balance for the delta
-        uint256 takerBalance = IERC20(config.collateralToken).balanceOf(
+        runtime.takerBalance = IERC20(config.collateralToken).balanceOf(
             msg.sender
         );
-        require(takerBalance >= delta, "Insufficient taker balance");
+        require(runtime.takerBalance >= runtime.delta, "Insufficient taker balance");
 
         // Transfer delta from taker to contract
         uint256 balanceBefore = IERC20(config.collateralToken).balanceOf(
@@ -208,12 +256,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         IERC20(config.collateralToken).safeTransferFrom(
             msg.sender,
             address(this),
-            delta
+            runtime.delta
         );
         uint256 balanceAfter = IERC20(config.collateralToken).balanceOf(
             address(this)
         );
-        require(balanceAfter - balanceBefore == delta, "Delta transfer failed");
+        require(balanceAfter - balanceBefore == runtime.delta, "Delta transfer failed");
 
         // Mint NFTs with unique token IDs
         _nftTokenIdCounter++;
@@ -223,10 +271,16 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         uint256 takerNftTokenId = _nftTokenIdCounter;
 
         // Mark request as filled and update with parlay data
-        request.filled = true;
-        request.taker = msg.sender;
-        request.makerNftTokenId = makerNftTokenId;
-        request.takerNftTokenId = takerNftTokenId;
+        parlays[requestId].filled = true;
+        parlays[requestId].taker = msg.sender;
+        parlays[requestId].makerNftTokenId = makerNftTokenId;
+        parlays[requestId].takerNftTokenId = takerNftTokenId;
+
+        // Remove request from unfilled orders
+        unfilledOrders.remove(requestId);
+
+        // Add request to taker's orders
+        ordersByTaker[msg.sender].add(requestId);
 
         // Use the same ID - no need to move data
         uint256 parlayId = requestId;
@@ -236,18 +290,19 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         takerNftToParlayId[takerNftTokenId] = parlayId;
 
         // Mint NFTs to respective owners
-        IParlayNFT(config.makerNft).mint(request.maker, makerNftTokenId);
+        IParlayNFT(config.makerNft).mint(runtime.request.maker, makerNftTokenId);
         IParlayNFT(config.takerNft).mint(msg.sender, takerNftTokenId);
 
         emit ParlayOrderFilled(
-            requestId,
-            request.maker,
+            runtime.requestId,
+            runtime.request.maker,
             msg.sender,
             makerNftTokenId,
             takerNftTokenId,
-            request.collateral,
-            delta,
-            request.payout
+            runtime.request.collateral,
+            runtime.delta,
+            runtime.request.payout,
+            runtime.refCode
         );
     }
 
@@ -263,7 +318,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         );
 
         bool makerWon = true;
-        IParlayStructs.PredictedOutcome[] storage predictedOutcomes = parlayPredictedOutcomes[parlayId];
+        IParlayStructs.PredictedOutcome[]
+            storage predictedOutcomes = parlayPredictedOutcomes[parlayId];
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             IParlayStructs.Market memory market = predictedOutcomes[i].market;
@@ -360,6 +416,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         request.payout = 0;
         request.maker = address(0);
 
+        // Remove request from unfilled orders
+        unfilledOrders.remove(requestId);
+
+        // Remove request from maker's orders
+        ordersByMaker[maker].remove(requestId);
+
         // Return collateral to maker
         IERC20(config.collateralToken).safeTransfer(maker, collateral);
 
@@ -368,7 +430,11 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
     // ============ View Functions ============
 
-    function getConfig() external view returns (IParlayStructs.Settings memory) {
+    function getConfig()
+        external
+        view
+        returns (IParlayStructs.Settings memory)
+    {
         return config;
     }
 
@@ -399,15 +465,31 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             IParlayStructs.PredictedOutcome[] memory predictedOutcomes
         )
     {
-        require(
-            parlayId != 0 &&
-                parlayId <= _parlayIdCounter &&
-                _isParlay(parlayId),
-            "Parlay does not exist"
-        );
+        (parlayData, predictedOutcomes) = _getParlayView(parlayId);
+    }
 
-        parlayData = parlays[parlayId];
-        predictedOutcomes = parlayPredictedOutcomes[parlayId];
+    function getParlayByIds(
+        uint256[] calldata parlayIds
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData[] memory parlayDataList,
+            IParlayStructs.PredictedOutcome[][] memory predictedOutcomesList
+        )
+    {
+        uint256 len = parlayIds.length;
+        parlayDataList = new IParlayStructs.ParlayData[](len);
+        predictedOutcomesList = new IParlayStructs.PredictedOutcome[][](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            (
+                IParlayStructs.ParlayData memory dataItem,
+                IParlayStructs.PredictedOutcome[] memory outcomesItem
+            ) = _getParlayView(parlayIds[i]);
+            parlayDataList[i] = dataItem;
+            predictedOutcomesList[i] = outcomesItem;
+        }
     }
 
     function getParlayOrder(
@@ -444,6 +526,43 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         return (true, 0);
     }
 
+    /**
+     * @notice Get all unfilled order IDs
+     */
+    function getUnfilledOrderIds()
+        external
+        view
+        returns (uint256[] memory orderIds)
+    {
+        orderIds = unfilledOrders.values();
+    }
+
+    /**
+     * @notice Get all order IDs where `account` is the maker or taker
+     * @dev Includes both unfilled and filled orders. Canceled orders are excluded (maker reset to address(0)).
+     * @param account Address to filter by
+     */
+    function getOrderIdsByAddress(
+        address account
+    ) external view returns (uint256[] memory orderIds) {
+        // Get all orders by maker
+        uint256[] memory makerOrderIds = ordersByMaker[account].values();
+        uint256 makerOrderIdsLength = makerOrderIds.length;
+
+        // Get all orders by taker
+        uint256[] memory takerOrderIds = ordersByTaker[account].values();
+        uint256 takerOrderIdsLength = takerOrderIds.length;
+
+        uint256 totalCount = makerOrderIdsLength + takerOrderIdsLength;
+        orderIds = new uint256[](totalCount);
+
+        for (uint256 i = 0; i < totalCount; i++) {
+            orderIds[i] = i < makerOrderIdsLength
+                ? makerOrderIds[i]
+                : takerOrderIds[i - makerOrderIdsLength];
+        }
+    }
+
     // ============ Internal Functions ============
 
     function _getParlayId(
@@ -470,10 +589,15 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     }
 
     function _isParlay(uint256 id) internal view returns (bool) {
-        return parlays[id].maker != address(0) && parlays[id].taker != address(0) && parlays[id].filled;
+        return
+            parlays[id].maker != address(0) &&
+            parlays[id].taker != address(0) &&
+            parlays[id].filled;
     }
 
-    function _isYesNoMarket(IParlayStructs.Market memory market) internal view returns (bool) {
+    function _isYesNoMarket(
+        IParlayStructs.Market memory market
+    ) internal view returns (bool) {
         // Validate market address
         require(
             market.marketGroup != address(0),
@@ -540,5 +664,26 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
                 "Market is not a Yes/No market - settlement price is not at bounds"
             );
         }
+    }
+
+    function _getParlayView(
+        uint256 parlayId
+    )
+        internal
+        view
+        returns (
+            IParlayStructs.ParlayData memory parlayData,
+            IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+        )
+    {
+        require(
+            parlayId != 0 &&
+                parlayId <= _parlayIdCounter &&
+                _isParlay(parlayId),
+            "Parlay does not exist"
+        );
+
+        parlayData = parlays[parlayId];
+        predictedOutcomes = parlayPredictedOutcomes[parlayId];
     }
 }

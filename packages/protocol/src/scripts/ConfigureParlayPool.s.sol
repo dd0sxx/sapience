@@ -7,7 +7,7 @@ import {ParlayNFT} from "../parlay/ParlayNFT.sol";
 import {IParlayStructs} from "../parlay/interfaces/IParlayStructs.sol";
 
 contract ConfigureParlayPool is Script {
-    function run() external {
+    function run() view external {
         // Replace these with your deployed contract addresses
         address parlayPoolAddress = vm.envAddress("PARLAY_POOL_ADDRESS");
         address makerNftAddress = vm.envAddress("MAKER_NFT_ADDRESS");
@@ -30,6 +30,16 @@ contract ConfigureParlayPool is Script {
         console.log("Min Collateral:", config.minCollateral, "wei");
         console.log("Min Expiration Time:", config.minRequestExpirationTime, "seconds");
         console.log("Max Expiration Time:", config.maxRequestExpirationTime, "seconds");
+        console.log("Approved Takers Count:", config.approvedTakers.length);
+        
+        if (config.approvedTakers.length > 0) {
+            console.log("Approved Takers:");
+            for (uint256 i = 0; i < config.approvedTakers.length; i++) {
+                console.log("  ", i + 1, ":", config.approvedTakers[i]);
+            }
+        } else {
+            console.log("Approved Takers: None (anyone can fill orders)");
+        }
         
         // Verify NFT ownership
         console.log("\n=== NFT Ownership Verification ===");

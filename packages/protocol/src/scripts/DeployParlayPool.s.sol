@@ -10,13 +10,15 @@ contract DeployParlayPool is Script {
     function run() external {
         // Configuration - replace these with your own values
         address collateralToken = vm.envAddress("COLLATERAL_TOKEN"); // sUSDe address
-        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
         
         // ParlayPool configuration
         uint256 maxParlayMarkets = 5; // Maximum number of markets per parlay
         uint256 minCollateral = 100000000000000000000; // 100 sUSDe (18 decimals)
         uint256 minRequestExpirationTime = 30; // 30 seconds minimum
         uint256 maxRequestExpirationTime = 86400; // 1 day maximum
+        
+        // Approved takers (empty array means anyone can fill)
+        address[] memory approvedTakers = new address[](0); // No restrictions
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
@@ -39,7 +41,8 @@ contract DeployParlayPool is Script {
             maxParlayMarkets,
             minCollateral,
             minRequestExpirationTime,
-            maxRequestExpirationTime
+            maxRequestExpirationTime,
+            approvedTakers
         );
         console.log("ParlayPool deployed to:", address(pool));
 

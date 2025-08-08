@@ -9,7 +9,6 @@ import "./IParlayEvents.sol";
  * @notice Main interface for the Parlay Pool contract
  */
 interface IParlayPool is IParlayStructs, IParlayEvents {
-
     // ============ Parlay Functions ============
 
     /**
@@ -18,13 +17,15 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      * @param collateral Amount of collateral to use for the parlay
      * @param payout Minimum acceptable payout for the parlay
      * @param orderExpirationTime Expiration time for the parlay order
+     * @param refCode Reference code for the parlay order
      * @return requestId ID of the parlay request
      */
     function submitParlayOrder(
         IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
         uint256 collateral,
         uint256 payout,
-        uint256 orderExpirationTime
+        uint256 orderExpirationTime,
+        bytes32 refCode
     )
         external
         returns (
@@ -36,8 +37,9 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      * @notice Fill a parlay order directly with the specified payout
      * @param requestId ID of the parlay request
      * @dev First LP to call this function within orderExpirationTime will fill the order
+     * @param refCode Reference code for the parlay order
      */
-    function fillParlayOrder(uint256 requestId) external;
+    function fillParlayOrder(uint256 requestId, bytes32 refCode) external;
 
     /**
      * @notice Settle a parlay after all markets have resolved
@@ -69,7 +71,10 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      * @notice Get the pool configuration
      * @return config Pool configuration
      */
-    function getConfig() external view returns (IParlayStructs.Settings memory config);
+    function getConfig()
+        external
+        view
+        returns (IParlayStructs.Settings memory config);
 
     /**
      * @notice Get parlay information
@@ -79,7 +84,13 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      */
     function getParlay(
         uint256 tokenId
-    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData memory parlayData,
+            IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+        );
 
     /**
      * @notice Get parlay information by ID
@@ -89,7 +100,29 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      */
     function getParlayById(
         uint256 parlayId
-    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData memory parlayData,
+            IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+        );
+
+    /**
+     * @notice Get multiple parlays by IDs
+     * @param parlayIds IDs of the parlays
+     * @return parlayDataList List of parlay details
+     * @return predictedOutcomesList List of predicted outcomes arrays
+     */
+    function getParlayByIds(
+        uint256[] calldata parlayIds
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData[] memory parlayDataList,
+            IParlayStructs.PredictedOutcome[][] memory predictedOutcomesList
+        );
 
     /**
      * @notice Get parlay order information
@@ -99,7 +132,13 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      */
     function getParlayOrder(
         uint256 requestId
-    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData memory parlayData,
+            IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+        );
 
     /**
      * @notice Check if a parlay order can be filled
@@ -110,4 +149,20 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
     function canFillParlayOrder(
         uint256 requestId
     ) external view returns (bool canFill, uint256 reason);
+
+    /**
+     * @notice Get all unfilled order IDs
+     */
+    function getUnfilledOrderIds()
+        external
+        view
+        returns (uint256[] memory orderIds);
+
+    /**
+     * @notice Get all order IDs where `account` is the maker or taker
+     * @param account Address to filter by
+     */
+    function getOrderIdsByAddress(
+        address account
+    ) external view returns (uint256[] memory orderIds);
 }
