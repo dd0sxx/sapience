@@ -272,7 +272,7 @@ const CombinedMarketDialog = () => {
   const router = useRouter();
 
   // Market group state
-  const [chainId, setChainId] = useState<string>('8453');
+  const [chainId, setChainId] = useState<string>(DEFAULT_CHAIN_ID.toString());
   const [factoryAddress, setFactoryAddress] = useState<string>(
     DEFAULT_FACTORY_ADDRESS
   );
