@@ -28,9 +28,9 @@ import {
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 
-// Event ABI item for parsing logs
-const marketGroupInitializedEvent = parseAbiItem(
-  'event MarketGroupInitialized(address indexed sender, address indexed marketGroup, uint256 nonce)'
+// Event ABI item for parsing logs (from MarketGroupFactory)
+const marketGroupDeployedEvent = parseAbiItem(
+  'event MarketGroupDeployed(address indexed sender, address indexed marketGroup, uint256 nonce)'
 ) as AbiEvent;
 
 interface MarketGroupDeployButtonProps {
@@ -88,7 +88,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
                 | []
                 | [`0x${string}`, ...`0x${string}`[]];
               return decodeEventLog({
-                abi: [marketGroupInitializedEvent],
+                abi: [marketGroupDeployedEvent],
                 data: log.data,
                 topics: typedTopics,
               });
@@ -99,7 +99,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
           .filter(
             (decodedLog) =>
               decodedLog !== null &&
-              decodedLog.eventName === 'MarketGroupInitialized'
+              decodedLog.eventName === 'MarketGroupDeployed'
           );
 
         if (logs.length > 0 && logs[0]?.args && 'marketGroup' in logs[0].args) {
@@ -174,7 +174,6 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       // Prepare parameters for the contract call
       const args = [
         group.collateralAsset as Address,
-        [],
         BigInt(group.minTradeSize),
         group.isBridged,
         {
