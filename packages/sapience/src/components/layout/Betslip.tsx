@@ -392,8 +392,8 @@ const Betslip = () => {
   const uniqueMarkets = useMemo(() => {
     const marketMap = new Map();
     betSlipPositions.forEach((position) => {
-      // Fallback to base chain (8453) if chainId is missing (for existing positions)
-      const chainId = position.chainId || 8453;
+      // Fallback to arbitrum (42161) if chainId is missing (for existing positions)
+      const chainId = position.chainId || 42161;
       const key = `${chainId}-${position.marketAddress}`;
 
       if (!marketMap.has(key)) {
@@ -416,7 +416,7 @@ const Betslip = () => {
   const positionsWithMarketData: PositionWithMarketData[] = useMemo(() => {
     return betSlipPositions.map((position) => {
       // Use same fallback logic for consistency
-      const effectiveChainId = position.chainId || 8453;
+      const effectiveChainId = position.chainId || 42161;
 
       const marketIndex = uniqueMarkets.findIndex(
         (market) =>
@@ -596,7 +596,7 @@ const Betslip = () => {
     isSubmitting: isParlaySubmitting,
     error: parlayError,
   } = useSubmitParlay({
-    chainId: betSlipPositions[0]?.chainId || 8453, // Use first position's chainId or default to Base
+    chainId: betSlipPositions[0]?.chainId || 42161, // Use first position's chainId or default
     positions: parlayPositions,
     wagerAmount: parlayMethods.watch('wagerAmount') || DEFAULT_WAGER_AMOUNT,
     payoutAmount,
