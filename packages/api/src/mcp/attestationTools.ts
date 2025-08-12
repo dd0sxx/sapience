@@ -80,18 +80,18 @@ export const getAttestationsByMarket = {
 };
 
 /**
- * Tool: get_bot_attestations
- * Returns attestations submitted by a specific bot address.
+ * Tool: get_attestations_by_address
+ * Returns attestations submitted by a specific address.
  */
-export const getBotAttestations = {
-  name: 'get_bot_attestations',
+export const getAttestationsByAddress = {
+  name: 'get_attestations_by_address',
   description:
-    'Get attestations submitted by a specific bot address. Can optionally filter by market ID.',
+    'Get attestations submitted by a specific address. Can optionally filter by market ID.',
   parameters: {
     properties: {
       attesterAddress: z
         .string()
-        .describe('The bot address that submitted attestations'),
+        .describe('The address that submitted attestations'),
       marketId: z
         .string()
         .optional()
@@ -167,7 +167,7 @@ export const getBotAttestations = {
         content: [
           {
             type: 'text',
-            text: `Failed to get attestations for bot ${attesterAddress}: ${
+            text: `Failed to get attestations for address ${attesterAddress}: ${
               error instanceof Error ? error.message : 'Unknown error'
             }`,
           },
@@ -293,18 +293,18 @@ export const getRecentAttestations = {
 };
 
 /**
- * Tool: check_bot_attestation_for_market
- * Check if a bot has already submitted an attestation for a specific market.
+ * Tool: check_attestation_exists
+ * Check if an address has already submitted an attestation for a specific market.
  */
-export const checkBotAttestationForMarket = {
-  name: 'check_bot_attestation_for_market',
+export const checkAttestationExists = {
+  name: 'check_attestation_exists',
   description:
-    'Check if a specific bot address has already submitted an attestation for a given market. Useful for preventing duplicate submissions.',
+    'Check if a specific address has already submitted an attestation for a given market. Useful for preventing duplicate submissions.',
   parameters: {
     properties: {
       attesterAddress: z
         .string()
-        .describe('The bot address to check'),
+        .describe('The address to check'),
       marketId: z
         .string()
         .describe('The market ID to check'),
@@ -338,7 +338,7 @@ export const checkBotAttestationForMarket = {
               text: JSON.stringify(
                 {
                   hasAttestation: true,
-                  message: `Bot ${normalizedAddress} has already submitted an attestation for market ${marketId}`,
+                  message: `Address ${normalizedAddress} has already submitted an attestation for market ${marketId}`,
                   attestation: {
                     uid: existingAttestation.uid,
                     prediction: existingAttestation.prediction,
@@ -362,7 +362,7 @@ export const checkBotAttestationForMarket = {
               text: JSON.stringify(
                 {
                   hasAttestation: false,
-                  message: `Bot ${normalizedAddress} has not submitted an attestation for market ${marketId}`,
+                  message: `Address ${normalizedAddress} has not submitted an attestation for market ${marketId}`,
                 },
                 null,
                 2
