@@ -18,6 +18,7 @@ import {
   YES_SQRT_PRICE_X96,
   NO_SQRT_PRICE_X96,
 } from '~/lib/utils/betslipUtils';
+import { DEFAULT_SLIPPAGE } from '~/utils/trade';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -79,7 +80,7 @@ export default function YesNoWagerForm({
     numericMarketId: marketGroupData.markets?.[0]?.marketId ?? 0,
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
     collateralAmount: wagerAmount,
-    slippagePercent: 0.5, // Default slippage percentage
+    slippagePercent: DEFAULT_SLIPPAGE, // Default slippage percentage
     enabled: !!quoteData && !!wagerAmount && Number(wagerAmount) > 0,
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',

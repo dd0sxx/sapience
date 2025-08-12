@@ -8,6 +8,8 @@ import { sepolia, base, cannon, type Chain, arbitrum } from 'viem/chains';
 import { http } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
+import type React from 'react';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { BetSlipProvider } from '~/lib/context/BetSlipContext';
@@ -95,6 +97,8 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
+          <ReactQueryDevtools initialIsOpen={false} />
+
           <WagmiProvider config={config}>
             <SapienceProvider>
               <BetSlipProvider>{children}</BetSlipProvider>
