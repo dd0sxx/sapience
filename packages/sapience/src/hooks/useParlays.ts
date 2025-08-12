@@ -1,91 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits } from 'viem';
-import { useAccount, usePublicClient, useReadContracts } from 'wagmi';
+import type { Abi } from 'abitype';
+import ParlayPool from '@/protocol/deployments/ParlayPool.json';
+import { usePublicClient, useReadContracts } from 'wagmi';
 
 // TODO: centralize these in a shared constants module if needed
 export const PARLAY_CONTRACT_ADDRESS =
   '0x918e72DAB2aF7672AbF534F744770D7F8859C55e' as Address;
 
-// Minimal ABI fragments for the functions/events we use
-const MARKET_COMPONENTS = [
-  { name: 'marketGroup', type: 'address' as const },
-  { name: 'marketId', type: 'uint256' as const },
-];
-
-const PREDICTED_OUTCOME_COMPONENTS = [
-  { name: 'market', type: 'tuple' as const, components: MARKET_COMPONENTS },
-  { name: 'prediction', type: 'bool' as const },
-];
-
-const PARLAY_DATA_COMPONENTS = [
-  { name: 'maker', type: 'address' as const },
-  { name: 'orderExpirationTime', type: 'uint256' as const },
-  { name: 'filled', type: 'bool' as const },
-  { name: 'taker', type: 'address' as const },
-  { name: 'makerNftTokenId', type: 'uint256' as const },
-  { name: 'takerNftTokenId', type: 'uint256' as const },
-  { name: 'collateral', type: 'uint256' as const },
-  { name: 'payout', type: 'uint256' as const },
-  { name: 'createdAt', type: 'uint256' as const },
-  { name: 'settled', type: 'bool' as const },
-  { name: 'makerWon', type: 'bool' as const },
-];
-
-const PARLAY_ABI = [
-  {
-    type: 'function',
-    name: 'getConfig',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [
-      {
-        name: 'config',
-        type: 'tuple',
-        components: [
-          { name: 'collateralToken', type: 'address' },
-          { name: 'makerNft', type: 'address' },
-          { name: 'takerNft', type: 'address' },
-          { name: 'maxParlayMarkets', type: 'uint256' },
-          { name: 'minCollateral', type: 'uint256' },
-          { name: 'minRequestExpirationTime', type: 'uint256' },
-          { name: 'maxRequestExpirationTime', type: 'uint256' },
-        ],
-      },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'getParlayOrder',
-    stateMutability: 'view',
-    inputs: [{ name: 'requestId', type: 'uint256' }],
-    outputs: [
-      { name: 'parlayData', type: 'tuple', components: PARLAY_DATA_COMPONENTS },
-      {
-        name: 'predictedOutcomes',
-        type: 'tuple[]',
-        components: PREDICTED_OUTCOME_COMPONENTS,
-      },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'ParlayOrderSubmitted',
-    inputs: [
-      { name: 'maker', type: 'address', indexed: false },
-      { name: 'requestId', type: 'uint256', indexed: false },
-      {
-        name: 'predictedOutcomes',
-        type: 'tuple[]',
-        indexed: false,
-        components: PREDICTED_OUTCOME_COMPONENTS,
-      },
-      { name: 'collateral', type: 'uint256', indexed: false },
-      { name: 'payout', type: 'uint256', indexed: false },
-      { name: 'orderExpirationTime', type: 'uint256', indexed: false },
-    ],
-  },
-] as const;
+// Use ABI from deployments directly (now includes all required functions)
+const PARLAY_ABI: Abi = (ParlayPool as { abi: Abi }).abi;
 
 export type ParlayMarket = {
   marketGroup: Address;
@@ -113,13 +38,16 @@ export type ParlayData = {
   predictedOutcomes: ParlayPredictedOutcome[];
 };
 
-export function useParlays() {
-  const { chainId } = useAccount();
-  const publicClient = usePublicClient({ chainId });
+type UseParlaysOptions = { chainId?: number };
+
+export function useParlays(options: UseParlaysOptions = {}) {
+  // Always default to Arbitrum (42161) for reads unless explicitly overridden
+  const activeChainId = options.chainId ?? 42161;
+  const publicClient = usePublicClient({ chainId: activeChainId });
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [ids, setIds] = useState<bigint[]>([]);
+  const [probedIds, setProbedIds] = useState<bigint[]>([]);
   const [probeCursor, setProbeCursor] = useState<bigint>(1n);
   const [doneProbing, setDoneProbing] = useState<boolean>(false);
 
@@ -178,7 +106,7 @@ export function useParlays() {
         });
 
         if (!cancelled) {
-          setIds((prev) => {
+          setProbedIds((prev) => {
             const merged = new Set(prev.concat(found));
             return Array.from(merged).sort((a, b) => (a > b ? -1 : 1));
           });
@@ -205,6 +133,32 @@ export function useParlays() {
     };
   }, [publicClient, probeCursor, doneProbing]);
 
+  // Read unfilled order ids; falls back to probing if unavailable
+  const unfilledRead = useReadContracts({
+    contracts: [
+      {
+        address: PARLAY_CONTRACT_ADDRESS,
+        abi: PARLAY_ABI,
+        functionName: 'getUnfilledOrderIds',
+        chainId: activeChainId,
+      },
+    ],
+    query: { enabled: !!publicClient },
+  });
+
+  const unfilledIds: bigint[] = useMemo(() => {
+    const item = unfilledRead.data?.[0];
+    if (item && item.status === 'success') {
+      const arr = item.result as bigint[];
+      return Array.isArray(arr) ? arr : [];
+    }
+    return [];
+  }, [unfilledRead.data]);
+
+  const ids: bigint[] = useMemo(() => {
+    return unfilledIds.length > 0 ? unfilledIds : probedIds;
+  }, [unfilledIds, probedIds]);
+
   // Read config to discover collateral token for decimals
   const configRead = useReadContracts({
     contracts: [
@@ -212,7 +166,7 @@ export function useParlays() {
         address: PARLAY_CONTRACT_ADDRESS,
         abi: PARLAY_ABI,
         functionName: 'getConfig',
-        chainId,
+        chainId: activeChainId,
       },
     ],
     query: { enabled: !!publicClient },
@@ -221,7 +175,7 @@ export function useParlays() {
   const collateralToken = ((): Address | undefined => {
     const item = configRead.data?.[0];
     if (item && item.status === 'success') {
-      const cfg = item.result as unknown as {
+      const cfg = item.result as {
         collateralToken: Address;
       };
       return cfg.collateralToken;
@@ -236,7 +190,7 @@ export function useParlays() {
             address: collateralToken,
             abi: erc20Abi,
             functionName: 'decimals',
-            chainId,
+            chainId: activeChainId,
           },
         ]
       : [],
@@ -258,7 +212,7 @@ export function useParlays() {
       abi: PARLAY_ABI,
       functionName: 'getParlayOrder',
       args: [id],
-      chainId,
+      chainId: activeChainId,
     })),
     query: { enabled: ids.length > 0 && !!publicClient },
   });
@@ -268,7 +222,7 @@ export function useParlays() {
     return ordersRead.data
       .map((entry, idx) => {
         if (entry.status !== 'success') return undefined;
-        const [parlayData, predictedOutcomes] = entry.result as unknown as [
+        const [parlayData, predictedOutcomes] = entry.result as [
           {
             maker: Address;
             orderExpirationTime: bigint;
@@ -314,11 +268,21 @@ export function useParlays() {
   );
 
   return {
-    loading: loading || ordersRead.isLoading || configRead.isLoading,
+    loading:
+      loading ||
+      ordersRead.isLoading ||
+      configRead.isLoading ||
+      unfilledRead.isLoading,
     error:
-      error || ordersRead.error?.message || configRead.error?.message || null,
+      error ||
+      ordersRead.error?.message ||
+      configRead.error?.message ||
+      unfilledRead.error?.message ||
+      null,
     parlays: formatted,
     tokenDecimals,
     collateralToken,
+    // Expose raw unfilled IDs for troubleshooting/visibility
+    unfilledIds,
   };
 }
