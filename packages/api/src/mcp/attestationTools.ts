@@ -109,7 +109,10 @@ export const getAttestationsByAddress = {
       // Normalize address to lowercase for comparison
       const normalizedAddress = attesterAddress.toLowerCase();
 
-      const where: any = {
+      const where: {
+        attester: string;
+        marketId?: string;
+      } = {
         attester: normalizedAddress,
       };
 
@@ -141,7 +144,17 @@ export const getAttestationsByAddress = {
           decodedData: a.decodedDataJson ? JSON.parse(a.decodedDataJson) : null,
         });
         return acc;
-      }, {} as Record<string, any[]>);
+      }, {} as Record<string, Array<{
+        uid: string;
+        marketAddress: string;
+        questionId: string;
+        prediction: string;
+        comment: string | null;
+        time: number;
+        blockNumber: number;
+        transactionHash: string;
+        decodedData: unknown;
+      }>>);
 
       return {
         content: [
@@ -207,7 +220,9 @@ export const getRecentAttestations = {
     marketId?: string;
   }): Promise<CallToolResult> => {
     try {
-      const where: any = {};
+      const where: {
+        marketId?: string;
+      } = {};
 
       if (marketId) {
         where.marketId = marketId;
@@ -244,7 +259,11 @@ export const getRecentAttestations = {
           endTimestamp: m.endTimestamp,
         };
         return acc;
-      }, {} as Record<string, any>);
+      }, {} as Record<string, {
+        question: string | null;
+        optionName: string | null;
+        endTimestamp: number | null;
+      }>);
 
       const formatted = attestations.map((a) => ({
         uid: a.uid,
