@@ -1,69 +1,17 @@
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useCallback, useState, useMemo } from 'react';
-import { encodeFunctionData, erc20Abi, isHex, padHex, stringToHex } from 'viem';
+import {
+  encodeFunctionData,
+  erc20Abi,
+  isHex,
+  padHex,
+  stringToHex,
+  parseUnits,
+} from 'viem';
 import { useAccount } from 'wagmi';
+import ParlayPool from '@/protocol/deployments/ParlayPool.json';
+import type { Abi } from 'abitype';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
-
-// Contract addresses
-const PARLAY_CONTRACT_ADDRESS = '0x918e72DAB2aF7672AbF534F744770D7F8859C55e';
-const COLLATERAL_TOKEN_ADDRESS = '0x3138d1B6F726F54813c9Ed6E29A5e44C24Cb11f1';
-
-// Parlay contract ABI (only the functions we need)
-const PARLAY_ABI = [
-  {
-    type: 'function',
-    name: 'submitParlayOrder',
-    inputs: [
-      {
-        name: 'predictedOutcomes',
-        type: 'tuple[]',
-        components: [
-          {
-            name: 'market',
-            type: 'tuple',
-            components: [
-              {
-                name: 'marketGroup',
-                type: 'address',
-              },
-              {
-                name: 'marketId',
-                type: 'uint256',
-              },
-            ],
-          },
-          {
-            name: 'prediction',
-            type: 'bool',
-          },
-        ],
-      },
-      {
-        name: 'collateral',
-        type: 'uint256',
-      },
-      {
-        name: 'payout',
-        type: 'uint256',
-      },
-      {
-        name: 'orderExpirationTime',
-        type: 'uint256',
-      },
-      {
-        name: 'refCode',
-        type: 'bytes32',
-      },
-    ],
-    outputs: [
-      {
-        name: 'requestId',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-] as const;
 
 interface ParlayPosition {
   marketAddress: string;
@@ -74,6 +22,9 @@ interface ParlayPosition {
 
 interface UseSubmitParlayProps {
   chainId: number;
+  parlayContractAddress: `0x${string}`;
+  collateralTokenAddress: `0x${string}`;
+  collateralTokenDecimals: number;
   positions: ParlayPosition[];
   wagerAmount: string; // Total wager amount for the parlay (collateral)
   payoutAmount: string; // Expected payout amount
@@ -85,6 +36,9 @@ interface UseSubmitParlayProps {
 
 export function useSubmitParlay({
   chainId,
+  parlayContractAddress,
+  collateralTokenAddress,
+  collateralTokenDecimals,
   positions,
   wagerAmount,
   payoutAmount,
@@ -120,22 +74,22 @@ export function useSubmitParlay({
     fallbackErrorMessage: 'Failed to submit parlay',
   });
 
-  // Parse amounts to bigint
+  // Parse human-readable amounts to base units using token decimals
   const parsedWagerAmount = useMemo(() => {
     try {
-      return BigInt(wagerAmount || '0');
+      return parseUnits(wagerAmount || '0', collateralTokenDecimals);
     } catch {
       return BigInt(0);
     }
-  }, [wagerAmount]);
+  }, [wagerAmount, collateralTokenDecimals]);
 
   const parsedPayoutAmount = useMemo(() => {
     try {
-      return BigInt(payoutAmount || '0');
+      return parseUnits(payoutAmount || '0', collateralTokenDecimals);
     } catch {
       return BigInt(0);
     }
-  }, [payoutAmount]);
+  }, [payoutAmount, collateralTokenDecimals]);
 
   // Calculate order expiration time (current time + hours in seconds)
   const orderExpirationTime = useMemo(() => {
@@ -188,11 +142,11 @@ export function useSubmitParlay({
     const approveCalldata = encodeFunctionData({
       abi: erc20Abi,
       functionName: 'approve',
-      args: [PARLAY_CONTRACT_ADDRESS, parsedWagerAmount],
+      args: [parlayContractAddress, parsedWagerAmount],
     });
 
     callsArray.push({
-      to: COLLATERAL_TOKEN_ADDRESS,
+      to: collateralTokenAddress,
       data: approveCalldata,
     });
 
@@ -207,7 +161,7 @@ export function useSubmitParlay({
 
     // Add submitParlayOrder call
     const submitParlayCalldata = encodeFunctionData({
-      abi: PARLAY_ABI,
+      abi: ParlayPool.abi as Abi,
       functionName: 'submitParlayOrder',
       args: [
         predictedOutcomes,
@@ -219,7 +173,7 @@ export function useSubmitParlay({
     });
 
     callsArray.push({
-      to: PARLAY_CONTRACT_ADDRESS,
+      to: parlayContractAddress,
       data: submitParlayCalldata,
     });
 
@@ -230,6 +184,8 @@ export function useSubmitParlay({
     parsedPayoutAmount,
     orderExpirationTime,
     encodedRefCode,
+    parlayContractAddress,
+    collateralTokenAddress,
   ]);
 
   const submitParlay = useCallback(async () => {

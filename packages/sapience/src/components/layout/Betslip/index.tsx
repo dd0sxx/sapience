@@ -25,10 +25,14 @@ import { usePrivy } from '@privy-io/react-auth';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { useRouter } from 'next/navigation';
 
-import { encodeFunctionData, parseUnits } from 'viem';
+import { encodeFunctionData, parseUnits, erc20Abi, formatUnits } from 'viem';
 import erc20ABI from '@sapience/ui/abis/erc20abi.json';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import { useReadContracts } from 'wagmi';
+import type { Address } from 'viem';
+import ParlayPool from '@/protocol/deployments/ParlayPool.json';
+import type { Abi } from 'abitype';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { wagerAmountSchema } from '~/components/forecasting/forms/inputs/WagerInput';
 
@@ -44,6 +48,7 @@ import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 import type { useQuoter } from '~/hooks/forms/useQuoter';
 import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
 import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
+import { PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { BetslipContent } from '~/components/layout/Betslip/BetslipContent';
 
@@ -70,6 +75,89 @@ const Betslip = () => {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { toast } = useToast();
+  // Parlay config: read minCollateral and collateral token decimals
+  const parlayChainId = betSlipPositions[0]?.chainId || 8453;
+
+  const configRead = useReadContracts({
+    contracts: [
+      {
+        address: PARLAY_CONTRACT_ADDRESS,
+        abi: ParlayPool.abi as Abi,
+        functionName: 'getConfig',
+        chainId: parlayChainId,
+      },
+    ],
+    query: { enabled: betSlipPositions.length > 0 },
+  });
+
+  const collateralToken: Address | undefined = (() => {
+    const item = configRead.data?.[0];
+    if (item && item.status === 'success') {
+      const cfg = item.result as {
+        collateralToken: Address;
+      };
+      return cfg.collateralToken;
+    }
+    return undefined;
+  })();
+
+  const minCollateralRaw: bigint | undefined = (() => {
+    const item = configRead.data?.[0];
+    if (item && item.status === 'success') {
+      const cfg = item.result as {
+        minCollateral: bigint;
+      };
+      return cfg.minCollateral;
+    }
+    return undefined;
+  })();
+
+  // Fetch collateral token symbol and decimals to display in parlay wager and format min
+  const erc20MetaRead = useReadContracts({
+    contracts: collateralToken
+      ? [
+          {
+            address: collateralToken,
+            abi: erc20Abi,
+            functionName: 'symbol',
+            chainId: parlayChainId,
+          },
+          {
+            address: collateralToken,
+            abi: erc20Abi,
+            functionName: 'decimals',
+            chainId: parlayChainId,
+          },
+        ]
+      : [],
+    query: { enabled: !!collateralToken },
+  });
+
+  const collateralSymbol: string | undefined = useMemo(() => {
+    const item = erc20MetaRead.data?.[0];
+    if (item && item.status === 'success') {
+      return String(item.result as unknown as string);
+    }
+    return undefined;
+  }, [erc20MetaRead.data]);
+
+  const collateralDecimals: number | undefined = useMemo(() => {
+    const item = erc20MetaRead.data?.[1];
+    if (item && item.status === 'success') {
+      return Number(item.result as unknown as number);
+    }
+    return undefined;
+  }, [erc20MetaRead.data]);
+
+  const minParlayWager = useMemo(() => {
+    if (!minCollateralRaw) return undefined;
+    const decimals = collateralDecimals ?? 18;
+    try {
+      return formatUnits(minCollateralRaw, decimals);
+    } catch {
+      return String(minCollateralRaw);
+    }
+  }, [minCollateralRaw, collateralDecimals]);
 
   // Disable parlay mode automatically when there are fewer than two positions
   useEffect(() => {
@@ -147,10 +235,9 @@ const Betslip = () => {
       wagerAmount: DEFAULT_WAGER_AMOUNT,
       limitAmount:
         betSlipPositions.length > 0
-          ? 1 /
-            (Math.pow(0.5, betSlipPositions.length) *
-              parseFloat(DEFAULT_WAGER_AMOUNT))
-          : '10',
+          ? parseFloat(DEFAULT_WAGER_AMOUNT) *
+            Math.pow(2, betSlipPositions.length)
+          : 2,
     },
   });
 
@@ -178,44 +265,35 @@ const Betslip = () => {
     parlayMethods.reset({
       ...generateFormValues,
       wagerAmount:
-        parlayMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT,
+        parlayMethods.getValues('wagerAmount') ||
+        (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
       limitAmount: parlayMethods.getValues('limitAmount') || '10',
     });
-  }, [parlayMethods, generateFormValues]);
+  }, [parlayMethods, generateFormValues, minParlayWager]);
+
+  // Ensure wager is at least minParlayWager when config loads
+  useEffect(() => {
+    if (!minParlayWager) return;
+    const current = parlayMethods.getValues('wagerAmount');
+    if (!current || Number(current) < Number(minParlayWager)) {
+      parlayMethods.setValue('wagerAmount', String(minParlayWager), {
+        shouldValidate: true,
+      });
+    }
+  }, [minParlayWager, parlayMethods]);
 
   // Calculate and set minimum payout when list length or wager amount changes
-  // Keep limitAmount in sync with wager amount and list length
-  // Calculate minimum payout: 1 / (0.5^(list length) * wager amount)
+  // Minimum payout = wagerAmount × 2^(number of positions), formatted to 2 decimals
   useEffect(() => {
     const wagerAmount = parlayWagerAmount || DEFAULT_WAGER_AMOUNT;
     const listLength = betSlipPositions.length;
 
     if (listLength > 0) {
-      const minimumPayout =
-        1 / (Math.pow(0.5, listLength) * parseFloat(wagerAmount));
+      const minimumPayout = parseFloat(wagerAmount) * Math.pow(2, listLength);
       parlayMethods.setValue(
         'limitAmount',
-        Number.isFinite(minimumPayout) ? minimumPayout.toFixed(2) : '0',
+        Number.isFinite(minimumPayout) ? Number(minimumPayout.toFixed(2)) : 0,
         { shouldValidate: true }
-      );
-    }
-  }, [parlayWagerAmount, betSlipPositions.length, parlayMethods]);
-
-  // Watch for wager amount changes and update minimum payout accordingly
-  useEffect(() => {
-    const wagerAmount = parlayWagerAmount || DEFAULT_WAGER_AMOUNT;
-    const listLength = betSlipPositions.length;
-
-    if (listLength > 0) {
-      // Calculate minimum payout: 1 / (0.5^(list length) * wager amount)
-      const minimumPayout =
-        1 / (Math.pow(0.5, listLength) * parseFloat(wagerAmount));
-      parlayMethods.setValue(
-        'limitAmount',
-        Number.isFinite(minimumPayout) ? minimumPayout.toFixed(2) : '0',
-        {
-          shouldValidate: true,
-        }
       );
     }
   }, [parlayWagerAmount, betSlipPositions.length, parlayMethods]);
@@ -239,13 +317,13 @@ const Betslip = () => {
     });
   }, [betSlipPositions, parlayLimitAmount, parlayPositionsForm]);
 
-  // Calculate payout amount (for now, use 2x the wager as a simple calculation)
+  // Calculate payout amount = wager × 2^(number of positions)
   const payoutAmount = useMemo(() => {
-    const wager = parlayWagerAmount || DEFAULT_WAGER_AMOUNT;
-    const multiplier =
-      betSlipPositions.length > 1 ? betSlipPositions.length * 1.5 : 2;
-    return (parseFloat(wager) * multiplier).toString();
-  }, [parlayWagerAmount, betSlipPositions.length]);
+    const wager = parlayWagerAmount || minParlayWager || DEFAULT_WAGER_AMOUNT;
+    const listLength = betSlipPositions.length;
+    const payout = parseFloat(wager) * Math.pow(2, listLength);
+    return Number.isFinite(payout) ? payout.toFixed(2) : '0';
+  }, [parlayWagerAmount, betSlipPositions.length, minParlayWager]);
 
   // Use the parlay submission hook
   const {
@@ -254,10 +332,19 @@ const Betslip = () => {
     error: parlayError,
   } = useSubmitParlay({
     chainId: betSlipPositions[0]?.chainId || 8453, // Use first position's chainId or default to Base
+    parlayContractAddress: PARLAY_CONTRACT_ADDRESS,
+    collateralTokenAddress:
+      collateralToken || '0x0000000000000000000000000000000000000000',
+    collateralTokenDecimals: collateralDecimals ?? 18,
     positions: parlayPositions,
-    wagerAmount: parlayMethods.watch('wagerAmount') || DEFAULT_WAGER_AMOUNT,
+    wagerAmount:
+      parlayMethods.watch('wagerAmount') ||
+      (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
     payoutAmount,
-    enabled: betSlipPositions.length > 0,
+    enabled:
+      betSlipPositions.length > 0 &&
+      !!collateralToken &&
+      collateralDecimals != null,
     onSuccess: () => {
       // Clear betslip and redirect to parlays page
       clearBetSlip();
@@ -444,6 +531,10 @@ const Betslip = () => {
     isParlaySubmitting,
     parlayError,
     isSubmitting: Boolean(isPendingWriteContract),
+    minParlayWager,
+    parlayCollateralSymbol: collateralSymbol,
+    parlayCollateralAddress: collateralToken,
+    parlayChainId,
   };
 
   if (isMobile) {

@@ -31,6 +31,11 @@ interface BetslipContentProps {
   isParlaySubmitting: boolean;
   parlayError?: string | null;
   isSubmitting: boolean;
+  // Optional minimum parlay wager (human units) to show and validate in the input
+  minParlayWager?: string;
+  parlayCollateralSymbol?: string;
+  parlayCollateralAddress?: `0x${string}`;
+  parlayChainId?: number;
 }
 
 export const BetslipContent = ({
@@ -43,6 +48,10 @@ export const BetslipContent = ({
   isParlaySubmitting,
   parlayError,
   isSubmitting,
+  minParlayWager,
+  parlayCollateralSymbol,
+  parlayCollateralAddress,
+  parlayChainId,
 }: BetslipContentProps) => {
   const {
     betSlipPositions,
@@ -264,7 +273,12 @@ export const BetslipContent = ({
                   ))}
 
                   <div className="pt-1">
-                    <WagerInput />
+                    <WagerInput
+                      minAmount={minParlayWager}
+                      collateralSymbol={parlayCollateralSymbol || 'sUSDe'}
+                      collateralAddress={parlayCollateralAddress}
+                      chainId={parlayChainId}
+                    />
                   </div>
 
                   <div>
@@ -295,7 +309,7 @@ export const BetslipContent = ({
                         })}
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                        sUSDe
+                        {parlayCollateralSymbol || 'sUSDe'}
                       </div>
                     </div>
                     {parlayMethods.formState.errors.limitAmount && (
