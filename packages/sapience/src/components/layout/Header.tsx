@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen, Wallet } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -50,6 +50,9 @@ const NavLinks = ({
 }: NavLinksProps) => {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
+  const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const connectedWallet = wallets[0];
   const linkClass = isMobileProp
     ? 'text-xl font-medium justify-start rounded-full'
     : 'text-base font-medium justify-start rounded-full';
@@ -111,6 +114,22 @@ const NavLinks = ({
           Build Bots
         </Button>
       </Link>
+      {ready && authenticated && connectedWallet && (
+        <Link
+          href={`/profile/${connectedWallet.address}`}
+          passHref
+          className="flex w-fit mx-3 my-1"
+        >
+          <Button
+            size="xs"
+            className="rounded-full px-3"
+            onClick={handleLinkClick}
+          >
+            <Wallet className="h-3 w-3 scale-[0.8]" />
+            Your Portfolio
+          </Button>
+        </Link>
+      )}
     </nav>
   );
 };
