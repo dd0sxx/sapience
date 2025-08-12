@@ -56,7 +56,7 @@ export function useSapienceWriteContract({
   } = useSendCalls();
 
   // Custom write contract function that handles chain validation
-  const sapiensWriteContract = useCallback(
+  const sapienceWriteContract = useCallback(
     async (...args: Parameters<typeof writeContractAsync>) => {
       const _chainId = args[0].chainId;
       if (!_chainId) {
@@ -98,7 +98,7 @@ export function useSapienceWriteContract({
   );
 
   // Custom send calls function that handles chain validation
-  const sapiensSendCalls = useCallback(
+  const sapienceSendCalls = useCallback(
     async (...args: Parameters<typeof sendCallsAsync>) => {
       const _chainId = args[0].chainId;
       if (!_chainId) {
@@ -114,13 +114,48 @@ export function useSapienceWriteContract({
         // Validate and switch chain if needed
         await validateAndSwitchChain(_chainId);
 
-        // Execute the batch calls and wait for receipts to obtain a hash
-        const data = await sendCallsAsync(args[0]);
-        const result = await waitForCallsStatus(client!, { id: data.id });
-        const transactionHash = result?.receipts?.[0]?.transactionHash;
-        if (transactionHash) {
-          onTxHash?.(transactionHash);
-          setTxHash(transactionHash);
+        // Execute the batch calls with compatibility fallback enabled
+        // Note: `experimental_fallback` will sequentially fall back to eth_sendTransaction
+        // if the connected wallet does not support EIP-5792 `wallet_sendCalls`.
+        const data = await sendCallsAsync({
+          ...(args[0] as any),
+          experimental_fallback: true,
+        });
+        // If the wallet supports EIP-5792, we can poll for calls status using the returned id.
+        // If it does not (fallback path), `waitForCallsStatus` may throw or `id` may be unusable.
+        try {
+          if (data?.id) {
+            const result = await waitForCallsStatus(client!, { id: data.id });
+            const transactionHash = result?.receipts?.[0]?.transactionHash;
+            if (transactionHash) {
+              onTxHash?.(transactionHash);
+              setTxHash(transactionHash);
+            } else {
+              // No tx hash available from aggregator; consider operation successful.
+              toast({
+                title: 'Success',
+                description: successMessage,
+                duration: 5000,
+              });
+              onSuccess?.(undefined as any);
+            }
+          } else {
+            // Fallback path without aggregator id.
+            toast({
+              title: 'Success',
+              description: successMessage,
+              duration: 5000,
+            });
+            onSuccess?.(undefined as any);
+          }
+        } catch {
+          // `wallet_getCallsStatus` unsupported or failed; assume success since `sendCalls` resolved.
+          toast({
+            title: 'Success',
+            description: successMessage,
+            duration: 5000,
+          });
+          onSuccess?.(undefined as any);
         }
       } catch (error) {
         toast({
@@ -189,15 +224,15 @@ export function useSapienceWriteContract({
 
   return useMemo(
     () => ({
-      writeContract: sapiensWriteContract,
-      sendCalls: sapiensSendCalls,
+      writeContract: sapienceWriteContract,
+      sendCalls: sapienceSendCalls,
       isPending: isWritingContract || isSendingCalls || isMining,
       reset: resetWrite,
       resetCalls,
     }),
     [
-      sapiensWriteContract,
-      sapiensSendCalls,
+      sapienceWriteContract,
+      sapienceSendCalls,
       isWritingContract,
       isSendingCalls,
       isMining,
