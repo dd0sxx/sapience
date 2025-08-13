@@ -23,7 +23,6 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { usePrivy } from '@privy-io/react-auth';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
-import { useRouter } from 'next/navigation';
 
 import { encodeFunctionData, parseUnits, erc20Abi, formatUnits } from 'viem';
 import erc20ABI from '@sapience/ui/abis/erc20abi.json';
@@ -73,7 +72,6 @@ const Betslip = () => {
       fallbackErrorMessage: 'Failed to submit prediction',
     });
   const queryClient = useQueryClient();
-  const router = useRouter();
   const { toast } = useToast();
   // Parlay config: read minCollateral and collateral token decimals
   const parlayChainId = betSlipPositions[0]?.chainId || 8453;
@@ -346,10 +344,9 @@ const Betslip = () => {
       !!collateralToken &&
       collateralDecimals != null,
     onSuccess: () => {
-      // Clear betslip and redirect to parlays page
+      // Clear betslip and close popover; hook handles redirect to profile
       clearBetSlip();
       setIsPopoverOpen(false);
-      router.push('/parlays');
     },
   });
 

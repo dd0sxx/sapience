@@ -8,7 +8,7 @@ import type { Address } from 'viem';
 
 import ErrorState from '../profile/ErrorState'; // Assuming similar loading/error components
 import LpPositionsTable from '../profile/LpPositionsTable';
-import PredictionPositionsTable from '../profile/PredictionPositionsTable';
+import ForecastsTable from '../profile/ForecastsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
@@ -165,7 +165,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
           <motion.div
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
-            <PredictionPositionsTable
+            <ForecastsTable
               attestations={safeAttestations}
               parentMarketAddress={marketAddress}
               parentChainId={chainId}

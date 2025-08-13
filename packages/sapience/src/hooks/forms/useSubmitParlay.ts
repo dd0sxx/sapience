@@ -11,6 +11,7 @@ import {
 import { useAccount } from 'wagmi';
 import ParlayPool from '@/protocol/deployments/ParlayPool.json';
 import type { Abi } from 'abitype';
+import { useRouter } from 'next/navigation';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 interface ParlayPosition {
@@ -49,6 +50,7 @@ export function useSubmitParlay({
 }: UseSubmitParlayProps) {
   const { address } = useAccount();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -65,6 +67,9 @@ export function useSubmitParlay({
         duration: 5000,
       });
       onSuccess?.();
+      if (address) {
+        router.push(`/profile/${address.toLowerCase()}#parlays`);
+      }
     },
     onError: (err) => {
       const message = err?.message || 'Transaction failed';

@@ -21,6 +21,7 @@ import { useParlays } from '~/hooks/useParlays';
 import { useFillParlayOrder } from '~/hooks/forms/useFillParlayOrder';
 import { getChainShortName } from '~/lib/utils/util';
 import { useMarkets } from '~/hooks/graphql/useMarkets';
+import UserParlaysTable from '~/components/parlays/UserParlaysTable';
 
 function formatTimeUntil(timestampSec: number): string {
   const now = Math.floor(Date.now() / 1000);
@@ -113,7 +114,6 @@ const ParlaysPage = () => {
     collateralToken,
     tokenDecimals,
     unfilledIds,
-    myIds,
   } = useParlays({ account: address, chainId });
 
   const defaultChainShortName = getChainShortName(chainId ?? 42161);
@@ -267,116 +267,7 @@ const ParlaysPage = () => {
 
         {address && (
           <div className="mt-10">
-            <h2 className="text-lg font-medium mb-2">Your Parlays</h2>
-            <div className="w-full overflow-x-auto rounded-md border border-border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="whitespace-nowrap">ID</TableHead>
-                    <TableHead className="whitespace-nowrap">Role</TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      Predicted Outcomes
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      Collateral
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      Total Payout
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-muted-foreground">
-                        Loading your parlays...
-                      </TableCell>
-                    </TableRow>
-                  ) : myIds.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-muted-foreground">
-                        You have no parlays yet
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    myIds.map((id) => {
-                      const p = byId.get(id.toString());
-                      return (
-                        <TableRow key={id.toString()}>
-                          <TableCell className="font-mono align-middle">
-                            {id.toString()}
-                          </TableCell>
-                          <TableCell className="align-middle">
-                            {p &&
-                            address &&
-                            p.maker?.toLowerCase() === address.toLowerCase()
-                              ? 'Maker'
-                              : p && address
-                                ? 'Taker'
-                                : '—'}
-                          </TableCell>
-                          <TableCell className="align-middle">
-                            {p ? (
-                              <OutcomesCell
-                                outcomes={p.predictedOutcomes}
-                                chainShortName={defaultChainShortName}
-                                questionsMap={questionsMap}
-                                chainId={effectiveChainId}
-                              />
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="align-middle">
-                            {p ? (
-                              <span className="text-muted-foreground">
-                                {p.collateralFormatted}{' '}
-                                {collateralSymbol || 'TOKEN'}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="align-middle">
-                            {p ? (
-                              <span className="text-muted-foreground">
-                                {p.payoutFormatted}{' '}
-                                {collateralSymbol || 'TOKEN'}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="align-middle">
-                            {p ? (
-                              p.settled ? (
-                                <Badge
-                                  variant={p.makerWon ? 'default' : 'secondary'}
-                                  className="px-2 py-0.5 text-xs"
-                                >
-                                  {p.makerWon ? 'Maker Won' : 'Taker Won'}
-                                </Badge>
-                              ) : p.filled ? (
-                                <span className="text-muted-foreground">
-                                  Active
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  Open
-                                </span>
-                              )
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            <UserParlaysTable account={address} />
           </div>
         )}
       </div>
