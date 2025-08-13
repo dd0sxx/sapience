@@ -9,7 +9,7 @@ import prisma from '../db';
 export const getAttestationsByMarket = {
   name: 'get_attestations_by_market',
   description:
-    'Get all attestations for a specific market ID. Returns attestation details including attester, prediction, comment, and timestamp.',
+    'Get all attestations for a specific market ID.',
   parameters: {
     properties: {
       marketId: z
@@ -32,34 +32,11 @@ export const getAttestationsByMarket = {
         },
       });
 
-      const formatted = attestations.map((a) => ({
-        uid: a.uid,
-        attester: a.attester,
-        recipient: a.recipient,
-        marketId: a.marketId,
-        marketAddress: a.marketAddress,
-        questionId: a.questionId,
-        prediction: a.prediction,
-        comment: a.comment,
-        time: a.time,
-        blockNumber: a.blockNumber,
-        transactionHash: a.transactionHash,
-        decodedData: a.decodedDataJson ? JSON.parse(a.decodedDataJson) : null,
-      }));
-
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(
-              {
-                marketId,
-                totalAttestations: formatted.length,
-                attestations: formatted,
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify(attestations, null, 2),
           },
         ],
       };
@@ -127,50 +104,11 @@ export const getAttestationsByAddress = {
         },
       });
 
-      // Group attestations by market for better organization
-      const attestationsByMarket = attestations.reduce((acc, a) => {
-        if (!acc[a.marketId]) {
-          acc[a.marketId] = [];
-        }
-        acc[a.marketId].push({
-          uid: a.uid,
-          marketAddress: a.marketAddress,
-          questionId: a.questionId,
-          prediction: a.prediction,
-          comment: a.comment,
-          time: a.time,
-          blockNumber: a.blockNumber,
-          transactionHash: a.transactionHash,
-          decodedData: a.decodedDataJson ? JSON.parse(a.decodedDataJson) : null,
-        });
-        return acc;
-      }, {} as Record<string, Array<{
-        uid: string;
-        marketAddress: string;
-        questionId: string;
-        prediction: string;
-        comment: string | null;
-        time: number;
-        blockNumber: number;
-        transactionHash: string;
-        decodedData: unknown;
-      }>>);
-
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(
-              {
-                attesterAddress: normalizedAddress,
-                marketIdFilter: marketId || 'none',
-                totalAttestations: attestations.length,
-                uniqueMarkets: Object.keys(attestationsByMarket).length,
-                attestationsByMarket,
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify(attestations, null, 2),
           },
         ],
       };
@@ -192,7 +130,7 @@ export const getAttestationsByAddress = {
 
 /**
  * Tool: get_recent_attestations
- * Returns the most recent attestations across all markets or for a specific market.
+ * Returns the most recent attestations.
  */
 export const getRecentAttestations = {
   name: 'get_recent_attestations',
@@ -236,62 +174,11 @@ export const getRecentAttestations = {
         take: limit,
       });
 
-      // Also fetch market details for context
-      const marketIds = [...new Set(attestations.map((a) => parseInt(a.marketId)))].filter(id => !isNaN(id));
-      const markets = await prisma.market.findMany({
-        where: {
-          marketId: {
-            in: marketIds,
-          },
-        },
-        select: {
-          marketId: true,
-          question: true,
-          optionName: true,
-          endTimestamp: true,
-        },
-      });
-
-      const marketMap = markets.reduce((acc, m) => {
-        acc[m.marketId.toString()] = {
-          question: m.question,
-          optionName: m.optionName,
-          endTimestamp: m.endTimestamp,
-        };
-        return acc;
-      }, {} as Record<string, {
-        question: string | null;
-        optionName: string | null;
-        endTimestamp: number | null;
-      }>);
-
-      const formatted = attestations.map((a) => ({
-        uid: a.uid,
-        attester: a.attester,
-        marketId: a.marketId,
-        marketDetails: marketMap[a.marketId] || null,
-        prediction: a.prediction,
-        comment: a.comment,
-        time: a.time,
-        timestamp: new Date(a.time * 1000).toISOString(),
-        blockNumber: a.blockNumber,
-        transactionHash: a.transactionHash,
-      }));
-
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(
-              {
-                filter: marketId ? `marketId: ${marketId}` : 'all markets',
-                limit,
-                count: formatted.length,
-                attestations: formatted,
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify(attestations, null, 2),
           },
         ],
       };
@@ -302,101 +189,6 @@ export const getRecentAttestations = {
           {
             type: 'text',
             text: `Failed to get recent attestations: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`,
-          },
-        ],
-      };
-    }
-  },
-};
-
-/**
- * Tool: check_attestation_exists
- * Check if an address has already submitted an attestation for a specific market.
- */
-export const checkAttestationExists = {
-  name: 'check_attestation_exists',
-  description:
-    'Check if a specific address has already submitted an attestation for a given market. Useful for preventing duplicate submissions.',
-  parameters: {
-    properties: {
-      attesterAddress: z
-        .string()
-        .describe('The address to check'),
-      marketId: z
-        .string()
-        .describe('The market ID to check'),
-    },
-  },
-  function: async ({
-    attesterAddress,
-    marketId,
-  }: {
-    attesterAddress: string;
-    marketId: string;
-  }): Promise<CallToolResult> => {
-    try {
-      const normalizedAddress = attesterAddress.toLowerCase();
-
-      const existingAttestation = await prisma.attestation.findFirst({
-        where: {
-          attester: normalizedAddress,
-          marketId: marketId,
-        },
-        orderBy: {
-          time: 'desc',
-        },
-      });
-
-      if (existingAttestation) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  hasAttestation: true,
-                  message: `Address ${normalizedAddress} has already submitted an attestation for market ${marketId}`,
-                  attestation: {
-                    uid: existingAttestation.uid,
-                    prediction: existingAttestation.prediction,
-                    comment: existingAttestation.comment,
-                    time: existingAttestation.time,
-                    timestamp: new Date(existingAttestation.time * 1000).toISOString(),
-                    transactionHash: existingAttestation.transactionHash,
-                  },
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      } else {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(
-                {
-                  hasAttestation: false,
-                  message: `Address ${normalizedAddress} has not submitted an attestation for market ${marketId}`,
-                },
-                null,
-                2
-              ),
-            },
-          ],
-        };
-      }
-    } catch (error) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text: `Failed to check attestation: ${
               error instanceof Error ? error.message : 'Unknown error'
             }`,
           },
