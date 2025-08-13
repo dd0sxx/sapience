@@ -79,6 +79,7 @@ interface BondInfoSectionProps {
   handleApprove: () => void;
   bondCurrency: `0x${string}` | undefined;
   bondAmount: bigint | undefined;
+  isBridged: boolean;
 }
 
 const BondInfoSection = ({
@@ -93,61 +94,68 @@ const BondInfoSection = ({
   handleApprove,
   bondCurrency,
   bondAmount,
+  isBridged,
 }: BondInfoSectionProps) => (
   <div>
     <h4 className="text-sm font-medium mb-2">Bond Details</h4>
     <div className="text-xs text-muted-foreground space-y-1">
-      {isLoading && <p>Loading bond info...</p>}
-      {/* Explicitly check if error exists before rendering */}
-      {!!error && (
-        <p className="text-red-500">
-          Error loading bond info: {/* Safely access message property */}
-          {error instanceof Error
-            ? error.message
-            : String(error) || 'Unknown error'}
-        </p>
-      )}
+      {isBridged ? (
+        <p>UMA Bond handled by bridge.</p>
+      ) : (
+        <>
+          {isLoading && <p>Loading bond info...</p>}
+          {/* Explicitly check if error exists before rendering */}
+          {!!error && (
+            <p className="text-red-500">
+              Error loading bond info: {/* Safely access message property */}
+              {error instanceof Error
+                ? error.message
+                : String(error) || 'Unknown error'}
+            </p>
+          )}
 
-      {/* Only show content if NOT loading and NOT erroring */}
-      {!isLoading &&
-        !error &&
-        (marketParams ? (
-          <>
-            <p>Currency: {bondCurrency}</p>
-            <p>Required Amount: {bondAmount?.toString() ?? 'N/A'}</p>
-            {/* Only show allowance/approval if wallet is connected */}
-            {connectedAddress ? (
+          {/* Only show content if NOT loading and NOT erroring */}
+          {!isLoading &&
+            !error &&
+            (marketParams ? (
               <>
-                <p>
-                  Your Allowance:{' '}
-                  {isLoadingAllowance
-                    ? 'Loading...'
-                    : (allowance?.toString() ?? '0')}
-                </p>
-                {requiresApproval && (
-                  <div className="mt-4">
-                    <Button
-                      size="sm"
-                      onClick={handleApprove}
-                      disabled={isApproving}
-                    >
-                      {isApproving && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Approve Bond
-                    </Button>
-                  </div>
+                <p>Currency: {bondCurrency}</p>
+                <p>Required Amount: {bondAmount?.toString() ?? 'N/A'}</p>
+                {/* Only show allowance/approval if wallet is connected */}
+                {connectedAddress ? (
+                  <>
+                    <p>
+                      Your Allowance:{' '}
+                      {isLoadingAllowance
+                        ? 'Loading...'
+                        : (allowance?.toString() ?? '0')}
+                    </p>
+                    {requiresApproval && (
+                      <div className="mt-4">
+                        <Button
+                          size="sm"
+                          onClick={handleApprove}
+                          disabled={isApproving}
+                        >
+                          {isApproving && (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          )}
+                          Approve Bond
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-orange-500 mt-1">
+                    Connect wallet to check allowance and approve.
+                  </p>
                 )}
               </>
             ) : (
-              <p className="text-orange-500 mt-1">
-                Connect wallet to check allowance and approve.
-              </p>
-            )}
-          </>
-        ) : (
-          <p>Bond information not found for this market.</p>
-        ))}
+              <p>Bond information not found for this market.</p>
+            ))}
+        </>
+      )}
     </div>
   </div>
 );
@@ -160,6 +168,7 @@ interface SettleMarketDialogProps {
     owner?: string | null;
     baseTokenName?: string | null;
     quoteTokenName?: string | null;
+    isBridged?: boolean | null;
   };
 }
 
@@ -449,6 +458,7 @@ const SettleMarketDialog = ({
         handleApprove={handleApprove}
         bondCurrency={bondCurrency}
         bondAmount={bondAmount}
+        isBridged={!!marketGroup.isBridged}
       />
       <Separator />
       {/* Settlement Section - Now uses extracted components */}
@@ -593,7 +603,6 @@ interface SettlementParamsDisplayProps {
 }
 
 const SettlementParamsDisplay = ({
-  marketId,
   connectedAddress,
   isYesNoMarket,
   settlementValue,
@@ -620,7 +629,6 @@ const SettlementParamsDisplay = ({
 
   return (
     <div className="text-xs text-muted-foreground space-y-1">
-      <p>Market ID: {marketId.toString()}</p>
       <p>Connected Wallet: {connectedAddress || 'N/A'}</p>
       <p className="font-bold">
         {displayClaimStatement} {settlementDisplayValue}
