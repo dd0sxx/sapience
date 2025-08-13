@@ -125,19 +125,10 @@ export const BetslipContent = ({
                       {/* Show loading state */}
                       {positionData.isLoading && (
                         <>
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="mb-2">
                             <h3 className="font-medium text-foreground pr-2">
                               {positionData.position.question}
                             </h3>
-                            <button
-                              onClick={() =>
-                                removePosition(positionData.position.id)
-                              }
-                              className="text-base text-muted-foreground hover:text-foreground transition-colors"
-                              type="button"
-                            >
-                              &times;
-                            </button>
                           </div>
                         </>
                       )}
@@ -145,19 +136,10 @@ export const BetslipContent = ({
                       {/* Show error state */}
                       {positionData.error && (
                         <>
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="mb-2">
                             <h3 className="font-medium text-foreground pr-2">
                               {positionData.position.question}
                             </h3>
-                            <button
-                              onClick={() =>
-                                removePosition(positionData.position.id)
-                              }
-                              className="text-base text-muted-foreground hover:text-foreground transition-colors"
-                              type="button"
-                            >
-                              &times;
-                            </button>
                           </div>
                           <div className="text-xs text-destructive p-2 bg-destructive/10 rounded">
                             Error loading market data
@@ -196,19 +178,10 @@ export const BetslipContent = ({
                         (!positionData.marketGroupData ||
                           !positionData.marketClassification) && (
                           <>
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="mb-2">
                               <h3 className="font-medium text-foreground pr-2">
                                 {positionData.position.question}
                               </h3>
-                              <button
-                                onClick={() =>
-                                  removePosition(positionData.position.id)
-                                }
-                                className="text-base text-muted-foreground hover:text-foreground transition-colors"
-                                type="button"
-                              >
-                                &times;
-                              </button>
                             </div>
                             <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
                               Market data not available
@@ -245,21 +218,10 @@ export const BetslipContent = ({
                       key={positionData.position.id}
                       className="pb-4 mb-4 border-b border-border"
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1 pr-3">
-                          <p className="text-lg font-normal text-foreground">
-                            {positionData.position.question}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() =>
-                            removePosition(positionData.position.id)
-                          }
-                          className="text-base text-muted-foreground hover:text-foreground transition-colors"
-                          type="button"
-                        >
-                          &times;
-                        </button>
+                      <div className="mb-2">
+                        <h3 className="font-medium text-foreground pr-2">
+                          {positionData.position.question}
+                        </h3>
                       </div>
 
                       {positionData.marketGroupData && (
@@ -269,6 +231,18 @@ export const BetslipContent = ({
                           showWagerInput={false}
                         />
                       )}
+                      <div className="mt-0.5 flex justify-end">
+                        <button
+                          onClick={() =>
+                            removePosition(positionData.position.id)
+                          }
+                          className="text-[10px] leading-none text-muted-foreground hover:text-foreground flex items-center gap-1"
+                          type="button"
+                        >
+                          <span className="text-[12px] leading-none">×</span>
+                          <span>Remove</span>
+                        </button>
+                      </div>
                     </div>
                   ))}
 

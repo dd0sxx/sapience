@@ -16,6 +16,7 @@ import {
   TableRow,
 } from '@sapience/ui/components/ui/table';
 
+import { FrownIcon } from 'lucide-react';
 import { getChainShortName } from '~/lib/utils/util';
 import { useParlays } from '~/hooks/useParlays';
 import { useMarkets } from '~/hooks/graphql/useMarkets';
@@ -156,6 +157,34 @@ export default function UserParlaysTable({
     markets: marketsForQuery,
   });
 
+  // Apply optional market address filter in one place
+  const visibleIds = useMemo(() => {
+    if (!marketAddressFilter) return myIds;
+    const target = marketAddressFilter.toLowerCase();
+    return myIds.filter((id) => {
+      const p = byId.get(id.toString());
+      if (!p) return false;
+      return (p.predictedOutcomes || []).some(
+        (o) => String(o.market.marketGroup).toLowerCase() === target
+      );
+    });
+  }, [marketAddressFilter, myIds, byId]);
+
+  // Zero state (not in a table row to avoid collapsed height)
+  if (!loading && visibleIds.length === 0) {
+    return (
+      <div>
+        {showHeaderText && (
+          <h2 className="text-lg font-medium mb-2">Your Parlays</h2>
+        )}
+        <div className="text-center text-muted-foreground py-16">
+          <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+          No parlays found
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {showHeaderText && (
@@ -182,26 +211,8 @@ export default function UserParlaysTable({
                   Loading your parlays...
                 </TableCell>
               </TableRow>
-            ) : myIds.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-muted-foreground">
-                  You have no parlays yet
-                </TableCell>
-              </TableRow>
             ) : (
-              // Optionally filter by market group address if provided
-              (marketAddressFilter
-                ? myIds.filter((id) => {
-                    const p = byId.get(id.toString());
-                    if (!p) return false;
-                    const target = marketAddressFilter.toLowerCase();
-                    return (p.predictedOutcomes || []).some(
-                      (o) =>
-                        String(o.market.marketGroup).toLowerCase() === target
-                    );
-                  })
-                : myIds
-              ).map((id) => {
+              visibleIds.map((id) => {
                 const p = byId.get(id.toString());
                 return (
                   <TableRow key={id.toString()}>

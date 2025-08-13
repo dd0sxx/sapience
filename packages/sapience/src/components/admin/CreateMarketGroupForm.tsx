@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Input, Label } from '@sapience/ui';
+// Removed Dialog imports; copy dialog is now a separate component
 import {
   Accordion,
   AccordionContent,
@@ -35,6 +36,7 @@ import {
   FOCUS_AREAS,
 } from '../../lib/constants/focusAreas';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
+import CopyMarketParametersDialog from './CopyMarketParametersDialog';
 import { useResources } from '~/hooks/useResources';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
@@ -718,7 +720,7 @@ const CreateMarketGroupForm = () => {
 
             {/* Markets Section - Refactored to use MarketFormFields */}
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
                 {markets.map((market, index) => (
                   <button
                     key={market.id} // Use market.id for key
@@ -749,6 +751,16 @@ const CreateMarketGroupForm = () => {
                 >
                   <Plus className="h-3.5 w-3.5 mr-2" /> Add Market
                 </button>
+                <div className="ml-auto">
+                  <CopyMarketParametersDialog
+                    market={markets[activeMarketIndex]}
+                    onMarketChange={(field, value) =>
+                      handleMarketChange(activeMarketIndex, field, value)
+                    }
+                    onMarketGroupChange={handleMarketGroupChange}
+                    onAdvancedConfigChange={handleAdvancedConfigChange}
+                  />
+                </div>
               </div>
 
               {markets.map((market, index) => (
@@ -763,9 +775,7 @@ const CreateMarketGroupForm = () => {
                         onMarketChange={(field, value) =>
                           handleMarketChange(index, field, value)
                         }
-                        marketIndex={index} // Pass index for unique field IDs
-                        onMarketGroupChange={handleMarketGroupChange}
-                        onAdvancedConfigChange={handleAdvancedConfigChange}
+                        marketIndex={index}
                       />
                     </CardContent>
                   </Card>
