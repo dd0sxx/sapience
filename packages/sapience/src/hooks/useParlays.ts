@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits } from 'viem';
 import type { Abi } from 'abitype';
 import ParlayPool from '@/protocol/deployments/ParlayPool.json';
 import { usePublicClient, useReadContracts } from 'wagmi';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 
 // TODO: centralize these in a shared constants module if needed
 export const PARLAY_CONTRACT_ADDRESS =
@@ -88,12 +89,38 @@ export function useParlays(options: UseParlaysOptions = {}) {
   // Always default to Arbitrum (42161) for reads unless explicitly overridden
   const activeChainId = options.chainId ?? 42161;
   const publicClient = usePublicClient({ chainId: activeChainId });
+  const { toast } = useToast();
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [probedIds, setProbedIds] = useState<bigint[]>([]);
   const [probeCursor, setProbeCursor] = useState<bigint>(1n);
   const [doneProbing, setDoneProbing] = useState<boolean>(false);
+  const [rateLimitNotified, setRateLimitNotified] = useState<boolean>(false);
+
+  const maybeToast429 = useCallback(
+    (err: unknown) => {
+      if (rateLimitNotified) return;
+      const message =
+        (err instanceof Error ? err.message : String(err ?? '')) || '';
+      const lower = message.toLowerCase();
+      if (
+        lower.includes('429') ||
+        lower.includes('too many requests') ||
+        lower.includes('rate limit')
+      ) {
+        toast({
+          title: 'Rate limited',
+          description:
+            'We are being rate limited by the RPC provider. Please try again in a few seconds.',
+          variant: 'destructive',
+          duration: 5000,
+        });
+        setRateLimitNotified(true);
+      }
+    },
+    [toast, rateLimitNotified]
+  );
 
   // Probe for existing request IDs using read-only calls in ascending chunks
   useEffect(() => {
@@ -163,6 +190,7 @@ export function useParlays(options: UseParlaysOptions = {}) {
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Failed to read parlays');
+          maybeToast429(e);
           setDoneProbing(true);
         }
       } finally {
@@ -299,6 +327,24 @@ export function useParlays(options: UseParlaysOptions = {}) {
     })),
     query: { enabled: ids.length > 0 && !!publicClient },
   });
+
+  // Surface 429/rate-limit errors via toast (once)
+  useEffect(() => {
+    if (unfilledRead.error) maybeToast429(unfilledRead.error);
+    if (myIdsRead.error) maybeToast429(myIdsRead.error);
+    if (configRead.error) maybeToast429(configRead.error);
+    if (decimalsRead.error) maybeToast429(decimalsRead.error);
+    if (ordersRead.error) maybeToast429(ordersRead.error);
+    if (ordersReadAlt.error) maybeToast429(ordersReadAlt.error);
+  }, [
+    unfilledRead.error,
+    myIdsRead.error,
+    configRead.error,
+    decimalsRead.error,
+    ordersRead.error,
+    ordersReadAlt.error,
+    maybeToast429,
+  ]);
 
   const parlays: ParlayData[] = useMemo(() => {
     const original = ordersRead.data ?? [];

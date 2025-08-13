@@ -6,6 +6,7 @@ import type { Address } from 'viem';
 import { erc20Abi } from 'viem';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 import {
   Table,
   TableBody,
@@ -18,6 +19,8 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import { useParlays } from '~/hooks/useParlays';
 import { useFillParlayOrder } from '~/hooks/forms/useFillParlayOrder';
+import { getChainShortName } from '~/lib/utils/util';
+import { useMarkets } from '~/hooks/graphql/useMarkets';
 
 function formatTimeUntil(timestampSec: number): string {
   const now = Math.floor(Date.now() / 1000);
@@ -31,27 +34,72 @@ function formatTimeUntil(timestampSec: number): string {
   return `in ${minutes} min`;
 }
 
+type PredictedOutcome = {
+  prediction: boolean;
+  market: { marketGroup: Address; marketId: bigint };
+};
+
+function PredictedOutcomeBadge({
+  outcome,
+  href,
+  question,
+}: {
+  outcome: PredictedOutcome;
+  href: string;
+  question?: string;
+}) {
+  const yesNo = outcome.prediction ? 'Yes' : 'No';
+  const fallbackText = `${yesNo} #${outcome.market.marketId.toString()}`;
+  const colorClasses = outcome.prediction
+    ? 'border-green-500/30 bg-green-500/10 text-green-600'
+    : 'border-red-500/30 bg-red-500/10 text-red-600';
+  return (
+    <Link href={href} className="inline-flex">
+      <Badge
+        variant="outline"
+        className={`px-2 py-0.5 text-xs hover:opacity-90 cursor-pointer ${colorClasses}`}
+      >
+        {question ? (
+          <>
+            <span className="font-light">{question}&nbsp;</span>
+            <span className="font-medium">{yesNo}</span>
+          </>
+        ) : (
+          fallbackText
+        )}
+      </Badge>
+    </Link>
+  );
+}
+
 function OutcomesCell({
   outcomes,
+  chainShortName = 'arb1',
+  questionsMap,
+  chainId,
 }: {
-  outcomes: {
-    prediction: boolean;
-    market: { marketGroup: Address; marketId: bigint };
-  }[];
+  outcomes: PredictedOutcome[];
+  chainShortName?: string;
+  questionsMap: Map<string, string>;
+  chainId: number;
 }) {
   if (!outcomes?.length)
     return <span className="text-muted-foreground">—</span>;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {outcomes.map((o, idx) => (
-        <Badge
-          key={`${o.market.marketGroup}-${o.market.marketId.toString()}-${idx}`}
-          variant={o.prediction ? 'default' : 'secondary'}
-          className="px-2 py-0.5 text-xs"
-        >
-          {o.prediction ? 'Yes' : 'No'} #{o.market.marketId.toString()}
-        </Badge>
-      ))}
+      {outcomes.map((outcome, idx) => {
+        const href = `/markets/${chainShortName}:${outcome.market.marketGroup.toLowerCase()}/${outcome.market.marketId.toString()}`;
+        const qKey = `${chainId}:${outcome.market.marketGroup.toLowerCase()}:${Number(outcome.market.marketId)}`;
+        const question = questionsMap.get(qKey);
+        return (
+          <PredictedOutcomeBadge
+            key={`${outcome.market.marketGroup}-${outcome.market.marketId.toString()}-${idx}`}
+            outcome={outcome}
+            href={href}
+            question={question}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -67,6 +115,8 @@ const ParlaysPage = () => {
     unfilledIds,
     myIds,
   } = useParlays({ account: address, chainId });
+
+  const defaultChainShortName = getChainShortName(chainId ?? 42161);
 
   // ERC20 symbol (optional polish)
   const symbolRead = useReadContracts({
@@ -94,6 +144,30 @@ const ParlaysPage = () => {
     [parlays]
   );
 
+  // Collect all unique markets to query questions in one batch
+  const marketsForQuery = useMemo(() => {
+    const set = new Set<string>();
+    const out: { address: string; marketId: number }[] = [];
+    for (const p of parlays || []) {
+      for (const o of p.predictedOutcomes || []) {
+        const address = String(o.market.marketGroup).toLowerCase();
+        const mid = Number(o.market.marketId);
+        const key = `${address}:${mid}`;
+        if (!set.has(key)) {
+          set.add(key);
+          out.push({ address, marketId: mid });
+        }
+      }
+    }
+    return out;
+  }, [parlays]);
+
+  const effectiveChainId = chainId ?? 42161;
+  const { questionsMap } = useMarkets({
+    chainId: effectiveChainId,
+    markets: marketsForQuery,
+  });
+
   // myIds now provided by useParlays multicall
 
   return (
@@ -114,12 +188,16 @@ const ParlaysPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Maker</TableHead>
-                <TableHead>Predicted Outcomes</TableHead>
-                <TableHead>Fill Amount</TableHead>
-                <TableHead>Total Payout</TableHead>
-                <TableHead>Expires</TableHead>
+                <TableHead className="whitespace-nowrap">ID</TableHead>
+                <TableHead className="whitespace-nowrap">Maker</TableHead>
+                <TableHead className="whitespace-nowrap">
+                  Predicted Outcomes
+                </TableHead>
+                <TableHead className="whitespace-nowrap">Fill Amount</TableHead>
+                <TableHead className="whitespace-nowrap">
+                  Total Payout
+                </TableHead>
+                <TableHead className="whitespace-nowrap">Expires</TableHead>
                 <TableHead className="text-right"></TableHead>
               </TableRow>
             </TableHeader>
@@ -148,6 +226,9 @@ const ParlaysPage = () => {
                       chainId={chainId}
                       collateralSymbol={collateralSymbol}
                       tokenDecimals={tokenDecimals}
+                      defaultChainShortName={defaultChainShortName}
+                      questionsMap={questionsMap}
+                      effectiveChainId={effectiveChainId}
                     />
                   ) : (
                     <TableRow key={id.toString()}>
@@ -174,6 +255,9 @@ const ParlaysPage = () => {
                     chainId={chainId}
                     collateralSymbol={collateralSymbol}
                     tokenDecimals={tokenDecimals}
+                    defaultChainShortName={defaultChainShortName}
+                    questionsMap={questionsMap}
+                    effectiveChainId={effectiveChainId}
                   />
                 ))
               )}
@@ -188,12 +272,18 @@ const ParlaysPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Predicted Outcomes</TableHead>
-                    <TableHead>Collateral</TableHead>
-                    <TableHead>Total Payout</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="whitespace-nowrap">ID</TableHead>
+                    <TableHead className="whitespace-nowrap">Role</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Predicted Outcomes
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Collateral
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Total Payout
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -228,7 +318,12 @@ const ParlaysPage = () => {
                           </TableCell>
                           <TableCell className="align-middle">
                             {p ? (
-                              <OutcomesCell outcomes={p.predictedOutcomes} />
+                              <OutcomesCell
+                                outcomes={p.predictedOutcomes}
+                                chainShortName={defaultChainShortName}
+                                questionsMap={questionsMap}
+                                chainId={effectiveChainId}
+                              />
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
@@ -295,12 +390,18 @@ function OpenOrderRow({
   chainId,
   collateralSymbol,
   tokenDecimals,
+  defaultChainShortName,
+  questionsMap,
+  effectiveChainId,
 }: {
   order: any;
   address?: Address;
   chainId?: number;
   collateralSymbol?: string;
   tokenDecimals?: number;
+  defaultChainShortName: string;
+  questionsMap: Map<string, string>;
+  effectiveChainId: number;
 }) {
   const isMaker =
     !!address &&
@@ -359,7 +460,12 @@ function OpenOrderRow({
         <AddressDisplay address={order.maker as Address} />
       </TableCell>
       <TableCell className="align-middle">
-        <OutcomesCell outcomes={order.predictedOutcomes} />
+        <OutcomesCell
+          outcomes={order.predictedOutcomes}
+          chainShortName={defaultChainShortName}
+          questionsMap={questionsMap}
+          chainId={effectiveChainId}
+        />
       </TableCell>
       <TableCell className="align-middle">
         <span className="text-muted-foreground">
