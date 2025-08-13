@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Input, Label, useResources } from '@sapience/ui';
+import { Button, Input, Label } from '@sapience/ui';
 import {
   Accordion,
   AccordionContent,
@@ -36,6 +36,7 @@ import {
   FOCUS_AREAS,
 } from '../../lib/constants/focusAreas';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
+import { useResources } from '~/hooks/useResources';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
 // Use environment variable for API base URL, fallback to /api
@@ -300,7 +301,7 @@ const CombinedMarketDialog = () => {
   );
   const [isBridged, setIsBridged] = useState<boolean>(true);
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
-  const [quoteTokenName, setQuoteTokenName] = useState<string>('sUSDS');
+  const [quoteTokenName, setQuoteTokenName] = useState<string>('sapUSD');
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
     null
   );
