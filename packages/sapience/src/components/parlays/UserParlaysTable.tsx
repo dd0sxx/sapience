@@ -94,10 +94,12 @@ export default function UserParlaysTable({
   account,
   chainId,
   showHeaderText = true,
+  marketAddressFilter,
 }: {
   account: Address;
   chainId?: number;
   showHeaderText?: boolean;
+  marketAddressFilter?: string;
 }) {
   const { chainId: connectedChainId } = useAccount();
   const resolvedChainId = chainId ?? connectedChainId;
@@ -187,7 +189,19 @@ export default function UserParlaysTable({
                 </TableCell>
               </TableRow>
             ) : (
-              myIds.map((id) => {
+              // Optionally filter by market group address if provided
+              (marketAddressFilter
+                ? myIds.filter((id) => {
+                    const p = byId.get(id.toString());
+                    if (!p) return false;
+                    const target = marketAddressFilter.toLowerCase();
+                    return (p.predictedOutcomes || []).some(
+                      (o) =>
+                        String(o.market.marketGroup).toLowerCase() === target
+                    );
+                  })
+                : myIds
+              ).map((id) => {
                 const p = byId.get(id.toString());
                 return (
                   <TableRow key={id.toString()}>

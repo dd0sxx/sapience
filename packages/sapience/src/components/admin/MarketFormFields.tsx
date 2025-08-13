@@ -663,23 +663,8 @@ const MarketFormFields = ({
     if (!onAdvancedConfigChange) return;
 
     // Copy basic config
-    if (selectedMarketGroup.chainId) {
-      onAdvancedConfigChange('chainId', selectedMarketGroup.chainId.toString());
-    }
-    if (selectedMarketGroup.factoryAddress) {
-      onAdvancedConfigChange(
-        'factoryAddress',
-        selectedMarketGroup.factoryAddress
-      );
-    }
     if (selectedMarketGroup.owner) {
       onAdvancedConfigChange('owner', selectedMarketGroup.owner);
-    }
-    if (selectedMarketGroup.collateralAsset) {
-      onAdvancedConfigChange(
-        'collateralAsset',
-        selectedMarketGroup.collateralAsset
-      );
     }
     if (selectedMarketGroup.minTradeSize) {
       onAdvancedConfigChange('minTradeSize', selectedMarketGroup.minTradeSize);
@@ -1082,7 +1067,8 @@ const MarketFormFields = ({
                   <div className="text-xs text-muted-foreground">
                     <span className="font-medium">Also:</span> Market group
                     question, category, index, base/quote token names, and
-                    advanced configuration
+                    advanced configuration (excluding Chain ID, Factory Address,
+                    and Collateral Asset)
                   </div>
                 )}
               </div>
