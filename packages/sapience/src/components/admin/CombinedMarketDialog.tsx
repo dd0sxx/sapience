@@ -24,7 +24,6 @@ import { Switch } from '@sapience/ui/components/ui/switch';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
 import { AlertCircle, ArrowLeft, Loader2, Plus, Trash } from 'lucide-react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { isAddress } from 'viem';
@@ -44,7 +43,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 
 // Default values for form fields
 
-const CAT_MEOW_FILE = '/cat-meow.mp3';
 const DEFAULT_CHAIN_ID = 42161;
 const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
 const DEFAULT_BOND_CURRENCY = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -317,8 +315,6 @@ const CombinedMarketDialog = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [activeMarketIndex, setActiveMarketIndex] = useState<number>(0);
   const [isMounted, setIsMounted] = useState(false);
-
-  const [showCat, setShowCat] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
@@ -608,36 +604,6 @@ const CombinedMarketDialog = () => {
 
       // Create the market group
       await createMarketGroup(payload); // eslint-disable-line @typescript-eslint/await-thenable
-
-      // Play success sound
-      const audio = new Audio(CAT_MEOW_FILE);
-      audio.play().catch((audioError) => {
-        console.log(
-          'Error playing audio, playing a beep sound instead',
-          audioError
-        );
-        // Fallback: create a simple success beep
-        const context = new (window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext)();
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-
-        oscillator.frequency.setValueAtTime(1000, context.currentTime);
-        oscillator.type = 'sine';
-
-        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(
-          0.01,
-          context.currentTime + 0.5
-        );
-
-        oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.5);
-      });
 
       // Navigate back to admin page
       router.push('/admin');
@@ -1020,117 +986,6 @@ const CombinedMarketDialog = () => {
               </Alert>
             )}
           </form>
-
-          {/* Cat Picture - absolutely positioned in the whitespace on the right, with toggle always visible below */}
-          <div className="hidden md:block">
-            <div className="fixed right-12 top-32 z-20 w-80 flex flex-col justify-center items-center">
-              {showCat && (
-                <div>
-                  <Image
-                    src="/cat.png"
-                    width={320}
-                    height={320}
-                    alt="A cute cat"
-                    className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform"
-                    onClick={() => {
-                      // Using local cat meow sound file
-                      const audio = new Audio(CAT_MEOW_FILE);
-                      audio.play().catch((audioError) => {
-                        console.log('Error playing audio', audioError);
-                        // Fallback: create a simple beep sound
-                        const context = new (window.AudioContext ||
-                          (
-                            window as unknown as {
-                              webkitAudioContext: typeof AudioContext;
-                            }
-                          ).webkitAudioContext)();
-                        const oscillator = context.createOscillator();
-                        const gainNode = context.createGain();
-
-                        oscillator.connect(gainNode);
-                        gainNode.connect(context.destination);
-
-                        oscillator.frequency.setValueAtTime(
-                          800,
-                          context.currentTime
-                        );
-                        oscillator.type = 'sine';
-
-                        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(
-                          0.01,
-                          context.currentTime + 0.3
-                        );
-
-                        oscillator.start(context.currentTime);
-                        oscillator.stop(context.currentTime + 0.3);
-                      });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        // Trigger the same click handler
-                        const audio = new Audio(CAT_MEOW_FILE);
-                        audio.play().catch((audioError) => {
-                          console.log('Error playing audio', audioError);
-                          // Fallback: create a simple beep sound
-                          const context = new (window.AudioContext ||
-                            (
-                              window as unknown as {
-                                webkitAudioContext: typeof AudioContext;
-                              }
-                            ).webkitAudioContext)();
-                          const oscillator = context.createOscillator();
-                          const gainNode = context.createGain();
-
-                          oscillator.connect(gainNode);
-                          gainNode.connect(context.destination);
-
-                          oscillator.frequency.setValueAtTime(
-                            800,
-                            context.currentTime
-                          );
-                          oscillator.type = 'sine';
-
-                          gainNode.gain.setValueAtTime(
-                            0.3,
-                            context.currentTime
-                          );
-                          gainNode.gain.exponentialRampToValueAtTime(
-                            0.01,
-                            context.currentTime + 0.3
-                          );
-
-                          oscillator.start(context.currentTime);
-                          oscillator.stop(context.currentTime + 0.3);
-                        });
-                      }
-                    }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label="Click to hear cat meow sound"
-                  />
-                  <p className="text-sm text-muted-foreground mt-2 text-center">
-                    🐱 Your friendly companion (pet it!)
-                  </p>
-                </div>
-              )}
-              {/* Show Cat Toggle always visible under the image/caption */}
-              <div className="flex items-center gap-2 mt-4">
-                <Label
-                  htmlFor="show-cat"
-                  className="text-sm font-medium select-none cursor-pointer"
-                >
-                  Show Cat
-                </Label>
-                <Switch
-                  id="show-cat"
-                  checked={showCat}
-                  onCheckedChange={setShowCat}
-                />
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
