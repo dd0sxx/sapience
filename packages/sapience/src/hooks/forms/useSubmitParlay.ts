@@ -1,69 +1,18 @@
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useCallback, useState, useMemo, useEffect } from 'react';
-import { encodeFunctionData, erc20Abi } from 'viem';
+import { useCallback, useState, useMemo } from 'react';
 import {
-  useAccount,
-  useSwitchChain,
-  useSendCalls,
-  useCallsStatus,
-} from 'wagmi';
-
-// Contract addresses
-const PARLAY_CONTRACT_ADDRESS = '0x918e72DAB2aF7672AbF534F744770D7F8859C55e';
-const COLLATERAL_TOKEN_ADDRESS = '0x3138d1B6F726F54813c9Ed6E29A5e44C24Cb11f1';
-
-// Parlay contract ABI (only the functions we need)
-const PARLAY_ABI = [
-  {
-    type: 'function',
-    name: 'submitParlayOrder',
-    inputs: [
-      {
-        name: 'predictedOutcomes',
-        type: 'tuple[]',
-        components: [
-          {
-            name: 'market',
-            type: 'tuple',
-            components: [
-              {
-                name: 'marketGroup',
-                type: 'address',
-              },
-              {
-                name: 'marketId',
-                type: 'uint256',
-              },
-            ],
-          },
-          {
-            name: 'prediction',
-            type: 'bool',
-          },
-        ],
-      },
-      {
-        name: 'collateral',
-        type: 'uint256',
-      },
-      {
-        name: 'payout',
-        type: 'uint256',
-      },
-      {
-        name: 'orderExpirationTime',
-        type: 'uint256',
-      },
-    ],
-    outputs: [
-      {
-        name: 'requestId',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'nonpayable',
-  },
-] as const;
+  encodeFunctionData,
+  erc20Abi,
+  isHex,
+  padHex,
+  stringToHex,
+  parseUnits,
+} from 'viem';
+import { useAccount } from 'wagmi';
+import ParlayPool from '@/protocol/deployments/ParlayPool.json';
+import type { Abi } from 'abitype';
+import { useRouter } from 'next/navigation';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 interface ParlayPosition {
   marketAddress: string;
@@ -74,47 +23,78 @@ interface ParlayPosition {
 
 interface UseSubmitParlayProps {
   chainId: number;
+  parlayContractAddress: `0x${string}`;
+  collateralTokenAddress: `0x${string}`;
+  collateralTokenDecimals: number;
   positions: ParlayPosition[];
   wagerAmount: string; // Total wager amount for the parlay (collateral)
   payoutAmount: string; // Expected payout amount
   orderExpirationHours?: number; // Hours from now when order expires (default: 24)
   onSuccess?: () => void;
   enabled?: boolean;
+  refCode?: string; // Optional referral code; empty/undefined allowed
 }
 
 export function useSubmitParlay({
   chainId,
+  parlayContractAddress,
+  collateralTokenAddress,
+  collateralTokenDecimals,
   positions,
   wagerAmount,
   payoutAmount,
   orderExpirationHours = 24,
   onSuccess,
   enabled = true,
+  refCode,
 }: UseSubmitParlayProps) {
-  const { address, chainId: currentChainId } = useAccount();
+  const { address } = useAccount();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const { switchChainAsync } = useSwitchChain();
+  // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
+  const { sendCalls, isPending: isSubmitting } = useSapienceWriteContract({
+    onSuccess: () => {
+      setSuccess('Parlay order submitted successfully');
+      setError(null);
+      toast({
+        title: 'Parlay Order Confirmed',
+        description:
+          'Your parlay order has been submitted and is available for other users to fill',
+        duration: 5000,
+      });
+      onSuccess?.();
+      if (address) {
+        router.push(`/profile/${address.toLowerCase()}#parlays`);
+      }
+    },
+    onError: (err) => {
+      const message = err?.message || 'Transaction failed';
+      setError(message);
+    },
+    successMessage: 'Parlay submitted',
+    fallbackErrorMessage: 'Failed to submit parlay',
+  });
 
-  // Parse amounts to bigint
+  // Parse human-readable amounts to base units using token decimals
   const parsedWagerAmount = useMemo(() => {
     try {
-      return BigInt(wagerAmount || '0');
+      return parseUnits(wagerAmount || '0', collateralTokenDecimals);
     } catch {
       return BigInt(0);
     }
-  }, [wagerAmount]);
+  }, [wagerAmount, collateralTokenDecimals]);
 
   const parsedPayoutAmount = useMemo(() => {
     try {
-      return BigInt(payoutAmount || '0');
+      return parseUnits(payoutAmount || '0', collateralTokenDecimals);
     } catch {
       return BigInt(0);
     }
-  }, [payoutAmount]);
+  }, [payoutAmount, collateralTokenDecimals]);
 
   // Calculate order expiration time (current time + hours in seconds)
   const orderExpirationTime = useMemo(() => {
@@ -122,6 +102,33 @@ export function useSubmitParlay({
       Math.floor(Date.now() / 1000) + orderExpirationHours * 60 * 60
     );
   }, [orderExpirationHours]);
+
+  // Encode optional refCode to bytes32 (empty -> 0x00..00)
+  const encodedRefCode = useMemo(() => {
+    const zero = '0x' + '0'.repeat(64);
+    if (!refCode || refCode.trim().length === 0) return zero as `0x${string}`;
+
+    // If already hex, pad/truncate to 32 bytes
+    if (isHex(refCode)) {
+      try {
+        return padHex(refCode, { size: 32 });
+      } catch {
+        // Fallback to zero on invalid input
+        return zero as `0x${string}`;
+      }
+    }
+
+    // Convert plain string to hex and pad/truncate to 32 bytes
+    try {
+      let hex = stringToHex(refCode);
+      if (hex.length > 66) {
+        hex = `0x${(hex as string).slice(2, 66)}`; // keep first 32 bytes
+      }
+      return padHex(hex, { size: 32 });
+    } catch {
+      return zero as `0x${string}`;
+    }
+  }, [refCode]);
 
   // Prepare calls for sendCalls
   const calls = useMemo(() => {
@@ -140,11 +147,11 @@ export function useSubmitParlay({
     const approveCalldata = encodeFunctionData({
       abi: erc20Abi,
       functionName: 'approve',
-      args: [PARLAY_CONTRACT_ADDRESS, parsedWagerAmount],
+      args: [parlayContractAddress, parsedWagerAmount],
     });
 
     callsArray.push({
-      to: COLLATERAL_TOKEN_ADDRESS,
+      to: collateralTokenAddress,
       data: approveCalldata,
     });
 
@@ -159,44 +166,32 @@ export function useSubmitParlay({
 
     // Add submitParlayOrder call
     const submitParlayCalldata = encodeFunctionData({
-      abi: PARLAY_ABI,
+      abi: ParlayPool.abi as Abi,
       functionName: 'submitParlayOrder',
       args: [
         predictedOutcomes,
         parsedWagerAmount,
         parsedPayoutAmount,
         orderExpirationTime,
+        encodedRefCode,
       ],
     });
 
     callsArray.push({
-      to: PARLAY_CONTRACT_ADDRESS,
+      to: parlayContractAddress,
       data: submitParlayCalldata,
     });
 
     return callsArray;
-  }, [positions, parsedWagerAmount, parsedPayoutAmount, orderExpirationTime]);
-
-  // Use the useSendCalls hook
-  const {
-    sendCalls,
-    data: sendCallsId,
-    isPending: isSendCallsPending,
-    error: sendCallsError,
-    reset: resetSendCalls,
-  } = useSendCalls();
-
-  // Monitor the calls status
-  const {
-    data: callsStatus,
-    isSuccess: isCallsSuccess,
-    error: callsStatusError,
-  } = useCallsStatus({
-    id: sendCallsId?.id || '',
-    query: {
-      enabled: !!sendCallsId?.id,
-    },
-  });
+  }, [
+    positions,
+    parsedWagerAmount,
+    parsedPayoutAmount,
+    orderExpirationTime,
+    encodedRefCode,
+    parlayContractAddress,
+    collateralTokenAddress,
+  ]);
 
   const submitParlay = useCallback(async () => {
     if (!enabled || !address || positions.length === 0) {
@@ -205,28 +200,8 @@ export function useSubmitParlay({
 
     setError(null);
     setSuccess(null);
-    resetSendCalls();
 
     try {
-      // Check if we need to switch chains
-      if (currentChainId !== chainId) {
-        if (!switchChainAsync) {
-          throw new Error('Chain switching not available');
-        }
-
-        try {
-          await switchChainAsync({ chainId });
-        } catch (switchError) {
-          const message =
-            switchError instanceof Error &&
-            switchError.message.includes('User rejected')
-              ? 'Network switch rejected by user'
-              : 'Failed to switch network';
-
-          throw new Error(message);
-        }
-      }
-
       // Validate calls
       if (calls.length === 0) {
         throw new Error('No valid calls to execute');
@@ -238,8 +213,8 @@ export function useSubmitParlay({
           'Please confirm the transaction batch in your wallet. This will approve collateral and submit your parlay order.',
       });
 
-      // Submit the batch of calls using the useSendCalls hook
-      sendCalls({
+      // Submit the batch of calls using the unified wrapper
+      await sendCalls({
         calls,
         chainId,
       });
@@ -254,79 +229,18 @@ export function useSubmitParlay({
         variant: 'destructive',
       });
     }
-  }, [
-    enabled,
-    address,
-    positions.length,
-    currentChainId,
-    chainId,
-    switchChainAsync,
-    calls,
-    resetSendCalls,
-    sendCalls,
-    toast,
-  ]);
-
-  // Handle sendCalls error
-  useEffect(() => {
-    if (sendCallsError) {
-      const message = sendCallsError.message.includes('User rejected')
-        ? 'Transaction rejected by user'
-        : sendCallsError.message || 'Transaction failed';
-      setError(message);
-
-      toast({
-        title: 'Transaction Failed',
-        description: message,
-        variant: 'destructive',
-      });
-    }
-  }, [sendCallsError, toast]);
-
-  // Handle successful calls submission and completion
-  useEffect(() => {
-    if (isCallsSuccess && callsStatus?.status === 'success') {
-      const successMsg = `Parlay order submitted successfully! Batch ID: ${sendCallsId?.id}`;
-      setSuccess(successMsg);
-      setError(null);
-
-      toast({
-        title: 'Parlay Order Confirmed',
-        description:
-          'Your parlay order has been submitted and is available for other users to fill',
-        duration: 5000,
-      });
-
-      onSuccess?.();
-    }
-  }, [isCallsSuccess, callsStatus, sendCallsId, toast, onSuccess]);
-
-  // Handle calls status error
-  useEffect(() => {
-    if (callsStatusError) {
-      setError('Failed to confirm transaction');
-
-      toast({
-        title: 'Transaction Failed',
-        description: 'The transaction failed to confirm on the blockchain',
-        variant: 'destructive',
-      });
-    }
-  }, [callsStatusError, toast]);
+  }, [enabled, address, positions.length, chainId, calls, sendCalls, toast]);
 
   const reset = useCallback(() => {
     setError(null);
     setSuccess(null);
-    resetSendCalls();
-  }, [resetSendCalls]);
+  }, []);
 
   return {
     submitParlay,
-    isSubmitting: isSendCallsPending,
+    isSubmitting,
     error,
     success,
     reset,
-    sendCallsId,
-    callsStatus,
   };
 }

@@ -48,7 +48,7 @@ export async function handleMarketGroupInitialized(
   factoryAddress: string,
   client: PublicClient
 ) {
-  console.log('MarketGroupInitialized/Deployed event caught:', eventArgs);
+  console.log('MarketGroupDeployed event caught:', eventArgs);
 
   const nonce = eventArgs.nonce.toString();
   const sender = eventArgs.sender.toLowerCase();
@@ -69,7 +69,7 @@ export async function handleMarketGroupInitialized(
     !normalizedApprovedAddresses.includes(senderWithChain)
   ) {
     console.log(
-      `Skipping MarketGroupInitialized event: sender ${senderWithChain} is not in the approved list.`
+      `Skipping MarketGroupDeployed event: sender ${senderWithChain} is not in the approved list.`
     );
     return;
   }
@@ -134,7 +134,7 @@ export async function handleMarketGroupInitialized(
         );
       }
     } else {
-      // This indicates a problem: the MarketGroupInitialized event was received,
+      // This indicates a problem: the MarketGroupDeployed event was received,
       // but no corresponding initial record was found.
       console.error(
         `Error processing MarketGroupInitialized event: No initial market group record found for nonce ${nonce}, factory ${factoryAddress}, chainId ${chainId}.`
@@ -152,7 +152,7 @@ export async function handleMarketGroupInitialized(
 }
 
 /**
- * Sets up a watcher for a specific factory address to monitor MarketGroupInitialized events.
+ * Sets up a watcher for a specific factory address to monitor MarketGroupDeployed events.
  * Includes retry logic on error.
  */
 export async function watchFactoryAddress(
@@ -195,7 +195,7 @@ export async function watchFactoryAddress(
       currentUnwatch = client.watchContractEvent({
         address: factoryAddress as `0x${string}`,
         abi: marketGroupFactoryAbi as Abi,
-        eventName: 'MarketGroupInitialized',
+        eventName: 'MarketGroupDeployed',
         onLogs: (logs: Log[]) => {
           console.log(
             `[MarketFactoryWatcher] Received ${logs.length} logs for ${descriptiveName}`
@@ -221,7 +221,7 @@ export async function watchFactoryAddress(
               reconnectAttempts = 0; // Reset on successful log processing
             } catch (error) {
               console.error(
-                `[MarketFactoryWatcher] Error decoding MarketGroupInitialized event from ${descriptiveName}:`,
+                `[MarketFactoryWatcher] Error decoding MarketGroupDeployed event from ${descriptiveName}:`,
                 error,
                 log
               );

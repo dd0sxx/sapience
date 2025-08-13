@@ -1,3 +1,5 @@
+'use client';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';

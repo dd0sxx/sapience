@@ -1,20 +1,19 @@
 'use client';
 
-import CombinedMarketDialog from '~/components/admin/CombinedMarketDialog';
+import dynamic from 'next/dynamic';
+
+const CreateMarketGroupForm = dynamic(
+  () => import('~/components/admin/CreateMarketGroupForm'),
+  { ssr: false }
+);
 
 export default function CreateMarketGroupPage() {
   return (
-    <div className="container pt-24 mx-auto px-6 pb-6">
-      <header className="mb-8">
-        <h1 className="text-3xl mb-2">Create New Market Group</h1>
-        <p className="text-muted-foreground">
-          Launch a new market group with multiple markets
-        </p>
+    <div className="container pt-24 mx-auto px-6 pb-6 max-w-4xl">
+      <header className="mb-6">
+        <h1 className="text-3xl">Create New Market Group</h1>
       </header>
-
-      <div className="max-w-4xl">
-        <CombinedMarketDialog />
-      </div>
+      <CreateMarketGroupForm />
     </div>
   );
 }

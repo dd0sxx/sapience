@@ -1141,45 +1141,50 @@ const MarketFormFields = ({
         </div>
       </div>
 
-      {/* Claim Statement Yes or Numeric */}
-      <div>
-        <Label htmlFor={fieldId('claimStatementYesOrNumeric')}>
-          Claim Statement (Yes or Numeric)
-        </Label>
-        <Input
-          id={fieldId('claimStatementYesOrNumeric')}
-          type="text"
-          value={market.claimStatementYesOrNumeric}
-          onChange={(e) =>
-            onMarketChange('claimStatementYesOrNumeric', e.target.value)
-          }
-          placeholder="e.g. The average cost of gas in June 2025..."
-          required
-        />
-        {!isCompact && (
-          <p className="text-sm text-muted-foreground mt-1">
-            This will be followed by the settlement value in UMA.
-          </p>
-        )}
-      </div>
+      {/* Claim Statements */}
+      <div
+        className={`grid grid-cols-1 ${isCompact ? 'gap-2' : 'md:grid-cols-2 gap-4'}`}
+      >
+        {/* Claim Statement Yes or Numeric */}
+        <div>
+          <Label htmlFor={fieldId('claimStatementYesOrNumeric')}>
+            Claim Statement (Yes or Numeric)
+          </Label>
+          <Input
+            id={fieldId('claimStatementYesOrNumeric')}
+            type="text"
+            value={market.claimStatementYesOrNumeric}
+            onChange={(e) =>
+              onMarketChange('claimStatementYesOrNumeric', e.target.value)
+            }
+            placeholder="e.g. The average cost of gas in June 2025..."
+            required
+          />
+          {!isCompact && (
+            <p className="text-sm text-muted-foreground mt-1">
+              This will be followed by the settlement value in UMA.
+            </p>
+          )}
+        </div>
 
-      {/* Claim Statement No */}
-      <div>
-        <Label htmlFor={fieldId('claimStatementNo')}>
-          Claim Statement (No) (Optional)
-        </Label>
-        <Input
-          id={fieldId('claimStatementNo')}
-          type="text"
-          value={market.claimStatementNo}
-          onChange={(e) => onMarketChange('claimStatementNo', e.target.value)}
-          placeholder="e.g. The average cost of gas in June 2025..."
-        />
-        {!isCompact && (
-          <p className="text-sm text-muted-foreground mt-1">
-            This will be followed by the settlement value in UMA.
-          </p>
-        )}
+        {/* Claim Statement No */}
+        <div>
+          <Label htmlFor={fieldId('claimStatementNo')}>
+            Claim Statement (No) (Optional)
+          </Label>
+          <Input
+            id={fieldId('claimStatementNo')}
+            type="text"
+            value={market.claimStatementNo}
+            onChange={(e) => onMarketChange('claimStatementNo', e.target.value)}
+            placeholder="e.g. The average cost of gas in June 2025..."
+          />
+          {!isCompact && (
+            <p className="text-sm text-muted-foreground mt-1">
+              This will be followed by the settlement value in UMA.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Rules */}

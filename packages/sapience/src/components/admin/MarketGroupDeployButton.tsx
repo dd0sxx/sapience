@@ -109,7 +109,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
           // invalidate query cache
         } else {
           console.warn(
-            'MarketGroupInitialized event not found in transaction logs.',
+            'MarketGroupDeployed event not found in transaction logs.',
             receipt
           );
           setDeployError(

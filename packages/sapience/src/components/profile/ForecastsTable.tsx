@@ -229,7 +229,7 @@ const renderActionsCell = ({
   );
 };
 
-const PredictionPositionsTable = ({
+const ForecastsTable = ({
   attestations,
   parentMarketAddress,
   parentChainId,
@@ -283,6 +283,14 @@ const PredictionPositionsTable = ({
             isMarketsLoading,
             parentMarketAddress,
           }),
+      },
+      {
+        accessorKey: 'comment',
+        header: 'Comment',
+        cell: (info) =>
+          info.row.original.comment || (
+            <span className="text-muted-foreground italic">No comment</span>
+          ),
       },
       {
         accessorKey: 'rawTime',
@@ -386,4 +394,4 @@ const PredictionPositionsTable = ({
   );
 };
 
-export default PredictionPositionsTable;
+export default ForecastsTable;

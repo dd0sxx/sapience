@@ -1,91 +1,61 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits } from 'viem';
-import { useAccount, usePublicClient, useReadContracts } from 'wagmi';
+import type { Abi } from 'abitype';
+import ParlayPool from '@/protocol/deployments/ParlayPool.json';
+import { usePublicClient, useReadContracts } from 'wagmi';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 
 // TODO: centralize these in a shared constants module if needed
 export const PARLAY_CONTRACT_ADDRESS =
   '0x918e72DAB2aF7672AbF534F744770D7F8859C55e' as Address;
 
-// Minimal ABI fragments for the functions/events we use
-const MARKET_COMPONENTS = [
-  { name: 'marketGroup', type: 'address' as const },
-  { name: 'marketId', type: 'uint256' as const },
-];
+// Use ABI from deployments directly (now includes all required functions)
+const PARLAY_ABI: Abi = (ParlayPool as { abi: Abi }).abi;
 
-const PREDICTED_OUTCOME_COMPONENTS = [
-  { name: 'market', type: 'tuple' as const, components: MARKET_COMPONENTS },
-  { name: 'prediction', type: 'bool' as const },
-];
-
-const PARLAY_DATA_COMPONENTS = [
-  { name: 'maker', type: 'address' as const },
-  { name: 'orderExpirationTime', type: 'uint256' as const },
-  { name: 'filled', type: 'bool' as const },
-  { name: 'taker', type: 'address' as const },
-  { name: 'makerNftTokenId', type: 'uint256' as const },
-  { name: 'takerNftTokenId', type: 'uint256' as const },
-  { name: 'collateral', type: 'uint256' as const },
-  { name: 'payout', type: 'uint256' as const },
-  { name: 'createdAt', type: 'uint256' as const },
-  { name: 'settled', type: 'bool' as const },
-  { name: 'makerWon', type: 'bool' as const },
-];
-
-const PARLAY_ABI = [
-  {
-    type: 'function',
-    name: 'getConfig',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [
-      {
-        name: 'config',
-        type: 'tuple',
-        components: [
-          { name: 'collateralToken', type: 'address' },
-          { name: 'makerNft', type: 'address' },
-          { name: 'takerNft', type: 'address' },
-          { name: 'maxParlayMarkets', type: 'uint256' },
-          { name: 'minCollateral', type: 'uint256' },
-          { name: 'minRequestExpirationTime', type: 'uint256' },
-          { name: 'maxRequestExpirationTime', type: 'uint256' },
-        ],
-      },
-    ],
-  },
+// Fallback ABI variant: handles case where `prediction` is encoded as uint8 on-chain
+const PARLAY_ABI_ALT: Abi = [
   {
     type: 'function',
     name: 'getParlayOrder',
     stateMutability: 'view',
     inputs: [{ name: 'requestId', type: 'uint256' }],
     outputs: [
-      { name: 'parlayData', type: 'tuple', components: PARLAY_DATA_COMPONENTS },
+      {
+        name: 'parlayData',
+        type: 'tuple',
+        components: [
+          { name: 'maker', type: 'address' },
+          { name: 'orderExpirationTime', type: 'uint256' },
+          { name: 'filled', type: 'bool' },
+          { name: 'taker', type: 'address' },
+          { name: 'makerNftTokenId', type: 'uint256' },
+          { name: 'takerNftTokenId', type: 'uint256' },
+          { name: 'collateral', type: 'uint256' },
+          { name: 'payout', type: 'uint256' },
+          { name: 'createdAt', type: 'uint256' },
+          { name: 'settled', type: 'bool' },
+          { name: 'makerWon', type: 'bool' },
+        ],
+      },
       {
         name: 'predictedOutcomes',
         type: 'tuple[]',
-        components: PREDICTED_OUTCOME_COMPONENTS,
+        components: [
+          {
+            name: 'market',
+            type: 'tuple',
+            components: [
+              { name: 'marketGroup', type: 'address' },
+              { name: 'marketId', type: 'uint256' },
+            ],
+          },
+          { name: 'prediction', type: 'uint8' },
+        ],
       },
     ],
   },
-  {
-    type: 'event',
-    name: 'ParlayOrderSubmitted',
-    inputs: [
-      { name: 'maker', type: 'address', indexed: false },
-      { name: 'requestId', type: 'uint256', indexed: false },
-      {
-        name: 'predictedOutcomes',
-        type: 'tuple[]',
-        indexed: false,
-        components: PREDICTED_OUTCOME_COMPONENTS,
-      },
-      { name: 'collateral', type: 'uint256', indexed: false },
-      { name: 'payout', type: 'uint256', indexed: false },
-      { name: 'orderExpirationTime', type: 'uint256', indexed: false },
-    ],
-  },
-] as const;
+];
 
 export type ParlayMarket = {
   marketGroup: Address;
@@ -113,15 +83,44 @@ export type ParlayData = {
   predictedOutcomes: ParlayPredictedOutcome[];
 };
 
-export function useParlays() {
-  const { chainId } = useAccount();
-  const publicClient = usePublicClient({ chainId });
+type UseParlaysOptions = { chainId?: number; account?: Address };
+
+export function useParlays(options: UseParlaysOptions = {}) {
+  // Always default to Arbitrum (42161) for reads unless explicitly overridden
+  const activeChainId = options.chainId ?? 42161;
+  const publicClient = usePublicClient({ chainId: activeChainId });
+  const { toast } = useToast();
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [ids, setIds] = useState<bigint[]>([]);
+  const [probedIds, setProbedIds] = useState<bigint[]>([]);
   const [probeCursor, setProbeCursor] = useState<bigint>(1n);
   const [doneProbing, setDoneProbing] = useState<boolean>(false);
+  const [rateLimitNotified, setRateLimitNotified] = useState<boolean>(false);
+
+  const maybeToast429 = useCallback(
+    (err: unknown) => {
+      if (rateLimitNotified) return;
+      const message =
+        (err instanceof Error ? err.message : String(err ?? '')) || '';
+      const lower = message.toLowerCase();
+      if (
+        lower.includes('429') ||
+        lower.includes('too many requests') ||
+        lower.includes('rate limit')
+      ) {
+        toast({
+          title: 'Rate limited',
+          description:
+            'We are being rate limited by the RPC provider. Please try again in a few seconds.',
+          variant: 'destructive',
+          duration: 5000,
+        });
+        setRateLimitNotified(true);
+      }
+    },
+    [toast, rateLimitNotified]
+  );
 
   // Probe for existing request IDs using read-only calls in ascending chunks
   useEffect(() => {
@@ -178,7 +177,7 @@ export function useParlays() {
         });
 
         if (!cancelled) {
-          setIds((prev) => {
+          setProbedIds((prev) => {
             const merged = new Set(prev.concat(found));
             return Array.from(merged).sort((a, b) => (a > b ? -1 : 1));
           });
@@ -191,6 +190,7 @@ export function useParlays() {
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Failed to read parlays');
+          maybeToast429(e);
           setDoneProbing(true);
         }
       } finally {
@@ -205,6 +205,59 @@ export function useParlays() {
     };
   }, [publicClient, probeCursor, doneProbing]);
 
+  // Read unfilled order ids
+  const unfilledRead = useReadContracts({
+    contracts: [
+      {
+        address: PARLAY_CONTRACT_ADDRESS,
+        abi: PARLAY_ABI,
+        functionName: 'getUnfilledOrderIds',
+        chainId: activeChainId,
+      },
+    ],
+    query: { enabled: !!publicClient },
+  });
+
+  const unfilledIds: bigint[] = useMemo(() => {
+    const item = unfilledRead.data?.[0];
+    if (item && item.status === 'success') {
+      const arr = item.result as bigint[];
+      return Array.isArray(arr) ? arr : [];
+    }
+    return [];
+  }, [unfilledRead.data]);
+
+  // Read order IDs for the provided account (maker or taker)
+  const myIdsRead = useReadContracts({
+    contracts: options.account
+      ? [
+          {
+            address: PARLAY_CONTRACT_ADDRESS,
+            abi: PARLAY_ABI,
+            functionName: 'getOrderIdsByAddress',
+            args: [options.account],
+            chainId: activeChainId,
+          },
+        ]
+      : [],
+    query: { enabled: !!publicClient && !!options.account },
+  });
+
+  const myIds: bigint[] = useMemo(() => {
+    const item = myIdsRead.data?.[0];
+    if (item && item.status === 'success') {
+      const arr = item.result as bigint[];
+      return Array.isArray(arr) ? arr : [];
+    }
+    return [];
+  }, [myIdsRead.data]);
+
+  // Multicall target ids: union of unfilled and myIds; fallback to probed if empty
+  const ids: bigint[] = useMemo(() => {
+    const union = Array.from(new Set([...unfilledIds, ...myIds]));
+    return union.length > 0 ? union : probedIds;
+  }, [unfilledIds, myIds, probedIds]);
+
   // Read config to discover collateral token for decimals
   const configRead = useReadContracts({
     contracts: [
@@ -212,7 +265,7 @@ export function useParlays() {
         address: PARLAY_CONTRACT_ADDRESS,
         abi: PARLAY_ABI,
         functionName: 'getConfig',
-        chainId,
+        chainId: activeChainId,
       },
     ],
     query: { enabled: !!publicClient },
@@ -221,7 +274,7 @@ export function useParlays() {
   const collateralToken = ((): Address | undefined => {
     const item = configRead.data?.[0];
     if (item && item.status === 'success') {
-      const cfg = item.result as unknown as {
+      const cfg = item.result as {
         collateralToken: Address;
       };
       return cfg.collateralToken;
@@ -236,7 +289,7 @@ export function useParlays() {
             address: collateralToken,
             abi: erc20Abi,
             functionName: 'decimals',
-            chainId,
+            chainId: activeChainId,
           },
         ]
       : [],
@@ -258,17 +311,56 @@ export function useParlays() {
       abi: PARLAY_ABI,
       functionName: 'getParlayOrder',
       args: [id],
-      chainId,
+      chainId: activeChainId,
     })),
     query: { enabled: ids.length > 0 && !!publicClient },
   });
 
+  // Alt decoding path (prediction as uint8)
+  const ordersReadAlt = useReadContracts({
+    contracts: ids.map((id) => ({
+      address: PARLAY_CONTRACT_ADDRESS,
+      abi: PARLAY_ABI_ALT,
+      functionName: 'getParlayOrder',
+      args: [id],
+      chainId: activeChainId,
+    })),
+    query: { enabled: ids.length > 0 && !!publicClient },
+  });
+
+  // Surface 429/rate-limit errors via toast (once)
+  useEffect(() => {
+    if (unfilledRead.error) maybeToast429(unfilledRead.error);
+    if (myIdsRead.error) maybeToast429(myIdsRead.error);
+    if (configRead.error) maybeToast429(configRead.error);
+    if (decimalsRead.error) maybeToast429(decimalsRead.error);
+    if (ordersRead.error) maybeToast429(ordersRead.error);
+    if (ordersReadAlt.error) maybeToast429(ordersReadAlt.error);
+  }, [
+    unfilledRead.error,
+    myIdsRead.error,
+    configRead.error,
+    decimalsRead.error,
+    ordersRead.error,
+    ordersReadAlt.error,
+    maybeToast429,
+  ]);
+
   const parlays: ParlayData[] = useMemo(() => {
-    if (!ordersRead.data) return [];
-    return ordersRead.data
-      .map((entry, idx) => {
-        if (entry.status !== 'success') return undefined;
-        const [parlayData, predictedOutcomes] = entry.result as unknown as [
+    const original = ordersRead.data ?? [];
+    const alt = ordersReadAlt.data ?? [];
+    if (original.length === 0 && alt.length === 0) return [];
+
+    return ids
+      .map((id, idx) => {
+        const primary = original[idx];
+        const fallback = alt[idx];
+        let chosen: typeof primary | undefined;
+        if (primary && primary.status === 'success') chosen = primary;
+        else if (fallback && fallback.status === 'success') chosen = fallback;
+        else return undefined;
+
+        const [parlayData, rawOutcomes] = (chosen as any).result as [
           {
             maker: Address;
             orderExpirationTime: bigint;
@@ -282,10 +374,27 @@ export function useParlays() {
             settled: boolean;
             makerWon: boolean;
           },
-          ParlayPredictedOutcome[],
+          Array<
+            | ParlayPredictedOutcome
+            | {
+                market: ParlayMarket;
+                prediction: bigint; // alt path
+              }
+          >,
         ];
+
+        const predictedOutcomes: ParlayPredictedOutcome[] = rawOutcomes.map(
+          (o: any) => ({
+            market: o.market,
+            prediction:
+              typeof o.prediction === 'bigint'
+                ? Number(o.prediction) !== 0
+                : Boolean(o.prediction),
+          })
+        );
+
         return {
-          id: ids[idx],
+          id,
           maker: parlayData.maker,
           taker: parlayData.taker,
           orderExpirationTime: parlayData.orderExpirationTime,
@@ -301,24 +410,77 @@ export function useParlays() {
         } satisfies ParlayData;
       })
       .filter(Boolean) as ParlayData[];
-  }, [ordersRead.data, ids]);
+  }, [ordersRead.data, ordersReadAlt.data, ids]);
 
   const formatted = useMemo(
     () =>
-      parlays.map((p) => ({
-        ...p,
-        collateralFormatted: formatUnits(p.collateral, tokenDecimals),
-        payoutFormatted: formatUnits(p.payout, tokenDecimals),
-      })),
+      parlays.map((p) => {
+        const collateralFormatted = formatUnits(p.collateral, tokenDecimals);
+        const payoutFormatted = formatUnits(p.payout, tokenDecimals);
+        // markets count
+        const marketsCount = p.predictedOutcomes?.length ?? 0;
+        // delta values
+        const delta = p.payout > p.collateral ? p.payout - p.collateral : 0n;
+        const deltaFormatted = formatUnits(delta, tokenDecimals);
+        // odds ratio (payout / collateral)
+        let odds: number | undefined;
+        let oddsFormatted: string | undefined;
+        const collateralNum = Number(collateralFormatted);
+        const payoutNum = Number(payoutFormatted);
+        if (
+          Number.isFinite(collateralNum) &&
+          collateralNum > 0 &&
+          Number.isFinite(payoutNum)
+        ) {
+          odds = payoutNum / collateralNum;
+          oddsFormatted = `${odds.toFixed(2)}x`;
+        }
+        return {
+          ...p,
+          collateralFormatted,
+          payoutFormatted,
+          marketsCount,
+          delta,
+          deltaFormatted,
+          odds,
+          oddsFormatted,
+        };
+      }),
     [parlays, tokenDecimals]
   );
 
+  const byId = useMemo(() => {
+    const map = new Map<string, (typeof formatted)[number]>();
+    for (const p of formatted) map.set(p.id.toString(), p);
+    return map;
+  }, [formatted]);
+
   return {
-    loading: loading || ordersRead.isLoading || configRead.isLoading,
+    loading:
+      loading ||
+      ordersRead.isLoading ||
+      ordersReadAlt.isLoading ||
+      configRead.isLoading ||
+      unfilledRead.isLoading ||
+      myIdsRead.isLoading,
     error:
-      error || ordersRead.error?.message || configRead.error?.message || null,
+      error ||
+      ordersRead.error?.message ||
+      ordersReadAlt.error?.message ||
+      configRead.error?.message ||
+      unfilledRead.error?.message ||
+      myIdsRead.error?.message ||
+      null,
     parlays: formatted,
+    byId,
     tokenDecimals,
     collateralToken,
+    // Expose raw unfilled IDs for troubleshooting/visibility
+    unfilledIds,
+    myIds,
+    // Debug visibility
+    queriedIds: ids,
+    rawOrders: ordersRead.data,
+    rawOrdersAlt: ordersReadAlt.data,
   };
 }
