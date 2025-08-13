@@ -2,7 +2,7 @@ import { QueryClient, dehydrate } from '@tanstack/react-query';
 import { prefetchEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import ForecastPageImp from '~/app/forecast/ForecastPageImp';
 import Hydrate from '~/components/Hydrate';
-import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants/eas';
 import { prefetchPredictions } from '~/hooks/graphql/usePredictions';
 
 export function generateMetadata() {
@@ -23,7 +23,7 @@ const ForecastPage = async () => {
 
   // Prefetch enriched market groups data
   await prefetchEnrichedMarketGroups(serverQC);
-  await prefetchPredictions(serverQC, CONVERGE_SCHEMA_UID);
+  await prefetchPredictions(serverQC, SCHEMA_UID);
 
   const state = dehydrate(serverQC);
   return (

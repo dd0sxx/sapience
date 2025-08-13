@@ -80,7 +80,7 @@ export function usePositions({ address, marketAddress }: UsePositionsProps) {
 
       // Add owner if address is provided
       if (address && address.trim() !== '') {
-        variables.owner = address;
+        variables.owner = address.toLowerCase();
       }
 
       // Add marketAddress if provided
@@ -96,12 +96,12 @@ export function usePositions({ address, marketAddress }: UsePositionsProps) {
         POSITIONS_QUERY,
         variables
       );
-
       return data.positions || [];
     },
+
     // Enable query if we have either an address OR a marketAddress
     enabled: Boolean(address) || Boolean(marketAddress),
     staleTime: 30000, // 30 seconds
-    refetchInterval: 4000, // Refetch every 4 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 }

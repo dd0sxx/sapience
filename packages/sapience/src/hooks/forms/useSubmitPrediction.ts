@@ -9,11 +9,11 @@ import {
 } from 'wagmi';
 
 import { MarketGroupClassification } from '../../lib/types';
-import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants/eas';
 
-const CONVERGE_CHAIN_ID = 432;
-// Constant for 2^96 as a BigInt, which is used for sqrt(1) * 2^96
-const BIGINT_2_POW_96 = BigInt('79228162514264337593543950336');
+// Default to Arbitrum; anticipate most transactions occur on Arbitrum.
+// If a market requires a different chain in the future, thread that chainId in via hook params.
+const ARBITRUM_CHAIN_ID = 42161;
 
 interface UseSubmitPredictionProps {
   marketAddress: string;
@@ -56,7 +56,7 @@ export function useSubmitPrediction({
     error: _error,
   } = useTransaction({
     hash: transactionHash,
-    chainId: CONVERGE_CHAIN_ID,
+    chainId: ARBITRUM_CHAIN_ID,
   });
 
   const { switchChainAsync } = useSwitchChain();
@@ -75,6 +75,7 @@ export function useSubmitPrediction({
 
         switch (classification) {
           case MarketGroupClassification.NUMERIC: {
+            console.log('predictionInput numeric', predictionInput);
             const inputNum = parseFloat(predictionInput);
             if (Number.isNaN(inputNum) || inputNum < 0) {
               throw new Error(
@@ -88,10 +89,12 @@ export function useSubmitPrediction({
             break;
           }
           case MarketGroupClassification.YES_NO:
+            console.log('predictionInput yes no', predictionInput);
             finalPredictionBigInt = BigInt(predictionInput);
             break;
           case MarketGroupClassification.MULTIPLE_CHOICE:
-            finalPredictionBigInt = BIGINT_2_POW_96;
+            console.log('predictionInput multiple choice', predictionInput);
+            finalPredictionBigInt = BigInt(predictionInput);
             break;
           default: {
             // This will catch any unhandled enum members at compile time
@@ -146,14 +149,14 @@ export function useSubmitPrediction({
         );
       }
 
-      if (currentChainId !== CONVERGE_CHAIN_ID) {
+      if (currentChainId !== ARBITRUM_CHAIN_ID) {
         if (!switchChainAsync) {
           throw new Error(
             'Chain switching functionality is not available. Please switch manually in your wallet.'
           );
         }
         try {
-          await switchChainAsync({ chainId: CONVERGE_CHAIN_ID });
+          await switchChainAsync({ chainId: ARBITRUM_CHAIN_ID });
         } catch (switchError) {
           setIsLoading(false);
           console.error('Failed to switch chain:', switchError);
@@ -215,7 +218,7 @@ export function useSubmitPrediction({
         functionName: 'attest',
         args: [
           {
-            schema: CONVERGE_SCHEMA_UID as `0x${string}`,
+            schema: SCHEMA_UID as `0x${string}`,
             data: {
               recipient:
                 '0x0000000000000000000000000000000000000000' as `0x${string}`,

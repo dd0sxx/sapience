@@ -1,5 +1,6 @@
+'use client';
+
 import { zodResolver } from '@hookform/resolvers/zod';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
@@ -10,20 +11,19 @@ import { z } from 'zod';
 import type { MarketGroupType } from '@sapience/ui/types';
 import NumericPredict from '../inputs/NumericPredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
-import PermittedAlert from './PermittedAlert';
+import QuoteDisplay from '../shared/QuoteDisplay';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
+import { MarketGroupClassification } from '~/lib/types';
 
 interface NumericWagerFormProps {
   marketGroupData: MarketGroupType;
-  isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
 export default function NumericWagerForm({
   marketGroupData,
-  isPermitted = true,
   onSuccess,
 }: NumericWagerFormProps) {
   const { toast } = useToast();
@@ -61,7 +61,7 @@ export default function NumericWagerForm({
           ? ((lowerBound + upperBound) / 2).toFixed(6)
           : Math.round((lowerBound + upperBound) / 2)
       ),
-      wagerAmount: '',
+      wagerAmount: '1',
     },
     mode: 'onChange', // Validate on change for immediate feedback
   });
@@ -102,8 +102,6 @@ export default function NumericWagerForm({
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!isPermitted) return;
-
     try {
       await createTrade();
     } catch (error) {
@@ -138,7 +136,6 @@ export default function NumericWagerForm({
 
   const isButtonDisabled =
     !methods.formState.isValid ||
-    !isPermitted ||
     isQuoteLoading ||
     !!quoteError ||
     isCreatingTrade ||
@@ -157,29 +154,7 @@ export default function NumericWagerForm({
     return 'Submit Wager';
   };
 
-  // Render quote data if available
-  const renderQuoteData = () => {
-    if (!quoteData || quoteError) return null;
-
-    return (
-      <div className="mt-2 text-sm text-muted-foreground">
-        <p>
-          If this market resolves near{' '}
-          <span className="font-medium">
-            {predictionValue} {unitDisplay}
-          </span>
-          , you will receive approximately{' '}
-          <span className="font-medium">
-            <NumberDisplay
-              value={BigInt(Math.abs(Number(quoteData.maxSize)))}
-              precision={4}
-            />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}.
-          </span>
-        </p>
-      </div>
-    );
-  };
+  // Quote data is now handled by the shared QuoteDisplay component
 
   return (
     <FormProvider {...methods}>
@@ -200,14 +175,18 @@ export default function NumericWagerForm({
             chainId={marketGroupData.chainId}
           />
 
-          {quoteError && (
-            <p className="text-destructive text-sm">{quoteError}</p>
-          )}
-
-          {renderQuoteData()}
+          <QuoteDisplay
+            quoteData={quoteData}
+            quoteError={quoteError}
+            isLoading={isQuoteLoading}
+            marketGroupData={marketGroupData}
+            marketClassification={MarketGroupClassification.NUMERIC}
+            predictionValue={predictionValue}
+            displayUnit={unitDisplay}
+          />
         </div>
 
-        <PermittedAlert isPermitted={isPermitted} />
+        {/* Permit gating removed */}
 
         <Button
           type="submit"

@@ -1,39 +1,38 @@
+'use client';
+
 import { zodResolver } from '@hookform/resolvers/zod';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
-import { SquareStack } from 'lucide-react';
+
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
-import PermittedAlert from './PermittedAlert';
+import QuoteDisplay from '../shared/QuoteDisplay';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-import { useParlayContext } from '~/lib/context/ParlayContext';
+import { MarketGroupClassification } from '~/lib/types';
+import {
+  YES_SQRT_PRICE_X96,
+  NO_SQRT_PRICE_X96,
+} from '~/lib/utils/betslipUtils';
+import { DEFAULT_SLIPPAGE } from '~/utils/trade';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
-  isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-// Define constants for sqrtPriceX96 values
-const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
-const NO_SQRT_PRICE_X96 = '0';
-
 export default function YesNoWagerForm({
   marketGroupData,
-  isPermitted = true,
   onSuccess,
 }: YesNoWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const { addPosition } = useParlayContext();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -50,7 +49,7 @@ export default function YesNoWagerForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       predictionValue: YES_SQRT_PRICE_X96, // Default to YES
-      wagerAmount: '',
+      wagerAmount: '1',
     },
     mode: 'onChange', // Validate on change for immediate feedback
   });
@@ -83,30 +82,14 @@ export default function YesNoWagerForm({
     numericMarketId: marketGroupData.markets?.[0]?.marketId ?? 0,
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
     collateralAmount: wagerAmount,
-    slippagePercent: 0.5, // Default slippage percentage
+    slippagePercent: DEFAULT_SLIPPAGE, // Default slippage percentage
     enabled: !!quoteData && !!wagerAmount && Number(wagerAmount) > 0,
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
 
-  // Handle adding to parlay
-  const handleAddToParlay = () => {
-    if (!predictionValue || !marketGroupData.question) return;
-
-    const position = {
-      prediction: predictionValue === YES_SQRT_PRICE_X96,
-      marketAddress: marketGroupData.address as string,
-      marketId: marketGroupData.markets?.[0]?.marketId ?? 0,
-      question: marketGroupData.question || 'Unknown Question', // Ensure question is always a string
-    };
-
-    addPosition(position);
-  };
-
   // Handle form submission
   const handleSubmit = async () => {
-    if (!isPermitted) return;
-
     try {
       await createTrade();
     } catch (error) {
@@ -141,7 +124,6 @@ export default function YesNoWagerForm({
 
   const isButtonDisabled =
     !methods.formState.isValid ||
-    !isPermitted ||
     isQuoteLoading ||
     !!quoteError ||
     isCreatingTrade ||
@@ -160,49 +142,14 @@ export default function YesNoWagerForm({
     return 'Submit Wager';
   };
 
-  // Render quote data if available
-  const renderQuoteData = () => {
-    if (!quoteData || quoteError) return null;
-
-    return (
-      <div className="mt-2 text-sm text-muted-foreground">
-        <p>
-          If this market resolves to{' '}
-          <span className="font-medium">
-            {predictionValue === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'}
-          </span>
-          , you will receive approximately{' '}
-          <span className="font-medium">
-            <NumberDisplay
-              value={BigInt(Math.abs(Number(quoteData.maxSize)))}
-              precision={4}
-            />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
-          </span>
-        </p>
-      </div>
-    );
-  };
+  // Quote data is now handled by the shared QuoteDisplay component
 
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-4">
           <div>
-            <div className="flex justify-between items-center">
-              <Label>Your Prediction</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                className="text-xs"
-                onClick={handleAddToParlay}
-                disabled={!predictionValue || !marketGroupData.question}
-              >
-                <SquareStack className="w-3 h-3" />
-                Add to Parlay
-              </Button>
-            </div>
+            <Label>Your Prediction</Label>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <Button
                 type="button"
@@ -247,14 +194,17 @@ export default function YesNoWagerForm({
             chainId={marketGroupData.chainId}
           />
 
-          {quoteError && (
-            <p className="text-destructive text-sm">{quoteError}</p>
-          )}
-
-          {renderQuoteData()}
+          <QuoteDisplay
+            quoteData={quoteData}
+            quoteError={quoteError}
+            isLoading={isQuoteLoading}
+            marketGroupData={marketGroupData}
+            marketClassification={MarketGroupClassification.YES_NO}
+            predictionValue={predictionValue}
+          />
         </div>
 
-        <PermittedAlert isPermitted={isPermitted} />
+        {/* Permit gating removed */}
 
         <Button
           type="submit"

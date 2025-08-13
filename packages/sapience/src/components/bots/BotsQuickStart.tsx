@@ -1,21 +1,27 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import Image from 'next/image';
 
-export default function BotsQuickStart() {
+export default function ElizaHomepageFeature() {
   return (
     <div>
       {/* ElizaOS Section */}
-      <section className="pb-24 lg:pb-48 px-4 sm:px-6 w-full">
+      <section className="pt-8 lg:pt-16 pb-16 lg:pb-32 px-4 sm:px-6 w-full">
         <div className="max-w-6xl mx-auto w-full">
           <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
             {/* Left side: Explanatory text and CTAs */}
             <div className="w-full lg:w-3/5 lg:max-w-[360px] text-left lg:text-inherit">
-              <h2 className="font-sans text-2xl lg:text-3xl font-normal mb-2 lg:mb-6">
-                Use ElizaOS
-              </h2>
+              <div className="mb-6">
+                <Image
+                  src="/elizaos-logo.svg"
+                  alt="Eliza OS"
+                  width={400}
+                  height={120}
+                  className="w-auto h-auto max-w-[200px] dark:invert"
+                />
+              </div>
               <p className="text-muted-foreground text-lg mb-6">
-                Install the Sapience plug-in to quickly spin up an agent that
-                submits forecasts onchain.
+                Install the Sapience plug-in for ElizaOS to quickly spin up an
+                agent that submits forecasts onchain.
               </p>
               <div className="pt-2 gap-2 flex flex-wrap justify-start">
                 <a
@@ -35,7 +41,7 @@ export default function BotsQuickStart() {
                   </Button>
                 </a>
                 <a
-                  href="https://github.com/sapiencexyz/plugin-sapience"
+                  href="https://github.com/sapiencexyz/elizaos-boilerplate"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-3 sm:ml-5"
@@ -48,14 +54,14 @@ export default function BotsQuickStart() {
                       height={16}
                       className="invert dark:invert-0"
                     />
-                    Plug-in Docs
+                    Agent Boilerplate
                   </Button>
                 </a>
               </div>
             </div>
 
             {/* Right side: Video background with centered hero image */}
-            <div className="w-full lg:w-2/5">
+            <div className="w-full lg:w-2/5 mb-6 lg:mb-0">
               <div
                 className="relative w-full rounded-lg overflow-hidden flex items-end justify-center inner-shadow"
                 style={{ paddingBottom: '60%' /* Taller aspect ratio */ }}

@@ -302,7 +302,7 @@ export const getChainIdFromShortName = (shortName: string): number => {
   switch (shortName?.toLowerCase()) {
     case 'base':
       return 8453;
-    case 'arbitrum':
+    case 'arb1':
       return 42161;
     case 'ethereum':
     case 'mainnet':
@@ -320,6 +320,8 @@ export const getChainShortName = (id: number): string => {
   switch (id) {
     case 432:
       return 'converge';
+    case 42161:
+      return 'arb1';
     default: {
       const chainObj = Object.values(chains).find((chain) => chain.id === id);
       return chainObj
@@ -476,7 +478,7 @@ export function tickToPrice(tick: number | string | undefined | null): number {
 export const sqrtPriceX96ToPriceD18 = (sqrtPriceX96: bigint): bigint => {
   // 2^192
   return (
-    (sqrtPriceX96 * sqrtPriceX96 * BigInt(10 ** 18)) /
+    (sqrtPriceX96 * sqrtPriceX96 * BigInt('1000000000000000000')) /
     BigInt('6277101735386680763835789423207666416102355444464034512896')
   );
 };
