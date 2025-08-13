@@ -61,7 +61,7 @@ export default function WagerInputWithQuote({
         <h3 className="font-medium text-foreground pr-2">{question}</h3>
         <button
           onClick={onRemove}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-base text-muted-foreground hover:text-foreground transition-colors"
           type="button"
         >
           &times;

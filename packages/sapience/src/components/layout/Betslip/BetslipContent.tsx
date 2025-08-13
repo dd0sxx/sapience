@@ -133,7 +133,7 @@ export const BetslipContent = ({
                               onClick={() =>
                                 removePosition(positionData.position.id)
                               }
-                              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                              className="text-base text-muted-foreground hover:text-foreground transition-colors"
                               type="button"
                             >
                               &times;
@@ -153,7 +153,7 @@ export const BetslipContent = ({
                               onClick={() =>
                                 removePosition(positionData.position.id)
                               }
-                              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                              className="text-base text-muted-foreground hover:text-foreground transition-colors"
                               type="button"
                             >
                               &times;
@@ -204,7 +204,7 @@ export const BetslipContent = ({
                                 onClick={() =>
                                   removePosition(positionData.position.id)
                                 }
-                                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                className="text-base text-muted-foreground hover:text-foreground transition-colors"
                                 type="button"
                               >
                                 &times;
@@ -255,7 +255,7 @@ export const BetslipContent = ({
                           onClick={() =>
                             removePosition(positionData.position.id)
                           }
-                          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                          className="text-base text-muted-foreground hover:text-foreground transition-colors"
                           type="button"
                         >
                           &times;
