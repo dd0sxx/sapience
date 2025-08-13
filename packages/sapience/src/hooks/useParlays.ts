@@ -38,7 +38,7 @@ export type ParlayData = {
   predictedOutcomes: ParlayPredictedOutcome[];
 };
 
-type UseParlaysOptions = { chainId?: number };
+type UseParlaysOptions = { chainId?: number; account?: Address };
 
 export function useParlays(options: UseParlaysOptions = {}) {
   // Always default to Arbitrum (42161) for reads unless explicitly overridden
@@ -133,7 +133,7 @@ export function useParlays(options: UseParlaysOptions = {}) {
     };
   }, [publicClient, probeCursor, doneProbing]);
 
-  // Read unfilled order ids; falls back to probing if unavailable
+  // Read unfilled order ids
   const unfilledRead = useReadContracts({
     contracts: [
       {
@@ -155,9 +155,36 @@ export function useParlays(options: UseParlaysOptions = {}) {
     return [];
   }, [unfilledRead.data]);
 
+  // Read order IDs for the provided account (maker or taker)
+  const myIdsRead = useReadContracts({
+    contracts: options.account
+      ? [
+          {
+            address: PARLAY_CONTRACT_ADDRESS,
+            abi: PARLAY_ABI,
+            functionName: 'getOrderIdsByAddress',
+            args: [options.account],
+            chainId: activeChainId,
+          },
+        ]
+      : [],
+    query: { enabled: !!publicClient && !!options.account },
+  });
+
+  const myIds: bigint[] = useMemo(() => {
+    const item = myIdsRead.data?.[0];
+    if (item && item.status === 'success') {
+      const arr = item.result as bigint[];
+      return Array.isArray(arr) ? arr : [];
+    }
+    return [];
+  }, [myIdsRead.data]);
+
+  // Multicall target ids: union of unfilled and myIds; fallback to probed if empty
   const ids: bigint[] = useMemo(() => {
-    return unfilledIds.length > 0 ? unfilledIds : probedIds;
-  }, [unfilledIds, probedIds]);
+    const union = Array.from(new Set([...unfilledIds, ...myIds]));
+    return union.length > 0 ? union : probedIds;
+  }, [unfilledIds, myIds, probedIds]);
 
   // Read config to discover collateral token for decimals
   const configRead = useReadContracts({
@@ -267,22 +294,32 @@ export function useParlays(options: UseParlaysOptions = {}) {
     [parlays, tokenDecimals]
   );
 
+  const byId = useMemo(() => {
+    const map = new Map<string, (typeof formatted)[number]>();
+    for (const p of formatted) map.set(p.id.toString(), p);
+    return map;
+  }, [formatted]);
+
   return {
     loading:
       loading ||
       ordersRead.isLoading ||
       configRead.isLoading ||
-      unfilledRead.isLoading,
+      unfilledRead.isLoading ||
+      myIdsRead.isLoading,
     error:
       error ||
       ordersRead.error?.message ||
       configRead.error?.message ||
       unfilledRead.error?.message ||
+      myIdsRead.error?.message ||
       null,
     parlays: formatted,
+    byId,
     tokenDecimals,
     collateralToken,
     // Expose raw unfilled IDs for troubleshooting/visibility
     unfilledIds,
+    myIds,
   };
 }

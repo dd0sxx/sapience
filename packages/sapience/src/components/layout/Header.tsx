@@ -24,6 +24,7 @@ import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
 import Betslip from './Betslip';
+import SusdeBalance from './SusdeBalance';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -68,7 +69,7 @@ const NavLinks = ({
   };
 
   return (
-    <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-48 pl-4">
+    <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-44 pl-4">
       <Link href="/markets" passHref className="flex w-fit">
         <Button
           variant="ghost"
@@ -115,20 +116,23 @@ const NavLinks = ({
         </Button>
       </Link>
       {ready && authenticated && connectedWallet && (
-        <Link
-          href={`/profile/${connectedWallet.address}`}
-          passHref
-          className="flex w-fit mx-3 my-1"
-        >
-          <Button
-            size="xs"
-            className="rounded-full px-3"
-            onClick={handleLinkClick}
+        <>
+          <Link
+            href={`/profile/${connectedWallet.address}`}
+            passHref
+            className="flex w-fit mx-3 mt-6"
           >
-            <Wallet className="h-3 w-3 scale-[0.8]" />
-            Your Portfolio
-          </Button>
-        </Link>
+            <Button
+              size="xs"
+              className="rounded-full px-3"
+              onClick={handleLinkClick}
+            >
+              <Wallet className="h-3 w-3 scale-[0.8]" />
+              Your Portfolio
+            </Button>
+          </Link>
+          <SusdeBalance onClick={handleLinkClick} />
+        </>
       )}
     </nav>
   );
@@ -137,8 +141,6 @@ const NavLinks = ({
 const Header = () => {
   const pathname = usePathname();
   const { login, ready, authenticated, logout } = usePrivy();
-  const { wallets } = useWallets();
-  const connectedWallet = wallets[0]; // Get the first connected wallet
 
   return (
     <>
@@ -196,17 +198,6 @@ const Header = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {connectedWallet && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={`/profile/${connectedWallet.address}`}
-                        className="flex items-center cursor-pointer"
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem
                     onClick={logout}
                     className="flex items-center cursor-pointer"

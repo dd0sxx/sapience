@@ -15,10 +15,8 @@ import {
   TableHead,
 } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
-import type { Abi } from 'abitype';
-import ParlayPool from '@/protocol/deployments/ParlayPool.json';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import { useParlays, PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
+import { useParlays } from '~/hooks/useParlays';
 import { useFillParlayOrder } from '~/hooks/forms/useFillParlayOrder';
 
 function formatTimeUntil(timestampSec: number): string {
@@ -60,8 +58,15 @@ function OutcomesCell({
 
 const ParlaysPage = () => {
   const { address, chainId } = useAccount();
-  const { loading, parlays, collateralToken, tokenDecimals, unfilledIds } =
-    useParlays();
+  const {
+    loading,
+    parlays,
+    byId,
+    collateralToken,
+    tokenDecimals,
+    unfilledIds,
+    myIds,
+  } = useParlays({ account: address, chainId });
 
   // ERC20 symbol (optional polish)
   const symbolRead = useReadContracts({
@@ -89,30 +94,7 @@ const ParlaysPage = () => {
     [parlays]
   );
 
-  // Read order IDs for the connected account (maker or taker)
-  const myIdsRead = useReadContracts({
-    contracts: address
-      ? [
-          {
-            address: PARLAY_CONTRACT_ADDRESS,
-            abi: (ParlayPool as { abi: Abi }).abi,
-            functionName: 'getOrderIdsByAddress',
-            args: [address],
-            chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!address },
-  });
-
-  const myIds: bigint[] = useMemo(() => {
-    const item = myIdsRead.data?.[0];
-    if (item && item.status === 'success') {
-      const arr = item.result as bigint[];
-      return Array.isArray(arr) ? arr : [];
-    }
-    return [];
-  }, [myIdsRead.data]);
+  // myIds now provided by useParlays multicall
 
   return (
     <div className="container mx-auto max-w-6xl px-4">
@@ -157,7 +139,7 @@ const ParlaysPage = () => {
                 </TableRow>
               ) : (unfilledIds?.length ?? 0) > 0 ? (
                 unfilledIds.map((id) => {
-                  const order = openOrders.find((o: any) => o.id === id);
+                  const order = byId.get(id.toString());
                   return order ? (
                     <OpenOrderRow
                       key={id.toString()}
@@ -229,9 +211,7 @@ const ParlaysPage = () => {
                     </TableRow>
                   ) : (
                     myIds.map((id) => {
-                      const p = (parlays || []).find(
-                        (item: any) => item.id === id
-                      );
+                      const p = byId.get(id.toString());
                       return (
                         <TableRow key={id.toString()}>
                           <TableCell className="font-mono align-middle">
