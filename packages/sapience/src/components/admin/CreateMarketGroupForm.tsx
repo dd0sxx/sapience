@@ -23,7 +23,7 @@ import {
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { AlertCircle, ArrowLeft, Loader2, Plus, Trash } from 'lucide-react';
+import { AlertCircle, Loader2, Plus, Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { isAddress } from 'viem';
@@ -261,7 +261,7 @@ const createMarketFromPrevious = (
   };
 };
 
-const CombinedMarketDialog = () => {
+const CreateMarketGroupForm = () => {
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
   const { signMessageAsync } = useSignMessage();
@@ -625,19 +625,6 @@ const CombinedMarketDialog = () => {
         <div className="relative">
           {/* Form - takes full width */}
           <form onSubmit={handleSubmit} className="space-y-6 p-1">
-            {/* Back Button */}
-            <div className="flex items-center gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push('/admin')}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Admin
-              </Button>
-            </div>
-
             {/* Market Group Details Section - remains largely the same */}
             <div className="space-y-4">
               {/* Market Group Question */}
@@ -675,43 +662,43 @@ const CombinedMarketDialog = () => {
                   </Select>
                 </div>
               </div>
-              {/* Resource Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="resource">Index</Label>
-                <Select
-                  value={selectedResourceId?.toString() || 'none'}
-                  onValueChange={(value) => {
-                    const newResourceId =
-                      value !== 'none' ? parseInt(value, 10) : null;
-                    setSelectedResourceId(newResourceId);
-                    // Update token names based on resource selection
-                    if (newResourceId === null) {
-                      setBaseTokenName('Yes');
-                      setQuoteTokenName('sUSDS');
-                    } else {
-                      setBaseTokenName('');
-                      setQuoteTokenName('');
-                    }
-                  }}
-                >
-                  <SelectTrigger id="resource">
-                    <SelectValue placeholder="Select a resource (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None (Yes/No)</SelectItem>
-                    {resources?.map((resource) => (
-                      <SelectItem
-                        key={resource.id}
-                        value={resource.id.toString()}
-                      >
-                        {resource.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Base Token Name Input */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Base/Quote Token Names and Index (on one row) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Index Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="resource">Index</Label>
+                  <Select
+                    value={selectedResourceId?.toString() || 'none'}
+                    onValueChange={(value) => {
+                      const newResourceId =
+                        value !== 'none' ? parseInt(value, 10) : null;
+                      setSelectedResourceId(newResourceId);
+                      // Update token names based on resource selection
+                      if (newResourceId === null) {
+                        setBaseTokenName('Yes');
+                        setQuoteTokenName('sUSDS');
+                      } else {
+                        setBaseTokenName('');
+                        setQuoteTokenName('');
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="resource">
+                      <SelectValue placeholder="Select a resource (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (Yes/No)</SelectItem>
+                      {resources?.map((resource) => (
+                        <SelectItem
+                          key={resource.id}
+                          value={resource.id.toString()}
+                        >
+                          {resource.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="baseTokenName">Base Token Name</Label>
                   <Input
@@ -751,27 +738,6 @@ const CombinedMarketDialog = () => {
 
             {/* Markets Section - Refactored to use MarketFormFields */}
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Markets</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addMarket}
-                >
-                  <Plus className="h-4 w-4 mr-2" /> Add Market
-                </Button>
-              </div>
-
-              {markets.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  💡 New markets will copy all parameters from the previous
-                  market including market question, claim statement, pricing
-                  parameters, rules, and option names. You&apos;ll still need to
-                  set the end time for each market.
-                </p>
-              )}
-
               <div className="flex flex-wrap gap-2 mb-4">
                 {markets.map((market, index) => (
                   <button
@@ -804,6 +770,13 @@ const CombinedMarketDialog = () => {
                     )}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  className="px-3 py-1 text-sm rounded flex items-center bg-secondary"
+                  onClick={addMarket}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-2" /> Add Market
+                </button>
               </div>
 
               {markets.map((market, index) => (
@@ -992,4 +965,4 @@ const CombinedMarketDialog = () => {
   );
 };
 
-export default CombinedMarketDialog;
+export default CreateMarketGroupForm;
