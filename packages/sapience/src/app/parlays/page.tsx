@@ -98,7 +98,7 @@ const ParlaysPage = () => {
 
   return (
     <div className="container mx-auto max-w-6xl px-4">
-      <div className="pt-12 md:pt-16">
+      <div className="py-16 md:py-24">
         <h1 className="text-2xl md:text-3xl font-heading mb-6 flex items-center gap-4">
           Parlays
           <Badge
@@ -332,14 +332,17 @@ function OpenOrderRow({
     ) {
       const num =
         Number(order.payoutFormatted) - Number(order.collateralFormatted);
-      return Number.isFinite(num) ? num.toFixed(2) : undefined;
+      if (!Number.isFinite(num)) return undefined;
+      const fixed = num.toFixed(2);
+      return String(parseFloat(fixed));
     }
     // fallback: display raw in token decimals if provided
     if (tokenDecimals != null) {
       try {
         const factor = 10 ** tokenDecimals;
         const val = Number(delta) / factor;
-        return val.toFixed(2);
+        const fixed = val.toFixed(2);
+        return String(parseFloat(fixed));
       } catch {
         return undefined;
       }
@@ -374,15 +377,13 @@ function OpenOrderRow({
         </span>
       </TableCell>
       <TableCell className="text-right align-middle">
-        {canFill ? (
-          <Button size="sm" onClick={() => fillParlay()} disabled={isFilling}>
-            {isFilling ? 'Filling…' : 'Fill'}
-          </Button>
-        ) : (
-          <span className="text-muted-foreground text-sm">
-            {isMaker ? 'Your order' : '—'}
-          </span>
-        )}
+        <Button
+          size="sm"
+          onClick={() => fillParlay()}
+          disabled={isFilling || !canFill}
+        >
+          {isFilling ? 'Filling…' : 'Fill'}
+        </Button>
       </TableCell>
     </TableRow>
   );

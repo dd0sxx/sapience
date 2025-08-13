@@ -12,6 +12,50 @@ export const PARLAY_CONTRACT_ADDRESS =
 // Use ABI from deployments directly (now includes all required functions)
 const PARLAY_ABI: Abi = (ParlayPool as { abi: Abi }).abi;
 
+// Fallback ABI variant: handles case where `prediction` is encoded as uint8 on-chain
+const PARLAY_ABI_ALT: Abi = [
+  {
+    type: 'function',
+    name: 'getParlayOrder',
+    stateMutability: 'view',
+    inputs: [{ name: 'requestId', type: 'uint256' }],
+    outputs: [
+      {
+        name: 'parlayData',
+        type: 'tuple',
+        components: [
+          { name: 'maker', type: 'address' },
+          { name: 'orderExpirationTime', type: 'uint256' },
+          { name: 'filled', type: 'bool' },
+          { name: 'taker', type: 'address' },
+          { name: 'makerNftTokenId', type: 'uint256' },
+          { name: 'takerNftTokenId', type: 'uint256' },
+          { name: 'collateral', type: 'uint256' },
+          { name: 'payout', type: 'uint256' },
+          { name: 'createdAt', type: 'uint256' },
+          { name: 'settled', type: 'bool' },
+          { name: 'makerWon', type: 'bool' },
+        ],
+      },
+      {
+        name: 'predictedOutcomes',
+        type: 'tuple[]',
+        components: [
+          {
+            name: 'market',
+            type: 'tuple',
+            components: [
+              { name: 'marketGroup', type: 'address' },
+              { name: 'marketId', type: 'uint256' },
+            ],
+          },
+          { name: 'prediction', type: 'uint8' },
+        ],
+      },
+    ],
+  },
+];
+
 export type ParlayMarket = {
   marketGroup: Address;
   marketId: bigint;
@@ -244,12 +288,33 @@ export function useParlays(options: UseParlaysOptions = {}) {
     query: { enabled: ids.length > 0 && !!publicClient },
   });
 
+  // Alt decoding path (prediction as uint8)
+  const ordersReadAlt = useReadContracts({
+    contracts: ids.map((id) => ({
+      address: PARLAY_CONTRACT_ADDRESS,
+      abi: PARLAY_ABI_ALT,
+      functionName: 'getParlayOrder',
+      args: [id],
+      chainId: activeChainId,
+    })),
+    query: { enabled: ids.length > 0 && !!publicClient },
+  });
+
   const parlays: ParlayData[] = useMemo(() => {
-    if (!ordersRead.data) return [];
-    return ordersRead.data
-      .map((entry, idx) => {
-        if (entry.status !== 'success') return undefined;
-        const [parlayData, predictedOutcomes] = entry.result as [
+    const original = ordersRead.data ?? [];
+    const alt = ordersReadAlt.data ?? [];
+    if (original.length === 0 && alt.length === 0) return [];
+
+    return ids
+      .map((id, idx) => {
+        const primary = original[idx];
+        const fallback = alt[idx];
+        let chosen: typeof primary | undefined;
+        if (primary && primary.status === 'success') chosen = primary;
+        else if (fallback && fallback.status === 'success') chosen = fallback;
+        else return undefined;
+
+        const [parlayData, rawOutcomes] = (chosen as any).result as [
           {
             maker: Address;
             orderExpirationTime: bigint;
@@ -263,10 +328,27 @@ export function useParlays(options: UseParlaysOptions = {}) {
             settled: boolean;
             makerWon: boolean;
           },
-          ParlayPredictedOutcome[],
+          Array<
+            | ParlayPredictedOutcome
+            | {
+                market: ParlayMarket;
+                prediction: bigint; // alt path
+              }
+          >,
         ];
+
+        const predictedOutcomes: ParlayPredictedOutcome[] = rawOutcomes.map(
+          (o: any) => ({
+            market: o.market,
+            prediction:
+              typeof o.prediction === 'bigint'
+                ? Number(o.prediction) !== 0
+                : Boolean(o.prediction),
+          })
+        );
+
         return {
-          id: ids[idx],
+          id,
           maker: parlayData.maker,
           taker: parlayData.taker,
           orderExpirationTime: parlayData.orderExpirationTime,
@@ -282,15 +364,42 @@ export function useParlays(options: UseParlaysOptions = {}) {
         } satisfies ParlayData;
       })
       .filter(Boolean) as ParlayData[];
-  }, [ordersRead.data, ids]);
+  }, [ordersRead.data, ordersReadAlt.data, ids]);
 
   const formatted = useMemo(
     () =>
-      parlays.map((p) => ({
-        ...p,
-        collateralFormatted: formatUnits(p.collateral, tokenDecimals),
-        payoutFormatted: formatUnits(p.payout, tokenDecimals),
-      })),
+      parlays.map((p) => {
+        const collateralFormatted = formatUnits(p.collateral, tokenDecimals);
+        const payoutFormatted = formatUnits(p.payout, tokenDecimals);
+        // markets count
+        const marketsCount = p.predictedOutcomes?.length ?? 0;
+        // delta values
+        const delta = p.payout > p.collateral ? p.payout - p.collateral : 0n;
+        const deltaFormatted = formatUnits(delta, tokenDecimals);
+        // odds ratio (payout / collateral)
+        let odds: number | undefined;
+        let oddsFormatted: string | undefined;
+        const collateralNum = Number(collateralFormatted);
+        const payoutNum = Number(payoutFormatted);
+        if (
+          Number.isFinite(collateralNum) &&
+          collateralNum > 0 &&
+          Number.isFinite(payoutNum)
+        ) {
+          odds = payoutNum / collateralNum;
+          oddsFormatted = `${odds.toFixed(2)}x`;
+        }
+        return {
+          ...p,
+          collateralFormatted,
+          payoutFormatted,
+          marketsCount,
+          delta,
+          deltaFormatted,
+          odds,
+          oddsFormatted,
+        };
+      }),
     [parlays, tokenDecimals]
   );
 
@@ -304,12 +413,14 @@ export function useParlays(options: UseParlaysOptions = {}) {
     loading:
       loading ||
       ordersRead.isLoading ||
+      ordersReadAlt.isLoading ||
       configRead.isLoading ||
       unfilledRead.isLoading ||
       myIdsRead.isLoading,
     error:
       error ||
       ordersRead.error?.message ||
+      ordersReadAlt.error?.message ||
       configRead.error?.message ||
       unfilledRead.error?.message ||
       myIdsRead.error?.message ||
@@ -321,5 +432,9 @@ export function useParlays(options: UseParlaysOptions = {}) {
     // Expose raw unfilled IDs for troubleshooting/visibility
     unfilledIds,
     myIds,
+    // Debug visibility
+    queriedIds: ids,
+    rawOrders: ordersRead.data,
+    rawOrdersAlt: ordersReadAlt.data,
   };
 }
