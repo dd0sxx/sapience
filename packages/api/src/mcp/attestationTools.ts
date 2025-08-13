@@ -237,7 +237,7 @@ export const getRecentAttestations = {
       });
 
       // Also fetch market details for context
-      const marketIds = [...new Set(attestations.map((a) => a.marketId))];
+      const marketIds = [...new Set(attestations.map((a) => parseInt(a.marketId)))].filter(id => !isNaN(id));
       const markets = await prisma.market.findMany({
         where: {
           marketId: {
@@ -253,7 +253,7 @@ export const getRecentAttestations = {
       });
 
       const marketMap = markets.reduce((acc, m) => {
-        acc[m.marketId] = {
+        acc[m.marketId.toString()] = {
           question: m.question,
           optionName: m.optionName,
           endTimestamp: m.endTimestamp,
