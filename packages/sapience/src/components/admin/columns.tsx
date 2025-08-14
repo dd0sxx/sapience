@@ -169,8 +169,9 @@ const MarketItem = ({
 }) => {
   const marketId = market.marketId ? Number(market.marketId) : 0;
   const currentMarketId = latestMarketId ? Number(latestMarketId) : 0;
+  // Only allow deploying the next sequential market after the latest deployed
   const shouldShowDeployButton =
-    marketId > currentMarketId &&
+    marketId === currentMarketId + 1 &&
     !!market.startingSqrtPriceX96 &&
     !!market.claimStatementYesOrNumeric;
 
