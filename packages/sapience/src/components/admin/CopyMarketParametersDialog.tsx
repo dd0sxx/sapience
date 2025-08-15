@@ -367,8 +367,9 @@ const CopyMarketParametersDialog = ({
       <DialogTrigger asChild>
         <button
           type="button"
-          className="px-3 py-1 text-sm rounded bg-secondary"
+          className="px-3 py-1 text-sm rounded bg-secondary inline-flex items-center"
         >
+          <Copy className="mr-2 h-3 w-3" />
           Copy From Existing
         </button>
       </DialogTrigger>

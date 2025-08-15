@@ -31,10 +31,7 @@ import { isAddress } from 'viem';
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { z } from 'zod';
 
-import {
-  DEFAULT_FOCUS_AREA,
-  FOCUS_AREAS,
-} from '../../lib/constants/focusAreas';
+import { FOCUS_AREAS } from '../../lib/constants/focusAreas';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
 import CopyMarketParametersDialog from './CopyMarketParametersDialog';
 import { useResources } from '~/hooks/useResources';
@@ -296,9 +293,7 @@ const CreateMarketGroupForm = () => {
     optimisticOracleV3: DEFAULT_OPTIMISTIC_ORACLE,
   });
   const [question, setQuestion] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>(
-    DEFAULT_FOCUS_AREA.id
-  );
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isBridged, setIsBridged] = useState<boolean>(true);
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
   const [quoteTokenName, setQuoteTokenName] = useState<string>('sapUSD');
@@ -620,9 +615,12 @@ const CreateMarketGroupForm = () => {
                     type="text"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Enter the main question for the market group"
+                    placeholder="Who will become the Mayor of NYC?"
                     required
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Write a brief, clear question an AI can understand.
+                  </p>
                 </div>
                 {/* Category */}
                 <div className="space-y-2">
@@ -669,7 +667,7 @@ const CreateMarketGroupForm = () => {
                       <SelectValue placeholder="Select a resource (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None (Yes/No)</SelectItem>
+                      <SelectItem value="none">None (Yes/No Market)</SelectItem>
                       {resources?.map((resource) => (
                         <SelectItem
                           key={resource.id}

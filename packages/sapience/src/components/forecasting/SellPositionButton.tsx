@@ -63,7 +63,8 @@ const SellPositionButton = ({
     try {
       await closePosition();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to close position';
+      const message =
+        err instanceof Error ? err.message : 'Failed to close position';
       toast({ variant: 'destructive', title: 'Error', description: message });
     }
   };

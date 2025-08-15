@@ -2,6 +2,13 @@
 
 import { Input, Label } from '@sapience/ui';
 import { useEffect, useState } from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { InfoIcon } from 'lucide-react';
 
 import { TICK_SPACING } from '../../lib/constants/numbers';
 import { priceToTick } from '../../lib/utils/tickUtils';
@@ -417,6 +424,7 @@ const MarketFormFields = ({
             type="text"
             value={market.marketQuestion}
             onChange={(e) => onMarketChange('marketQuestion', e.target.value)}
+            placeholder="Will Zohran become the Mayor of NYC?"
             required
           />
         </div>
@@ -429,6 +437,7 @@ const MarketFormFields = ({
             type="text"
             value={market.optionName || ''}
             onChange={(e) => onMarketChange('optionName', e.target.value)}
+            placeholder="Zohran Mamdani"
           />
         </div>
       </div>
@@ -516,43 +525,20 @@ const MarketFormFields = ({
 
       {/* Pricing Params */}
       <div className={'grid grid-cols-1 md:grid-cols-3 gap-4'}>
-        <div>
-          <Label htmlFor={fieldId('startingPrice')}>Starting Price</Label>
-          <Input
-            id={fieldId('startingPrice')}
-            type="number"
-            value={market.startingPrice || ''}
-            onChange={handlePriceChange}
-            onFocus={handleStartingPriceFocus}
-            onBlur={handleStartingPriceBlur}
-            placeholder="e.g., 1.23"
-            required
-            inputMode="decimal"
-            step="any"
-            min="0"
-          />
-          <div className="text-xs text-gray-400 mt-1 w-full text-center">
-            computed sqrtPriceX96:{' '}
-            {priceToSqrtPriceX96(Number(market.startingPrice)).toString()}
-            <br />
-            computed inverse:{' '}
-            {(
-              Number(
-                sqrtPriceX96ToPriceD18(
-                  priceToSqrtPriceX96(Number(market.startingPrice))
-                )
-              ) /
-              10 ** 18
-            ).toString()}
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor={fieldId('lowTickPrice')}>Min Price</Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>tick: {market.baseAssetMinPriceTick}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-          {startingPriceError && (
-            <div className="text-xs text-red-500 mt-1 w-full text-center">
-              {startingPriceError}
-            </div>
-          )}
-        </div>
-        <div>
-          <Label htmlFor={fieldId('lowTickPrice')}>Min Price</Label>
           <Input
             id={fieldId('lowTickPrice')}
             type="number"
@@ -566,17 +552,77 @@ const MarketFormFields = ({
             step="any"
             min="0"
           />
-          <div className="text-xs text-gray-400 mt-1 w-full text-center">
-            tick: {market.baseAssetMinPriceTick}
-          </div>
           {minPriceError && (
             <div className="text-xs text-red-500 mt-1 w-full text-center">
               {minPriceError}
             </div>
           )}
         </div>
-        <div>
-          <Label htmlFor={fieldId('highTickPrice')}>Max Price</Label>
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor={fieldId('startingPrice')}>Starting Price</Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="space-y-1">
+                    <p>
+                      computed sqrtPriceX96:{' '}
+                      {priceToSqrtPriceX96(
+                        Number(market.startingPrice)
+                      ).toString()}
+                    </p>
+                    <p>
+                      computed inverse:{' '}
+                      {(
+                        Number(
+                          sqrtPriceX96ToPriceD18(
+                            priceToSqrtPriceX96(Number(market.startingPrice))
+                          )
+                        ) /
+                        10 ** 18
+                      ).toString()}
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <Input
+            id={fieldId('startingPrice')}
+            type="number"
+            value={market.startingPrice || ''}
+            onChange={handlePriceChange}
+            onFocus={handleStartingPriceFocus}
+            onBlur={handleStartingPriceBlur}
+            placeholder="e.g., 1.23"
+            required
+            inputMode="decimal"
+            step="any"
+            min="0"
+          />
+          {startingPriceError && (
+            <div className="text-xs text-red-500 mt-1 w-full text-center">
+              {startingPriceError}
+            </div>
+          )}
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor={fieldId('highTickPrice')}>Max Price</Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>tick: {market.baseAssetMaxPriceTick}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Input
             id={fieldId('highTickPrice')}
             type="number"
@@ -590,9 +636,6 @@ const MarketFormFields = ({
             step="any"
             min="0"
           />
-          <div className="text-xs text-gray-400 mt-1 w-full text-center">
-            tick: {market.baseAssetMaxPriceTick}
-          </div>
           {maxPriceError && (
             <div className="text-xs text-red-500 mt-1 w-full text-center">
               {maxPriceError}
