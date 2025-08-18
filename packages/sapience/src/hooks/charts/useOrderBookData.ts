@@ -66,16 +66,27 @@ const formatNumber = (num: number | undefined | null, decimals = 2): string => {
 const formatPrice = (
   price: number,
   pool: Pool | null,
-  quoteTokenName?: string
+  quoteTokenName?: string,
+  baseTokenName?: string
 ): string => {
   if (!pool) return formatNumber(price, 2); // Default if pool not loaded, use 2 decimals
 
   const formattedNumber = formatNumber(price, 2); // Always use 2 decimals
-  // Use provided quoteTokenName, fallback to pool's token1 symbol
-  const symbol = quoteTokenName ?? pool.token1.symbol ?? '';
+  // Resolve symbols
+  const base = baseTokenName ?? pool.token0.symbol ?? '';
+  const quote = quoteTokenName ?? pool.token1.symbol ?? '';
+  const hideQuote = quote.toUpperCase().includes('USD');
 
-  // Append symbol if it exists
-  return symbol ? `${formattedNumber} ${symbol}` : formattedNumber;
+  // For Yes/No markets, omit units on price
+  if (base === 'Yes') return formattedNumber;
+
+  if (base) {
+    if (hideQuote) return `${formattedNumber} ${base}`;
+    return quote
+      ? `${formattedNumber} ${base}/${quote}`
+      : `${formattedNumber} ${base}`;
+  }
+  return quote ? `${formattedNumber} ${quote}` : formattedNumber;
 };
 
 // Format size (improve with actual symbols/decimals)
@@ -121,7 +132,7 @@ const aggregateTicksToLevels = (
       rawPrice: price,
       rawSize: size,
       rawTotal: cumulative,
-      price: formatPrice(price, pool, quoteTokenName),
+      price: formatPrice(price, pool, quoteTokenName, baseTokenName),
       size: formatSize(size, pool, baseTokenName),
       total: formatSize(cumulative, pool, baseTokenName),
     };
@@ -363,7 +374,8 @@ export function useOrderBookData({
           const lastPriceFormatted = formatPrice(
             lastPriceRaw,
             pool,
-            quoteTokenName
+            quoteTokenName,
+            baseTokenName
           );
           console.warn(
             `[useOrderBookData] Exact tick ${currentTickExact} not found. Using nearest tick ${currentTick.tickIdx} as reference. Last price: ${lastPriceFormatted}`
@@ -411,7 +423,12 @@ export function useOrderBookData({
 
     const currentTick = processedTicks[currentTickIndex];
     const lastPriceRaw = currentTick.price0; // Price of token0 (base) in terms of token1 (quote)
-    const lastPriceFormatted = formatPrice(lastPriceRaw, pool, quoteTokenName);
+    const lastPriceFormatted = formatPrice(
+      lastPriceRaw,
+      pool,
+      quoteTokenName,
+      baseTokenName
+    );
 
     // Separate ticks into bids (below current) and asks (above current)
     // Note: processedTicks are sorted by tickIdx ascending

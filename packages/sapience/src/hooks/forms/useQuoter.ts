@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { parseUnits } from 'viem';
 import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 
@@ -26,12 +26,16 @@ export function generateQuoteQueryKey(
   expectedPrice: number,
   parsedWagerAmount: bigint | null
 ) {
+  // Normalize expectedPrice for stable cache keys (avoid float precision issues)
+  const expectedPriceKey = Number.isFinite(expectedPrice)
+    ? Number(expectedPrice).toFixed(8)
+    : String(expectedPrice);
   return [
     'quote',
     chainId,
     address,
     marketId,
-    expectedPrice,
+    expectedPriceKey,
     parsedWagerAmount?.toString(),
   ] as const;
 }
@@ -42,9 +46,6 @@ export function useQuoter({
   expectedPrice,
   wagerAmount,
 }: UseQuoterProps) {
-  const queryClient = useQueryClient();
-  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
-
   // Parse the wager amount to bigint if valid
   const parsedWagerAmount = useMemo(() => {
     try {
@@ -74,44 +75,6 @@ export function useQuoter({
       parsedWagerAmount,
     ]
   );
-
-  // Use effect for debouncing
-  useEffect(() => {
-    // If any of the parameters change, clear previous timeout
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
-
-    // Only set up debounce and invalidate query if we have valid parameters
-    if (
-      marketData?.chainId &&
-      marketData?.address &&
-      marketId &&
-      expectedPrice !== undefined &&
-      parsedWagerAmount &&
-      parsedWagerAmount > BigInt(0)
-    ) {
-      // Set a timeout to invalidate the query after a delay (debounce)
-      debounceTimeout.current = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey });
-      }, 500); // 500ms debounce
-    }
-
-    // Clean up on unmount or when dependencies change
-    return () => {
-      if (debounceTimeout.current) {
-        clearTimeout(debounceTimeout.current);
-      }
-    };
-  }, [
-    queryKey,
-    queryClient,
-    marketData?.chainId,
-    marketData?.address,
-    marketId,
-    expectedPrice,
-    parsedWagerAmount,
-  ]);
 
   // Use useQuery to handle fetching, caching, loading states
   const {

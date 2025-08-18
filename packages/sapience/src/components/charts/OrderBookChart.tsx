@@ -39,10 +39,14 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
   const displayTokenName =
     baseTokenName === 'Yes' && type === 'ask' ? 'No' : baseTokenName;
   const baseUnit = displayTokenName ? ` ${displayTokenName}` : '';
-  // Only include the base unit part if baseTokenName is not "Yes"
-  const baseUnitPart =
-    baseUnit && baseTokenName !== 'Yes' ? `/${baseUnit.trim()}` : '';
-  const priceUnit = quoteTokenName ? ` ${quoteTokenName}${baseUnitPart}` : '';
+  // Build price unit as Base/Quote; hide quote if it contains USD; omit for Yes/No prices
+  const priceUnit = (() => {
+    const quote = quoteTokenName || '';
+    const hideQuote = quote.toUpperCase().includes('USD');
+    if (!displayTokenName) return '';
+    if (baseTokenName === 'Yes') return ''; // Skip units for Yes/No price rows
+    return hideQuote ? ` ${displayTokenName}` : ` ${displayTokenName}/${quote}`;
+  })();
 
   return (
     <div className="relative grid grid-cols-3 gap-4 text-xs py-0.5 px-2 hover:bg-muted/50 overflow-hidden">

@@ -197,7 +197,14 @@ export default function LpPositionsTable({
               const { marketGroup } = position.market || {};
               const baseUnit = `${marketGroup?.baseTokenName || 'Base'}`;
               const quoteUnit = `${marketGroup?.collateralSymbol || 'Quote'}`;
-              const priceUnit = `${marketGroup?.collateralSymbol || 'Quote'}/${marketGroup?.baseTokenName || 'Base'}`;
+              // Price units as Base/Quote; hide quote when it includes USD; omit for Yes/No
+              const hideQuote = (quoteUnit || '').toUpperCase().includes('USD');
+              const priceUnit =
+                baseUnit === 'Yes'
+                  ? ''
+                  : hideQuote
+                    ? `${baseUnit}`
+                    : `${baseUnit}/${quoteUnit}`;
 
               const isClosed =
                 position.lpBaseToken === '0' && position.lpQuoteToken === '0';

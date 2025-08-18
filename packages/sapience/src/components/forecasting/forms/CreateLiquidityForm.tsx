@@ -345,7 +345,13 @@ export function CreateLiquidityForm({
                       {...field}
                     />
                     <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
-                      {`${virtualBaseTokensName}/${virtualQuoteTokensName}`}
+                      {(() => {
+                        const base = virtualBaseTokensName || '';
+                        const quote = virtualQuoteTokensName || '';
+                        const hideQuote = quote.toUpperCase().includes('USD');
+                        if (base === 'Yes') return '';
+                        return hideQuote ? base : `${base}/${quote}`;
+                      })()}
                     </div>
                   </div>
                 </FormControl>
@@ -382,7 +388,13 @@ export function CreateLiquidityForm({
                       {...field}
                     />
                     <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
-                      {`${virtualBaseTokensName}/${virtualQuoteTokensName}`}
+                      {(() => {
+                        const base = virtualBaseTokensName || '';
+                        const quote = virtualQuoteTokensName || '';
+                        const hideQuote = quote.toUpperCase().includes('USD');
+                        if (base === 'Yes') return '';
+                        return hideQuote ? base : `${base}/${quote}`;
+                      })()}
                     </div>
                   </div>
                 </FormControl>

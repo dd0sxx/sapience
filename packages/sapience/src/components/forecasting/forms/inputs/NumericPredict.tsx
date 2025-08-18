@@ -59,7 +59,11 @@ export default function NumericPredict({
     if (newValues.length > 0) {
       // Format the value to maintain proper decimal places
       const formattedValue = newValues[0].toFixed(decimalPlaces);
-      setValue(name, formattedValue, { shouldValidate: true });
+      setValue(name, formattedValue, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
@@ -84,7 +88,11 @@ export default function NumericPredict({
       ? Math.min(bounds.upperBound, currentValue + stepSize)
       : Math.max(bounds.lowerBound, currentValue - stepSize);
 
-    setValue(name, formatNumber(newValue), { shouldValidate: true });
+    setValue(name, formatNumber(newValue), {
+      shouldValidate: true,
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   return (
@@ -142,6 +150,10 @@ export default function NumericPredict({
                   cleanedValue === '-' ||
                   cleanedValue === '.'
                 ) {
+                  setValue(name, cleanedValue, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
                   return;
                 }
 
@@ -158,10 +170,22 @@ export default function NumericPredict({
                 const parts = cleanedValue.split('.');
                 if (parts.length > 1 && parts[1].length > decimalPlaces) {
                   const truncated = formatNumber(num);
-                  setValue(name, truncated, { shouldValidate: true });
+                  setValue(name, truncated, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
                 } else if (parts.length === 1 && parts[0] !== cleanedValue) {
                   // Handle case where user entered invalid characters
-                  setValue(name, cleanedValue, { shouldValidate: true });
+                  setValue(name, cleanedValue, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
+                } else {
+                  // Normal path: accept cleaned value without extra formatting
+                  setValue(name, cleanedValue, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  });
                 }
               },
               onBlur: (e) => {
@@ -169,7 +193,11 @@ export default function NumericPredict({
                 const { value: inputValue } = e.target;
                 if (inputValue && !Number.isNaN(parseFloat(inputValue))) {
                   const formattedValue = formatNumber(parseFloat(inputValue));
-                  setValue(name, formattedValue, { shouldValidate: true });
+                  setValue(name, formattedValue, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                    shouldTouch: true,
+                  });
                 }
               },
             })}
