@@ -30,7 +30,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
       defaultOpen
       style={{ '--sidebar-width': '12rem' } as React.CSSProperties}
     >
-      <div className="min-h-screen flex flex-col overflow-hidden w-full">
+      <div className="min-h-screen flex flex-col overflow-x-hidden w-full">
         <Header />
         <div className="flex-1 flex w-full">
           <ContentArea>{children}</ContentArea>

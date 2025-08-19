@@ -60,86 +60,83 @@ export const BetslipContent = ({
   parlayCollateralAddress,
   parlayChainId,
 }: BetslipContentProps) => {
-  const {
-    betSlipPositions,
-    removePosition,
-    setIsPopoverOpen,
-    positionsWithMarketData,
-  } = useBetSlipContext();
+  const { betSlipPositions, removePosition, positionsWithMarketData } =
+    useBetSlipContext();
   const hasNumericMarket = positionsWithMarketData.some(
     (p) => p.marketClassification === MarketGroupClassification.NUMERIC
   );
   const parlayDisabled = betSlipPositions.length < 2;
   return (
     <>
-      {betSlipPositions.length === 0 ? (
-        <div className="text-center space-y-3">
-          <p className="text-base text-muted-foreground">
-            Place a wager on future events
-          </p>
-          <Button variant="default" size="xs" asChild>
-            <Link href="/markets" onClick={() => setIsPopoverOpen(false)}>
-              Explore Prediction Markets
-            </Link>
-          </Button>
-        </div>
-      ) : (
-        <div className="w-full">
-          <div className="px-3 pt-3 pb-1">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Place a Wager</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
-                  <SquareStack className="w-3 h-3" />
-                  Parlay
-                </span>
-                {parlayDisabled ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Switch checked={false} disabled />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          You must add at least two wagers to build a parlay
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
+      <div className="w-full h-full flex flex-col">
+        <div className={`${betSlipPositions.length === 0 ? '' : 'px-4 pt-4'}`}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Make a Prediction</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium leading-none">
+                <SquareStack className="w-3 h-3" />
+                Parlay
+              </span>
+              {parlayDisabled ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center">
+                        <Switch checked={false} disabled />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        You must add at least two predictions to build a parlay.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <span className="flex items-center">
                   <Switch
                     checked={isParlayMode}
                     onCheckedChange={setIsParlayMode}
                   />
-                )}
-              </div>
+                </span>
+              )}
             </div>
-
-            {isParlayMode && (
-              <div className="flex items-center justify-between mt-4">
-                <Badge
-                  variant="outline"
-                  className="px-1.5 py-0.5 text-xs font-medium border-yellow-500/40 bg-yellow-500/10 text-yellow-600 flex items-center gap-1"
-                >
-                  <AlertTriangle className="w-3 h-3" />
-                  Experimental Feature
-                </Badge>
-                <Button asChild variant="outline" size="xs">
-                  <Link href="/parlays">View Parlays</Link>
-                </Button>
-              </div>
-            )}
           </div>
 
-          {!isParlayMode ? (
+          {isParlayMode && (
+            <div className="flex items-center justify-between mt-4">
+              <Badge
+                variant="outline"
+                className="px-1.5 py-0.5 text-xs font-medium border-yellow-500/40 bg-yellow-500/10 text-yellow-600 flex items-center gap-1"
+              >
+                <AlertTriangle className="w-3 h-3" />
+                Experimental Feature
+              </Badge>
+              <Button asChild variant="outline" size="xs">
+                <Link href="/parlays">View Parlays</Link>
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`flex-1 min-h-0 ${
+            betSlipPositions.length === 0 ? '' : 'overflow-y-auto'
+          }`}
+        >
+          {betSlipPositions.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center text-center px-12">
+              <p className="text-base text-muted-foreground">
+                Add your predictions to see your potential payout.
+              </p>
+            </div>
+          ) : !isParlayMode ? (
             <FormProvider {...individualMethods}>
               <form
                 onSubmit={individualMethods.handleSubmit(
                   handleIndividualSubmit
                 )}
-                className="p-3 max-h-96 overflow-y-auto"
+                className="p-4"
               >
                 {positionsWithMarketData.map((positionData, index) => {
                   const isLast = index === positionsWithMarketData.length - 1;
@@ -148,7 +145,6 @@ export const BetslipContent = ({
                       key={positionData.position.id}
                       className={`mb-4 ${!isLast ? 'border-b border-border pb-4' : ''}`}
                     >
-                      {/* Show loading state */}
                       {positionData.isLoading && (
                         <>
                           <div className="mb-2">
@@ -159,7 +155,6 @@ export const BetslipContent = ({
                         </>
                       )}
 
-                      {/* Show error state */}
                       {positionData.error && (
                         <>
                           <div className="mb-2">
@@ -181,7 +176,6 @@ export const BetslipContent = ({
                         </>
                       )}
 
-                      {/* Show position with quote functionality */}
                       {positionData.marketGroupData &&
                         positionData.marketClassification && (
                           <WagerInputWithQuote
@@ -198,7 +192,6 @@ export const BetslipContent = ({
                           />
                         )}
 
-                      {/* Fallback for no market data */}
                       {!positionData.isLoading &&
                         !positionData.error &&
                         (!positionData.marketGroupData ||
@@ -236,14 +229,14 @@ export const BetslipContent = ({
             <FormProvider {...parlayMethods}>
               <form
                 onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)}
-                className="space-y-4 p-3"
+                className="space-y-4 p-4"
               >
                 {hasNumericMarket && (
                   <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
                     Numeric markets are excluded from parlays.
                   </div>
                 )}
-                <div className="space-y-4 max-h-64 overflow-y-auto">
+                <div className="space-y-4">
                   {positionsWithMarketData
                     .filter(
                       (p) =>
@@ -255,13 +248,23 @@ export const BetslipContent = ({
                         key={positionData.position.id}
                         className="pb-4 mb-4 border-b border-border"
                       >
-                        <div className="mb-2">
+                        <div className="mb-2 flex items-start justify-between gap-2">
                           <h3 className="font-medium text-foreground pr-2">
                             {positionData.marketGroupData?.markets?.find(
                               (m) =>
                                 m.marketId === positionData.position.marketId
                             )?.question || positionData.position.question}
                           </h3>
+                          <button
+                            onClick={() =>
+                              removePosition(positionData.position.id)
+                            }
+                            className="text-[24px] leading-none text-muted-foreground hover:text-foreground"
+                            type="button"
+                            aria-label="Remove"
+                          >
+                            ×
+                          </button>
                         </div>
 
                         {positionData.marketGroupData && (
@@ -271,18 +274,6 @@ export const BetslipContent = ({
                             showWagerInput={false}
                           />
                         )}
-                        <div className="mt-0.5 flex justify-end">
-                          <button
-                            onClick={() =>
-                              removePosition(positionData.position.id)
-                            }
-                            className="text-[10px] leading-none text-muted-foreground hover:text-foreground flex items-center gap-1"
-                            type="button"
-                          >
-                            <span className="text-[12px] leading-none">×</span>
-                            <span>Remove</span>
-                          </button>
-                        </div>
                       </div>
                     ))}
 
@@ -359,7 +350,7 @@ export const BetslipContent = ({
             </FormProvider>
           )}
         </div>
-      )}
+      </div>
     </>
   );
 };

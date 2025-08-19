@@ -60,8 +60,16 @@ export default function WagerInputWithQuote({
 
   return (
     <div className="border-b border-border last:border-b-0">
-      <div className="mb-2">
+      <div className="mb-2 flex items-start justify-between gap-2">
         <h3 className="font-medium text-foreground pr-2">{question}</h3>
+        <button
+          onClick={onRemove}
+          className="text-[24px] leading-none text-muted-foreground hover:text-foreground"
+          type="button"
+          aria-label="Remove"
+        >
+          ×
+        </button>
       </div>
 
       <WagerInputFactory
@@ -83,16 +91,6 @@ export default function WagerInputWithQuote({
           displayUnit={displayUnit}
         />
       )}
-      <div className="mt-0.5 flex justify-end">
-        <button
-          onClick={onRemove}
-          className="text-[10px] leading-none text-muted-foreground hover:text-foreground flex items-center gap-1"
-          type="button"
-        >
-          <span className="text-[12px] leading-none">×</span>
-          <span>Remove</span>
-        </button>
-      </div>
     </div>
   );
 }

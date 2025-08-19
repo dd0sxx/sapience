@@ -23,7 +23,6 @@ import { usePathname } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
-import Betslip from './Betslip';
 import SusdeBalance from './SusdeBalance';
 
 // Dynamically import LottieIcon
@@ -174,7 +173,7 @@ const Header = () => {
           {/* Mobile Sidebar Trigger Button (fixed left, with border, hover effect) */}
           <SidebarTrigger
             id="nav-sidebar"
-            className="fixed left-0 top-16 z-[51] flex items-center justify-center md:hidden border border-l-0 border-border bg-background/30 p-5 pl-4 backdrop-blur-sm rounded-r-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
+            className="fixed left-0 top-16 z-[51] flex items-center justify-center lg:hidden border border-l-0 border-border bg-background/30 p-5 pl-4 backdrop-blur-sm rounded-r-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
           >
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
@@ -183,7 +182,7 @@ const Header = () => {
             <div className="block">
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
-            {ready && <Betslip />}
+            {ready && null}
             {!ready && null /* Render nothing while Privy is loading */}
             {ready && authenticated && (
               <DropdownMenu>

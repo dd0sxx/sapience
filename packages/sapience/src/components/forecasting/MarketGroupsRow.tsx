@@ -232,7 +232,7 @@ const MarketGroupsRow = ({
         <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-5 py-4 md:py-3 gap-3">
           {/* Left Side: Question + Prediction */}
           <div className="flex-grow">
-            <h3 className="text-xl font-heading font-normal mb-1">
+            <h3 className="text-xl mb-1.5">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}${
                   marketClassification !==
@@ -243,10 +243,10 @@ const MarketGroupsRow = ({
                 }`}
                 className="group"
               >
-                <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-muted-foreground/40">
+                <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
                   {displayQuestion}
                 </span>
-                <ChevronRight className="ml-1 inline-block h-4 w-4 align-middle relative -top-0.5 text-muted-foreground transition-colors group-hover:text-foreground" />
+                <ChevronRight className="ml-1 inline-block h-5 w-5 align-middle relative -top-0.5 text-muted-foreground transition-colors group-hover:text-foreground" />
               </Link>
             </h3>
             {/* Prediction Section (conditionally rendered) */}
@@ -256,6 +256,26 @@ const MarketGroupsRow = ({
                   Market Prediction:{' '}
                 </span>
                 <MarketPrediction />
+                {marketClassification !==
+                  MarketGroupClassificationEnum.MULTIPLE_CHOICE &&
+                  activeMarket && (
+                    <Button
+                      variant="link"
+                      size="xs"
+                      asChild
+                      className="h-6 px-0 ml-6 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
+                    >
+                      <Link
+                        href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
+                        className="group inline-flex items-center gap-0.5"
+                      >
+                        <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
+                          Details
+                        </span>
+                        <ChevronRight className="-ml-1 h-2 w-2 text-muted-foreground transition-colors group-hover:text-foreground" />
+                      </Link>
+                    </Button>
+                  )}
               </div>
             )}
           </div>
@@ -268,7 +288,6 @@ const MarketGroupsRow = ({
               <>
                 <Button
                   variant="outline"
-                  size="sm"
                   className="h-8 px-3 w-24"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -286,25 +305,11 @@ const MarketGroupsRow = ({
                 </Button>
               </>
             ) : (
-              // For non-multichoice markets, show Details + Wager buttons for the active market
+              // For non-multichoice markets, show Wager button for the active market
               activeMarket && (
                 <>
                   <Button
-                    variant="link"
-                    size="xs"
-                    asChild
-                    className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
-                  >
-                    <Link
-                      href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
-                    >
-                      Details
-                    </Link>
-                  </Button>
-
-                  <Button
                     variant="default"
-                    size="sm"
                     onClick={() => handleAddToBetSlip(activeMarket)}
                     className="h-8 px-3 w-24"
                   >
@@ -361,27 +366,29 @@ const MarketGroupsRow = ({
                                 <IndividualMarketPrediction
                                   marketItem={marketItem}
                                 />
+                                <Button
+                                  variant="link"
+                                  size="xs"
+                                  asChild
+                                  className="h-6 px-0 ml-4 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
+                                >
+                                  <Link
+                                    href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
+                                    className="group inline-flex items-center"
+                                  >
+                                    <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
+                                      Details
+                                    </span>
+                                    <ChevronRight className="ml-0 h-2.5 w-2.5 text-muted-foreground transition-colors group-hover:text-foreground" />
+                                  </Link>
+                                </Button>
                               </div>
                             </div>
 
                             {/* Right Side: Actions */}
                             <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
                               <Button
-                                variant="link"
-                                size="xs"
-                                asChild
-                                className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
-                              >
-                                <Link
-                                  href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
-                                >
-                                  Details
-                                </Link>
-                              </Button>
-
-                              <Button
                                 variant="default"
-                                size="sm"
                                 onClick={() => handleAddToBetSlip(marketItem)}
                                 className="h-8 px-3 w-24"
                               >

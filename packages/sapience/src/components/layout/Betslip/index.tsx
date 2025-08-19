@@ -14,7 +14,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@sapience/ui/components/ui/drawer';
-import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
+import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import Image from 'next/image';
 import { useForm, useWatch } from 'react-hook-form';
@@ -52,7 +52,11 @@ import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { BetslipContent } from '~/components/layout/Betslip/BetslipContent';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
-const Betslip = () => {
+interface BetslipProps {
+  variant?: 'triggered' | 'panel';
+}
+
+const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   const {
     betSlipPositions,
     isPopoverOpen,
@@ -62,7 +66,7 @@ const Betslip = () => {
   } = useBetSlipContext();
 
   const [isParlayMode, setIsParlayMode] = useState(false);
-  const isMobile = useIsMobile();
+  const isCompact = useIsBelow(1024);
   const { login, authenticated } = usePrivy();
   const { sendCalls, isPending: isPendingWriteContract } =
     useSapienceWriteContract({
@@ -610,25 +614,25 @@ const Betslip = () => {
     parlayChainId,
   };
 
-  if (isMobile) {
+  if (isCompact) {
     return (
       <>
         {/* Mobile Bet Slip Button (fixed right, with border, hover effect) */}
         <Drawer open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <DrawerTrigger asChild>
             <Button
-              className="fixed right-0 top-16 z-[51] flex items-center justify-center md:hidden border border-r-0 border-border bg-background/30 p-2.5 pr-1.5 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
+              className="fixed right-0 top-16 z-[51] flex items-center justify-center lg:hidden border border-r-0 border-border bg-background/30 p-2.5 pr-1.5 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
               variant="ghost"
             >
               <Image src="/susde-icon.svg" alt="sUSDe" width={20} height={20} />
             </Button>
           </DrawerTrigger>
-          <DrawerContent className="max-h-[85vh]">
+          <DrawerContent className="h-[85vh]">
             <DrawerHeader className="pb-0">
               <DrawerTitle className="text-left"></DrawerTitle>
             </DrawerHeader>
             <div
-              className={`${betSlipPositions.length === 0 ? 'p-6 py-14' : 'p-0'} overflow-y-auto`}
+              className={`${betSlipPositions.length === 0 ? 'px-4 pt-4 pb-14' : 'p-0'} h-full`}
             >
               <BetslipContent {...contentProps} />
             </div>
@@ -638,13 +642,25 @@ const Betslip = () => {
     );
   }
 
+  if (variant === 'panel') {
+    return (
+      <div className="w-full h-full flex flex-col">
+        <div
+          className={`${betSlipPositions.length === 0 ? 'px-4 pt-4 pb-10' : 'p-0'} h-full`}
+        >
+          <BetslipContent {...contentProps} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="default"
-            className="hidden md:flex rounded-full px-5"
+            className="hidden lg:flex rounded-full px-5"
             size="default"
           >
             <Image src="/susde-icon.svg" alt="sUSDe" width={20} height={20} />
@@ -652,10 +668,12 @@ const Betslip = () => {
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className={`${betSlipPositions.length === 0 ? 'w-80 p-6 py-14' : 'w-[20rem] p-0'}`}
+          className={`${betSlipPositions.length === 0 ? 'w-80 h-[24rem] px-4 pt-4 pb-14' : 'w-[20rem] p-0'} flex flex-col`}
           align="end"
         >
-          <BetslipContent {...contentProps} />
+          <div className="flex-1">
+            <BetslipContent {...contentProps} />
+          </div>
         </PopoverContent>
       </Popover>
     </>

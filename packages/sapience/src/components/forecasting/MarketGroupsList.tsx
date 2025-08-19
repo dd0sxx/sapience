@@ -20,6 +20,7 @@ import {
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
+import Betslip from '~/components/layout/Betslip';
 
 // Define Category type based on assumed hook return
 interface Category {
@@ -641,7 +642,12 @@ const ForecastingTable = () => {
 
   // Render content once both are loaded
   return (
-    <div className="flex flex-col md:flex-row min-h-0">
+    <div className="relative flex flex-col lg:flex-row items-start">
+      {/* Mobile-only betslip drawer trigger */}
+      <div className="block lg:hidden">
+        <Betslip />
+      </div>
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-16 lg:gap-10 pr-0 lg:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
@@ -760,7 +766,14 @@ const ForecastingTable = () => {
         </div>
       </div>
 
-      {/* Desktop sidebar removed; filters are shown at the top instead */}
+      {/* Desktop sticky betslip sidebar */}
+      <div className="hidden lg:block w-[22rem] shrink-0 self-start sticky top-24">
+        <div className="border border-muted rounded shadow-sm bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
+          <div className="h-full overflow-y-auto">
+            <Betslip variant="panel" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
