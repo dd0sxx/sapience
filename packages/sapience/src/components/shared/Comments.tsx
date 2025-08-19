@@ -12,7 +12,7 @@ import { usePredictions } from '~/hooks/graphql/usePredictions';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
+import { sqrtPriceX96ToPriceD18, getChainShortName } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
@@ -59,6 +59,7 @@ interface Comment {
   content: string;
   timestamp: string;
   prediction?: string;
+  predictionPercent?: number;
   question: string;
   category?: string;
   answer: Answer;
@@ -71,6 +72,7 @@ interface Comment {
   isActive?: boolean;
   marketAddress?: string;
   marketId?: string;
+  chainShortName?: string;
 }
 
 interface CommentsProps {
@@ -119,11 +121,15 @@ function attestationToComment(
   let lowerBound: number | undefined = undefined;
   let upperBound: number | undefined = undefined;
   let isActive: boolean = false;
+  let chainShortName: string | undefined = undefined;
   if (marketGroups && marketAddress && marketId) {
     const group = marketGroups.find(
       (g) => g.address?.toLowerCase() === marketAddress.toLowerCase()
     );
     if (group) {
+      if (group.chainId !== undefined) {
+        chainShortName = getChainShortName(group.chainId);
+      }
       // Find the market in the group
       const market = group.markets?.find(
         (m: any) => m.marketId?.toString() === marketId?.toString()
@@ -177,20 +183,22 @@ function attestationToComment(
 
   // Format prediction text based on market type
   let predictionText = '';
+  let predictionPercent: number | undefined = undefined;
   if (marketClassification === '2') {
     // YES_NO - show percentage chance
     const priceD18 = sqrtPriceX96ToPriceD18(prediction);
     const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
     const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-    predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
+    predictionPercent = Math.round(Number(percentageD2) / 100);
+    predictionText = `${predictionPercent}% Chance`;
   } else if (marketClassification === '1') {
     // MULTIPLE_CHOICE - show percentage chance for yes/no within multiple choice
 
     const priceD18 = sqrtPriceX96ToPriceD18(prediction);
     const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
     const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-
-    predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
+    predictionPercent = Math.round(Number(percentageD2) / 100);
+    predictionText = `${predictionPercent}% Chance`;
   } else if (marketClassification === '3') {
     // NUMERIC - show numeric value
     const hideQuote = (quoteTokenName || '').toUpperCase().includes('USD');
@@ -208,6 +216,7 @@ function attestationToComment(
     content: commentText,
     timestamp: new Date(Number(att.rawTime) * 1000).toISOString(),
     prediction: predictionText,
+    predictionPercent,
     answer: Answer.Yes, // Not available in this schema, default to Yes
     question,
     category,
@@ -220,6 +229,7 @@ function attestationToComment(
     isActive,
     marketAddress,
     marketId: marketId?.toString(),
+    chainShortName,
   };
 }
 
@@ -367,21 +377,13 @@ const Comments = ({
                   className="relative border-b border-border"
                 >
                   <div className="relative">
-                    <div className="px-6 py-5 space-y-5">
-                      {/* Comment content */}
-                      {(comment.content || '').trim().length > 0 && (
-                        <div className="border border-border/50 rounded-lg p-4 shadow-sm bg-background">
-                          <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
-                            {comment.content}
-                          </div>
-                        </div>
-                      )}
+                    <div className="px-6 py-5 space-y-4">
                       {/* Question and Prediction */}
                       <div className="space-y-2">
                         <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
                           {comment.marketAddress && comment.marketId ? (
                             <Link
-                              href={`/markets/base:${comment.marketAddress.toLowerCase()}`}
+                              href={`/markets/${comment.chainShortName || 'base'}:${comment.marketAddress.toLowerCase()}/${comment.marketId}`}
                               className="group transition-all duration-200 hover:text-foreground/80 inline"
                             >
                               {comment.question}
@@ -397,8 +399,30 @@ const Comments = ({
                             {/* Prediction badge/text based on market type */}
                             {comment.prediction &&
                               (() => {
+                                const isNumericMarket =
+                                  comment.marketClassification === '3';
+                                const percent = comment.predictionPercent;
+                                const shouldColor =
+                                  !isNumericMarket &&
+                                  typeof percent === 'number' &&
+                                  percent !== 50;
+                                const isGreen = shouldColor && percent > 50;
+                                const isRed = shouldColor && percent < 50;
+                                const variant = shouldColor
+                                  ? 'outline'
+                                  : 'default';
+                                const className = shouldColor
+                                  ? isGreen
+                                    ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                                    : isRed
+                                      ? 'border-red-500/40 bg-red-500/10 text-red-600'
+                                      : ''
+                                  : '';
                                 return (
-                                  <Badge variant="default">
+                                  <Badge
+                                    variant={variant as any}
+                                    className={className}
+                                  >
                                     {comment.prediction}
                                   </Badge>
                                 );
@@ -431,6 +455,14 @@ const Comments = ({
                           </div>
                         </div>
                       </div>
+                      {/* Comment content */}
+                      {(comment.content || '').trim().length > 0 && (
+                        <div className="border border-border/50 rounded-lg p-4 shadow-sm bg-background">
+                          <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
+                            {comment.content}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,6 +1,13 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import QuestionItem from '../shared/QuestionItem';
 
 interface QuestionSuggestionsProps {
@@ -15,6 +22,7 @@ const QuestionSuggestions = ({
   const suggestionsRef = useRef<any[]>([]);
   const marketsRef = useRef<any[]>([]);
   const isInitializedRef = useRef(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   // Check if markets have actually changed (not just reference)
   const marketsChanged = useMemo(() => {
@@ -35,7 +43,8 @@ const QuestionSuggestions = ({
 
   // Generate suggestions synchronously on first render and when markets change
   const suggestedMarkets = useMemo(() => {
-    if (marketsChanged || !isInitializedRef.current) {
+    // Recompute when markets change, on first init, or when user requests refresh
+    if (marketsChanged || !isInitializedRef.current || refreshNonce > 0) {
       // Sort markets by end timestamp (ascending - soonest ending first)
       const sortedByEndTime = [...markets].sort((a, b) => {
         const aEnd = a.endTimestamp || 0;
@@ -58,7 +67,7 @@ const QuestionSuggestions = ({
     }
 
     return suggestionsRef.current;
-  }, [markets, marketsChanged]);
+  }, [markets, marketsChanged, refreshNonce]);
 
   if (suggestedMarkets.length === 0) {
     return null;
@@ -66,9 +75,26 @@ const QuestionSuggestions = ({
 
   return (
     <div className="p-6 gap-1.5 flex flex-col">
-      <h3 className="font-medium text-sm text-muted-foreground">
-        Make a prediction
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium text-sm text-muted-foreground">
+          Make a Prediction
+        </h3>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setRefreshNonce((n) => n + 1)}
+                aria-label="Randomize suggested questions"
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Randomize suggested questions</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       <div className="bg-background border border-border rounded-lg shadow-sm overflow-hidden">
         <div>
           {suggestedMarkets.map((market, index) => (
