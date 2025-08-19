@@ -23,6 +23,7 @@ export const POSITIONS_QUERY = /* GraphQL */ `
       borrowedQuoteToken
       isLP
       isSettled
+      createdAt
       highPriceTick
       lowPriceTick
       lpBaseToken

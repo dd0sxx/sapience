@@ -193,7 +193,10 @@ function attestationToComment(
     predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
   } else if (marketClassification === '3') {
     // NUMERIC - show numeric value
-    predictionText = `${numericValue?.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;
+    const hideQuote = (quoteTokenName || '').toUpperCase().includes('USD');
+    const basePart = baseTokenName ? ` ${baseTokenName}` : '';
+    const quotePart = !hideQuote && quoteTokenName ? `/${quoteTokenName}` : '';
+    predictionText = `${numericValue?.toString()}${basePart}${quotePart}`;
   } else {
     // Fallback
     predictionText = `${numericValue}% Chance`;
@@ -366,21 +369,23 @@ const Comments = ({
                   <div className="relative">
                     <div className="px-6 py-5 space-y-5">
                       {/* Comment content */}
-                      <div className="border border-border/50 rounded-lg p-4 shadow-sm bg-background">
-                        <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
-                          {comment.content}
+                      {(comment.content || '').trim().length > 0 && (
+                        <div className="border border-border/50 rounded-lg p-4 shadow-sm bg-background">
+                          <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
+                            {comment.content}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       {/* Question and Prediction */}
                       <div className="space-y-2">
                         <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
                           {comment.marketAddress && comment.marketId ? (
                             <Link
                               href={`/markets/base:${comment.marketAddress.toLowerCase()}`}
-                              className="transition-all duration-200 flex items-center gap-1 hover:gap-1.5 hover:text-foreground/80"
+                              className="group transition-all duration-200 hover:text-foreground/80 inline"
                             >
                               {comment.question}
-                              <ChevronRight className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                              <ChevronRight className="ml-1 inline-block h-4 w-4 align-middle relative -top-px text-muted-foreground group-hover:text-foreground" />
                             </Link>
                           ) : (
                             comment.question

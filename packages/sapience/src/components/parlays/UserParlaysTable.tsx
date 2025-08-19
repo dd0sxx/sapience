@@ -159,14 +159,24 @@ export default function UserParlaysTable({
 
   // Apply optional market address filter in one place
   const visibleIds = useMemo(() => {
-    if (!marketAddressFilter) return myIds;
-    const target = marketAddressFilter.toLowerCase();
-    return myIds.filter((id) => {
-      const p = byId.get(id.toString());
-      if (!p) return false;
-      return (p.predictedOutcomes || []).some(
-        (o) => String(o.market.marketGroup).toLowerCase() === target
-      );
+    const base = (() => {
+      if (!marketAddressFilter) return myIds;
+      const target = marketAddressFilter.toLowerCase();
+      return myIds.filter((id) => {
+        const p = byId.get(id.toString());
+        if (!p) return false;
+        return (p.predictedOutcomes || []).some(
+          (o) => String(o.market.marketGroup).toLowerCase() === target
+        );
+      });
+    })();
+    // Sort by createdAt descending (newest first)
+    return [...base].sort((a, b) => {
+      const pa = byId.get(a.toString());
+      const pb = byId.get(b.toString());
+      const aTime = pa ? Number(pa.createdAt) : 0;
+      const bTime = pb ? Number(pb.createdAt) : 0;
+      return bTime - aTime;
     });
   }, [marketAddressFilter, myIds, byId]);
 

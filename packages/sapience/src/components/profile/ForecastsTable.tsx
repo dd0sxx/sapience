@@ -308,8 +308,14 @@ const ForecastsTable = ({
     [marketGroups, isMarketsLoading, isMarketPage, shouldDisplayQuestionColumn]
   );
 
+  // Sort newest to oldest by attestation timestamp (rawTime is seconds)
+  const sortedAttestations = React.useMemo(() => {
+    const list = attestations ? [...attestations] : [];
+    return list.sort((a, b) => Number(b.rawTime) - Number(a.rawTime));
+  }, [attestations]);
+
   const table = useReactTable({
-    data: attestations || [],
+    data: sortedAttestations,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });

@@ -108,24 +108,15 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       {showHeaderText && (
         <h3 className="text-2xl font-medium">Your Activity</h3>
       )}
-      <Tabs defaultValue="forecasts">
+      <Tabs defaultValue="trades">
         <div className="mb-4">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
             <TabsTrigger value="trades">Prediction Market Trades</TabsTrigger>
             <TabsTrigger value="lp">Prediction Market Liquidity</TabsTrigger>
             <TabsTrigger value="parlays">Parlays</TabsTrigger>
+            <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
           </TabsList>
         </div>
-
-        <TabsContent value="forecasts">
-          <ForecastsTable
-            attestations={safeAttestations}
-            parentMarketAddress={marketAddress}
-            parentChainId={chainId}
-            parentMarketId={marketId}
-          />
-        </TabsContent>
 
         <TabsContent value="trades">
           <TraderPositionsTable
@@ -153,6 +144,15 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             chainId={chainId}
             showHeaderText={false}
             marketAddressFilter={marketAddress}
+          />
+        </TabsContent>
+
+        <TabsContent value="forecasts">
+          <ForecastsTable
+            attestations={safeAttestations}
+            parentMarketAddress={marketAddress}
+            parentChainId={chainId}
+            parentMarketId={marketId}
           />
         </TabsContent>
       </Tabs>

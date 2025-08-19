@@ -18,8 +18,6 @@ interface OrderBookRowProps {
   total: number;
   type: 'ask' | 'bid';
   percentage: number; // Percentage of the largest size in the visible book
-  baseTokenName?: string; // Add base token name
-  quoteTokenName?: string; // Add quote token name
 }
 
 const OrderBookRow: React.FC<OrderBookRowProps> = ({
@@ -28,25 +26,10 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
   total,
   type,
   percentage,
-  baseTokenName,
-  quoteTokenName,
 }) => {
   const priceColor = type === 'ask' ? 'text-red-500' : 'text-green-500';
   const bgColor = type === 'ask' ? 'bg-red-500/10' : 'bg-green-500/10'; // Use subtle opacity
   // const barPosition = type === 'ask' ? 'right-0' : 'left-0'; // Removed conditional positioning
-
-  // For Yes/No markets, show "No" for asks (selling Yes = betting No) and "Yes" for bids
-  const displayTokenName =
-    baseTokenName === 'Yes' && type === 'ask' ? 'No' : baseTokenName;
-  const baseUnit = displayTokenName ? ` ${displayTokenName}` : '';
-  // Build price unit as Base/Quote; hide quote if it contains USD; omit for Yes/No prices
-  const priceUnit = (() => {
-    const quote = quoteTokenName || '';
-    const hideQuote = quote.toUpperCase().includes('USD');
-    if (!displayTokenName) return '';
-    if (baseTokenName === 'Yes') return ''; // Skip units for Yes/No price rows
-    return hideQuote ? ` ${displayTokenName}` : ` ${displayTokenName}/${quote}`;
-  })();
 
   return (
     <div className="relative grid grid-cols-3 gap-4 text-xs py-0.5 px-2 hover:bg-muted/50 overflow-hidden">
@@ -56,13 +39,13 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
         aria-hidden="true" // Hide from screen readers
       />
       <div className={`relative font-mono ${priceColor} flex items-center`}>
-        <NumberDisplay value={price} appendedText={priceUnit.trim()} />
+        <NumberDisplay value={price} />
       </div>
       <div className="relative text-right font-mono flex items-center justify-end">
-        <NumberDisplay value={size} appendedText={baseUnit.trim()} />
+        <NumberDisplay value={size} />
       </div>
       <div className="relative text-right font-mono flex items-center justify-end">
-        <NumberDisplay value={total} appendedText={baseUnit.trim()} />
+        <NumberDisplay value={total} />
       </div>
     </div>
   );
@@ -86,9 +69,7 @@ interface OrderBookChartProps {
 }
 
 const OrderBookChart: React.FC<OrderBookChartProps> = ({
-  quoteTokenName,
   className,
-  baseTokenName,
   asks,
   bids,
   lastPrice,
@@ -211,8 +192,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
                 total={ask.cumulativeSize}
                 type="ask"
                 percentage={percentage}
-                baseTokenName={baseTokenName} // Pass base token name
-                quoteTokenName={quoteTokenName} // Pass quote token name
               />
             );
           })}
@@ -239,8 +218,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
                 total={bid.cumulativeSize}
                 type="bid"
                 percentage={percentage}
-                baseTokenName={baseTokenName} // Pass base token name
-                quoteTokenName={quoteTokenName} // Pass quote token name
               />
             );
           })}
