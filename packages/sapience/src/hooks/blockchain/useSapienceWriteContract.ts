@@ -172,10 +172,12 @@ export function useSapienceWriteContract({
       validateAndSwitchChain,
       sendCallsAsync,
       client,
+      onTxHash,
       toast,
+      successMessage,
+      onSuccess,
       fallbackErrorMessage,
       onError,
-      onTxHash,
     ]
   );
 

@@ -15,7 +15,6 @@ import {
   FormMessage,
 } from '@sapience/ui/components/ui/form';
 import { Input } from '@sapience/ui/components/ui/input';
-import { useToast } from '@sapience/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import type { Abi } from 'viem';
@@ -60,7 +59,6 @@ export function CreateLiquidityForm({
   permitData,
   isPermitLoadingPermit = false,
 }: LiquidityFormProps) {
-  const { toast } = useToast();
   const { isConnected, walletBalance, onConnectWallet } = walletData;
   const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false);
   const successHandled = useRef(false);
@@ -152,13 +150,9 @@ export function CreateLiquidityForm({
   const {
     createLP,
     isLoading: isCreatingLP,
-    isSuccess: isLPCreated,
-    isError: isLPError,
     error: lpError,
-    txHash,
-    isApproving,
-    needsApproval,
   } = useCreateLP({
+    onSuccess,
     marketAddress,
     marketAbi,
     chainId,
@@ -190,22 +184,6 @@ export function CreateLiquidityForm({
     setEstimatedResultingBalance(newBalance);
   }, [depositAmount, walletBalance]);
 
-  // Handle successful LP creation
-  useEffect(() => {
-    if (isLPCreated && txHash && onSuccess && !successHandled.current) {
-      successHandled.current = true;
-
-      toast({
-        title: 'Liquidity Position Created',
-        description: 'Your position has been successfully created.',
-      });
-      onSuccess(txHash);
-
-      // Reset the form after success
-      form.reset();
-    }
-  }, [isLPCreated, txHash, onSuccess, form, toast]);
-
   // Only reset the success handler when the form is being filled out again
   // This prevents the double toast when the component rerenders
   useEffect(() => {
@@ -213,17 +191,6 @@ export function CreateLiquidityForm({
       successHandled.current = false;
     }
   }, [depositAmount, lowPriceInput, highPriceInput]);
-
-  // Handle LP creation errors
-  useEffect(() => {
-    if (isLPError && lpError) {
-      toast({
-        title: 'Error Creating Position',
-        description: lpError.message,
-        variant: 'destructive',
-      });
-    }
-  }, [isLPError, lpError, toast]);
 
   const submitForm = async () => {
     if (!isConnected) return;
@@ -246,15 +213,11 @@ export function CreateLiquidityForm({
     if (quoteLoading) {
       return { text: 'Calculating...', loading: true };
     }
-    if (isApproving) {
-      return { text: `Approving ${collateralAssetTicker}...`, loading: true };
-    }
+
     if (isCreatingLP) {
       return { text: 'Creating Position...', loading: true };
     }
-    if (needsApproval) {
-      return { text: `Approve & Add Liquidity`, loading: false };
-    }
+
     return { text: 'Add Liquidity', loading: false };
   };
 
@@ -265,7 +228,6 @@ export function CreateLiquidityForm({
     isPermitLoadingPermit ||
     permitData?.permitted === false ||
     quoteLoading ||
-    isApproving ||
     isCreatingLP;
 
   return (

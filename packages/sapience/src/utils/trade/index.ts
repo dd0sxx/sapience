@@ -3,6 +3,16 @@ import { YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 export const DEFAULT_SLIPPAGE = 0.5;
 
+// Define calculateMinAmount inside the useCallback scope
+export const calculateMinAmount = (
+  amount: bigint,
+  slippage: number
+): bigint => {
+  if (amount === BigInt(0)) return BigInt(0);
+  const slippageBasisPoints = BigInt(Math.floor(slippage * 100));
+  return amount - (amount * slippageBasisPoints) / BigInt(10000);
+};
+
 // Calculate collateral limit including slippage
 // limitCollateral = maxCollateral * (1 + slippagePercent / 100)
 export const calculateCollateralLimit = (
