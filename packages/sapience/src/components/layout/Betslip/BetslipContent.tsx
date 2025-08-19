@@ -8,6 +8,12 @@ import Link from 'next/link';
 import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { SquareStack, AlertTriangle } from 'lucide-react';
 import { Button } from '@/sapience/ui/index';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 // import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification } from '~/lib/types';
@@ -63,6 +69,7 @@ export const BetslipContent = ({
   const hasNumericMarket = positionsWithMarketData.some(
     (p) => p.marketClassification === MarketGroupClassification.NUMERIC
   );
+  const parlayDisabled = betSlipPositions.length < 2;
   return (
     <>
       {betSlipPositions.length === 0 ? (
@@ -81,18 +88,33 @@ export const BetslipContent = ({
           <div className="px-3 pt-3 pb-1">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Place a Wager</span>
-              {betSlipPositions.length >= 2 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
-                    <SquareStack className="w-3 h-3" />
-                    Parlay
-                  </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+                  <SquareStack className="w-3 h-3" />
+                  Parlay
+                </span>
+                {parlayDisabled ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Switch checked={false} disabled />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          You must add at least two wagers to build a parlay
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
                   <Switch
                     checked={isParlayMode}
                     onCheckedChange={setIsParlayMode}
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {isParlayMode && (

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
@@ -233,7 +233,21 @@ const MarketGroupsRow = ({
           {/* Left Side: Question + Prediction */}
           <div className="flex-grow">
             <h3 className="text-xl font-heading font-normal mb-1">
-              {displayQuestion}
+              <Link
+                href={`/markets/${chainShortName}:${marketAddress}${
+                  marketClassification !==
+                    MarketGroupClassificationEnum.MULTIPLE_CHOICE &&
+                  activeMarket
+                    ? `/${activeMarket.marketId}`
+                    : ''
+                }`}
+                className="group"
+              >
+                <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-muted-foreground/40">
+                  {displayQuestion}
+                </span>
+                <ChevronRight className="ml-1 inline-block h-4 w-4 align-middle relative -top-0.5 text-muted-foreground transition-colors group-hover:text-foreground" />
+              </Link>
             </h3>
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
@@ -250,19 +264,8 @@ const MarketGroupsRow = ({
           <div className="flex flex-row-reverse items-center gap-3 self-start md:flex-row md:ml-6 md:self-auto">
             {marketClassification ===
             MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (
-              // For multichoice markets, show Details + dropdown
+              // For multichoice markets, show only the dropdown toggle
               <>
-                <Button
-                  variant="link"
-                  size="xs"
-                  asChild
-                  className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
-                >
-                  <Link href={`/markets/${chainShortName}:${marketAddress}`}>
-                    Details
-                  </Link>
-                </Button>
-
                 <Button
                   variant="outline"
                   size="sm"
@@ -292,7 +295,9 @@ const MarketGroupsRow = ({
                     asChild
                     className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
                   >
-                    <Link href={`/markets/${chainShortName}:${marketAddress}`}>
+                    <Link
+                      href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
+                    >
                       Details
                     </Link>
                   </Button>

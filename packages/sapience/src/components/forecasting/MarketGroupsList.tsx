@@ -1,23 +1,12 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from '@sapience/ui/components/ui/sheet';
+import {} from '@sapience/ui/components/ui/sheet';
 import { Skeleton } from '@sapience/ui/components/ui/skeleton';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  FrownIcon,
-  LayoutGridIcon,
-  TagIcon,
-  SlidersHorizontal,
-  SearchIcon,
-} from 'lucide-react';
+import { FrownIcon, LayoutGridIcon, TagIcon, SearchIcon } from 'lucide-react';
 import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -106,6 +95,7 @@ const FocusAreaFilter = ({
   isLoadingCategories,
   categories,
   getCategoryStyle,
+  containerClassName,
 }: {
   selectedCategorySlug: string | null;
   handleCategoryClick: (categorySlug: string | null) => void;
@@ -114,85 +104,105 @@ const FocusAreaFilter = ({
   isLoadingCategories: boolean;
   categories: Category[] | null | undefined; // Use defined Category type
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
+  containerClassName?: string;
 }) => (
-  <div className="p-5 pr-12 w-[280px] mt-0">
-    <div className="pb-2">
-      <h3 className="font-medium mb-4 md:hidden">Filters</h3>
-      <div className="space-y-1 flex flex-col">
-        <button
-          type="button"
-          onClick={() => handleCategoryClick(null)}
-          className={`flex w-full text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
-        >
-          <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
-            <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
-          </div>
-          <span className="font-medium">All Focus Areas</span>
-        </button>
-        {isLoadingCategories &&
-          [...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full rounded-full" />
-          ))}
-        {!isLoadingCategories &&
-          categories &&
-          // Use FOCUS_AREAS array to maintain consistent order
-          FOCUS_AREAS.map((focusArea) => {
-            // Only show focus areas that exist in the database categories
-            const category = categories.find((c) => c.slug === focusArea.id);
-            if (!category) return null;
-
-            const styleInfo = getCategoryStyle(category.slug);
-            const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
-
-            // Use the name from FOCUS_AREAS if available, otherwise fall back to category.name
-            const displayName = styleInfo?.name || category.name;
-
-            return (
-              <button
-                type="button"
-                key={category.id}
-                onClick={() => handleCategoryClick(category.slug)}
-                className={`flex w-full text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
-              >
-                <div
-                  className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
-                  style={{ backgroundColor: `${categoryColor}1A` }}
-                >
-                  {styleInfo?.iconSvg ? (
-                    <div style={{ transform: 'scale(0.65)' }}>
-                      <div
-                        style={{ color: categoryColor }}
-                        dangerouslySetInnerHTML={{
-                          __html: styleInfo.iconSvg,
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <TagIcon
-                      className="w-3 h-3"
-                      style={{ color: categoryColor }}
-                    />
-                  )}
-                </div>
-                <span className="font-medium">{displayName}</span>
-              </button>
-            );
-          })}
-      </div>
-
-      <div className="mt-6 mb-6">
-        <h3 className="font-medium text-sm mb-2">Status</h3>
-        <div className="flex space-x-1">
+  <div className={containerClassName || 'px-0 py-0 w-full'}>
+    <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
+      {/* Categories Row */}
+      <div className="flex-1 min-w-0 overflow-x-auto">
+        <div className="flex items-center gap-0.5 md:gap-1">
           <button
             type="button"
-            className={`px-3 py-1 text-xs rounded ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
+            onClick={() => handleCategoryClick(null)}
+            className={`group inline-flex text-left px-1.5 py-1.5 rounded-full items-center gap-1 transition-all duration-300 ease-out text-xs whitespace-nowrap ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass} ${selectedCategorySlug === null ? 'pr-4' : 'pr-2 hover:pr-4'}`}
+          >
+            <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
+              <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
+            </div>
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-out ${
+                selectedCategorySlug === null
+                  ? 'max-w-[200px] opacity-100 ml-1'
+                  : 'max-w-0 opacity-0 ml-0'
+              } group-hover:max-w-[200px] group-hover:opacity-100 group-hover:ml-1`}
+            >
+              <span className="font-medium pr-1">All Focus Areas</span>
+            </div>
+          </button>
+
+          {isLoadingCategories &&
+            [...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-8 w-24 rounded-full" />
+            ))}
+
+          {!isLoadingCategories &&
+            categories &&
+            FOCUS_AREAS.map((focusArea) => {
+              const category = categories.find((c) => c.slug === focusArea.id);
+              if (!category) return null;
+
+              const styleInfo = getCategoryStyle(category.slug);
+              const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
+              const displayName = styleInfo?.name || category.name;
+
+              return (
+                <button
+                  type="button"
+                  key={category.id}
+                  onClick={() => handleCategoryClick(category.slug)}
+                  className={`group inline-flex text-left px-1.5 py-1.5 rounded-full items-center gap-1 transition-all duration-300 ease-out text-xs whitespace-nowrap ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass} ${selectedCategorySlug === category.slug ? 'pr-4' : 'pr-2 hover:pr-4'}`}
+                >
+                  <div
+                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
+                    style={{ backgroundColor: `${categoryColor}1A` }}
+                  >
+                    {styleInfo?.iconSvg ? (
+                      <div style={{ transform: 'scale(0.65)' }}>
+                        <div
+                          style={{ color: categoryColor }}
+                          dangerouslySetInnerHTML={{
+                            __html: styleInfo.iconSvg,
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <TagIcon
+                        className="w-3 h-3"
+                        style={{ color: categoryColor }}
+                      />
+                    )}
+                  </div>
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-out ${
+                      selectedCategorySlug === category.slug
+                        ? 'max-w-[200px] opacity-100 ml-1'
+                        : 'max-w-0 opacity-0 ml-0'
+                    } group-hover:max-w-[200px] group-hover:opacity-100 group-hover:ml-1`}
+                  >
+                    <span className="font-medium pr-1">{displayName}</span>
+                  </div>
+                </button>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* Status on the right (stacks below on small screens) */}
+      <div className="w-full md:w-auto flex-shrink-0 mt-2 md:mt-0">
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-medium text-muted-foreground mr-2">
+            Status
+          </span>
+          <button
+            type="button"
+            className={`px-3 py-1 text-xs rounded-full ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
             onClick={() => handleStatusFilterClick('active')}
           >
             Active
           </button>
           <button
             type="button"
-            className={`px-3 py-1 text-xs rounded ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
+            className={`px-3 py-1 text-xs rounded-full ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
             onClick={() => handleStatusFilterClick('all')}
           >
             All
@@ -239,8 +249,6 @@ const ForecastingTable = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Add state for filter sheet
-  const [filterOpen, setFilterOpen] = React.useState(false);
   // Get mobile status
   const isMobile = useIsMobile();
 
@@ -637,7 +645,7 @@ const ForecastingTable = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-16 lg:gap-10 pr-0 lg:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
-        <div className="sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2 pb-1">
+        <div className="sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2">
           {/* Wrap Input and Icon */}
           <div className="relative flex items-center">
             <SearchIcon
@@ -654,39 +662,25 @@ const ForecastingTable = () => {
               />
             </div>
 
-            {/* Add inline filter button for mobile */}
-            {isMobile && (
-              <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="ml-4 flex items-center justify-center opacity-40 hover:opacity-90 w-10 h-10 rounded-full"
-                  >
-                    <SlidersHorizontal className="h-5 w-5" />
-                    <span className="sr-only">Filter</span>
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[280px] pr-0">
-                  {/* Add animation wrapper */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.2, ease: 'easeInOut' }}
-                  >
-                    <FocusAreaFilter
-                      selectedCategorySlug={selectedCategorySlug}
-                      handleCategoryClick={handleCategoryClick}
-                      statusFilter={statusFilter}
-                      handleStatusFilterClick={handleStatusFilterClick}
-                      isLoadingCategories={false}
-                      categories={categories}
-                      getCategoryStyle={getCategoryStyle}
-                    />
-                  </motion.div>
-                </SheetContent>
-              </Sheet>
-            )}
+            {/* Filters moved to top (visible on all screen sizes) */}
+          </div>
+          <div className="pt-5">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+            >
+              <FocusAreaFilter
+                selectedCategorySlug={selectedCategorySlug}
+                handleCategoryClick={handleCategoryClick}
+                statusFilter={statusFilter}
+                handleStatusFilterClick={handleStatusFilterClick}
+                isLoadingCategories={isLoadingCategories}
+                categories={categories}
+                getCategoryStyle={getCategoryStyle}
+                containerClassName="px-0 md:px-0 py-0 w-full"
+              />
+            </motion.div>
           </div>
         </div>
 
@@ -766,27 +760,7 @@ const ForecastingTable = () => {
         </div>
       </div>
 
-      {/* Desktop filter panel - sticky on the right side */}
-      {!isMobile && (
-        <div className="hidden md:block w-[280px] sticky top-20 max-h-[calc(100vh-5rem)] self-start overflow-y-auto">
-          {/* Add animation wrapper */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2, ease: 'easeInOut', delay: 0.1 }} // Slight delay for desktop
-          >
-            <FocusAreaFilter
-              selectedCategorySlug={selectedCategorySlug}
-              handleCategoryClick={handleCategoryClick}
-              statusFilter={statusFilter}
-              handleStatusFilterClick={handleStatusFilterClick}
-              isLoadingCategories={isLoadingCategories}
-              categories={categories}
-              getCategoryStyle={getCategoryStyle}
-            />
-          </motion.div>
-        </div>
-      )}
+      {/* Desktop sidebar removed; filters are shown at the top instead */}
     </div>
   );
 };
