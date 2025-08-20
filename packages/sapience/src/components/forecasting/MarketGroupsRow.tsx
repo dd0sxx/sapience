@@ -240,13 +240,7 @@ const MarketGroupsRow = ({
           <div className="flex-grow">
             <h3 className="text-xl mb-1.5">
               <Link
-                href={`/markets/${chainShortName}:${marketAddress}${
-                  marketClassification !==
-                    MarketGroupClassificationEnum.MULTIPLE_CHOICE &&
-                  activeMarket
-                    ? `/${activeMarket.marketId}`
-                    : ''
-                }`}
+                href={`/markets/${chainShortName}:${marketAddress}`}
                 className="group"
               >
                 <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">

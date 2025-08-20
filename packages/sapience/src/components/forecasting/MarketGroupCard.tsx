@@ -139,16 +139,6 @@ const MarketGroupCard = ({
     }
   };
 
-  const activeMarket = React.useMemo(() => {
-    if (!isActive || market.length === 0) return null;
-
-    if (marketClassification === MarketGroupClassificationEnum.YES_NO) {
-      return market.find((m) => m.optionName === 'Yes') || market[0];
-    }
-
-    return market[0];
-  }, [isActive, market, marketClassification]);
-
   const canShowPredictionElement = isActive && market.length > 0;
 
   return (
@@ -163,13 +153,7 @@ const MarketGroupCard = ({
           <div className="flex flex-col flex-grow">
             <h3 className="text-sm md:text-base leading-tight mb-2">
               <Link
-                href={`/markets/${chainShortName}:${marketAddress}${
-                  marketClassification !==
-                    MarketGroupClassificationEnum.MULTIPLE_CHOICE &&
-                  activeMarket
-                    ? `/${activeMarket.marketId}`
-                    : ''
-                }`}
+                href={`/markets/${chainShortName}:${marketAddress}`}
                 className="group"
               >
                 <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
