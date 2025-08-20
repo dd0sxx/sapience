@@ -1,9 +1,15 @@
 'use client';
 
 import * as React from 'react';
+import autoScroll from 'embla-carousel-auto-scroll';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from '@sapience/ui/components/ui/carousel';
 import dynamic from 'next/dynamic';
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
-import MarketGroupsRow from '../forecasting/MarketGroupsRow';
+import MarketGroupCard from '../forecasting/MarketGroupCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
@@ -196,53 +202,92 @@ export default function FeaturedMarketGroup() {
   }
 
   return (
-    <section className="pt-8 lg:pt-12 px-4 sm:px-6 w-full relative z-10">
-      <div className="max-w-6xl mx-auto w-full">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center lg:justify-center gap-8 lg:gap-28">
-          {/* Content constrained to match other sections */}
-          <div className="w-full lg:w-4/5 lg:max-w-4xl">
-            {groupedMarketGroups.length === 0 ? (
-              <div className="text-center">
-                <p className="text-lg text-muted-foreground">
-                  No active market groups available
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                <div className="mb-2">
-                  <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                    Settling Soon
-                  </h3>
-                  <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
-                    {groupedMarketGroups.map((marketGroup) => (
-                      <div
-                        key={marketGroup.key}
-                        className="border-b last:border-b-0 border-border"
-                      >
-                        <MarketGroupsRow
-                          chainId={marketGroup.chainId}
-                          marketAddress={marketGroup.marketAddress}
-                          market={marketGroup.markets}
-                          color={marketGroup.color}
-                          displayQuestion={
-                            marketGroup.displayQuestion ||
-                            marketGroup.marketName
-                          }
-                          isActive={marketGroup.isActive}
-                          marketClassification={
-                            marketGroup.marketClassification
-                          }
-                          displayUnit={marketGroup.displayUnit}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+    <section className="pt-0 px-0 w-full relative z-10">
+      <div className="w-full px-0">
+        {groupedMarketGroups.length === 0 ? (
+          <div className="text-center">
+            <p className="text-lg text-muted-foreground">
+              No active market groups available
+            </p>
           </div>
-        </div>
+        ) : (
+          <MobileAndDesktopLists groupedMarketGroups={groupedMarketGroups} />
+        )}
       </div>
     </section>
+  );
+}
+
+function MobileAndDesktopLists({
+  groupedMarketGroups,
+}: {
+  groupedMarketGroups: GroupedMarketGroup[];
+}) {
+  const items = React.useMemo(
+    () => groupedMarketGroups.slice(0, 4),
+    [groupedMarketGroups]
+  );
+
+  const autoScrollPlugin = React.useMemo(
+    () =>
+      autoScroll({
+        playOnInit: true,
+        stopOnMouseEnter: true,
+        stopOnInteraction: true,
+        speed: 0.5, // even slower, continuous speed
+      }),
+    []
+  );
+
+  return (
+    <div className="mt-0 mb-6 md:mb-8">
+      {/* Mobile: Embla carousel with auto-scroll */}
+      <div className="md:hidden w-full px-0">
+        <Carousel
+          opts={{ loop: true, align: 'start' }}
+          plugins={[autoScrollPlugin]}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-3">
+            {items.map((marketGroup) => (
+              <CarouselItem key={marketGroup.key} className="pl-3 basis-[80%]">
+                <MarketGroupCard
+                  chainId={marketGroup.chainId}
+                  marketAddress={marketGroup.marketAddress}
+                  market={marketGroup.markets}
+                  color={marketGroup.color}
+                  displayQuestion={
+                    marketGroup.displayQuestion || marketGroup.marketName
+                  }
+                  isActive={marketGroup.isActive}
+                  marketClassification={marketGroup.marketClassification}
+                  displayUnit={marketGroup.displayUnit}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
+
+      {/* Desktop: existing grid */}
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
+        {items.map((marketGroup) => (
+          <div key={marketGroup.key} className="h-full">
+            <MarketGroupCard
+              chainId={marketGroup.chainId}
+              marketAddress={marketGroup.marketAddress}
+              market={marketGroup.markets}
+              color={marketGroup.color}
+              displayQuestion={
+                marketGroup.displayQuestion || marketGroup.marketName
+              }
+              isActive={marketGroup.isActive}
+              marketClassification={marketGroup.marketClassification}
+              displayUnit={marketGroup.displayUnit}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
