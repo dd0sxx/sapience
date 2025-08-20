@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
@@ -249,10 +249,9 @@ const MarketGroupsRow = ({
                 }`}
                 className="group"
               >
-                <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
+                <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
                   {displayQuestion}
                 </span>
-                <ChevronRight className="ml-1 inline-block h-5 w-5 align-middle relative -top-0.5 text-muted-foreground transition-colors group-hover:text-foreground" />
               </Link>
             </h3>
             {/* Prediction Section (conditionally rendered) */}
@@ -273,12 +272,11 @@ const MarketGroupsRow = ({
                     >
                       <Link
                         href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
-                        className="group inline-flex items-center gap-0.5"
+                        className="group inline-flex items-center"
                       >
-                        <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
+                        <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
                           Details
                         </span>
-                        <ChevronRight className="-ml-1 h-2 w-2 text-muted-foreground transition-colors group-hover:text-foreground" />
                       </Link>
                     </Button>
                   )}
@@ -380,10 +378,9 @@ const MarketGroupsRow = ({
                                   href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
                                   className="group inline-flex items-center"
                                 >
-                                  <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
+                                  <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
                                     Details
                                   </span>
-                                  <ChevronRight className="ml-0 h-2.5 w-2.5 text-muted-foreground transition-colors group-hover:text-foreground" />
                                 </Link>
                               </Button>
                             </div>

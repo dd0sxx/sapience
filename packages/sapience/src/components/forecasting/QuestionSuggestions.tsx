@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import {
   Tooltip,
@@ -23,6 +23,12 @@ const QuestionSuggestions = ({
   const marketsRef = useRef<any[]>([]);
   const isInitializedRef = useRef(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Ensure no SSR render: only show suggestions after the component mounts
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Check if markets have actually changed (not just reference)
   const marketsChanged = useMemo(() => {
@@ -43,6 +49,9 @@ const QuestionSuggestions = ({
 
   // Generate suggestions synchronously on first render and when markets change
   const suggestedMarkets = useMemo(() => {
+    // During SSR and the very first client render, render nothing to avoid hydration mismatches
+    if (!isMounted) return [];
+
     // Recompute when markets change, on first init, or when user requests refresh
     if (marketsChanged || !isInitializedRef.current || refreshNonce > 0) {
       // Sort markets by end timestamp (ascending - soonest ending first)
@@ -55,9 +64,14 @@ const QuestionSuggestions = ({
       // Take the next 12 markets that are ending
       const next12Ending = sortedByEndTime.slice(0, 12);
 
-      // Randomly select 3 from those 12
-      const shuffled = [...next12Ending].sort(() => Math.random() - 0.5);
-      const suggested = shuffled.slice(0, 3);
+      // Initial client render: deterministic first 3 to avoid flicker in StrictMode
+      let suggested = next12Ending.slice(0, 3);
+
+      // Only randomize when the user explicitly refreshes
+      if (refreshNonce > 0) {
+        const shuffled = [...next12Ending].sort(() => Math.random() - 0.5);
+        suggested = shuffled.slice(0, 3);
+      }
 
       suggestionsRef.current = suggested;
       marketsRef.current = markets;
@@ -67,9 +81,9 @@ const QuestionSuggestions = ({
     }
 
     return suggestionsRef.current;
-  }, [markets, marketsChanged, refreshNonce]);
+  }, [markets, marketsChanged, refreshNonce, isMounted]);
 
-  if (suggestedMarkets.length === 0) {
+  if (!isMounted || suggestedMarkets.length === 0) {
     return null;
   }
 

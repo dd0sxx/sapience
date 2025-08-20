@@ -4,7 +4,7 @@ import { blo } from 'blo';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { ChevronRight, FrownIcon } from 'lucide-react';
+import { FrownIcon } from 'lucide-react';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { AddressDisplay } from './AddressDisplay';
 import LottieLoader from './LottieLoader';
@@ -379,15 +379,16 @@ const Comments = ({
                   <div className="relative">
                     <div className="px-6 py-5 space-y-4">
                       {/* Question and Prediction */}
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
                           {comment.marketAddress && comment.marketId ? (
                             <Link
                               href={`/markets/${comment.chainShortName || 'base'}:${comment.marketAddress.toLowerCase()}/${comment.marketId}`}
-                              className="group transition-all duration-200 hover:text-foreground/80 inline"
+                              className="group"
                             >
-                              {comment.question}
-                              <ChevronRight className="ml-1 inline-block h-4 w-4 align-middle relative -top-px text-muted-foreground group-hover:text-foreground" />
+                              <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+                                {comment.question}
+                              </span>
                             </Link>
                           ) : (
                             comment.question
