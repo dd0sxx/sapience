@@ -61,6 +61,8 @@ export const BetslipContent = ({
   parlayCollateralAddress,
   parlayChainId,
 }: BetslipContentProps) => {
+  // Temporary feature flag: disable parlay UI while keeping code paths intact for easy re-enable
+  const PARLAY_FEATURE_ENABLED = false;
   const {
     betSlipPositions,
     removePosition,
@@ -71,6 +73,7 @@ export const BetslipContent = ({
     (p) => p.marketClassification === MarketGroupClassification.NUMERIC
   );
   const parlayDisabled = betSlipPositions.length < 2;
+  const effectiveParlayMode = PARLAY_FEATURE_ENABLED && isParlayMode;
   return (
     <>
       <div className="w-full h-full flex flex-col">
@@ -82,7 +85,20 @@ export const BetslipContent = ({
                 <SquareStack className="w-3 h-3" />
                 Parlay
               </span>
-              {parlayDisabled ? (
+              {!PARLAY_FEATURE_ENABLED ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center">
+                        <Switch checked={false} disabled />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Coming Soon</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : parlayDisabled ? (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -119,7 +135,7 @@ export const BetslipContent = ({
             </div>
           </div>
 
-          {isParlayMode && (
+          {effectiveParlayMode && (
             <div className="flex items-center justify-between mt-4">
               <Badge
                 variant="outline"
@@ -146,7 +162,7 @@ export const BetslipContent = ({
                 Add predictions to see your potential payout.
               </p>
             </div>
-          ) : !isParlayMode ? (
+          ) : !effectiveParlayMode ? (
             <FormProvider {...individualMethods}>
               <form
                 onSubmit={individualMethods.handleSubmit(
