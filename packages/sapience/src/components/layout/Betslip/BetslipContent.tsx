@@ -107,9 +107,11 @@ export const BetslipContent = ({
   return (
     <>
       <div className="w-full h-full flex flex-col">
-        <div className={`${betSlipPositions.length === 0 ? '' : 'px-4 pt-4'}`}>
+        <div
+          className={`px-4 py-3 bg-muted/50 border-b border-border/40 ${isMobile ? 'border-t' : ''}`}
+        >
           <div className="flex items-center justify-between h-10">
-            <span className="text-md font-medium">Make a Prediction</span>
+            <span className="text-lg font-medium">Make a Prediction</span>
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
@@ -123,13 +125,9 @@ export const BetslipContent = ({
                     : 'opacity-0 pointer-events-none'
                 }`}
               >
-                Clear all
+                Clear
               </Button>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                  <SquareStack className="w-4 h-4" />
-                  Parlay
-                </span>
                 {!PARLAY_FEATURE_ENABLED ? (
                   <TooltipProvider>
                     <Tooltip
@@ -137,15 +135,21 @@ export const BetslipContent = ({
                       onOpenChange={isMobile ? setParlayTooltipOpen : undefined}
                     >
                       <TooltipTrigger asChild>
-                        <span
-                          className="flex items-center"
+                        <div
+                          className="flex items-center gap-2"
                           onClick={triggerParlayTooltip}
                           onTouchStart={triggerParlayTooltip}
                           role="button"
                           aria-disabled="true"
                         >
-                          <Switch checked={false} disabled />
-                        </span>
+                          <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
+                            <SquareStack className="w-4 h-4" />
+                            Parlay
+                          </span>
+                          <span className="flex items-center">
+                            <Switch checked={false} disabled />
+                          </span>
+                        </div>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Coming Soon</p>

@@ -639,7 +639,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
               <DrawerTitle className="text-left"></DrawerTitle>
             </DrawerHeader>
             <div
-              className={`${betSlipPositions.length === 0 ? 'px-4 pt-4 pb-14' : 'p-0'} h-full`}
+              className={`${betSlipPositions.length === 0 ? 'pt-0 pb-14' : 'p-0'} h-full`}
             >
               <BetslipContent {...contentProps} />
             </div>
@@ -653,7 +653,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     return (
       <div className="w-full h-full flex flex-col">
         <div
-          className={`${betSlipPositions.length === 0 ? 'px-4 pt-4 pb-10' : 'p-0'} h-full`}
+          className={`${betSlipPositions.length === 0 ? 'pt-0 pb-10' : 'p-0'} h-full`}
         >
           <BetslipContent {...contentProps} />
         </div>
@@ -675,7 +675,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className={`${betSlipPositions.length === 0 ? 'w-80 h-[24rem] px-4 pt-4 pb-14' : 'w-[20rem] p-0'} flex flex-col`}
+          className={`${betSlipPositions.length === 0 ? 'w-80 h-[24rem] p-0' : 'w-[20rem] p-0'} flex flex-col`}
           align="end"
         >
           <div className="flex-1">
