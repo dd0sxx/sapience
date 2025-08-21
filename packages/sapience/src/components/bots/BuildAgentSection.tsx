@@ -12,7 +12,10 @@ import Link from 'next/link';
 
 export default function BuildAgentSection() {
   return (
-    <section id="templates" className="py-24 lg:py-32 px-4 sm:px-6 w-full">
+    <section
+      id="templates"
+      className="pt-8 lg:pt-12 pb-24 lg:pb-32 px-4 sm:px-6 w-full"
+    >
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex flex-col lg:flex-row gap-8 lg:items-center">
           {/* Left side: Flow chart with loop */}

@@ -6,7 +6,9 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  type CarouselApi,
 } from '@sapience/ui/components/ui/carousel';
+import { useSidebar } from '@sapience/ui/components/ui/sidebar';
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketGroupCard from '../forecasting/MarketGroupCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
@@ -47,7 +49,7 @@ export default function FeaturedMarketGroup() {
   const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
     useEnrichedMarketGroups();
 
-  // Process market groups with same logic as MarketGroupsList but only take first 5
+  // Process market groups with same logic as MarketGroupsList but only take first 8
   const groupedMarketGroups: GroupedMarketGroup[] = React.useMemo(() => {
     if (!enrichedMarketGroups) return [];
 
@@ -159,7 +161,7 @@ export default function FeaturedMarketGroup() {
       }
     );
 
-    // 5. Sort by earliest end time and take first 5
+    // 5. Sort by earliest end time and take first 8
     return result
       .sort((a, b) => {
         const aValidMarkets = a.markets.filter(
@@ -181,7 +183,7 @@ export default function FeaturedMarketGroup() {
         );
         return aEarliestEnd - bEarliestEnd;
       })
-      .slice(0, 5);
+      .slice(0, 8);
   }, [enrichedMarketGroups]);
 
   if (isLoadingMarketGroups) {
@@ -219,34 +221,72 @@ function MobileAndDesktopLists({
 }: {
   groupedMarketGroups: GroupedMarketGroup[];
 }) {
+  const { state, openMobile } = useSidebar();
+  const [mobileApi, setMobileApi] = React.useState<CarouselApi | null>(null);
+  const [desktopApi, setDesktopApi] = React.useState<CarouselApi | null>(null);
   const items = React.useMemo(
-    () => groupedMarketGroups.slice(0, 4),
+    () => groupedMarketGroups.slice(0, 8),
     [groupedMarketGroups]
   );
 
-  const autoScrollPlugin = React.useMemo(
+  const autoScrollPluginMobile = React.useMemo(
     () =>
       autoScroll({
         playOnInit: true,
         stopOnMouseEnter: true,
         stopOnInteraction: true,
-        speed: 0.5, // even slower, continuous speed
+        speed: 0.5,
       }),
     []
   );
 
+  const autoScrollPluginDesktop = React.useMemo(
+    () =>
+      autoScroll({
+        playOnInit: true,
+        // Keep autoscrolling even when hovered on desktop
+        stopOnMouseEnter: false,
+        stopOnInteraction: true,
+        speed: 0.5,
+      }),
+    []
+  );
+
+  // Reinitialize carousels when the sidebar open/collapsed state changes
+  React.useEffect(() => {
+    mobileApi?.reInit();
+    desktopApi?.reInit();
+  }, [state, openMobile, mobileApi, desktopApi]);
+
+  const desktopItemClass = React.useMemo(() => {
+    if (items.length >= 4) return 'pl-4 basis-1/2 lg:basis-1/4';
+    if (items.length === 3) return 'pl-4 basis-1/2';
+    if (items.length === 2) return 'pl-4 basis-[60%]';
+    return 'pl-4 basis-[80%]';
+  }, [items.length]);
+
   return (
-    <div className="mt-0 mb-1 md:mb-4 md:min-h-[150px]">
+    <div className="relative mt-0 mb-1 md:mb-4 md:min-h-[150px]">
+      {/* Fade overlays */}
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 md:w-16 bg-gradient-to-r from-background to-transparent"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 z-20 w-8 md:w-16 bg-gradient-to-l from-background to-transparent"
+        aria-hidden
+      />
       {/* Mobile: Embla carousel with auto-scroll */}
       <div className="md:hidden w-full px-0">
         <Carousel
-          opts={{ loop: true, align: 'start' }}
-          plugins={[autoScrollPlugin]}
+          opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
+          plugins={[autoScrollPluginMobile]}
+          setApi={setMobileApi}
           className="w-full"
         >
-          <CarouselContent className="-ml-3">
+          <CarouselContent className="-ml-4">
             {items.map((marketGroup) => (
-              <CarouselItem key={marketGroup.key} className="pl-3 basis-[80%]">
+              <CarouselItem key={marketGroup.key} className="pl-4 basis-[80%]">
                 <MarketGroupCard
                   chainId={marketGroup.chainId}
                   marketAddress={marketGroup.marketAddress}
@@ -265,24 +305,33 @@ function MobileAndDesktopLists({
         </Carousel>
       </div>
 
-      {/* Desktop: existing grid */}
-      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
-        {items.map((marketGroup) => (
-          <div key={marketGroup.key} className="h-full">
-            <MarketGroupCard
-              chainId={marketGroup.chainId}
-              marketAddress={marketGroup.marketAddress}
-              market={marketGroup.markets}
-              color={marketGroup.color}
-              displayQuestion={
-                marketGroup.displayQuestion || marketGroup.marketName
-              }
-              isActive={marketGroup.isActive}
-              marketClassification={marketGroup.marketClassification}
-              displayUnit={marketGroup.displayUnit}
-            />
-          </div>
-        ))}
+      {/* Desktop: Embla carousel with auto-scroll */}
+      <div className="hidden md:block w-full px-0">
+        <Carousel
+          opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
+          plugins={[autoScrollPluginDesktop]}
+          setApi={setDesktopApi}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4">
+            {items.map((marketGroup) => (
+              <CarouselItem key={marketGroup.key} className={desktopItemClass}>
+                <MarketGroupCard
+                  chainId={marketGroup.chainId}
+                  marketAddress={marketGroup.marketAddress}
+                  market={marketGroup.markets}
+                  color={marketGroup.color}
+                  displayQuestion={
+                    marketGroup.displayQuestion || marketGroup.marketName
+                  }
+                  isActive={marketGroup.isActive}
+                  marketClassification={marketGroup.marketClassification}
+                  displayUnit={marketGroup.displayUnit}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
       </div>
     </div>
   );

@@ -36,10 +36,10 @@ export default function Hero() {
 
   return (
     <>
-      <div className="relative h-[100dvh] w-[100dvw] flex flex-col justify-end">
+      <div className="relative h-[100dvh] w-full flex flex-col justify-end">
         {/* Spline embed background - made larger than viewport */}
         <div
-          className="absolute inset-0 z-0 light w-[100dwv] right-0"
+          className="absolute inset-0 z-0 light"
           style={{
             colorScheme: 'light',
             filter: 'none',
@@ -61,26 +61,29 @@ export default function Hero() {
           />
         </div>
 
+        {/* Bottom fade overlay to soften the iframe edge */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 md:h-40 z-[1] bg-gradient-to-b from-transparent to-[hsl(var(--background))]" />
+
         {/* Content container - positioned at bottom, left-aligned */}
         <div className="w-full z-10">
           <div className="container px-0 pb-0">
-            <div className="text-left px-4 md:px-8 pt-2 pb-2 md:pt-24 md:pb-2">
+            <div className="text-left px-4 md:px-8 pt-2 pb-2 md:pt-24">
               <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
                 The World&apos;s Frontier
                 <br />
                 Forecasting Community
               </h1>
 
-              <p className="text-xl md:text-2xl mb-3 text-muted-foreground max-w-2xl">
+              <p className="text-xl md:text-2xl mb-3 text-muted-foreground">
                 Join experts and enthusiasts forecasting the future of the
-                economy, climate change, geopolitics, culture, and more.
+                economy, climate change, culture, and more.
               </p>
             </div>
             <div className="px-0 md:px-8">
               <FeaturedMarketGroupSection />
-              <div className="md:hidden w-full flex justify-center mt-3 mb-3 px-4">
-                <Link href="/markets" passHref className="w-full">
-                  <Button size="xs" variant="default" className="w-full">
+              <div className="md:hidden w-full flex justify-center my-5 px-4">
+                <Link href="/markets" passHref>
+                  <Button size="sm" variant="default">
                     Explore Prediction Markets
                   </Button>
                 </Link>

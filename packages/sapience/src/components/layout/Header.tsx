@@ -179,7 +179,7 @@ const Header = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 pointer-events-auto">
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
             <div className="block">
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
@@ -211,7 +211,7 @@ const Header = () => {
             {ready && !authenticated && (
               <Button
                 onClick={login}
-                className="bg-primary hover:bg-primary/90 rounded-full px-8"
+                className="bg-primary hover:bg-primary/90 rounded-full px-4 sm:px-6"
               >
                 Log In
               </Button>
