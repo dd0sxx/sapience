@@ -166,6 +166,11 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             market.marketParams.uniswapPositionManager
         ).decreaseLiquidity(stack.decreaseParams);
 
+        // Check for dust liquidity that rounds to zero
+        if (params.liquidity > 0 && decreasedAmount0 == 0 && decreasedAmount1 == 0) {
+            revert Errors.LiquidityDecreaseTooSmall();
+        }
+
         // if all liquidity is removed, close the position and return
         if (params.liquidity == stack.previousLiquidity) {
             return _closeLiquidityPosition(market, position, false, 0);
