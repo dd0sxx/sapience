@@ -286,7 +286,8 @@ const MarketGroupsRow = ({
               <>
                 <Button
                   variant="outline"
-                  className="h-8 px-3 w-24"
+                  size="lg"
+                  className="w-28 text-base"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsExpanded(!isExpanded);
@@ -308,14 +309,15 @@ const MarketGroupsRow = ({
                 <>
                   <Button
                     variant="default"
+                    size="lg"
                     onClick={() => handleAddToBetSlip(activeMarket)}
-                    className="h-8 px-3 w-24"
+                    className="w-28 text-base"
                   >
                     <Image
                       src="/susde-icon.svg"
                       alt="sUSDe"
-                      width={18}
-                      height={18}
+                      width={20}
+                      height={20}
                     />
                     Predict
                   </Button>
@@ -384,14 +386,15 @@ const MarketGroupsRow = ({
                           <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
                             <Button
                               variant="default"
+                              size="lg"
                               onClick={() => handleAddToBetSlip(marketItem)}
-                              className="h-8 px-3 w-24"
+                              className="w-28 text-base"
                             >
                               <Image
                                 src="/susde-icon.svg"
                                 alt="sUSDe"
-                                width={18}
-                                height={18}
+                                width={20}
+                                height={20}
                               />
                               Predict
                             </Button>
