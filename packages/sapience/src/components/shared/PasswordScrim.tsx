@@ -207,7 +207,7 @@ const PasswordScrim = () => {
                         className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-0.5 text-xs tracking-widest transition-all duration-300 font-semibold uppercase"
                         aria-haspopup="dialog"
                       >
-                        Request early access
+                        Join the waitlist
                         <ChevronRight className="w-3 h-3" />
                       </button>
                     </DialogTrigger>
