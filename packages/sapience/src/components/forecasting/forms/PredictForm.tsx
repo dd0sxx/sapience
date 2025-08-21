@@ -219,7 +219,7 @@ export default function PredictForm({
           <textarea
             id="comment"
             className="w-full min-h-[80px] rounded-md border border-input bg-background px-4 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="What’s your prediction?"
+            placeholder="Why are these your odds?"
             {...methods.register('comment')}
           />
         </div>
@@ -230,7 +230,7 @@ export default function PredictForm({
             disabled={!methods.formState.isValid || isAttesting}
             className="w-full py-6 px-5 rounded text-lg font-normal"
           >
-            {isAttesting ? 'Submitting Prediction...' : 'Submit Prediction'}
+            {isAttesting ? 'Submitting Forecast...' : 'Submit Forecast'}
           </Button>
         </div>
       </form>

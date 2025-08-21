@@ -83,6 +83,7 @@ interface CommentsProps {
   address?: string | null;
   refetchTrigger?: number;
   marketGroupAddress?: string | null;
+  fullBleed?: boolean;
 }
 
 // Helper to extract decoded data from attestation, handling .decodedData, .value.value, etc.
@@ -240,6 +241,7 @@ const Comments = ({
   address = null,
   refetchTrigger,
   marketGroupAddress,
+  fullBleed = false,
 }: CommentsProps) => {
   // Fetch EAS attestations
   const shouldFilterByAttester =
@@ -374,10 +376,12 @@ const Comments = ({
               {displayComments.map((comment) => (
                 <div
                   key={comment.id}
-                  className="relative border-b border-border"
+                  className={`relative border-t border-border ${fullBleed ? '-mx-4' : ''}`}
                 >
                   <div className="relative">
-                    <div className="px-6 py-5 space-y-4">
+                    <div
+                      className={`${fullBleed ? 'px-10' : 'px-6'} py-5 space-y-4`}
+                    >
                       {/* Question and Prediction */}
                       <div className="space-y-3">
                         <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">

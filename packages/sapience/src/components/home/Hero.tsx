@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { Button } from '@sapience/ui/components/ui/button';
 import FeaturedMarketGroupSection from './FeaturedMarketGroupSection';
 
 export default function Hero() {
@@ -62,7 +64,7 @@ export default function Hero() {
         {/* Content container - positioned at bottom, left-aligned */}
         <div className="w-full z-10">
           <div className="container px-0 pb-0">
-            <div className="text-left px-8 pt-2 pb-2 md:pt-24 md:pb-2">
+            <div className="text-left px-4 md:px-8 pt-2 pb-2 md:pt-24 md:pb-2">
               <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
                 The World&apos;s Frontier
                 <br />
@@ -71,11 +73,18 @@ export default function Hero() {
 
               <p className="text-xl md:text-2xl mb-3 text-muted-foreground max-w-2xl">
                 Join experts and enthusiasts forecasting the future of the
-                economy, climate change, geopolitics, biosecurity, and more.
+                economy, climate change, geopolitics, culture, and more.
               </p>
             </div>
             <div className="px-0 md:px-8">
               <FeaturedMarketGroupSection />
+              <div className="md:hidden w-full flex justify-center mt-3 mb-3 px-4">
+                <Link href="/markets" passHref className="w-full">
+                  <Button size="xs" variant="default" className="w-full">
+                    Explore Prediction Markets
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

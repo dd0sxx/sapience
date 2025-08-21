@@ -7,18 +7,13 @@ import {
   CarouselContent,
   CarouselItem,
 } from '@sapience/ui/components/ui/carousel';
-import dynamic from 'next/dynamic';
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketGroupCard from '../forecasting/MarketGroupCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 
-// Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
-  ssr: false,
-  loading: () => <div className="w-8 h-8" />,
-});
+// Removed LottieLoader in favor of simple fade-in cards and fixed-height placeholder
 
 // Define local interfaces based on MarketGroupsList structure
 export interface MarketWithContext extends GraphQLMarketType {
@@ -191,10 +186,11 @@ export default function FeaturedMarketGroup() {
 
   if (isLoadingMarketGroups) {
     return (
-      <section className="pt-8 lg:pt-12 px-4 sm:px-6 w-full relative z-10">
-        <div className="max-w-6xl mx-auto w-full">
-          <div className="flex flex-col items-center justify-center text-center">
-            <LottieLoader width={32} height={32} />
+      <section className="pt-0 px-0 w-full relative z-10">
+        <div className="w-full px-0">
+          {/* Maintain space to prevent layout jump while data loads */}
+          <div className="mt-0 mb-1 md:mb-4">
+            <div className="md:min-h-[150px] w-full animate-pulse rounded-md bg-muted/40" />
           </div>
         </div>
       </section>
@@ -240,7 +236,7 @@ function MobileAndDesktopLists({
   );
 
   return (
-    <div className="mt-0 mb-6 md:mb-8">
+    <div className="mt-0 mb-1 md:mb-4 md:min-h-[150px]">
       {/* Mobile: Embla carousel with auto-scroll */}
       <div className="md:hidden w-full px-0">
         <Carousel

@@ -617,14 +617,21 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   if (isCompact) {
     return (
       <>
-        {/* Mobile Bet Slip Button (fixed right, with border, hover effect) */}
+        {/* Mobile Bet Slip Button (fixed bottom-center, circular, icon-filled) */}
         <Drawer open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <DrawerTrigger asChild>
             <Button
-              className="fixed right-0 top-16 z-[51] flex items-center justify-center lg:hidden border border-r-0 border-border bg-background/30 p-2.5 pr-1.5 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
-              variant="ghost"
+              className="fixed shadow-md left-1/2 -translate-x-1/2 bottom-6 z-40 lg:hidden rounded-full overflow-hidden flex items-center justify-center border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors pointer-events-auto"
+              size="icon"
+              variant="secondary"
             >
-              <Image src="/susde-icon.svg" alt="sUSDe" width={20} height={20} />
+              <Image
+                src="/susde-icon.svg"
+                alt="sUSDe"
+                width={24}
+                height={24}
+                className="h-full w-full"
+              />
             </Button>
           </DrawerTrigger>
           <DrawerContent className="h-[85vh]">

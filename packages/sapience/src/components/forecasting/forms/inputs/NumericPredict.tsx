@@ -98,7 +98,7 @@ export default function NumericPredict({
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor={`${name}-input`}>Your Prediction</Label>
+        <Label htmlFor={`${name}-input`}>Your Forecast</Label>
         <div className="mt-4 mb-6">
           <Slider
             value={[sliderValue]}

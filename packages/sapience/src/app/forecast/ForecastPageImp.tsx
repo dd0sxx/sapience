@@ -13,6 +13,7 @@ import {
 } from '@/sapience/ui/index';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
 import PredictForm from '~/components/forecasting/forms/PredictForm';
+import ForecastInfoNotice from '~/components/forecasting/ForecastInfoNotice';
 // import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
@@ -238,6 +239,7 @@ const ForecastPageImp = () => {
               />
             ) : (
               <div className="p-6 pb-4">
+                <ForecastInfoNotice className="mb-4" />
                 <PredictForm
                   marketGroupData={marketGroupData}
                   marketClassification={marketClassification}
@@ -250,7 +252,7 @@ const ForecastPageImp = () => {
           {/* Category Selection Section */}
           <div className="bg-background z-5 relative">
             <div
-              className={`flex overflow-x-auto ${
+              className={`flex overflow-x-auto max-w-[100dvw] ${
                 isPopoverOpen ? 'overflow-x-hidden' : ''
               }`}
               style={{

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import * as React from 'react';
 import type { MarketWithContext } from './MarketGroupsList';
 import type { MarketGroupClassification } from '~/lib/types';
@@ -69,6 +70,35 @@ const MarketGroupCard = ({
     return prices;
   }, [chartData]);
 
+  // Reveal only once we have a meaningful prediction (any positive price)
+  const [hasRevealed, setHasRevealed] = React.useState(false);
+  const isPredictionLoaded = React.useMemo(() => {
+    if (!isActive || market.length === 0) return false;
+
+    // MULTIPLE_CHOICE: any market with price > 0
+    if (
+      marketClassification === MarketGroupClassificationEnum.MULTIPLE_CHOICE
+    ) {
+      return market.some((m) => (latestPrices[m.marketId] || 0) > 0);
+    }
+
+    // YES_NO: prefer "Yes" market if present, else first
+    if (marketClassification === MarketGroupClassificationEnum.YES_NO) {
+      const target = market.find((m) => m.optionName === 'Yes') || market[0];
+      return (latestPrices[target.marketId] || 0) > 0;
+    }
+
+    // NUMERIC or default: use first market's price
+    const target = market[0];
+    return (latestPrices[target.marketId] || 0) > 0;
+  }, [isActive, market, marketClassification, latestPrices]);
+
+  React.useEffect(() => {
+    if (isPredictionLoaded) {
+      setHasRevealed(true);
+    }
+  }, [isPredictionLoaded]);
+
   const formatPriceAsPercentage = (price: number) => {
     if (price <= 0) return 'Price N/A';
     const percentage = price * 100;
@@ -102,7 +132,11 @@ const MarketGroupCard = ({
       }
       return (
         <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : <span>No trades yet</span>}
+          {!hasRevealed && isLoadingChartData ? (
+            'Loading...'
+          ) : (
+            <span>No trades yet</span>
+          )}
         </span>
       );
     } else {
@@ -133,48 +167,48 @@ const MarketGroupCard = ({
 
       return (
         <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : 'No trades yet'}
+          {!hasRevealed && isLoadingChartData ? 'Loading...' : 'No trades yet'}
         </span>
       );
     }
   };
 
-  const canShowPredictionElement = isActive && market.length > 0;
+  const canShowPredictionElement = isActive && market.length > 0 && hasRevealed;
 
   return (
     <div className="w-full h-full">
-      <div className="bg-background border rounded-md border-border/70 dark:bg-muted/50 flex flex-row transition-colors items-stretch min-h-[90px] md:min-h-[126px] h-full relative overflow-hidden">
-        <div
-          className="w-1 min-w-[4px] max-w-[4px]"
-          style={{ backgroundColor: color, margin: '-1px 0' }}
-        />
+      <Link
+        href={`/markets/${chainShortName}:${marketAddress}`}
+        className="block h-full group"
+      >
+        <motion.div
+          initial={false}
+          animate={{ opacity: hasRevealed ? 1 : 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="bg-background border rounded-md border-border/70 dark:bg-muted/50 flex flex-row transition-colors items-stretch min-h-[88px] md:min-h-[126px] h-full relative overflow-hidden"
+        >
+          <div
+            className="w-1 min-w-[4px] max-w-[4px]"
+            style={{ backgroundColor: color, margin: '-1px 0' }}
+          />
 
-        <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-5 py-3 gap-3">
-          <div className="flex flex-col flex-grow">
-            <h3 className="text-sm md:text-base leading-tight mb-2">
-              <Link
-                href={`/markets/${chainShortName}:${marketAddress}`}
-                className="group"
-              >
-                <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
-                  {displayQuestion}
-                </span>
-              </Link>
-            </h3>
-            {canShowPredictionElement && (
-              <div className="text-xs md:text-sm text-muted-foreground mt-auto md:mt-0">
-                <span className="text-muted-foreground">
-                  Market Prediction:{' '}
-                </span>
-                <MarketPrediction />
-                {/* Details link removed for cards */}
-              </div>
-            )}
+          <div className="flex-grow flex flex-col px-5 py-3 gap-3 h-full">
+            <div className="flex flex-col flex-grow justify-between h-full">
+              <h3 className="text-sm md:text-base leading-tight mb-2">
+                <span className="transition-colors">{displayQuestion}</span>
+              </h3>
+              {canShowPredictionElement && (
+                <div className="text-xs md:text-sm text-muted-foreground mt-0">
+                  <span className="text-muted-foreground">
+                    Market Prediction:{' '}
+                  </span>
+                  <MarketPrediction />
+                </div>
+              )}
+            </div>
           </div>
-          {/* No action buttons or show/hide toggle for cards */}
-        </div>
-      </div>
-      {/* No expandable panel for cards */}
+        </motion.div>
+      </Link>
     </div>
   );
 };

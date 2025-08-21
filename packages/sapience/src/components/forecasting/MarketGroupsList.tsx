@@ -110,22 +110,30 @@ const FocusAreaFilter = ({
   <div className={containerClassName || 'px-0 py-0 w-full'}>
     <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
       {/* Categories Row */}
-      <div className="flex-1 min-w-0 overflow-x-auto">
-        <div className="flex items-center gap-0.5 md:gap-1">
+      <div
+        className="flex-1 min-w-0 overflow-x-auto touch-pan-x overscroll-x-contain max-w-[calc(100dvw-2rem)] md:max-w-[calc(100dvw-4rem)]"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        <div className="w-max flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => handleCategoryClick(null)}
-            className={`group inline-flex text-left px-1.5 py-1.5 rounded-full items-center gap-1 transition-all duration-300 ease-out text-xs whitespace-nowrap ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass} ${selectedCategorySlug === null ? 'pr-4' : 'pr-2 hover:pr-4'}`}
+            className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 md:gap-0 md:group-hover:gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap ${
+              selectedCategorySlug === null
+                ? `md:px-2.5 ${selectedStatusClass} md:gap-2`
+                : `md:px-2 ${hoverStatusClass}`
+            } px-2.5`}
           >
             <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
               <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
             </div>
             <div
-              className={`overflow-hidden transition-all duration-300 ease-out ${
+              className={`ml-1 overflow-hidden transition-[width,margin,opacity] duration-200 ${
                 selectedCategorySlug === null
-                  ? 'max-w-[200px] opacity-100 ml-1'
-                  : 'max-w-0 opacity-0 ml-0'
-              } group-hover:max-w-[200px] group-hover:opacity-100 group-hover:ml-1`}
+                  ? 'md:ml-1 md:w-auto md:opacity-100'
+                  : 'md:ml-0 md:w-0 md:opacity-0 md:group-hover:ml-1 md:group-hover:w-auto md:group-hover:opacity-100'
+              }`}
+              aria-expanded={selectedCategorySlug === null}
             >
               <span className="font-medium pr-1">All Focus Areas</span>
             </div>
@@ -151,7 +159,11 @@ const FocusAreaFilter = ({
                   type="button"
                   key={category.id}
                   onClick={() => handleCategoryClick(category.slug)}
-                  className={`group inline-flex text-left px-1.5 py-1.5 rounded-full items-center gap-1 transition-all duration-300 ease-out text-xs whitespace-nowrap ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass} ${selectedCategorySlug === category.slug ? 'pr-4' : 'pr-2 hover:pr-4'}`}
+                  className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 md:gap-0 md:group-hover:gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap ${
+                    selectedCategorySlug === category.slug
+                      ? `md:px-2.5 ${selectedStatusClass} md:gap-2`
+                      : `md:px-2 ${hoverStatusClass}`
+                  } px-2.5`}
                 >
                   <div
                     className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
@@ -174,11 +186,12 @@ const FocusAreaFilter = ({
                     )}
                   </div>
                   <div
-                    className={`overflow-hidden transition-all duration-300 ease-out ${
+                    className={`ml-1 overflow-hidden transition-[width,margin,opacity] duration-200 ${
                       selectedCategorySlug === category.slug
-                        ? 'max-w-[200px] opacity-100 ml-1'
-                        : 'max-w-0 opacity-0 ml-0'
-                    } group-hover:max-w-[200px] group-hover:opacity-100 group-hover:ml-1`}
+                        ? 'md:ml-1 md:w-auto md:opacity-100'
+                        : 'md:ml-0 md:w-0 md:opacity-0 md:group-hover:ml-1 md:group-hover:w-auto md:group-hover:opacity-100'
+                    }`}
+                    aria-expanded={selectedCategorySlug === category.slug}
                   >
                     <span className="font-medium pr-1">{displayName}</span>
                   </div>
@@ -642,16 +655,16 @@ const ForecastingTable = () => {
 
   // Render content once both are loaded
   return (
-    <div className="relative flex flex-col lg:flex-row items-start">
+    <div className="relative flex flex-col md:flex-row items-start">
       {/* Mobile-only betslip drawer trigger */}
-      <div className="block lg:hidden">
+      <div className="block md:hidden">
         <Betslip />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-16 lg:gap-10 pr-0 lg:pr-12">
+      <div className="flex-1 flex flex-col gap-6 md:gap-10 pr-0 md:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
-        <div className="sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2">
+        <div className="bg-background/90 pt-2">
           {/* Wrap Input and Icon */}
           <div className="relative flex items-center">
             <SearchIcon
@@ -766,9 +779,9 @@ const ForecastingTable = () => {
         </div>
       </div>
 
-      {/* Desktop sticky betslip sidebar */}
-      <div className="hidden lg:block w-[22rem] shrink-0 self-start sticky top-24">
-        <div className="border border-muted rounded shadow-sm bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
+      {/* Desktop/Tablet sticky betslip sidebar */}
+      <div className="hidden md:block w-[24rem] shrink-0 self-start sticky top-24">
+        <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
           <div className="h-full overflow-y-auto">
             <Betslip variant="panel" />
           </div>

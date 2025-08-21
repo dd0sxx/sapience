@@ -20,6 +20,7 @@ import { ChartLineIcon } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
+import ForecastInfoNotice from '~/components/forecasting/ForecastInfoNotice';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
@@ -401,6 +402,7 @@ const MarketGroupPageContent = () => {
               </div>
               <TabsContent value="forecasts" className="mt-0">
                 <div className="p-4">
+                  <ForecastInfoNotice className="mb-4" />
                   {/* Prediction Form */}
                   <div className="mb-6">
                     <PredictForm
@@ -422,6 +424,7 @@ const MarketGroupPageContent = () => {
                     address={address}
                     refetchTrigger={userPositionsTrigger}
                     marketGroupAddress={marketGroupData?.address || null}
+                    fullBleed
                   />
                 </div>
               </TabsContent>

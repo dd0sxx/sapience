@@ -6,14 +6,17 @@ import { Label } from '@sapience/ui/components/ui/label';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import Link from 'next/link';
 import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { useRef, useState, useEffect } from 'react';
 import { SquareStack, AlertTriangle } from 'lucide-react';
 import { Button } from '@/sapience/ui/index';
+import Image from 'next/image';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 // import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification } from '~/lib/types';
@@ -63,75 +66,126 @@ export const BetslipContent = ({
 }: BetslipContentProps) => {
   // Temporary feature flag: disable parlay UI while keeping code paths intact for easy re-enable
   const PARLAY_FEATURE_ENABLED = false;
+  const isMobile = useIsMobile();
+  const [parlayTooltipOpen, setParlayTooltipOpen] = useState(false);
+  const closeTooltipTimeoutRef = useRef<number | null>(null);
+  const triggerParlayTooltip = () => {
+    if (!isMobile) return;
+    setParlayTooltipOpen(true);
+    if (closeTooltipTimeoutRef.current) {
+      window.clearTimeout(closeTooltipTimeoutRef.current);
+    }
+    closeTooltipTimeoutRef.current = window.setTimeout(() => {
+      setParlayTooltipOpen(false);
+    }, 1500);
+  };
+  useEffect(() => {
+    return () => {
+      if (closeTooltipTimeoutRef.current) {
+        window.clearTimeout(closeTooltipTimeoutRef.current);
+      }
+    };
+  }, []);
   const {
     betSlipPositions,
     removePosition,
     positionsWithMarketData,
     clearBetSlip,
   } = useBetSlipContext();
+  const hasAtLeastOneLoadedQuestion = positionsWithMarketData.some(
+    (p) =>
+      !p.isLoading && !p.error && p.marketGroupData && p.marketClassification
+  );
   const hasNumericMarket = positionsWithMarketData.some(
     (p) => p.marketClassification === MarketGroupClassification.NUMERIC
   );
   const parlayDisabled = betSlipPositions.length < 2;
   const effectiveParlayMode = PARLAY_FEATURE_ENABLED && isParlayMode;
+  const allPositionsLoading =
+    positionsWithMarketData.length > 0 &&
+    positionsWithMarketData.every((p) => p.isLoading);
   return (
     <>
       <div className="w-full h-full flex flex-col">
         <div className={`${betSlipPositions.length === 0 ? '' : 'px-4 pt-4'}`}>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Predict</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                <SquareStack className="w-3 h-3" />
-                Parlay
-              </span>
-              {!PARLAY_FEATURE_ENABLED ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="flex items-center">
-                        <Switch checked={false} disabled />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Coming Soon</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : parlayDisabled ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="flex items-center">
-                        <Switch checked={false} disabled />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>
-                        You must add at least two predictions to build a parlay.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : (
-                <span className="flex items-center">
-                  <Switch
-                    checked={isParlayMode}
-                    onCheckedChange={setIsParlayMode}
-                  />
+          <div className="flex items-center justify-between h-10">
+            <span className="text-md font-medium">Make a Prediction</span>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={clearBetSlip}
+                type="button"
+                aria-hidden={betSlipPositions.length === 0}
+                className={`transition-opacity duration-200 ${
+                  betSlipPositions.length > 0
+                    ? 'opacity-100'
+                    : 'opacity-0 pointer-events-none'
+                }`}
+              >
+                Clear all
+              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
+                  <SquareStack className="w-4 h-4" />
+                  Parlay
                 </span>
-              )}
-              {betSlipPositions.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={clearBetSlip}
-                  type="button"
-                  className="ml-3"
-                >
-                  Clear all
-                </Button>
-              )}
+                {!PARLAY_FEATURE_ENABLED ? (
+                  <TooltipProvider>
+                    <Tooltip
+                      open={isMobile ? parlayTooltipOpen : undefined}
+                      onOpenChange={isMobile ? setParlayTooltipOpen : undefined}
+                    >
+                      <TooltipTrigger asChild>
+                        <span
+                          className="flex items-center"
+                          onClick={triggerParlayTooltip}
+                          onTouchStart={triggerParlayTooltip}
+                          role="button"
+                          aria-disabled="true"
+                        >
+                          <Switch checked={false} disabled />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Coming Soon</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : parlayDisabled ? (
+                  <TooltipProvider>
+                    <Tooltip
+                      open={isMobile ? parlayTooltipOpen : undefined}
+                      onOpenChange={isMobile ? setParlayTooltipOpen : undefined}
+                    >
+                      <TooltipTrigger asChild>
+                        <span
+                          className="flex items-center"
+                          onClick={triggerParlayTooltip}
+                          onTouchStart={triggerParlayTooltip}
+                          role="button"
+                          aria-disabled="true"
+                        >
+                          <Switch checked={false} disabled />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          You must add at least two predictions to build a
+                          parlay.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <span className="flex items-center">
+                    <Switch
+                      checked={isParlayMode}
+                      onCheckedChange={setIsParlayMode}
+                    />
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -157,10 +211,23 @@ export const BetslipContent = ({
           }`}
         >
           {betSlipPositions.length === 0 ? (
-            <div className="w-full h-full flex items-center justify-center text-center px-16">
-              <p className="text-base text-muted-foreground">
-                Add predictions to see your potential payout.
-              </p>
+            <div className="w-full h-full flex items-center justify-center text-center">
+              <div className="flex flex-col items-center gap-4">
+                <Image
+                  src="/susde-icon.svg"
+                  alt="sUSDe"
+                  width={40}
+                  height={40}
+                  className="opacity-60"
+                />
+                <p className="text-base text-muted-foreground max-w-[180px] mx-auto">
+                  Add predictions to see your potential payout.
+                </p>
+              </div>
+            </div>
+          ) : !effectiveParlayMode && allPositionsLoading ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <LottieLoader width={24} height={24} />
             </div>
           ) : !effectiveParlayMode ? (
             <FormProvider {...individualMethods}>
@@ -239,18 +306,20 @@ export const BetslipContent = ({
                   );
                 })}
 
-                <Button
-                  type="submit"
-                  variant="default"
-                  size="lg"
-                  className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
-                  disabled={
-                    positionsWithMarketData.some((p) => p.isLoading) ||
-                    isSubmitting
-                  }
-                >
-                  Submit Prediction{betSlipPositions.length > 1 ? 's' : ''}
-                </Button>
+                {hasAtLeastOneLoadedQuestion && !allPositionsLoading && (
+                  <Button
+                    type="submit"
+                    variant="default"
+                    size="lg"
+                    className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled={
+                      positionsWithMarketData.some((p) => p.isLoading) ||
+                      isSubmitting
+                    }
+                  >
+                    Submit Prediction{betSlipPositions.length > 1 ? 's' : ''}
+                  </Button>
+                )}
               </form>
             </FormProvider>
           ) : (

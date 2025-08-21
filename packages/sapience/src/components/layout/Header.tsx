@@ -147,36 +147,37 @@ const Header = () => {
       <header className="w-full py-5 md:py-6 z-[50] fixed top-0 left-0 pointer-events-none">
         <div className="mx-auto px-4 md:px-6 flex items-center justify-between">
           <div className="flex flex-col pointer-events-auto">
-            <div className="flex items-center bg-background/30 p-2 pr-4 md:pr-1 backdrop-blur-sm rounded-full">
-              <Link href="/" className="inline-block">
-                <div className="flex items-center gap-2">
-                  <LottieIcon
-                    animationPath="/lottie/logomark.json"
-                    width={32}
-                    height={32}
-                    className="opacity-80"
-                  />
-                  <span className="text-2xl font-normal">Sapience</span>
-                </div>
-              </Link>
-              {/* Desktop Sidebar Trigger (inside header) */}
+            <div className="flex items-center">
+              <div className="flex items-center bg-background/30 p-2 pr-4 md:pr-1 backdrop-blur-sm rounded-full">
+                <Link href="/" className="inline-block">
+                  <div className="flex items-center gap-2">
+                    <LottieIcon
+                      animationPath="/lottie/logomark.json"
+                      width={32}
+                      height={32}
+                      className="opacity-80"
+                    />
+                    <span className="text-2xl font-normal">Sapience</span>
+                  </div>
+                </Link>
+                {/* Desktop Sidebar Trigger (inside header) */}
+                <SidebarTrigger
+                  id="nav-sidebar"
+                  className="hidden md:flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6"
+                />
+              </div>
+              {/* Mobile Sidebar Trigger (outside blurred div, to the right) */}
               <SidebarTrigger
                 id="nav-sidebar"
-                className="hidden md:flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6"
-              />
+                className="md:hidden ml-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <Menu className="h-5 w-5" />
+              </SidebarTrigger>
             </div>
             <div className="-mt-3.5 ml-[124px] text-xs tracking-wider text-muted-foreground scale-75 origin-left font-medium">
               BETA
             </div>
           </div>
-
-          {/* Mobile Sidebar Trigger Button (fixed left, with border, hover effect) */}
-          <SidebarTrigger
-            id="nav-sidebar"
-            className="fixed left-0 top-16 z-[51] flex items-center justify-center lg:hidden border border-l-0 border-border bg-background/30 p-5 pl-4 backdrop-blur-sm rounded-r-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
-          >
-            <Menu className="h-6 w-6" />
-          </SidebarTrigger>
 
           <div className="flex items-center gap-4 pointer-events-auto">
             <div className="block">
