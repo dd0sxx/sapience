@@ -49,7 +49,9 @@ library Position {
         bool isSettled;
     }
 
-    function load(uint256 positionId) internal pure returns (Data storage position) {
+    function load(
+        uint256 positionId
+    ) internal pure returns (Data storage position) {
         bytes32 s = keccak256(abi.encode("sapience.position", positionId));
 
         assembly {
@@ -57,14 +59,18 @@ library Position {
         }
     }
 
-    function loadValid(uint256 positionId) internal view returns (Data storage position) {
+    function loadValid(
+        uint256 positionId
+    ) internal view returns (Data storage position) {
         position = load(positionId);
         if (positionId == 0 || position.id == 0) {
             revert Errors.InvalidPositionId(positionId);
         }
     }
 
-    function createValid(uint256 positionId) internal returns (Data storage position) {
+    function createValid(
+        uint256 positionId
+    ) internal returns (Data storage position) {
         if (positionId == 0) {
             revert Errors.InvalidPositionId(positionId);
         }
@@ -79,24 +85,37 @@ library Position {
         return position;
     }
 
-    function updateCollateral(Data storage self, uint256 amount) internal returns (int256 deltaCollateral) {
+    function updateCollateral(
+        Data storage self,
+        uint256 amount
+    ) internal returns (int256 deltaCollateral) {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         IERC20 collateralAsset = marketGroup.collateralAsset;
 
         // Calculate delta in 18 decimals
-        deltaCollateral = amount.toInt() - self.depositedCollateralAmount.toInt();
+        deltaCollateral =
+            amount.toInt() -
+            self.depositedCollateralAmount.toInt();
 
         if (deltaCollateral == 0) {
             return 0;
         } else if (deltaCollateral > 0) {
             // Convert to token decimals for transfer (round up to ensure protocol receives full amount)
-            uint256 transferAmount = marketGroup.denormalizeCollateralAmountUp(deltaCollateral.toUint());
+            uint256 transferAmount = marketGroup.denormalizeCollateralAmountUp(
+                deltaCollateral.toUint()
+            );
             if (transferAmount > 0) {
-                collateralAsset.safeTransferFrom(msg.sender, address(this), transferAmount);
+                collateralAsset.safeTransferFrom(
+                    msg.sender,
+                    address(this),
+                    transferAmount
+                );
             }
         } else if (deltaCollateral < 0) {
             // Convert to token decimals for transfer
-            uint256 transferAmount = marketGroup.denormalizeCollateralAmount((deltaCollateral * -1).toUint());
+            uint256 transferAmount = marketGroup.denormalizeCollateralAmount(
+                (deltaCollateral * -1).toUint()
+            );
             if (transferAmount > 0) {
                 collateralAsset.safeTransfer(msg.sender, transferAmount);
             }
@@ -107,13 +126,20 @@ library Position {
 
     function afterTradeCheck(Data storage self) internal view {
         Market.load(self.marketId).validateCollateralRequirementsForTrade(
-            self.depositedCollateralAmount, self.vBaseAmount, self.vQuoteAmount, self.borrowedVBase, self.borrowedVQuote
+            self.depositedCollateralAmount,
+            self.vBaseAmount,
+            self.vQuoteAmount,
+            self.borrowedVBase,
+            self.borrowedVQuote
         );
 
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         // Use minTradeSize as the minimum collateral requirement (already in 18 decimals)
         if (self.depositedCollateralAmount < marketGroup.minTradeSize) {
-            revert Errors.CollateralBelowMin(self.depositedCollateralAmount, marketGroup.minTradeSize);
+            revert Errors.CollateralBelowMin(
+                self.depositedCollateralAmount,
+                marketGroup.minTradeSize
+            );
         }
     }
 
@@ -125,8 +151,7 @@ library Position {
         validateLp(self);
     }
 
-    // called from depositCollateral, that way the check for self.kind is not needed as
-    // both trader and lps can deposit collateral as long as they are the owner of fee collector NFT
+    // called from preValidateLp
     function validateLp(Data storage self) internal view {
         if (self.isSettled) {
             revert Errors.PositionAlreadySettled(self.id);
@@ -149,9 +174,18 @@ library Position {
         uint256 tokensOwed1;
     }
 
-    function updateValidLp(Data storage self, Market.Data storage market, UpdateLpParams memory params)
+    function updateValidLp(
+        Data storage self,
+        Market.Data storage market,
+        UpdateLpParams memory params
+    )
         internal
-        returns (uint256 requiredCollateral, uint256 newCollateralAmount, uint256 loanAmount0, uint256 loanAmount1)
+        returns (
+            uint256 requiredCollateral,
+            uint256 newCollateralAmount,
+            uint256 loanAmount0,
+            uint256 loanAmount1
+        )
     {
         self.kind = ISapienceStructs.PositionKind.Liquidity;
         self.marketId = market.id;
@@ -172,20 +206,25 @@ library Position {
             TickMath.getSqrtRatioAtTick(params.upperTick)
         );
 
-        newCollateralAmount = self.depositedCollateralAmount + params.additionalCollateral;
+        newCollateralAmount =
+            self.depositedCollateralAmount +
+            params.additionalCollateral;
 
         if (requiredCollateral > newCollateralAmount) {
             // Allow for dust tolerance to prevent reverts on micro rounding differences
             if (requiredCollateral - newCollateralAmount > DUST_TOLERANCE) {
-                revert Errors.InsufficientCollateral(requiredCollateral, newCollateralAmount);
+                revert Errors.InsufficientCollateral(
+                    requiredCollateral,
+                    newCollateralAmount
+                );
             }
         }
     }
 
-    function settle(Data storage self, uint256 settlementPriceD18)
-        internal
-        returns (uint256 collateralAmountReturned)
-    {
+    function settle(
+        Data storage self,
+        uint256 settlementPriceD18
+    ) internal returns (uint256 collateralAmountReturned) {
         self.isSettled = true;
 
         // 1- reconcile base tokens
@@ -193,13 +232,23 @@ library Position {
 
         // 2- convert everything to quote tokens
         if (self.vBaseAmount > 0) {
-            self.vQuoteAmount += self.vBaseAmount.mulDecimal(settlementPriceD18);
+            self.vQuoteAmount += self.vBaseAmount.mulDecimal(
+                settlementPriceD18
+            );
             self.vBaseAmount = 0;
         }
         if (self.borrowedVBase > 0) {
-            self.borrowedVQuote += self.borrowedVBase.mulDecimal(settlementPriceD18);
+            self.borrowedVQuote += self.borrowedVBase.mulDecimal(
+                settlementPriceD18
+            );
             // round up
-            self.borrowedVQuote += mulmod(self.borrowedVBase, settlementPriceD18, 1e18) > 0 ? 1 : 0;
+            self.borrowedVQuote += mulmod(
+                self.borrowedVBase,
+                settlementPriceD18,
+                1e18
+            ) > 0
+                ? 1
+                : 0;
 
             self.borrowedVBase = 0;
         }
@@ -278,8 +327,15 @@ library Position {
         // If the position is a Liquidity Provider (LP) position
         if (self.kind == ISapienceStructs.PositionKind.Liquidity) {
             // Get the current amounts and fees owed from the Uniswap position manager
-            (uint256 amount0, uint256 amount1,,,, uint256 tokensOwed0, uint256 tokensOwed1) =
-                Pool.getCurrentPositionTokenAmounts(market, self);
+            (
+                uint256 amount0,
+                uint256 amount1,
+                ,
+                ,
+                ,
+                uint256 tokensOwed0,
+                uint256 tokensOwed1
+            ) = Pool.getCurrentPositionTokenAmounts(market, self);
 
             // Add these amounts to the position's vBaseAmount and vQuoteAmount
             uint256 totalVBase = self.vBaseAmount + amount0 + tokensOwed0;
@@ -300,7 +356,10 @@ library Position {
         return netVQuote + netVBaseValue;
     }
 
-    function updateWithNewPosition(Data storage self, Data memory newPosition) internal {
+    function updateWithNewPosition(
+        Data storage self,
+        Data memory newPosition
+    ) internal {
         self.vBaseAmount = newPosition.vBaseAmount;
         self.vQuoteAmount = newPosition.vQuoteAmount;
         self.borrowedVBase = newPosition.borrowedVBase;
