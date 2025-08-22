@@ -33,8 +33,9 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
   const command = args[2];
 
   if (command === 'candle-cache') {
-    // Get interval from command line, default to 60 seconds if not specified
-    const intervalSeconds = parseInt(args[3] || '60', 10);
+    // Get interval from command line, environment variable, or default to 15 seconds
+    const defaultInterval = process.env.CANDLE_CACHE_INTERVAL || '15';
+    const intervalSeconds = parseInt(args[3] || defaultInterval, 10);
     if (isNaN(intervalSeconds) || intervalSeconds <= 0) {
       console.error(
         'Invalid interval specified. Please provide a positive number of seconds.'
@@ -61,9 +62,10 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
 
   // If no worker command was handled, proceed with the default main logic
   if (!workerHandled) {
-    console.log('Starting candle cache worker with default 60 second interval');
+    const defaultInterval = parseInt(process.env.CANDLE_CACHE_INTERVAL || '15', 10);
+    console.log(`Starting candle cache worker with default ${defaultInterval} second interval`);
     await createResilientProcess(
-      () => runCandleCacheBuilder(60),
+      () => runCandleCacheBuilder(defaultInterval),
       'candleCacheBuilder'
     )();
   }
