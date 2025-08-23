@@ -13,7 +13,7 @@ import ForecastsTable from '../profile/ForecastsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
 import UserParlaysTable from '../parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
-import { usePredictions } from '~/hooks/graphql/usePredictions';
+import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 
 interface UserPositionsTableProps {
@@ -45,14 +45,15 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
 
   const { data: positionsData, refetch: refetchPositions } =
     usePositions(positionVars);
-  const { data: attestationsData, refetch: refetchAttestations } =
-    usePredictions({
+  const { data: attestationsData, refetch: refetchAttestations } = useForecasts(
+    {
       attesterAddress: account,
       schemaId: SCHEMA_UID,
       marketAddress,
       chainId,
       marketId,
-    });
+    }
+  );
 
   // Refetch on mount and when parent triggers via changing callback identity
   useEffect(() => {

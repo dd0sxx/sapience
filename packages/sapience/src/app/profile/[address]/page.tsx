@@ -17,7 +17,7 @@ import LpPositionsTable from '~/components/profile/LpPositionsTable';
 import ForecastsTable from '~/components/profile/ForecastsTable';
 import UserParlaysTable from '~/components/parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
-import { usePredictions } from '~/hooks/graphql/usePredictions';
+import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 
 const TAB_VALUES = ['forecasts', 'trades', 'lp', 'parlays'] as const;
@@ -31,7 +31,7 @@ export default function PortfolioPage() {
   const traderPositions = (positionsData || []).filter((p) => !p.isLP);
   const lpPositions = (positionsData || []).filter((p) => p.isLP);
 
-  const { data: attestations } = usePredictions({
+  const { data: attestations } = useForecasts({
     attesterAddress: address,
     schemaId: SCHEMA_UID,
   });

@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { getAddress } from 'viem';
 import { graphqlRequest } from '@sapience/ui/lib';
@@ -21,6 +21,33 @@ interface RawAttestation {
 const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
   query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
     attestations(where: $where, orderBy: { time: desc }, take: $take) {
+      id
+      attester
+      time
+      prediction
+      marketId
+      comment
+      marketAddress
+    }
+  }
+`;
+
+// Paginated query leveraging cursor/skip
+const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
+  query FindAttestationsPaginated(
+    $where: AttestationWhereInput!
+    $take: Int!
+    $cursor: AttestationWhereUniqueInput
+    $skip: Int
+    $orderBy: [AttestationOrderByWithRelationInput!]
+  ) {
+    attestations(
+      where: $where
+      orderBy: $orderBy
+      take: $take
+      cursor: $cursor
+      skip: $skip
+    ) {
       id
       attester
       time
@@ -74,7 +101,7 @@ const formatAttestationData = (
   };
 };
 
-interface UsePredictionsProps {
+interface UseForecastsProps {
   marketAddress?: string;
   schemaId?: string;
   attesterAddress?: string;
@@ -82,14 +109,14 @@ interface UsePredictionsProps {
   marketId?: number;
 }
 
-// Function to generate consistent query key for both usePredictions and prefetchPredictions
-const generatePredictionsQueryKey = ({
+// Function to generate consistent query key for both useForecasts and prefetchForecasts
+const generateForecastsQueryKey = ({
   marketAddress,
   schemaId = SCHEMA_UID,
   attesterAddress,
   chainId,
   marketId,
-}: UsePredictionsProps) => {
+}: UseForecastsProps) => {
   return [
     'attestations',
     schemaId,
@@ -100,12 +127,12 @@ const generatePredictionsQueryKey = ({
   ];
 };
 
-const getPredictions = async ({
+const getForecasts = async ({
   marketAddress,
   schemaId = SCHEMA_UID,
   attesterAddress,
   marketId,
-}: UsePredictionsProps) => {
+}: UseForecastsProps) => {
   // Normalize addresses if provided
   let normalizedMarketAddress = marketAddress;
   if (marketAddress) {
@@ -156,19 +183,19 @@ const getPredictions = async ({
 
     return data;
   } catch (error) {
-    console.error('Failed to load predictions:', error);
-    throw new Error('Failed to load predictions');
+    console.error('Failed to load forecasts:', error);
+    throw new Error('Failed to load forecasts');
   }
 };
 
-export const usePredictions = ({
+export const useForecasts = ({
   marketAddress,
   schemaId = SCHEMA_UID,
   attesterAddress,
   chainId,
   marketId,
-}: UsePredictionsProps) => {
-  const queryKey = generatePredictionsQueryKey({
+}: UseForecastsProps) => {
+  const queryKey = generateForecastsQueryKey({
     marketAddress,
     schemaId,
     attesterAddress,
@@ -184,7 +211,7 @@ export const usePredictions = ({
   } = useQuery<AttestationsQueryResponse | undefined>({
     queryKey,
     queryFn: () =>
-      getPredictions({
+      getForecasts({
         marketAddress,
         schemaId,
         attesterAddress,
@@ -208,19 +235,137 @@ export const usePredictions = ({
   return { data, isLoading, error, refetch };
 };
 
-export const prefetchPredictions = async (
+export const prefetchForecasts = async (
   queryClient: QueryClient,
   schemaId: string
 ) => {
-  const queryKey = generatePredictionsQueryKey({
+  const queryKey = generateForecastsQueryKey({
     schemaId,
   });
 
   return await queryClient.prefetchQuery({
     queryKey,
     queryFn: () =>
-      getPredictions({
+      getForecasts({
         schemaId,
       }),
   });
+};
+
+// Fetch a cursor page of attestations
+const getForecastsPage = async (
+  params: UseForecastsProps,
+  page: { take: number; cursorId?: number }
+) => {
+  const {
+    marketAddress,
+    schemaId = SCHEMA_UID,
+    attesterAddress,
+    marketId,
+  } = params;
+
+  let normalizedMarketAddress = marketAddress;
+  if (marketAddress) {
+    try {
+      normalizedMarketAddress = getAddress(marketAddress);
+    } catch (e) {
+      console.error('Failed to normalize market address:', e);
+    }
+  }
+
+  let normalizedAttesterAddress = attesterAddress;
+  if (attesterAddress) {
+    try {
+      normalizedAttesterAddress = getAddress(attesterAddress);
+    } catch (e) {
+      console.error('Failed to normalize attester address:', e);
+    }
+  }
+
+  const filters: Record<string, { equals: string }>[] = [];
+  if (normalizedMarketAddress) {
+    filters.push({ marketAddress: { equals: normalizedMarketAddress } });
+  }
+  if (normalizedAttesterAddress) {
+    filters.push({ attester: { equals: normalizedAttesterAddress } });
+  }
+  if (marketId) {
+    filters.push({ marketId: { equals: String(marketId) } });
+  }
+
+  const variables: Record<string, any> = {
+    where: {
+      schemaId: { equals: schemaId },
+      AND: filters,
+    },
+    take: page.take,
+    orderBy: [{ time: 'desc' }],
+  };
+
+  if (page.cursorId !== undefined) {
+    variables.cursor = { id: page.cursorId };
+    variables.skip = 1;
+  }
+
+  const data = await graphqlRequest<AttestationsQueryResponse>(
+    GET_ATTESTATIONS_PAGINATED_QUERY,
+    variables
+  );
+  return data;
+};
+
+export const useInfiniteForecasts = ({
+  marketAddress,
+  schemaId = SCHEMA_UID,
+  attesterAddress,
+  chainId,
+  marketId,
+}: UseForecastsProps & { pageSize?: number }) => {
+  const pageSize = 10;
+  const queryKey = [
+    ...generateForecastsQueryKey({
+      marketAddress,
+      schemaId,
+      attesterAddress,
+      chainId,
+      marketId,
+    }),
+    'infinite',
+  ];
+
+  const query = useInfiniteQuery<AttestationsQueryResponse>({
+    queryKey,
+    queryFn: ({ pageParam }) =>
+      getForecastsPage(
+        { marketAddress, schemaId, attesterAddress, marketId },
+        { take: pageSize, cursorId: pageParam as number | undefined }
+      ),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (lastPage) => {
+      const list = lastPage.attestations || [];
+      if (list.length < pageSize) return undefined;
+      const last = list[list.length - 1];
+      if (!last) return undefined;
+      return Number((last as any).id);
+    },
+    retry: 3,
+    retryDelay: 1000,
+  });
+
+  const data: FormattedAttestation[] = React.useMemo(() => {
+    if (!query.data?.pages) return [];
+    return query.data.pages.flatMap((p) =>
+      (p.attestations || []).map((att) => formatAttestationData(att as any))
+    );
+  }, [query.data]);
+
+  return {
+    data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: Boolean(query.hasNextPage),
+    isFetchingNextPage: query.isFetchingNextPage,
+  };
 };
