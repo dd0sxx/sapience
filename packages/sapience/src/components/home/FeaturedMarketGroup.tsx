@@ -10,7 +10,7 @@ import {
 } from '@sapience/ui/components/ui/carousel';
 import { useSidebar } from '@sapience/ui/components/ui/sidebar';
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
-import MarketGroupCard from '../forecasting/MarketGroupCard';
+import MarketGroupCard from '../markets/MarketGroupCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';

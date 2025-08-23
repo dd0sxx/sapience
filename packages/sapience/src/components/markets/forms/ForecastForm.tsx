@@ -15,17 +15,17 @@ import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { NO_SQRT_X96_PRICE, YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
-interface PredictFormProps {
+interface ForecastFormProps {
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
   onSuccess?: () => void;
 }
 
-export default function PredictForm({
+export default function ForecastForm({
   marketGroupData,
   marketClassification,
   onSuccess,
-}: PredictFormProps) {
+}: ForecastFormProps) {
   const { isConnected } = useAccount();
   const { login, authenticated } = usePrivy();
   const firstMarket = marketGroupData.markets?.[0];

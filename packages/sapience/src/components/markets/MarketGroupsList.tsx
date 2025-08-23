@@ -20,7 +20,7 @@ import {
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
-import Betslip from '~/components/layout/Betslip';
+import Betslip from '~/components/markets/Betslip';
 
 // Define Category type based on assumed hook return
 interface Category {

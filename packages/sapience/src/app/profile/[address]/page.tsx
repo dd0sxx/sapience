@@ -82,11 +82,19 @@ export default function PortfolioPage() {
       </div>
 
       <Tabs value={tabValue} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="trades">Prediction Market Trades</TabsTrigger>
-          <TabsTrigger value="lp">Prediction Market Liquidity</TabsTrigger>
-          <TabsTrigger value="parlays">Parlays</TabsTrigger>
-          <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 h-auto gap-2 mb-4">
+          <TabsTrigger className="w-full" value="trades">
+            Prediction Market Trades
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="lp">
+            Prediction Market Liquidity
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="parlays">
+            Parlays
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="forecasts">
+            Forecasts
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="trades">

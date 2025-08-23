@@ -33,7 +33,7 @@ import type { Address } from 'viem';
 import ParlayPool from '@/protocol/deployments/ParlayPool.json';
 import type { Abi } from 'abitype';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-import { wagerAmountSchema } from '~/components/forecasting/forms/inputs/WagerInput';
+import { wagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
 
 import { MarketGroupClassification } from '~/lib/types';
 import {
@@ -49,7 +49,7 @@ import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
 import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
 import { PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
-import { BetslipContent } from '~/components/layout/Betslip/BetslipContent';
+import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
 interface BetslipProps {

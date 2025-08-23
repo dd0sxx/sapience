@@ -3,7 +3,7 @@ export { CreateTradeForm } from './CreateTradeForm';
 export { ModifyLiquidityForm } from './ModifyLiquidityForm';
 export { default as ModifyTradeForm } from './ModifyTradeForm';
 
-export { default as PredictForm } from './PredictForm';
+export { default as PredictForm } from './ForecastForm';
 export { default as WagerFormFactory } from './WagerFormFactory';
 
 export { default as NumericPredict } from './inputs/NumericPredict';

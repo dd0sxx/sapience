@@ -1,9 +1,9 @@
-import dynamic from 'next/dynamic'; // For dynamic importing
+import dynamic from 'next/dynamic';
 import type React from 'react';
-import { useRef, useEffect } from 'react'; // Add useRef and useEffect
+import { useRef, useEffect } from 'react';
 
-import NumberDisplay from '../shared/NumberDisplay'; // Import NumberDisplay
-import type { OrderBookLevel } from '~/hooks/charts/useOrderBookData'; // Keep type import
+import NumberDisplay from '../../shared/NumberDisplay';
+import type { OrderBookLevel } from '~/hooks/charts/useOrderBookData';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {

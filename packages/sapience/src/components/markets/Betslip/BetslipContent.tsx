@@ -20,10 +20,10 @@ import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 // import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification } from '~/lib/types';
-import YesNoWagerInput from '~/components/forecasting/forms/inputs/YesNoWagerInput';
-import WagerInputWithQuote from '~/components/forecasting/forms/shared/WagerInputWithQuote';
+import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
+import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWithQuote';
 import { getChainShortName } from '~/lib/utils/util';
-import { WagerInput } from '~/components/forecasting/forms';
+import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
 
 interface BetslipContentProps {
