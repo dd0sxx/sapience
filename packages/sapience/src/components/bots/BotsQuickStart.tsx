@@ -41,7 +41,7 @@ export default function ElizaHomepageFeature() {
                   </Button>
                 </a>
                 <a
-                  href="https://github.com/sapiencexyz/elizaos-boilerplate"
+                  href="https://github.com/sapiencexyz/sage"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-3 sm:ml-5"
