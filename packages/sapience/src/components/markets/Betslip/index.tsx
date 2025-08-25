@@ -621,15 +621,15 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
         <Drawer open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <DrawerTrigger asChild>
             <Button
-              className="fixed shadow-md left-1/2 -translate-x-1/2 bottom-6 z-40 lg:hidden rounded-full overflow-hidden flex items-center justify-center border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors pointer-events-auto"
+              className="fixed shadow-sm left-1/2 -translate-x-1/2 bottom-6 z-40 lg:hidden rounded-full overflow-hidden flex items-center justify-center border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors pointer-events-auto"
               size="icon"
               variant="secondary"
             >
               <Image
-                src="/susde-icon.svg"
-                alt="sUSDe"
-                width={24}
-                height={24}
+                src="/usde.svg"
+                alt="USDe"
+                width={32}
+                height={32}
                 className="h-full w-full"
               />
             </Button>

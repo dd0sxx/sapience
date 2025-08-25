@@ -66,8 +66,8 @@ export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
           rel="noopener noreferrer"
         >
           <Image
-            src="/susde-icon.svg"
-            alt="sUSDe"
+            src="/usde.svg"
+            alt="USDe"
             width={17}
             height={17}
             className="opacity-90 ml-[-2px]"

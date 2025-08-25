@@ -218,8 +218,8 @@ export const BetslipContent = ({
             <div className="w-full h-full flex items-center justify-center text-center">
               <div className="flex flex-col items-center gap-4">
                 <Image
-                  src="/susde-icon.svg"
-                  alt="sUSDe"
+                  src="/usde.svg"
+                  alt="USDe"
                   width={40}
                   height={40}
                   className="opacity-60"
