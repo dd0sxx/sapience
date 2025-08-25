@@ -1,7 +1,6 @@
 import prisma from './db';
 import fixturesData from './fixtures.json';
 import { IResourcePriceIndexer } from './interfaces';
-import { WeatherIndexer } from './workers/indexers/weatherIndexer';
 import EASPredictionIndexer from './workers/indexers/easIndexer';
 import type { Resource } from '../generated/prisma';
 
