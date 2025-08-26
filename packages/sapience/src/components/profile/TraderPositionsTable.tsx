@@ -11,8 +11,8 @@ import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
 import { FrownIcon } from 'lucide-react';
-import SettlePositionButton from '../forecasting/SettlePositionButton';
-import SellPositionButton from '../forecasting/SellPositionButton';
+import SettlePositionButton from '../markets/SettlePositionButton';
+import SellPositionButton from '../markets/SellPositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
