@@ -231,7 +231,10 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
             Add New Market to Group {marketGroupAddress}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 p-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 p-4 overflow-y-auto max-h-[calc(90vh-120px)]"
+        >
           <MarketFormFields
             market={market}
             onMarketChange={handleMarketChange}

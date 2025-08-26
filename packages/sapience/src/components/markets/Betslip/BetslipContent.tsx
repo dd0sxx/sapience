@@ -217,13 +217,7 @@ export const BetslipContent = ({
           {betSlipPositions.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center text-center">
               <div className="flex flex-col items-center gap-4">
-                <Image
-                  src="/usde.svg"
-                  alt="USDe"
-                  width={40}
-                  height={40}
-                  className="opacity-60"
-                />
+                <Image src="/usde.svg" alt="USDe" width={42} height={42} />
                 <p className="text-base text-muted-foreground max-w-[180px] mx-auto">
                   Add predictions to see your potential payout.
                 </p>
