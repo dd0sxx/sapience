@@ -5,7 +5,6 @@ import { useAccount, useReadContracts } from 'wagmi';
 import type { Address } from 'viem';
 import { erc20Abi } from 'viem';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import {
   Table,
@@ -105,7 +104,7 @@ function OutcomesCell({
   );
 }
 
-const ParlaysPage = () => {
+const OtcPage = () => {
   const { address, chainId } = useAccount();
   const {
     loading,
@@ -174,14 +173,7 @@ const ParlaysPage = () => {
     <div className="container mx-auto max-w-6xl px-4">
       <div className="py-16 md:py-24">
         <h1 className="text-2xl md:text-3xl font-heading mb-6 flex items-center gap-4">
-          Parlays
-          <Badge
-            variant="outline"
-            className="px-1.5 py-0.5 text-xs font-medium border-yellow-500/40 bg-yellow-500/10 text-yellow-600 inline-flex items-center gap-1 mr-4"
-          >
-            <AlertTriangle className="w-3 h-3" />
-            Experimental Feature
-          </Badge>
+          Onchain Orderbook
         </h1>
         <h2 className="text-lg font-medium mb-3">Open Orders</h2>
         <div className="w-full overflow-x-auto rounded-md border border-border">
@@ -386,4 +378,4 @@ function OpenOrderRow({
   );
 }
 
-export default ParlaysPage;
+export default OtcPage;
