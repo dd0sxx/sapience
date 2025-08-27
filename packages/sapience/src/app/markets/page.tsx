@@ -5,7 +5,7 @@ const MarketGroupsListSkeleton = () => <div className="space-y-4" />;
 
 // Dynamically import MarketGroupsList
 const MarketGroupsList = dynamic(
-  () => import('~/components/forecasting/MarketGroupsList'),
+  () => import('~/components/markets/MarketGroupsList'),
   {
     ssr: false, // Disable server-side rendering
     loading: () => <MarketGroupsListSkeleton />, // Show skeleton while loading
@@ -13,8 +13,8 @@ const MarketGroupsList = dynamic(
 );
 
 export const metadata: Metadata = {
-  title: 'Forecasting',
-  description: 'Make forecasts across various focus areas',
+  title: 'Prediction Markets',
+  description: 'Browse prediction markets across various focus areas',
 };
 
 const ForecastingPage = () => {

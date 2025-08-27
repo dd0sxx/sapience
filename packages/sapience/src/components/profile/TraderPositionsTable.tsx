@@ -11,8 +11,9 @@ import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
 import { FrownIcon } from 'lucide-react';
-import SettlePositionButton from '../forecasting/SettlePositionButton';
-import SellPositionButton from '../forecasting/SellPositionButton';
+import SettlePositionButton from '../markets/SettlePositionButton';
+import SellPositionButton from '../markets/SellPositionButton';
+import SharePositionDialog from '../markets/SharePositionDialog';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
@@ -194,6 +195,24 @@ export default function TraderPositionsTable({
     );
   }
 
+  // Sort newest to oldest by createdAt; fallback to latest transaction.createdAt
+  const getPositionCreatedMs = (p: PositionType) => {
+    const direct = (p as any).createdAt as unknown as string | undefined;
+    if (direct) {
+      const ms = new Date(direct).getTime();
+      if (Number.isFinite(ms)) return ms;
+    }
+    const latestTxn = (p.transactions || [])
+      .map((t) => new Date(t.createdAt as unknown as string).getTime())
+      .filter((t) => Number.isFinite(t))
+      .sort((a, b) => b - a)[0];
+    return latestTxn || 0;
+  };
+
+  const sortedPositions = [...validPositions].sort(
+    (a, b) => getPositionCreatedMs(b) - getPositionCreatedMs(a)
+  );
+
   return (
     <div>
       {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
@@ -215,7 +234,7 @@ export default function TraderPositionsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {validPositions.map((position: PositionType) => {
+            {sortedPositions.map((position: PositionType) => {
               const isOwner =
                 connectedAddress &&
                 position.owner &&
@@ -309,6 +328,10 @@ export default function TraderPositionsTable({
                                 />
                               )
                             ))}
+                          {/* Share button available to all users for their own trades */}
+                          {isOwner && (
+                            <SharePositionDialog position={position} />
+                          )}
                         </div>
                       </TableCell>
                     </>

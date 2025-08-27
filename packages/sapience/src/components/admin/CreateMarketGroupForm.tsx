@@ -32,10 +32,10 @@ import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { z } from 'zod';
 
 import { FOCUS_AREAS } from '../../lib/constants/focusAreas';
-import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
 import CopyMarketParametersDialog from './CopyMarketParametersDialog';
-import { useResources } from '~/hooks/useResources';
+import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
+import { useResources } from '~/hooks/useResources';
 
 // Use environment variable for API base URL, fallback to /api
 const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
@@ -44,9 +44,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 
 const DEFAULT_CHAIN_ID = 42161;
 const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
-const DEFAULT_BOND_CURRENCY = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-const DEFAULT_COLLATERAL_ASSET = '0x3138d1B6F726F54813c9Ed6E29A5e44C24Cb11f1';
-const DEFAULT_OPTIMISTIC_ORACLE = '0xCf17b4834223D7e54B92f8e43229C1E82faF7226';
+const DEFAULT_BOND_CURRENCY = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
+const DEFAULT_COLLATERAL_ASSET = '0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3';
+const DEFAULT_OPTIMISTIC_ORACLE = '0xa6147867264374F324524E30C02C331cF28aa879';
 const DEFAULT_UNISWAP_POS_MANAGER =
   '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
 const DEFAULT_UNISWAP_SWAP_ROUTER =
@@ -59,7 +59,7 @@ const DEFAULT_MIN_TRADE_SIZE = '10000';
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
 const DEFAULT_MAX_PRICE_TICK = '0';
-const DEFAULT_FACTORY_ADDRESS = '0x8BA766895a6bE31E92A0279C0A5C879b38f52904';
+const DEFAULT_FACTORY_ADDRESS = '0xc85375AdC34e5358371f48Cd74BAb24f74Af28A9';
 
 // Type definitions (MarketInput is now imported)
 interface MarketParamsInput {
@@ -233,6 +233,7 @@ const createEmptyMarket = (id: number): MarketInput => {
     highTickPrice: '1',
     claimStatementYesOrNumeric: '',
     claimStatementNo: '',
+    public: true,
   };
 };
 
@@ -255,6 +256,7 @@ const createMarketFromPrevious = (
     highTickPrice: previousMarket.highTickPrice,
     claimStatementYesOrNumeric: previousMarket.claimStatementYesOrNumeric, // Copy claim statement
     claimStatementNo: previousMarket.claimStatementNo, // Copy claim statement
+    public: previousMarket.public,
   };
 };
 
@@ -293,9 +295,9 @@ const CreateMarketGroupForm = () => {
   const [question, setQuestion] = useState<string>('');
   const [rules, setRules] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [isBridged, setIsBridged] = useState<boolean>(true);
+  const [isBridged, setIsBridged] = useState<boolean>(false);
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
-  const [quoteTokenName, setQuoteTokenName] = useState<string>('sapUSD');
+  const [quoteTokenName, setQuoteTokenName] = useState<string>('testUSDe');
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
     null
   );
@@ -330,7 +332,7 @@ const CreateMarketGroupForm = () => {
   const handleMarketChange = (
     index: number,
     field: keyof MarketInput,
-    value: string
+    value: string | boolean
   ) => {
     setMarkets((prevMarkets) => {
       const newMarkets = [...prevMarkets];
@@ -338,7 +340,7 @@ const CreateMarketGroupForm = () => {
       if (newMarkets[index]) {
         newMarkets[index] = {
           ...newMarkets[index],
-          [field]: value,
+          [field]: value as any,
         };
       } else {
         // This case should ideally not happen if IDs are managed correctly
@@ -353,6 +355,9 @@ const CreateMarketGroupForm = () => {
     switch (field) {
       case 'question':
         setQuestion(value);
+        break;
+      case 'rules':
+        setRules(value || '');
         break;
       case 'category':
         setSelectedCategory(value);

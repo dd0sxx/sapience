@@ -36,13 +36,14 @@ export default function HomepageEnd() {
   }, []); // Empty dependency array ensures this runs once client-side
 
   return (
-    <div className="relative h-[25vh] w-full overflow-hidden">
+    <div className="relative h-[18vh] w-full overflow-hidden">
       {/* Spline Background - Full Width and Flipped */}
-      <div className="absolute inset-0 pointer-events-none w-full h-ful">
+      <div className="absolute inset-0 pointer-events-none w-full h-full">
         <iframe
           ref={iframeRef}
           src="https://my.spline.design/particlesfutarchy-SDhuN0OYiCRHRPt2fFec4bCm/"
           className="w-full h-full"
+          loading="eager"
           style={{
             border: 'none',
             colorScheme: 'light',

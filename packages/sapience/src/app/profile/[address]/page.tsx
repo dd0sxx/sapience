@@ -17,7 +17,7 @@ import LpPositionsTable from '~/components/profile/LpPositionsTable';
 import ForecastsTable from '~/components/profile/ForecastsTable';
 import UserParlaysTable from '~/components/parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
-import { usePredictions } from '~/hooks/graphql/usePredictions';
+import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 
 const TAB_VALUES = ['forecasts', 'trades', 'lp', 'parlays'] as const;
@@ -31,20 +31,20 @@ export default function PortfolioPage() {
   const traderPositions = (positionsData || []).filter((p) => !p.isLP);
   const lpPositions = (positionsData || []).filter((p) => p.isLP);
 
-  const { data: attestations } = usePredictions({
+  const { data: attestations } = useForecasts({
     attesterAddress: address,
     schemaId: SCHEMA_UID,
   });
 
   const getHashValue = () => {
-    if (typeof window === 'undefined') return 'forecasts' as TabValue;
+    if (typeof window === 'undefined') return 'trades' as TabValue;
     const rawHash = window.location.hash?.replace('#', '').toLowerCase();
     return (TAB_VALUES as readonly string[]).includes(rawHash)
       ? (rawHash as TabValue)
-      : ('forecasts' as TabValue);
+      : ('trades' as TabValue);
   };
 
-  const [tabValue, setTabValue] = useState<TabValue>('forecasts');
+  const [tabValue, setTabValue] = useState<TabValue>('trades');
 
   useEffect(() => {
     setTabValue(getHashValue());
@@ -67,7 +67,7 @@ export default function PortfolioPage() {
   const handleTabChange = (value: string) => {
     const nextValue = (TAB_VALUES as readonly string[]).includes(value)
       ? (value as TabValue)
-      : ('forecasts' as TabValue);
+      : ('trades' as TabValue);
     setTabValue(nextValue);
     if (typeof window !== 'undefined') {
       const url = `${window.location.pathname}${window.location.search}#${nextValue}`;
@@ -82,16 +82,20 @@ export default function PortfolioPage() {
       </div>
 
       <Tabs value={tabValue} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
-          <TabsTrigger value="trades">Prediction Market Trades</TabsTrigger>
-          <TabsTrigger value="lp">Prediction Market Liquidity</TabsTrigger>
-          <TabsTrigger value="parlays">Parlays</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 h-auto gap-2 mb-4">
+          <TabsTrigger className="w-full" value="trades">
+            Prediction Market Trades
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="lp">
+            Prediction Market Liquidity
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="parlays">
+            OTC/Parlays
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="forecasts">
+            Forecasts
+          </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="forecasts">
-          <ForecastsTable attestations={attestations} />
-        </TabsContent>
 
         <TabsContent value="trades">
           <TraderPositionsTable
@@ -106,6 +110,10 @@ export default function PortfolioPage() {
 
         <TabsContent value="parlays">
           <UserParlaysTable account={address} showHeaderText={false} />
+        </TabsContent>
+
+        <TabsContent value="forecasts">
+          <ForecastsTable attestations={attestations} />
         </TabsContent>
       </Tabs>
     </div>

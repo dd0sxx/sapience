@@ -21,8 +21,8 @@ export default function BotsPage() {
   return (
     <main className="min-h-screen w-full">
       <BotsHero />
-      <TemplateSection />
       <BotsQuickStart />
+      <TemplateSection />
     </main>
   );
 }

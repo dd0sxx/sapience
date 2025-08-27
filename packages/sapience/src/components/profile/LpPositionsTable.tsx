@@ -20,7 +20,7 @@ import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
 import { FrownIcon } from 'lucide-react';
-import SettlePositionButton from '../forecasting/SettlePositionButton';
+import SettlePositionButton from '../markets/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { getChainShortName, tickToPrice } from '~/lib/utils/util';
 
@@ -172,6 +172,24 @@ export default function LpPositionsTable({
     );
   }
 
+  // Sort newest to oldest by createdAt; fallback to latest transaction timestamp
+  const getPositionCreatedMs = (p: PositionType) => {
+    const direct = (p as any).createdAt as unknown as string | undefined;
+    if (direct) {
+      const ms = new Date(direct).getTime();
+      if (Number.isFinite(ms)) return ms;
+    }
+    const latestTxn = (p.transactions || [])
+      .map((t) => new Date(t.createdAt as unknown as string).getTime())
+      .filter((t) => Number.isFinite(t))
+      .sort((a, b) => b - a)[0];
+    return latestTxn || 0;
+  };
+
+  const sortedPositions = [...validPositions].sort(
+    (a, b) => getPositionCreatedMs(b) - getPositionCreatedMs(a)
+  );
+
   return (
     <div>
       {showHeader && <h3 className="font-medium mb-4">Liquidity Positions</h3>}
@@ -193,7 +211,7 @@ export default function LpPositionsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {validPositions.map((position: PositionType) => {
+            {sortedPositions.map((position: PositionType) => {
               const { marketGroup } = position.market || {};
               const baseUnit = `${marketGroup?.baseTokenName || 'Base'}`;
               const quoteUnit = `${marketGroup?.collateralSymbol || 'Quote'}`;

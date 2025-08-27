@@ -13,6 +13,7 @@ import MarketGroupDeployButton from './MarketGroupDeployButton';
 import { shortenAddress, getChainShortName } from '~/lib/utils/util';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { useMarketGroupBridgeStatus } from '~/hooks/contract/useMarketGroupBridgeStatus';
+import DeleteUndeployedGroupButton from '~/components/admin/DeleteUndeployedGroupButton';
 
 // GraphQL query for index price at time
 const INDEX_PRICE_AT_TIME_QUERY = /* GraphQL */ `
@@ -254,7 +255,17 @@ const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
 
   return (
     <div className="flex items-center gap-2 justify-end">
+      <Button variant="outline" size="sm" asChild>
+        <a
+          href={`/markets/${getChainShortName(group.chainId)}:mg-${group.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Preview
+        </a>
+      </Button>
       <MarketGroupDeployButton group={group} />
+      <DeleteUndeployedGroupButton group={group} />
     </div>
   );
 };

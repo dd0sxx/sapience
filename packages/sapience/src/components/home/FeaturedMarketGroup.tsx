@@ -1,18 +1,21 @@
 'use client';
 
 import * as React from 'react';
-import dynamic from 'next/dynamic';
+import autoScroll from 'embla-carousel-auto-scroll';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from '@sapience/ui/components/ui/carousel';
+import { useSidebar } from '@sapience/ui/components/ui/sidebar';
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
-import MarketGroupsRow from '../forecasting/MarketGroupsRow';
+import MarketGroupCard from '../markets/MarketGroupCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 
-// Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
-  ssr: false,
-  loading: () => <div className="w-8 h-8" />,
-});
+// Removed LottieLoader in favor of simple fade-in cards and fixed-height placeholder
 
 // Define local interfaces based on MarketGroupsList structure
 export interface MarketWithContext extends GraphQLMarketType {
@@ -46,35 +49,56 @@ export default function FeaturedMarketGroup() {
   const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
     useEnrichedMarketGroups();
 
-  // Process market groups with same logic as MarketGroupsList but only take first 5
+  // Process market groups with same logic as MarketGroupsList but only take first 8
   const groupedMarketGroups: GroupedMarketGroup[] = React.useMemo(() => {
     if (!enrichedMarketGroups) return [];
 
-    // 1. Map enrichedMarketGroups to MarketWithContext[] (no category filter for homepage)
-    const allMarkets: MarketWithContext[] = enrichedMarketGroups.flatMap(
-      (marketGroup) => {
-        // Filter and map markets within this marketGroup
-        return marketGroup.markets
-          .filter(
-            (market) =>
-              // Ensure startTimestamp and endTimestamp are numbers
-              typeof market.startTimestamp === 'number' &&
-              typeof market.endTimestamp === 'number'
+    // 1. Only consider deployed market groups and deployed markets
+    const deployedGroups = enrichedMarketGroups.filter((group) => {
+      const hasAddress =
+        typeof group.address === 'string' && group.address.length > 0;
+      const hasDeployedMarkets = Array.isArray(group.markets)
+        ? group.markets.some(
+            (m) =>
+              typeof m.poolAddress === 'string' &&
+              m.poolAddress.length > 0 &&
+              m.poolAddress !== '0x'
           )
-          .map((market): MarketWithContext => {
-            return {
-              ...market,
-              // Explicitly assign core GraphQLMarketType properties
-              startTimestamp: market.startTimestamp,
-              endTimestamp: market.endTimestamp,
-              // Add context fields from marketGroup
-              marketAddress: marketGroup.address!,
-              chainId: marketGroup.chainId,
-              collateralAsset: marketGroup.collateralAsset!,
-              categorySlug: marketGroup.category.slug,
-              categoryId: marketGroup.category.id.toString(),
-            };
-          });
+        : false;
+      return hasAddress && hasDeployedMarkets;
+    });
+
+    // 2. Map to MarketWithContext[] (no category filter for homepage)
+    const allMarkets: MarketWithContext[] = deployedGroups.flatMap(
+      (marketGroup) => {
+        return (
+          marketGroup.markets
+            // Only include deployed markets (with a valid poolAddress)
+            .filter(
+              (market) =>
+                typeof market.poolAddress === 'string' &&
+                market.poolAddress.length > 0 &&
+                market.poolAddress !== '0x'
+            )
+            .filter(
+              (market) =>
+                // Ensure startTimestamp and endTimestamp are numbers
+                typeof market.startTimestamp === 'number' &&
+                typeof market.endTimestamp === 'number'
+            )
+            .map((market): MarketWithContext => {
+              return {
+                ...market,
+                startTimestamp: market.startTimestamp,
+                endTimestamp: market.endTimestamp,
+                marketAddress: marketGroup.address!,
+                chainId: marketGroup.chainId,
+                collateralAsset: marketGroup.collateralAsset!,
+                categorySlug: marketGroup.category.slug,
+                categoryId: marketGroup.category.id.toString(),
+              };
+            })
+        );
       }
     );
 
@@ -110,7 +134,7 @@ export default function FeaturedMarketGroup() {
     const result: GroupedMarketGroup[] = Object.entries(groupedByMarketKey).map(
       ([key, markets]) => {
         const firstMarket = markets[0];
-        const enrichedGroup = enrichedMarketGroups.find(
+        const enrichedGroup = deployedGroups.find(
           (group) =>
             group.chainId === firstMarket.chainId &&
             group.address === firstMarket.marketAddress
@@ -158,7 +182,7 @@ export default function FeaturedMarketGroup() {
       }
     );
 
-    // 5. Sort by earliest end time and take first 5
+    // 5. Sort by earliest end time and take first 8
     return result
       .sort((a, b) => {
         const aValidMarkets = a.markets.filter(
@@ -180,15 +204,16 @@ export default function FeaturedMarketGroup() {
         );
         return aEarliestEnd - bEarliestEnd;
       })
-      .slice(0, 5);
+      .slice(0, 8);
   }, [enrichedMarketGroups]);
 
   if (isLoadingMarketGroups) {
     return (
-      <section className="pt-8 lg:pt-12 px-4 sm:px-6 w-full relative z-10">
-        <div className="max-w-6xl mx-auto w-full">
-          <div className="flex flex-col items-center justify-center text-center">
-            <LottieLoader width={32} height={32} />
+      <section className="pt-0 px-0 w-full relative z-10">
+        <div className="w-full px-0">
+          {/* Maintain space to prevent layout jump while data loads */}
+          <div className="mt-0 mb-1 md:mb-4">
+            <div className="md:min-h-[150px] w-full animate-pulse rounded-md bg-muted/40" />
           </div>
         </div>
       </section>
@@ -196,53 +221,133 @@ export default function FeaturedMarketGroup() {
   }
 
   return (
-    <section className="pt-8 lg:pt-12 px-4 sm:px-6 w-full relative z-10">
-      <div className="max-w-6xl mx-auto w-full">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center lg:justify-center gap-8 lg:gap-28">
-          {/* Content constrained to match other sections */}
-          <div className="w-full lg:w-4/5 lg:max-w-4xl">
-            {groupedMarketGroups.length === 0 ? (
-              <div className="text-center">
-                <p className="text-lg text-muted-foreground">
-                  No active market groups available
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                <div className="mb-2">
-                  <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                    Settling Soon
-                  </h3>
-                  <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
-                    {groupedMarketGroups.map((marketGroup) => (
-                      <div
-                        key={marketGroup.key}
-                        className="border-b last:border-b-0 border-border"
-                      >
-                        <MarketGroupsRow
-                          chainId={marketGroup.chainId}
-                          marketAddress={marketGroup.marketAddress}
-                          market={marketGroup.markets}
-                          color={marketGroup.color}
-                          displayQuestion={
-                            marketGroup.displayQuestion ||
-                            marketGroup.marketName
-                          }
-                          isActive={marketGroup.isActive}
-                          marketClassification={
-                            marketGroup.marketClassification
-                          }
-                          displayUnit={marketGroup.displayUnit}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+    <section className="pt-0 px-0 w-full relative z-10">
+      <div className="w-full px-0">
+        {groupedMarketGroups.length === 0 ? null : (
+          <MobileAndDesktopLists groupedMarketGroups={groupedMarketGroups} />
+        )}
       </div>
     </section>
+  );
+}
+
+function MobileAndDesktopLists({
+  groupedMarketGroups,
+}: {
+  groupedMarketGroups: GroupedMarketGroup[];
+}) {
+  const { state, openMobile } = useSidebar();
+  const [mobileApi, setMobileApi] = React.useState<CarouselApi | null>(null);
+  const [desktopApi, setDesktopApi] = React.useState<CarouselApi | null>(null);
+  const items = React.useMemo(
+    () => groupedMarketGroups.slice(0, 8),
+    [groupedMarketGroups]
+  );
+
+  const autoScrollPluginMobile = React.useMemo(
+    () =>
+      autoScroll({
+        playOnInit: true,
+        stopOnMouseEnter: true,
+        stopOnInteraction: true,
+        speed: 0.5,
+      }),
+    []
+  );
+
+  const autoScrollPluginDesktop = React.useMemo(
+    () =>
+      autoScroll({
+        playOnInit: true,
+        // Keep autoscrolling even when hovered on desktop
+        stopOnMouseEnter: false,
+        stopOnInteraction: true,
+        speed: 0.5,
+      }),
+    []
+  );
+
+  // Reinitialize carousels when the sidebar open/collapsed state changes
+  React.useEffect(() => {
+    mobileApi?.reInit();
+    desktopApi?.reInit();
+  }, [state, openMobile, mobileApi, desktopApi]);
+
+  const desktopItemClass = React.useMemo(() => {
+    if (items.length >= 4) return 'pl-4 basis-1/2 lg:basis-1/4';
+    if (items.length === 3) return 'pl-4 basis-1/2';
+    if (items.length === 2) return 'pl-4 basis-[60%]';
+    return 'pl-4 basis-[80%]';
+  }, [items.length]);
+
+  return (
+    <div className="relative mt-0 mb-1 md:mb-4 md:min-h-[150px]">
+      {/* Fade overlays */}
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 md:w-16 bg-gradient-to-r from-background to-transparent"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 z-20 w-8 md:w-16 bg-gradient-to-l from-background to-transparent"
+        aria-hidden
+      />
+      {/* Mobile: Embla carousel with auto-scroll */}
+      <div className="md:hidden w-full px-0">
+        <Carousel
+          opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
+          plugins={[autoScrollPluginMobile]}
+          setApi={setMobileApi}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4">
+            {items.map((marketGroup) => (
+              <CarouselItem key={marketGroup.key} className="pl-4 basis-[80%]">
+                <MarketGroupCard
+                  chainId={marketGroup.chainId}
+                  marketAddress={marketGroup.marketAddress}
+                  market={marketGroup.markets}
+                  color={marketGroup.color}
+                  displayQuestion={
+                    marketGroup.displayQuestion || marketGroup.marketName
+                  }
+                  isActive={marketGroup.isActive}
+                  marketClassification={marketGroup.marketClassification}
+                  displayUnit={marketGroup.displayUnit}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
+
+      {/* Desktop: Embla carousel with auto-scroll */}
+      <div className="hidden md:block w-full px-0">
+        <Carousel
+          opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
+          plugins={[autoScrollPluginDesktop]}
+          setApi={setDesktopApi}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-4">
+            {items.map((marketGroup) => (
+              <CarouselItem key={marketGroup.key} className={desktopItemClass}>
+                <MarketGroupCard
+                  chainId={marketGroup.chainId}
+                  marketAddress={marketGroup.marketAddress}
+                  market={marketGroup.markets}
+                  color={marketGroup.color}
+                  displayQuestion={
+                    marketGroup.displayQuestion || marketGroup.marketName
+                  }
+                  isActive={marketGroup.isActive}
+                  marketClassification={marketGroup.marketClassification}
+                  displayUnit={marketGroup.displayUnit}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
+    </div>
   );
 }

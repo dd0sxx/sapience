@@ -3,16 +3,16 @@
 import { blo } from 'blo';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect } from 'react';
-import { ChevronRight, FrownIcon } from 'lucide-react';
+import { useCallback, useEffect, useRef } from 'react';
+import { FrownIcon } from 'lucide-react';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { AddressDisplay } from './AddressDisplay';
 import LottieLoader from './LottieLoader';
-import { usePredictions } from '~/hooks/graphql/usePredictions';
+import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
+import { sqrtPriceX96ToPriceD18, getChainShortName } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
@@ -47,7 +47,7 @@ export enum CommentFilters {
   EnergyDePINCategory = 'energy-depin',
   ClimateChangeCategory = 'climate-change',
   GeopoliticsCategory = 'geopolitics',
-  BiosecurityCategory = 'biosecurity',
+  BiosecurityCategory = 'tech-science',
   SpaceExplorationCategory = 'space-exploration',
   EmergingTechnologiesCategory = 'emerging-technologies',
   AthleticsCategory = 'athletics',
@@ -59,6 +59,7 @@ interface Comment {
   content: string;
   timestamp: string;
   prediction?: string;
+  predictionPercent?: number;
   question: string;
   category?: string;
   answer: Answer;
@@ -71,6 +72,7 @@ interface Comment {
   isActive?: boolean;
   marketAddress?: string;
   marketId?: string;
+  chainShortName?: string;
 }
 
 interface CommentsProps {
@@ -81,6 +83,7 @@ interface CommentsProps {
   address?: string | null;
   refetchTrigger?: number;
   marketGroupAddress?: string | null;
+  fullBleed?: boolean;
 }
 
 // Helper to extract decoded data from attestation, handling .decodedData, .value.value, etc.
@@ -119,11 +122,15 @@ function attestationToComment(
   let lowerBound: number | undefined = undefined;
   let upperBound: number | undefined = undefined;
   let isActive: boolean = false;
+  let chainShortName: string | undefined = undefined;
   if (marketGroups && marketAddress && marketId) {
     const group = marketGroups.find(
       (g) => g.address?.toLowerCase() === marketAddress.toLowerCase()
     );
     if (group) {
+      if (group.chainId !== undefined) {
+        chainShortName = getChainShortName(group.chainId);
+      }
       // Find the market in the group
       const market = group.markets?.find(
         (m: any) => m.marketId?.toString() === marketId?.toString()
@@ -177,23 +184,28 @@ function attestationToComment(
 
   // Format prediction text based on market type
   let predictionText = '';
+  let predictionPercent: number | undefined = undefined;
   if (marketClassification === '2') {
     // YES_NO - show percentage chance
     const priceD18 = sqrtPriceX96ToPriceD18(prediction);
     const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
     const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-    predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
+    predictionPercent = Math.round(Number(percentageD2) / 100);
+    predictionText = `${predictionPercent}% Chance`;
   } else if (marketClassification === '1') {
     // MULTIPLE_CHOICE - show percentage chance for yes/no within multiple choice
 
     const priceD18 = sqrtPriceX96ToPriceD18(prediction);
     const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
     const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-
-    predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
+    predictionPercent = Math.round(Number(percentageD2) / 100);
+    predictionText = `${predictionPercent}% Chance`;
   } else if (marketClassification === '3') {
     // NUMERIC - show numeric value
-    predictionText = `${numericValue?.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;
+    const hideQuote = (quoteTokenName || '').toUpperCase().includes('USD');
+    const basePart = baseTokenName ? ` ${baseTokenName}` : '';
+    const quotePart = !hideQuote && quoteTokenName ? `/${quoteTokenName}` : '';
+    predictionText = `${numericValue?.toString()}${basePart}${quotePart}`;
   } else {
     // Fallback
     predictionText = `${numericValue}% Chance`;
@@ -205,6 +217,7 @@ function attestationToComment(
     content: commentText,
     timestamp: new Date(Number(att.rawTime) * 1000).toISOString(),
     prediction: predictionText,
+    predictionPercent,
     answer: Answer.Yes, // Not available in this schema, default to Yes
     question,
     category,
@@ -217,6 +230,7 @@ function attestationToComment(
     isActive,
     marketAddress,
     marketId: marketId?.toString(),
+    chainShortName,
   };
 }
 
@@ -227,6 +241,7 @@ const Comments = ({
   address = null,
   refetchTrigger,
   marketGroupAddress,
+  fullBleed = false,
 }: CommentsProps) => {
   // Fetch EAS attestations
   const shouldFilterByAttester =
@@ -238,7 +253,10 @@ const Comments = ({
     data: easAttestations,
     isLoading: isEasLoading,
     refetch,
-  } = usePredictions({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteForecasts({
     schemaId: SCHEMA_UID,
     attesterAddress: shouldFilterByAttester ? address : undefined,
   });
@@ -337,6 +355,27 @@ const Comments = ({
     return filtered;
   })();
 
+  // Infinite scroll: observe the last rendered comment
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const lastItemRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observerRef.current) observerRef.current.disconnect();
+      if (!node) return;
+      if (!hasNextPage) return;
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry.isIntersecting) {
+            fetchNextPage();
+          }
+        },
+        { root: null, rootMargin: '200px', threshold: 0.1 }
+      );
+      observerRef.current.observe(node);
+    },
+    [fetchNextPage, hasNextPage]
+  );
+
   return (
     <div className={`${className || ''}`}>
       {selectedFilter === CommentFilters.SelectedQuestion && !question && (
@@ -358,78 +397,115 @@ const Comments = ({
             </div>
           ) : (
             <>
-              {displayComments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className="relative border-b border-border"
-                >
-                  <div className="relative">
-                    <div className="px-6 py-5 space-y-5">
-                      {/* Comment content */}
-                      <div className="border border-border/50 rounded-lg p-4 shadow-sm bg-background">
-                        <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
-                          {comment.content}
-                        </div>
-                      </div>
-                      {/* Question and Prediction */}
-                      <div className="space-y-2">
-                        <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
-                          {comment.marketAddress && comment.marketId ? (
-                            <Link
-                              href={`/markets/base:${comment.marketAddress.toLowerCase()}`}
-                              className="transition-all duration-200 flex items-center gap-1 hover:gap-1.5 hover:text-foreground/80"
-                            >
-                              {comment.question}
-                              <ChevronRight className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                            </Link>
-                          ) : (
-                            comment.question
-                          )}
-                        </h2>
-                        {/* Prediction, time, and signature layout */}
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-3">
-                            {/* Prediction badge/text based on market type */}
-                            {comment.prediction &&
-                              (() => {
-                                return (
-                                  <Badge variant="default">
-                                    {comment.prediction}
-                                  </Badge>
-                                );
-                              })()}
-                            {/* Time */}
-                            <span className="text-sm text-muted-foreground/70 font-medium">
-                              {formatRelativeTime(
-                                new Date(comment.timestamp).getTime()
-                              )}
-                            </span>
-                          </div>
-                          {/* Address display - right justified on larger screens, stacked on mobile */}
-                          <div className="flex items-center gap-2">
-                            <div className="relative">
-                              <Image
-                                alt={comment.address}
-                                src={blo(comment.address as `0x${string}`)}
-                                className="w-5 h-5 rounded-full ring-1 ring-border/50"
-                                width={20}
-                                height={20}
-                              />
+              {displayComments.map((comment, idx) => {
+                const isLast = idx === displayComments.length - 1;
+                return (
+                  <div
+                    key={comment.id}
+                    ref={isLast ? lastItemRef : undefined}
+                    className={`relative border-t border-border ${fullBleed ? '-mx-4' : ''}`}
+                  >
+                    <div className="relative">
+                      <div
+                        className={`${fullBleed ? 'px-10' : 'px-6'} py-5 space-y-4`}
+                      >
+                        {/* Question and Prediction */}
+                        <div className="space-y-3">
+                          <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
+                            {comment.marketAddress && comment.marketId ? (
+                              <Link
+                                href={`/markets/${comment.chainShortName || 'base'}:${comment.marketAddress.toLowerCase()}/${comment.marketId}`}
+                                className="group"
+                              >
+                                <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+                                  {comment.question}
+                                </span>
+                              </Link>
+                            ) : (
+                              comment.question
+                            )}
+                          </h2>
+                          {/* Prediction, time, and signature layout */}
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-3">
+                              {/* Prediction badge/text based on market type */}
+                              {comment.prediction &&
+                                (() => {
+                                  const isNumericMarket =
+                                    comment.marketClassification === '3';
+                                  const percent = comment.predictionPercent;
+                                  const shouldColor =
+                                    !isNumericMarket &&
+                                    typeof percent === 'number' &&
+                                    percent !== 50;
+                                  const isGreen = shouldColor && percent > 50;
+                                  const isRed = shouldColor && percent < 50;
+                                  const variant = shouldColor
+                                    ? 'outline'
+                                    : 'default';
+                                  const className = shouldColor
+                                    ? isGreen
+                                      ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                                      : isRed
+                                        ? 'border-red-500/40 bg-red-500/10 text-red-600'
+                                        : ''
+                                    : '';
+                                  return (
+                                    <Badge
+                                      variant={variant as any}
+                                      className={className}
+                                    >
+                                      {comment.prediction}
+                                    </Badge>
+                                  );
+                                })()}
+                              {/* Time */}
+                              <span className="text-sm text-muted-foreground/70 font-medium">
+                                {formatRelativeTime(
+                                  new Date(comment.timestamp).getTime()
+                                )}
+                              </span>
                             </div>
-                            <div className="text-sm text-muted-foreground/80 font-medium">
-                              <AddressDisplay
-                                address={comment.address}
-                                disableProfileLink={false}
-                                className="text-xs"
-                              />
+                            {/* Address display - right justified on larger screens, stacked on mobile */}
+                            <div className="flex items-center gap-2">
+                              <div className="relative">
+                                <Image
+                                  alt={comment.address}
+                                  src={blo(comment.address as `0x${string}`)}
+                                  className="w-5 h-5 rounded-full ring-1 ring-border/50"
+                                  width={20}
+                                  height={20}
+                                />
+                              </div>
+                              <div className="text-sm text-muted-foreground/80 font-medium">
+                                <AddressDisplay
+                                  address={comment.address}
+                                  disableProfileLink={false}
+                                  className="text-xs"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
+                        {/* Comment content */}
+                        {(comment.content || '').trim().length > 0 && (
+                          <div className="border border-border/50 rounded-lg p-4 shadow-sm bg-background">
+                            <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
+                              {comment.content}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
+                );
+              })}
+              {isFetchingNextPage && (
+                <div className="flex flex-col items-center justify-center py-6">
+                  <LottieLoader width={32} height={32} />
                 </div>
-              ))}
+              )}
+              {!hasNextPage && <div className="py-4" />}
             </>
           )}
         </>

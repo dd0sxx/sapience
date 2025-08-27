@@ -5,7 +5,6 @@ import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
-import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import type React from 'react';
 
@@ -178,24 +177,16 @@ const PasswordScrim = () => {
                     )}
                   </AnimatePresence>
                 </div>
-                <div className="flex items-center gap-3 text-sm flex-row justify-between">
-                  <Link
-                    href="https://docs.sapience.xyz"
+                <div className="flex items-center justify-center text-sm flex-row">
+                  <a
+                    href="https://discord.com/invite/sapience"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-0.5 text-xs tracking-widest transition-all duration-300 font-semibold uppercase"
                   >
-                    Read the docs
-                  </Link>
-                  <Link
-                    href="https://discord.gg/HRWFwXHM7x"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-0.5 text-xs tracking-widest transition-all duration-300 font-semibold uppercase"
-                  >
-                    Request early access
+                    Join Discord for waitlist access
                     <ChevronRight className="w-3 h-3" />
-                  </Link>
+                  </a>
                 </div>
               </form>
             </div>

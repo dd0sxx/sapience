@@ -20,12 +20,13 @@ import { ChartLineIcon } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
-import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
-import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
-import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
-import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
-import PredictForm from '~/components/forecasting/forms/PredictForm';
-import WagerFormFactory from '~/components/forecasting/forms/WagerFormFactory';
+import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
+import MarketGroupChart from '~/components/markets/MarketGroupChart';
+import MarketGroupHeader from '~/components/markets/MarketGroupHeader';
+import MarketStatusDisplay from '~/components/markets/MarketStatusDisplay';
+import UserPositionsTable from '~/components/markets/UserPositionsTable';
+import PredictForm from '~/components/markets/forms/ForecastForm';
+import WagerFormFactory from '~/components/markets/forms/WagerFormFactory';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,
@@ -298,6 +299,20 @@ const MarketGroupPageContent = () => {
     );
   }
 
+  // Determine deployment status for preview handling
+  const isValidAddress =
+    typeof marketGroupData.address === 'string' &&
+    /^0x[a-fA-F0-9]{40}$/.test(marketGroupData.address);
+  const hasDeployedMarket = Array.isArray(marketGroupData.markets)
+    ? marketGroupData.markets.some(
+        (m) =>
+          typeof m.poolAddress === 'string' &&
+          m.poolAddress.length > 0 &&
+          m.poolAddress !== '0x'
+      )
+    : false;
+  const isDeployed = isValidAddress && hasDeployedMarket;
+
   const optionNames = (marketGroupData.markets || []).map(
     (market: MarketType) => market.optionName || ''
   );
@@ -322,29 +337,35 @@ const MarketGroupPageContent = () => {
             <div className="flex flex-col w-full md:flex-1">
               <div className="border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
                 <div className="flex-1">
-                  <MarketGroupChart
-                    chainShortName={chainShortName}
-                    marketAddress={marketAddress}
-                    marketIds={
-                      marketGroupByEndTime
-                        ? marketGroupByEndTime.markets.map((market) =>
-                            Number(market.marketId)
-                          )
-                        : []
-                    }
-                    market={marketGroupData}
-                    minTimestamp={
-                      marketGroupByEndTime &&
-                      marketGroupByEndTime.markets.length > 0
-                        ? Math.min(
-                            ...marketGroupByEndTime.markets.map((market) =>
-                              Number(market.startTimestamp)
+                  {isDeployed ? (
+                    <MarketGroupChart
+                      chainShortName={chainShortName}
+                      marketAddress={marketAddress}
+                      marketIds={
+                        marketGroupByEndTime
+                          ? marketGroupByEndTime.markets.map((market) =>
+                              Number(market.marketId)
                             )
-                          )
-                        : undefined
-                    }
-                    optionNames={optionNames}
-                  />
+                          : []
+                      }
+                      market={marketGroupData}
+                      minTimestamp={
+                        marketGroupByEndTime &&
+                        marketGroupByEndTime.markets.length > 0
+                          ? Math.min(
+                              ...marketGroupByEndTime.markets.map((market) =>
+                                Number(market.startTimestamp)
+                              )
+                            )
+                          : undefined
+                      }
+                      optionNames={optionNames}
+                    />
+                  ) : (
+                    <div className="min-h-[300px] h-full w-full flex items-center justify-center text-muted-foreground">
+                      Market not deployed
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -401,6 +422,7 @@ const MarketGroupPageContent = () => {
               </div>
               <TabsContent value="forecasts" className="mt-0">
                 <div className="p-4">
+                  <ForecastInfoNotice className="mb-4" />
                   {/* Prediction Form */}
                   <div className="mb-6">
                     <PredictForm
@@ -422,6 +444,7 @@ const MarketGroupPageContent = () => {
                     address={address}
                     refetchTrigger={userPositionsTrigger}
                     marketGroupAddress={marketGroupData?.address || null}
+                    fullBleed
                   />
                 </div>
               </TabsContent>
