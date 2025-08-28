@@ -9,9 +9,11 @@ import { useChat } from '~/lib/context/ChatContext';
 
 type ChatButtonProps = {
   onAfterClick?: () => void;
+  // When true, render an icon-only circular button (for desktop header)
+  iconOnly?: boolean;
 };
 
-const ChatButton = ({ onAfterClick }: ChatButtonProps) => {
+const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
   const searchParams = useSearchParams();
   const { openChat } = useChat();
   const [chatEnabled, setChatEnabled] = useState(false);
@@ -51,13 +53,30 @@ const ChatButton = ({ onAfterClick }: ChatButtonProps) => {
 
   if (!chatEnabled) return null;
 
+  if (iconOnly) {
+    return (
+      <Button
+        variant="outline"
+        size="icon"
+        className="rounded-full"
+        onClick={() => {
+          if (onAfterClick) onAfterClick();
+          openChat();
+        }}
+        aria-label="Open chat"
+      >
+        <MessageCircle />
+      </Button>
+    );
+  }
+
   return (
     <div className="mt-6">
       <div className="flex w-fit mx-3 mt-0">
         <Button
           variant="outline"
           size="xs"
-          className="rounded-full px-3 justify-start gap-2 border-black/30 dark:border-white/30"
+          className="rounded-full px-3 justify-start gap-2"
           onClick={() => {
             if (onAfterClick) onAfterClick();
             openChat();
