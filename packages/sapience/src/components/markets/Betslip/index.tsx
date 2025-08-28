@@ -312,36 +312,55 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     name: 'positions',
   });
 
-  // Reset form when betslip positions change
+  // Sync form when betslip positions change without clobbering existing values
   useEffect(() => {
-    individualMethods.reset(generateFormValues);
+    const current = individualMethods.getValues();
+    const merged = {
+      positions: {
+        // Defaults first, then existing user inputs so inputs win
+        ...(generateFormValues.positions || {}),
+        ...(current?.positions || {}),
+      },
+    };
+    individualMethods.reset(merged, { keepDirty: true, keepTouched: true });
   }, [individualMethods, generateFormValues]);
 
-  // Keep parlay form positions in sync when betslip positions change
+  // Keep parlay form positions in sync when betslip positions change, preserving user inputs
   useEffect(() => {
-    parlayMethods.reset({
-      ...generateFormValues,
-      wagerAmount:
-        parlayMethods.getValues('wagerAmount') ||
-        (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
-      limitAmount:
-        parlayMethods.getValues('limitAmount') ||
-        (positionsWithMarketData.filter(
-          (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-        ).length > 0
-          ? String(
-              parseFloat(DEFAULT_WAGER_AMOUNT) *
-                Math.pow(
-                  2,
-                  positionsWithMarketData.filter(
-                    (p) =>
-                      p.marketClassification !==
-                      MarketGroupClassification.NUMERIC
-                  ).length
-                )
-            )
-          : '10'),
-    });
+    const current = parlayMethods.getValues();
+    const mergedPositions = {
+      // Defaults first, then existing user inputs so inputs win
+      ...(generateFormValues.positions || {}),
+      ...(current?.positions || {}),
+    };
+
+    const existingWager = current?.wagerAmount;
+    const existingLimit = current?.limitAmount;
+
+    const defaultLimit =
+      positionsWithMarketData.filter(
+        (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
+      ).length > 0
+        ? String(
+            parseFloat(DEFAULT_WAGER_AMOUNT) *
+              Math.pow(
+                2,
+                positionsWithMarketData.filter(
+                  (p) =>
+                    p.marketClassification !== MarketGroupClassification.NUMERIC
+                ).length
+              )
+          )
+        : '10';
+
+    parlayMethods.reset(
+      {
+        positions: mergedPositions,
+        wagerAmount: existingWager || (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
+        limitAmount: existingLimit ?? defaultLimit,
+      },
+      { keepDirty: true, keepTouched: true }
+    );
   }, [
     parlayMethods,
     generateFormValues,
