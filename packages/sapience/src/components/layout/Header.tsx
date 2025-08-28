@@ -176,14 +176,12 @@ const NavLinks = ({
         </div>
       )}
       {ready && authenticated && connectedWallet && (
-        <div className="mt-6">
-          <div className="mt-4">
-            <SusdeBalance onClick={handleLinkClick} />
-          </div>
+        <>
+          <SusdeBalance onClick={handleLinkClick} />
           <Link
             href={`/profile/${connectedWallet.address}`}
             passHref
-            className="flex w-fit mx-3 mt-4"
+            className="flex w-fit mx-3"
           >
             <Button
               size="xs"
@@ -194,7 +192,7 @@ const NavLinks = ({
               Your Portfolio
             </Button>
           </Link>
-        </div>
+        </>
       )}
     </nav>
   );
