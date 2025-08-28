@@ -58,7 +58,7 @@ const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
       <Button
         variant="outline"
         size="icon"
-        className="rounded-full"
+        className="rounded-full md:h-9 md:w-9"
         onClick={() => {
           if (onAfterClick) onAfterClick();
           openChat();

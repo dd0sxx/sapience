@@ -59,7 +59,7 @@ export default function SusdeBalance({
   }, [balance, decimals]);
 
   return (
-    <div className={`flex w-fit mx-3 mt-0 ${className ?? ''}`}>
+    <div className={`flex w-fit mx-3 md:mx-0 mt-0 ${className ?? ''}`}>
       <Button
         asChild
         variant="outline"
