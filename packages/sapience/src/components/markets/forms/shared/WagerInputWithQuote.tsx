@@ -36,6 +36,7 @@ export default function WagerInputWithQuote({
     marketClassification,
     predictionValue,
     wagerAmount,
+    selectedMarketId,
   });
 
   // Use quoter hook for this position

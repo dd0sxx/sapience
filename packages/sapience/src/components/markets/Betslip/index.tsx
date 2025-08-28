@@ -315,15 +315,49 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   // Sync form when betslip positions change without clobbering existing values
   useEffect(() => {
     const current = individualMethods.getValues();
-    const merged = {
-      positions: {
-        // Defaults first, then existing user inputs so inputs win
-        ...(generateFormValues.positions || {}),
-        ...(current?.positions || {}),
-      },
+    const defaults = generateFormValues.positions || {};
+
+    // Merge defaults then existing inputs
+    const mergedPositions: Record<
+      string,
+      { predictionValue: string; wagerAmount: string }
+    > = {
+      ...(defaults as Record<
+        string,
+        { predictionValue: string; wagerAmount: string }
+      >),
+      ...((current?.positions as Record<
+        string,
+        { predictionValue: string; wagerAmount: string }
+      >) || {}),
     };
-    individualMethods.reset(merged, { keepDirty: true, keepTouched: true });
-  }, [individualMethods, generateFormValues]);
+
+    // For YES/NO positions, always reflect the latest clicked selection (position.prediction)
+    positionsWithMarketData.forEach((p) => {
+      if (p.marketClassification === MarketGroupClassification.YES_NO) {
+        const id = p.position.id;
+        if (defaults?.[id]?.predictionValue) {
+          mergedPositions[id] = {
+            // Override predictionValue to default derived from position.prediction
+            predictionValue: defaults[id].predictionValue,
+            // Preserve existing wager if present, else use default
+            wagerAmount:
+              current?.positions?.[id]?.wagerAmount ||
+              defaults?.[id]?.wagerAmount ||
+              DEFAULT_WAGER_AMOUNT,
+          } as { predictionValue: string; wagerAmount: string };
+        }
+      }
+    });
+
+    individualMethods.reset(
+      { positions: mergedPositions },
+      {
+        keepDirty: true,
+        keepTouched: true,
+      }
+    );
+  }, [individualMethods, generateFormValues, positionsWithMarketData]);
 
   // Keep parlay form positions in sync when betslip positions change, preserving user inputs
   useEffect(() => {
