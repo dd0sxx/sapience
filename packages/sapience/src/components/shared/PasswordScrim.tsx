@@ -179,12 +179,12 @@ const PasswordScrim = () => {
                 </div>
                 <div className="flex items-center justify-center text-sm flex-row">
                   <a
-                    href="https://docs.google.com/forms/d/1mr2C6fNbd-3n0H-AOjT0zY9c1i8oJUG-_9YLMz684e8/viewform"
+                    href="https://discord.com/invite/sapience"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-0.5 text-xs tracking-widest transition-all duration-300 font-semibold uppercase"
                   >
-                    Join the waitlist for access
+                    Join Discord for waitlist access
                     <ChevronRight className="w-3 h-3" />
                   </a>
                 </div>

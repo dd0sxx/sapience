@@ -2,12 +2,9 @@
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
-// import type { MarketGroupType } from '@/sapience/ui/types';
-import { Badge } from '@sapience/ui/components/ui/badge';
 import Link from 'next/link';
 import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { useRef, useState, useEffect } from 'react';
-import { SquareStack, AlertTriangle } from 'lucide-react';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
 import {
@@ -16,9 +13,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-// import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification } from '~/lib/types';
 import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
 import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWithQuote';
@@ -66,6 +67,30 @@ export const BetslipContent = ({
 }: BetslipContentProps) => {
   // Temporary feature flag: disable parlay UI while keeping code paths intact for easy re-enable
   const PARLAY_FEATURE_ENABLED = false;
+  // Allow enabling via localStorage("otc") === "true" or URL param ?otc=true
+  const [parlayFeatureOverrideEnabled, setParlayFeatureOverrideEnabled] =
+    useState(false);
+  useEffect(() => {
+    try {
+      const params =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : null;
+      const urlParlays = params?.get('otc');
+      if (urlParlays === 'true') {
+        window.localStorage.setItem('otc', 'true');
+      }
+      const stored =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('otc')
+          : null;
+      if (stored === 'true') {
+        setParlayFeatureOverrideEnabled(true);
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
   const isMobile = useIsMobile();
   const [parlayTooltipOpen, setParlayTooltipOpen] = useState(false);
   const closeTooltipTimeoutRef = useRef<number | null>(null);
@@ -99,8 +124,9 @@ export const BetslipContent = ({
   const hasNumericMarket = positionsWithMarketData.some(
     (p) => p.marketClassification === MarketGroupClassification.NUMERIC
   );
-  const parlayDisabled = betSlipPositions.length < 2;
-  const effectiveParlayMode = PARLAY_FEATURE_ENABLED && isParlayMode;
+  const isParlayFeatureEnabled =
+    PARLAY_FEATURE_ENABLED || parlayFeatureOverrideEnabled;
+  const effectiveParlayMode = isParlayFeatureEnabled && isParlayMode;
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
     positionsWithMarketData.every((p) => p.isLoading);
@@ -128,7 +154,7 @@ export const BetslipContent = ({
                 Clear
               </Button>
               <div className="flex items-center gap-2">
-                {!PARLAY_FEATURE_ENABLED ? (
+                {!isParlayFeatureEnabled ? (
                   <TooltipProvider>
                     <Tooltip
                       open={isMobile ? parlayTooltipOpen : undefined}
@@ -143,8 +169,7 @@ export const BetslipContent = ({
                           aria-disabled="true"
                         >
                           <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                            <SquareStack className="w-4 h-4" />
-                            Parlay
+                            OTC/Parlays
                           </span>
                           <span className="flex items-center">
                             <Switch checked={false} disabled />
@@ -156,57 +181,26 @@ export const BetslipContent = ({
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                ) : parlayDisabled ? (
-                  <TooltipProvider>
-                    <Tooltip
-                      open={isMobile ? parlayTooltipOpen : undefined}
-                      onOpenChange={isMobile ? setParlayTooltipOpen : undefined}
-                    >
-                      <TooltipTrigger asChild>
-                        <span
-                          className="flex items-center"
-                          onClick={triggerParlayTooltip}
-                          onTouchStart={triggerParlayTooltip}
-                          role="button"
-                          aria-disabled="true"
-                        >
-                          <Switch checked={false} disabled />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          You must add at least two predictions to build a
-                          parlay.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
                 ) : (
-                  <span className="flex items-center">
-                    <Switch
-                      checked={isParlayMode}
-                      onCheckedChange={setIsParlayMode}
-                    />
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
+                      OTC/Parlays
+                    </span>
+                    <span className="flex items-center">
+                      <Switch
+                        checked={isParlayMode}
+                        onCheckedChange={(checked) =>
+                          setIsParlayMode(Boolean(checked))
+                        }
+                      />
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {effectiveParlayMode && (
-            <div className="flex items-center justify-between mt-4">
-              <Badge
-                variant="outline"
-                className="px-1.5 py-0.5 text-xs font-medium border-yellow-500/40 bg-yellow-500/10 text-yellow-600 flex items-center gap-1"
-              >
-                <AlertTriangle className="w-3 h-3" />
-                Experimental Feature
-              </Badge>
-              <Button asChild variant="outline" size="xs">
-                <Link href="/parlays">View Parlays</Link>
-              </Button>
-            </div>
-          )}
+          {effectiveParlayMode && null}
         </div>
 
         <div
@@ -217,13 +211,7 @@ export const BetslipContent = ({
           {betSlipPositions.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center text-center">
               <div className="flex flex-col items-center gap-4">
-                <Image
-                  src="/usde.svg"
-                  alt="USDe"
-                  width={40}
-                  height={40}
-                  className="opacity-60"
-                />
+                <Image src="/usde.svg" alt="USDe" width={42} height={42} />
                 <p className="text-base text-muted-foreground max-w-[180px] mx-auto">
                   Add predictions to see your potential payout.
                 </p>
@@ -387,40 +375,99 @@ export const BetslipContent = ({
                     />
                   </div>
 
-                  <div>
-                    <Label
-                      htmlFor="limitAmount"
-                      className="text-sm font-medium"
-                    >
-                      Minimum Payout
-                    </Label>
-                    <div className="mt-1.5 relative">
-                      <Input
-                        id="limitAmount"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        className="pr-16"
-                        {...parlayMethods.register('limitAmount', {
-                          required: 'Minimum payout is required',
-                          min: {
-                            value: 0,
-                            message: 'Minimum payout must be positive',
-                          },
-                        })}
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                        {parlayCollateralSymbol || 'sUSDe'}
-                      </div>
+                  {/* Minimum Payout moved into Add to orderbook popover */}
+                  <div className="pt-2 space-y-2">
+                    <div className="text-xs text-muted-foreground flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <LottieLoader width={16} height={16} />
+                        <span>Broadcasting a request for quotes...</span>
+                      </span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="text-primary underline">
+                            Add to orderbook
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 space-y-3">
+                          <p className="text-sm">
+                            Submit your order onchain and it may be filled
+                            before expiration.
+                          </p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label
+                                htmlFor="limitAmount"
+                                className="text-sm font-medium"
+                              >
+                                Minimum Payout
+                              </Label>
+                              <div className="mt-1.5 relative">
+                                <Input
+                                  id="limitAmount"
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  placeholder="0.00"
+                                  className="pr-16"
+                                  {...parlayMethods.register('limitAmount', {
+                                    required: 'Minimum payout is required',
+                                    min: {
+                                      value: 0,
+                                      message:
+                                        'Minimum payout must be positive',
+                                    },
+                                  })}
+                                />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                                  {parlayCollateralSymbol || 'sUSDe'}
+                                </div>
+                              </div>
+                              {parlayMethods.formState.errors.limitAmount && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {
+                                    parlayMethods.formState.errors.limitAmount
+                                      .message
+                                  }
+                                </p>
+                              )}
+                            </div>
+                            <div>
+                              <Label
+                                htmlFor="orderExpiration"
+                                className="text-sm font-medium"
+                              >
+                                Expiration
+                              </Label>
+                              <div className="mt-1.5">
+                                <Input
+                                  id="orderExpiration"
+                                  type="datetime-local"
+                                  placeholder="Select expiration"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="pt-1 space-y-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="default"
+                              className="w-full"
+                            >
+                              Submit Order
+                            </Button>
+                            <div className="flex justify-center">
+                              <Link
+                                href="/otc"
+                                className="text-primary underline"
+                              >
+                                View all orders
+                              </Link>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
-                    {parlayMethods.formState.errors.limitAmount && (
-                      <p className="text-sm text-destructive mt-1">
-                        {parlayMethods.formState.errors.limitAmount.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="pt-2">
                     <Button
                       className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                       disabled={
@@ -432,9 +479,10 @@ export const BetslipContent = ({
                       variant="default"
                     >
                       {isParlaySubmitting
-                        ? 'Submitting Parlay...'
-                        : 'Submit Parlay'}
+                        ? 'Submitting Wager...'
+                        : 'Submit Wager'}
                     </Button>
+                    {/* View Parlays moved into Add to orderbook popover */}
                   </div>
                 </div>
 

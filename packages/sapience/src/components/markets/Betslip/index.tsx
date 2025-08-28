@@ -66,6 +66,20 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   } = useBetSlipContext();
 
   const [isParlayMode, setIsParlayMode] = useState(false);
+  const [parlayFeatureOverrideEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('otc') === 'true') {
+        window.localStorage.setItem('otc', 'true');
+        return true;
+      }
+      return window.localStorage.getItem('otc') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const isParlayFeatureEnabled = parlayFeatureOverrideEnabled;
   const isCompact = useIsBelow(1024);
   const { login, authenticated } = usePrivy();
   const { sendCalls, isPending: isPendingWriteContract } =
@@ -162,12 +176,16 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     }
   }, [minCollateralRaw, collateralDecimals]);
 
-  // Disable parlay mode automatically when there are fewer than two positions
+  // Disable parlay mode automatically when fewer than two positions, unless feature override is enabled
   useEffect(() => {
-    if (betSlipPositions.length < 2 && isParlayMode) {
+    if (
+      betSlipPositions.length < 2 &&
+      isParlayMode &&
+      !isParlayFeatureEnabled
+    ) {
       setIsParlayMode(false);
     }
-  }, [betSlipPositions.length, isParlayMode]);
+  }, [betSlipPositions.length, isParlayMode, isParlayFeatureEnabled]);
 
   // Create dynamic form schema based on positions
   const formSchema = useMemo(() => {

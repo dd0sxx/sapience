@@ -60,11 +60,7 @@ export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
         className="rounded-full px-3 min-w-[122px] justify-start gap-2 border-black/30 dark:border-white/30"
         onClick={onClick}
       >
-        <a
-          href="https://swap.defillama.com/?chain=arbitrum&from=&tab=swap&to=0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <div>
           <Image
             src="/usde.svg"
             alt="USDe"
@@ -73,7 +69,7 @@ export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
             className="opacity-90 ml-[-2px]"
           />
           <span className="relative top-[1px]">{formattedBalance}</span>
-        </a>
+        </div>
       </Button>
     </div>
   );
