@@ -38,6 +38,10 @@ const ChatWidget = () => {
   const tokenRef = useRef<string | null>(null);
   const socketTokenRef = useRef<string | null>(null);
   const authErrorRef = useRef<boolean>(false);
+  const outgoingQueueRef = useRef<string[]>([]);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const isOpenRef = useRef<boolean>(false);
+  const isMountedRef = useRef<boolean>(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -177,17 +181,35 @@ const ChatWidget = () => {
             }
             return;
           }
-          if (typeof data.text === 'string') {
-            if (
-              data.address &&
-              data.address.toLowerCase() === normalizedUserAddress
-            )
-              return;
+          if (data?.type === 'error' && typeof data.text === 'string') {
+            const friendly =
+              data.text === 'rate_limited'
+                ? 'You are sending messages too quickly. Please wait.'
+                : data.text === 'empty_message'
+                  ? 'Message cannot be empty.'
+                  : `Error: ${data.text}`;
             setMessages((prev) => [
               ...prev,
               {
                 id: crypto.randomUUID(),
-                author: 'server',
+                author: 'system',
+                text: friendly,
+              },
+            ]);
+            return;
+          }
+          if (
+            typeof data.text === 'string' &&
+            (!data.type || data.type === 'message')
+          ) {
+            const isMe =
+              !!data.address &&
+              data.address.toLowerCase() === normalizedUserAddress;
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                author: isMe ? 'me' : 'server',
                 text: data.text,
                 address: data.address,
               },
@@ -204,16 +226,49 @@ const ChatWidget = () => {
           ]);
         }
       };
-      const onError = () => {
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          const text = 'Connection error.';
-          if (last && last.text === text) return prev;
-          return [...prev, { id: crypto.randomUUID(), author: 'system', text }];
+      const scheduleReconnect = () => {
+        if (reconnectPromiseRef.current) return;
+        reconnectPromiseRef.current = (async () => {
+          const attempt = reconnectAttemptsRef.current;
+          const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+          await new Promise((r) => setTimeout(r, delay));
+          reconnectAttemptsRef.current = Math.min(attempt + 1, 10);
+          // Avoid reconnecting if widget closed or component unmounted
+          if (!isMountedRef.current || !isOpenRef.current) return;
+          let nextUrl = buildWebSocketUrl();
+          let nextToken: string | null = null;
+          try {
+            nextToken = await ensureAuthToken();
+          } catch {
+            /* noop */
+          }
+          if (nextToken)
+            nextUrl = `${nextUrl}?token=${encodeURIComponent(nextToken)}`;
+          try {
+            // Close existing open socket to prevent duplicate connections
+            try {
+              if (
+                socketRef.current &&
+                socketRef.current.readyState === WebSocket.OPEN
+              ) {
+                socketRef.current.close();
+              }
+            } catch {
+              /* noop */
+            }
+            await connectSocket(nextUrl, nextToken);
+          } catch {
+            /* noop */
+          }
+        })().finally(() => {
+          reconnectPromiseRef.current = null;
         });
       };
+      const onError = () => {
+        scheduleReconnect();
+      };
       const onClose = () => {
-        void 0;
+        scheduleReconnect();
       };
 
       return new Promise<() => void>((resolve) => {
@@ -224,6 +279,23 @@ const ChatWidget = () => {
             ws.removeEventListener('error', onError);
             ws.removeEventListener('close', onClose);
           };
+          reconnectAttemptsRef.current = 0;
+          // Flush any queued messages once authenticated (if token present)
+          if (socketTokenRef.current && outgoingQueueRef.current.length > 0) {
+            try {
+              const toSend = [...outgoingQueueRef.current];
+              outgoingQueueRef.current = [];
+              toSend.forEach((text) => {
+                try {
+                  ws.send(JSON.stringify({ text }));
+                } catch {
+                  /* noop */
+                }
+              });
+            } catch {
+              /* noop */
+            }
+          }
           resolve(detach);
         };
 
@@ -237,9 +309,11 @@ const ChatWidget = () => {
   );
 
   useEffect(() => {
+    isMountedRef.current = true;
     if (!isOpen) return;
 
     const baseUrl = buildWebSocketUrl();
+    isOpenRef.current = true;
 
     let detach: (() => void) | undefined;
     let cancelled = false;
@@ -258,6 +332,8 @@ const ChatWidget = () => {
 
     return () => {
       cancelled = true;
+      isOpenRef.current = false;
+      isMountedRef.current = false;
       try {
         detach?.();
         socketRef.current?.close();
@@ -387,75 +463,56 @@ const ChatWidget = () => {
     [startDrag]
   );
 
-  const sendMessage = async () => {
-    if (!pendingText.trim()) return;
-    if (!canChat) return;
-    // Build base URL
-    let url = buildWebSocketUrl();
-
-    // Ensure authenticated connection before sending
-    let needReconnect = false;
-    if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-      needReconnect = true;
-    } else if (!socketTokenRef.current) {
-      // Socket is open but unauthenticated
-      needReconnect = true;
-    }
-
-    if (needReconnect) {
-      // If a reconnect is in progress (e.g., just signed), wait for it
-      if (reconnectPromiseRef.current) {
-        try {
-          await reconnectPromiseRef.current;
-        } catch {
-          /* noop */
-        }
-      }
-      let token = await ensureAuthToken();
-      if (!token) {
-        try {
-          login();
-        } catch {
-          /* noop */
-        }
-        token = await ensureAuthToken(true);
-        if (!token) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              author: 'system',
-              text: 'Please log in to chat.',
-            },
-          ]);
-          return;
-        }
-      }
-      url = `${url}?token=${encodeURIComponent(token)}`;
-      try {
-        // Close existing socket if any
-        try {
-          socketRef.current?.close();
-        } catch {
-          void 0;
-        }
-        // Connect with handlers and wait for open (single socket)
-        await connectSocket(url, token);
-      } catch {
-        /* noop */
-      }
-    }
-
+  const sendMessage = () => {
     const text = pendingText.trim();
+    if (!text) return;
+    if (!canChat) return;
     setPendingText('');
-    setMessages((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), author: 'me', text },
-    ]);
+
+    // If not fully ready to send, enqueue and ensure connection
+    const isOpen = socketRef.current?.readyState === WebSocket.OPEN;
+    const isAuthed = !!socketTokenRef.current;
+    if (!isOpen || !isAuthed) {
+      outgoingQueueRef.current.push(text);
+      // Attempt to (re)connect with auth
+      let url = buildWebSocketUrl();
+      // If a reconnect is already in-flight, let onOpen flush the queue
+      if (!reconnectPromiseRef.current) {
+        reconnectPromiseRef.current = (async () => {
+          let token = await ensureAuthToken();
+          if (!token) {
+            try {
+              login();
+            } catch {
+              /* noop */
+            }
+            token = await ensureAuthToken(true);
+            if (!token) return; // queue will remain until user logs in
+          }
+          url = `${url}?token=${encodeURIComponent(token)}`;
+          try {
+            try {
+              socketRef.current?.close();
+            } catch {
+              /* noop */
+            }
+            await connectSocket(url, token);
+          } catch {
+            /* noop */
+          }
+        })().finally(() => {
+          reconnectPromiseRef.current = null;
+        });
+      }
+      return;
+    }
+
+    // Send immediately; server will echo back including to sender
     try {
       socketRef.current?.send(JSON.stringify({ text }));
     } catch {
-      void 0;
+      // If immediate send fails, re-enqueue and let reconnect logic handle it
+      outgoingQueueRef.current.push(text);
     }
   };
 
