@@ -2,8 +2,6 @@
 
 import { Button } from '@sapience/ui/components/ui/button';
 import { MessageCircle } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 import { useChat } from '~/lib/context/ChatContext';
 
@@ -14,44 +12,7 @@ type ChatButtonProps = {
 };
 
 const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
-  const searchParams = useSearchParams();
   const { openChat } = useChat();
-  const [chatEnabled, setChatEnabled] = useState(false);
-
-  // Initialize from localStorage
-  useEffect(() => {
-    try {
-      const value =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('chat')
-          : null;
-      setChatEnabled(value === 'true');
-    } catch {
-      setChatEnabled(false);
-    }
-  }, []);
-
-  // React to query param changes
-  useEffect(() => {
-    try {
-      const qp = searchParams?.get('chat');
-      if (qp === 'true') {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('chat', 'true');
-        }
-        setChatEnabled(true);
-      } else if (qp === 'false') {
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem('chat');
-        }
-        setChatEnabled(false);
-      }
-    } catch {
-      /* noop */
-    }
-  }, [searchParams]);
-
-  if (!chatEnabled) return null;
 
   if (iconOnly) {
     return (

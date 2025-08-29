@@ -120,11 +120,6 @@ const NavLinks = ({
           Build Bots
         </Button>
       </Link>
-      <div className="md:hidden">
-        <Suspense fallback={null}>
-          <ChatButton onAfterClick={handleLinkClick} />
-        </Suspense>
-      </div>
       {ready && authenticated && connectedWallet && (
         <>
           <SusdeBalance className="md:hidden" onClick={handleLinkClick} />
@@ -135,7 +130,6 @@ const NavLinks = ({
 };
 
 const Header = () => {
-  const pathname = usePathname();
   const { login, ready, authenticated, logout } = usePrivy();
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
@@ -198,16 +192,13 @@ const Header = () => {
 
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
             <div className="block">
-              {!pathname.startsWith('/earn') && <ModeToggle />}
+              <ModeToggle />
             </div>
-            {/* Desktop chat icon next to ModeToggle */}
-            <div className="hidden md:block">
+            <div className="block">
               <Suspense fallback={null}>
                 <ChatButton iconOnly />
               </Suspense>
             </div>
-            {ready && null}
-            {!ready && null /* Render nothing while Privy is loading */}
             {ready && authenticated && (
               <SusdeBalance
                 className="hidden md:flex mx-0"
