@@ -7,6 +7,7 @@ import { Card } from '@sapience/ui/components/ui/card';
 import { Input } from '@sapience/ui/components/ui/input';
 import { X, MessageCircle } from 'lucide-react';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import LottieLoader from '~/components/shared/LottieLoader';
 import { useChat } from '~/lib/context/ChatContext';
 
 type ChatMessage = {
@@ -513,7 +514,9 @@ const ChatWidget = () => {
             </div>
           ))}
           {messages.length === 0 && ready && authenticated && (
-            <div className="text-xs text-muted-foreground">👋</div>
+            <div className="flex items-center justify-center py-8 my-8">
+              <LottieLoader width={32} height={32} />
+            </div>
           )}
         </div>
         <div className="p-3 border-t flex items-center gap-2">

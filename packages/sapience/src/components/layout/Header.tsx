@@ -27,6 +27,7 @@ import ModeToggle from './ModeToggle';
 import SusdeBalance from './SusdeBalance';
 import ChatButton from './ChatButton';
 import { shortenAddress } from '~/lib/utils/util';
+import { useEnsName } from '~/components/shared/AddressDisplay';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -138,6 +139,7 @@ const Header = () => {
   const { login, ready, authenticated, logout } = usePrivy();
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
+  const { data: ensName } = useEnsName(connectedWallet?.address || '');
 
   const handleLogout = async () => {
     try {
@@ -222,7 +224,7 @@ const Header = () => {
                     <User className="h-5 w-5" />
                     {connectedWallet?.address && (
                       <span className="hidden md:inline text-sm">
-                        {shortenAddress(connectedWallet.address)}
+                        {ensName || shortenAddress(connectedWallet.address)}
                       </span>
                     )}
                     <span className="sr-only">User Menu</span>
