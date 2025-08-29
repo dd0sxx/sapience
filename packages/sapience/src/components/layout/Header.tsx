@@ -139,6 +139,21 @@ const Header = () => {
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
 
+  const handleLogout = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('chatToken');
+      }
+    } catch {
+      /* noop */
+    }
+    try {
+      await logout();
+    } catch {
+      /* noop */
+    }
+  };
+
   return (
     <>
       {/* Top Header Bar */}
@@ -226,7 +241,7 @@ const Header = () => {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="flex items-center cursor-pointer"
                   >
                     <LogOut className="mr-2 h-4 w-4" />

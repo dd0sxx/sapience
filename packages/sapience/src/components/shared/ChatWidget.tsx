@@ -27,7 +27,7 @@ const buildWebSocketUrl = () => {
 
 const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated, login } = usePrivy();
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -36,9 +36,84 @@ const ChatWidget = () => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const tokenRef = useRef<string | null>(null);
   const socketTokenRef = useRef<string | null>(null);
+  const authErrorRef = useRef<boolean>(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const isDraggingRef = useRef<boolean>(false);
+  const dragOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
+  const reconnectPromiseRef = useRef<Promise<void> | null>(null);
 
   const userAddress = connectedWallet?.address || '';
   const normalizedUserAddress = userAddress.toLowerCase();
+
+  const ensureAuthToken = async (force?: boolean): Promise<string | null> => {
+    try {
+      if (!userAddress) return null;
+      // Return cached token if present and not expired
+      if (!force && tokenRef.current) return tokenRef.current;
+      const storedRaw =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('chatToken')
+          : null;
+      if (!force && storedRaw) {
+        try {
+          const stored = JSON.parse(storedRaw) as {
+            token: string;
+            expiresAt: number;
+            address: string;
+          };
+          if (
+            stored.address?.toLowerCase() === userAddress.toLowerCase() &&
+            stored.expiresAt > Date.now()
+          ) {
+            tokenRef.current = stored.token;
+            return stored.token;
+          }
+        } catch {
+          /* noop */
+        }
+      }
+
+      // Fetch nonce & message
+      const resNonce = await fetch(`${API_BASE}/chat-auth/nonce`);
+      const { message } = await resNonce.json();
+
+      // Sign via Privy wallet
+      const wallet = connectedWallet;
+      if (!wallet) return null;
+      const signature = await wallet.sign(message);
+
+      // Verify
+      const resVerify = await fetch(`${API_BASE}/chat-auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: userAddress,
+          signature,
+          nonce: (message.match(/Nonce: (.+)/)?.[1] || '').trim(),
+        }),
+      });
+      if (!resVerify.ok) return null;
+      const { token, expiresAt } = await resVerify.json();
+      tokenRef.current = token;
+      try {
+        window.localStorage.setItem(
+          'chatToken',
+          JSON.stringify({ token, expiresAt, address: userAddress })
+        );
+      } catch {
+        /* noop */
+      }
+      return token;
+    } catch {
+      return null;
+    }
+  };
 
   const connectSocket = useCallback(
     (url: string, token: string | null) => {
@@ -70,7 +145,35 @@ const ChatWidget = () => {
             return;
           }
           if (data?.type === 'error' && data.text === 'auth_required') {
-            // Suppress showing raw error; user will be prompted on next send
+            // Clear any cached token (server may have restarted) and trigger a single-flight reconnect
+            tokenRef.current = null;
+            socketTokenRef.current = null;
+            authErrorRef.current = true;
+            try {
+              if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('chatToken');
+              }
+            } catch {
+              /* noop */
+            }
+            // Kick off reconnect; sendMessage will await this before sending
+            if (!reconnectPromiseRef.current) {
+              reconnectPromiseRef.current = (async () => {
+                const token = await ensureAuthToken(true);
+                if (!token) return;
+                let nextUrl = buildWebSocketUrl();
+                nextUrl = `${nextUrl}?token=${encodeURIComponent(token)}`;
+                try {
+                  socketRef.current?.close();
+                } catch {
+                  /* noop */
+                }
+                await connectSocket(nextUrl, token);
+                authErrorRef.current = false;
+              })().finally(() => {
+                reconnectPromiseRef.current = null;
+              });
+            }
             return;
           }
           if (typeof data.text === 'string') {
@@ -141,7 +244,11 @@ const ChatWidget = () => {
     let cancelled = false;
     (async () => {
       try {
-        const d = await connectSocket(baseUrl, null);
+        // Try to authenticate on open; if token fetch fails, connect read-only
+        let url = baseUrl;
+        const token = await ensureAuthToken();
+        if (token) url = `${baseUrl}?token=${encodeURIComponent(token)}`;
+        const d = await connectSocket(url, token || null);
         if (!cancelled) detach = d;
       } catch {
         /* noop */
@@ -190,69 +297,94 @@ const ChatWidget = () => {
     [ready, authenticated, userAddress]
   );
 
-  const ensureAuthToken = async (): Promise<string | null> => {
-    try {
-      if (!userAddress) return null;
-      // Return cached token if present and not expired
-      if (tokenRef.current) return tokenRef.current;
-      const storedRaw =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('chatToken')
-          : null;
-      if (storedRaw) {
-        try {
-          const stored = JSON.parse(storedRaw) as {
-            token: string;
-            expiresAt: number;
-            address: string;
-          };
-          if (
-            stored.address?.toLowerCase() === userAddress.toLowerCase() &&
-            stored.expiresAt > Date.now()
-          ) {
-            tokenRef.current = stored.token;
-            return stored.token;
-          }
-        } catch {
-          /* noop */
-        }
-      }
+  const startDrag = useCallback((clientX: number, clientY: number) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    // Initialize absolute positioning from current rect
+    setPosition({ top: rect.top, left: rect.left });
+    isDraggingRef.current = true;
+    dragOffsetRef.current = { dx: clientX - rect.left, dy: clientY - rect.top };
+  }, []);
 
-      // Fetch nonce & message
-      const resNonce = await fetch(`${API_BASE}/chat-auth/nonce`);
-      const { message } = await resNonce.json();
+  const endDrag = useCallback(() => {
+    isDraggingRef.current = false;
+    dragOffsetRef.current = null;
+  }, []);
 
-      // Sign via Privy wallet
-      const wallet = connectedWallet;
-      if (!wallet) return null;
-      const signature = await wallet.sign(message);
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current || !dragOffsetRef.current) return;
+      e.preventDefault();
+      const el = containerRef.current;
+      if (!el) return;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const { dx, dy } = dragOffsetRef.current;
+      let nextLeft = e.clientX - dx;
+      let nextTop = e.clientY - dy;
+      const padding = 8; // keep small margin from edges
+      const maxLeft = Math.max(padding, window.innerWidth - w - padding);
+      const maxTop = Math.max(padding, window.innerHeight - h - padding);
+      nextLeft = Math.min(Math.max(padding, nextLeft), maxLeft);
+      nextTop = Math.min(Math.max(padding, nextTop), maxTop);
+      setPosition({ top: nextTop, left: nextLeft });
+    };
 
-      // Verify
-      const resVerify = await fetch(`${API_BASE}/chat-auth/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: userAddress,
-          signature,
-          nonce: (message.match(/Nonce: (.+)/)?.[1] || '').trim(),
-        }),
-      });
-      if (!resVerify.ok) return null;
-      const { token, expiresAt } = await resVerify.json();
-      tokenRef.current = token;
-      try {
-        window.localStorage.setItem(
-          'chatToken',
-          JSON.stringify({ token, expiresAt, address: userAddress })
-        );
-      } catch {
-        /* noop */
-      }
-      return token;
-    } catch {
-      return null;
-    }
-  };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current || !dragOffsetRef.current) return;
+      if (e.touches.length === 0) return;
+      // Prevent scrolling while dragging
+      e.preventDefault();
+      const t = e.touches[0];
+      const el = containerRef.current;
+      if (!el) return;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const { dx, dy } = dragOffsetRef.current;
+      let nextLeft = t.clientX - dx;
+      let nextTop = t.clientY - dy;
+      const padding = 8;
+      const maxLeft = Math.max(padding, window.innerWidth - w - padding);
+      const maxTop = Math.max(padding, window.innerHeight - h - padding);
+      nextLeft = Math.min(Math.max(padding, nextLeft), maxLeft);
+      nextTop = Math.min(Math.max(padding, nextTop), maxTop);
+      setPosition({ top: nextTop, left: nextLeft });
+    };
+
+    const onUp = () => endDrag();
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onTouchMove as any);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, [endDrag]);
+
+  const onHeaderMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (closeBtnRef.current && closeBtnRef.current.contains(e.target as Node))
+        return;
+      startDrag(e.clientX, e.clientY);
+    },
+    [startDrag]
+  );
+
+  const onHeaderTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (closeBtnRef.current && closeBtnRef.current.contains(e.target as Node))
+        return;
+      const t = e.touches[0];
+      if (!t) return;
+      startDrag(t.clientX, t.clientY);
+    },
+    [startDrag]
+  );
 
   const sendMessage = async () => {
     if (!pendingText.trim()) return;
@@ -270,8 +402,35 @@ const ChatWidget = () => {
     }
 
     if (needReconnect) {
-      const token = await ensureAuthToken();
-      if (token) url = `${url}?token=${encodeURIComponent(token)}`;
+      // If a reconnect is in progress (e.g., just signed), wait for it
+      if (reconnectPromiseRef.current) {
+        try {
+          await reconnectPromiseRef.current;
+        } catch {
+          /* noop */
+        }
+      }
+      let token = await ensureAuthToken();
+      if (!token) {
+        try {
+          login();
+        } catch {
+          /* noop */
+        }
+        token = await ensureAuthToken(true);
+        if (!token) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              author: 'system',
+              text: 'Please log in to chat.',
+            },
+          ]);
+          return;
+        }
+      }
+      url = `${url}?token=${encodeURIComponent(token)}`;
       try {
         // Close existing socket if any
         try {
@@ -280,7 +439,7 @@ const ChatWidget = () => {
           void 0;
         }
         // Connect with handlers and wait for open (single socket)
-        await connectSocket(url, token || null);
+        await connectSocket(url, token);
       } catch {
         /* noop */
       }
@@ -302,28 +461,35 @@ const ChatWidget = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60]">
+    <div
+      ref={containerRef}
+      className={`fixed z-[60] ${position ? '' : 'bottom-4 right-4'}`}
+      style={position ? { top: position.top, left: position.left } : undefined}
+    >
       <Card className="w-80 shadow-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between p-3 border-b">
+        <div
+          ref={headerRef}
+          className="flex items-center justify-between p-3 border-b select-none active:cursor-grabbing"
+          onMouseDown={onHeaderMouseDown}
+          onTouchStart={onHeaderTouchStart}
+        >
           <div className="flex items-center gap-2">
             <MessageCircle className="h-4 w-4 opacity-80" />
             <span className="text-sm font-medium">Chat</span>
           </div>
           <Button
+            ref={closeBtnRef}
             variant="ghost"
             size="icon"
             className="h-6 w-6"
             onClick={closeChat}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
         <div ref={scrollRef} className="max-h-80 overflow-y-auto p-3 space-y-2">
-          {!ready || !authenticated ? (
-            <div className="text-xs text-muted-foreground">
-              Log in to use chat.
-            </div>
-          ) : null}
           {messages.map((m) => (
             <div
               key={m.id}
@@ -357,14 +523,13 @@ const ChatWidget = () => {
             onKeyDown={(e) => {
               if (e.key === 'Enter') void sendMessage();
             }}
-            placeholder={canChat ? 'Type a message…' : 'Connect to chat'}
             disabled={!canChat}
           />
           <Button
-            onClick={() => void sendMessage()}
-            disabled={!canChat || !pendingText.trim()}
+            onClick={() => (canChat ? void sendMessage() : void login())}
+            disabled={canChat ? !pendingText.trim() : false}
           >
-            Send
+            {canChat ? 'Send' : 'Log in'}
           </Button>
         </div>
       </Card>
