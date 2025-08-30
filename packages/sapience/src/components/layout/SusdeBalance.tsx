@@ -80,7 +80,7 @@ export default function SusdeBalance({
               {formattedBalance}
             </span>
           </div>
-          <div className="hidden md:inline-flex ml-1 rounded-full w-fit shadow-[0_0_10px_rgba(136,180,245,0.25)]">
+          <div className="hidden md:inline-flex ml-1 rounded-full w-fit shadow-[0_0_10px_rgba(136,180,245,0.25)] -mr-1">
             <Badge
               variant="outline"
               className="rounded-full border-[#91B3F0]/80 bg-[#91B3F0]/20"
