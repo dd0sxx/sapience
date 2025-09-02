@@ -186,7 +186,9 @@ export function createChatWebSocketServer(server: http.Server) {
           socket.destroy();
         }
       } else {
-        socket.destroy();
+        // Not a chat upgrade path; allow other WebSocket handlers (e.g., /ws/auction)
+        // to process this upgrade without destroying the socket here.
+        return;
       }
     }
   );

@@ -145,12 +145,14 @@ export const BetslipContent = ({
     name: 'positions',
   }) as Record<string, { predictionValue?: string }> | undefined;
 
-  // Get the best non-expired bid
+  // Ticking clock reference for expiry countdowns
+  const [nowMs, setNowMs] = useState<number>(Date.now());
+
+  // Get the best non-expired bid (recomputed as time passes)
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
 
-    const now = Math.floor(Date.now() / 1000);
-    const validBids = bids.filter((bid) => bid.takerDeadline > now);
+    const validBids = bids.filter((bid) => bid.takerDeadline * 1000 > nowMs);
 
     if (validBids.length === 0) return null;
 
@@ -180,9 +182,48 @@ export const BetslipContent = ({
       })();
       return currentPayout > bestPayout ? current : best;
     });
-  }, [bids, parlayWagerAmount]);
+  }, [bids, parlayWagerAmount, nowMs]);
+
+  // All unexpired bids sorted by payout (desc)
+  const unexpiredBids = useMemo(() => {
+    if (!bids || bids.length === 0) return [] as QuoteBid[];
+
+    const makerWagerStr = parlayWagerAmount || '0';
+    let makerWager: bigint;
+    try {
+      makerWager = BigInt(makerWagerStr);
+    } catch {
+      makerWager = 0n;
+    }
+
+    const active = bids.filter((b) => b.takerDeadline * 1000 > nowMs);
+    return active.slice().sort((a, b) => {
+      const aPayout = (() => {
+        try {
+          return makerWager + BigInt(a.takerWager);
+        } catch {
+          return 0n;
+        }
+      })();
+      const bPayout = (() => {
+        try {
+          return makerWager + BigInt(b.takerWager);
+        } catch {
+          return 0n;
+        }
+      })();
+      if (aPayout === bPayout) return 0;
+      return bPayout > aPayout ? 1 : -1;
+    });
+  }, [bids, parlayWagerAmount, nowMs]);
 
   const { address: makerAddress } = useAccount();
+
+  // Ticking clock for expiry countdowns
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Emit Auction when parlay form values change
   useEffect(() => {
@@ -535,7 +576,8 @@ export const BetslipContent = ({
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={
                             isParlaySubmitting ||
-                            positionsWithMarketData.some((p) => p.isLoading)
+                            positionsWithMarketData.some((p) => p.isLoading) ||
+                            bestBid.takerDeadline * 1000 - nowMs <= 0
                           }
                           type="submit"
                           size="lg"
@@ -544,6 +586,11 @@ export const BetslipContent = ({
                           {(() => {
                             if (isParlaySubmitting)
                               return 'Submitting Wager...';
+                            return 'Submit Wager';
+                          })()}
+                        </Button>
+                        <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                          {(() => {
                             const makerWagerStr =
                               parlayMethods.getValues('wagerAmount') || '0';
                             let makerWager: bigint;
@@ -552,25 +599,34 @@ export const BetslipContent = ({
                             } catch {
                               makerWager = 0n;
                             }
-                            const payout = (() => {
-                              try {
-                                return (
-                                  makerWager + BigInt(bestBid.takerWager)
-                                ).toString();
-                              } catch {
-                                return '0';
-                              }
-                            })();
-                            return `Place Wager to Win ${payout} ${parlayCollateralSymbol || 'testUSDe'}`;
-                          })()}
-                        </Button>
-                        <div className="text-xs text-muted-foreground mt-2 text-center">
-                          {(() => {
-                            const ms =
-                              bestBid.takerDeadline * 1000 - Date.now();
-                            if (ms <= 0) return 'Expired';
-                            const mins = Math.ceil(ms / 60000);
-                            return `Expires in ${mins} minute${mins === 1 ? '' : 's'}`;
+                            const symbol = parlayCollateralSymbol || 'testUSDe';
+                            return unexpiredBids.map((bid, idx) => {
+                              const payout = (() => {
+                                try {
+                                  return (
+                                    makerWager + BigInt(bid.takerWager)
+                                  ).toString();
+                                } catch {
+                                  return '0';
+                                }
+                              })();
+                              const remainingMs =
+                                bid.takerDeadline * 1000 - nowMs;
+                              const secs = Math.max(
+                                0,
+                                Math.ceil(remainingMs / 1000)
+                              );
+                              const suffix = secs === 1 ? 'second' : 'seconds';
+                              return (
+                                <div
+                                  key={`${bid.takerWager}-${bid.takerDeadline}-${idx}`}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span>{`To win: ${payout} ${symbol}`}</span>
+                                  <span className="font-medium text-right">{`Expires in ${secs} ${suffix}`}</span>
+                                </div>
+                              );
+                            });
                           })()}
                         </div>
                       </div>
