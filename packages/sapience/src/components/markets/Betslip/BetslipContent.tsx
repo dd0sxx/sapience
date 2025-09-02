@@ -147,6 +147,9 @@ export const BetslipContent = ({
 
   // Ticking clock reference for expiry countdowns
   const [nowMs, setNowMs] = useState<number>(Date.now());
+  const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
+    null
+  );
 
   // Get the best non-expired bid (recomputed as time passes)
   const bestBid = useMemo(() => {
@@ -216,6 +219,12 @@ export const BetslipContent = ({
       return bPayout > aPayout ? 1 : -1;
     });
   }, [bids, parlayWagerAmount, nowMs]);
+
+  const showNoBidsHint =
+    effectiveParlayMode &&
+    !bestBid &&
+    lastQuoteRequestMs != null &&
+    nowMs - lastQuoteRequestMs >= 5000;
 
   const { address: makerAddress } = useAccount();
 
@@ -295,6 +304,7 @@ export const BetslipContent = ({
       predictedOutcomes,
       maker: makerAddress,
     });
+    setLastQuoteRequestMs(Date.now());
   }, [
     effectiveParlayMode,
     positionsWithMarketData,
@@ -416,6 +426,7 @@ export const BetslipContent = ({
 
                       {positionData.error && (
                         <>
+                          w{' '}
                           <div className="mb-2">
                             <h3 className="font-medium text-foreground pr-2">
                               {positionData.position.question}
@@ -622,7 +633,10 @@ export const BetslipContent = ({
                                   key={`${bid.takerWager}-${bid.takerDeadline}-${idx}`}
                                   className="flex items-center justify-between"
                                 >
-                                  <span>{`To win: ${payout} ${symbol}`}</span>
+                                  <span>
+                                    <span className="font-medium">{`To Win: `}</span>
+                                    {`${payout} ${symbol}`}
+                                  </span>
                                   <span className="font-medium text-right">{`Expires in ${secs} ${suffix}`}</span>
                                 </div>
                               );
@@ -633,15 +647,37 @@ export const BetslipContent = ({
                     )}
 
                     {effectiveParlayMode && !bestBid && (
-                      <Button
-                        className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
-                        disabled={true}
-                        type="submit"
-                        size="lg"
-                        variant="default"
-                      >
-                        Awaiting Bids
-                      </Button>
+                      <div className="text-center">
+                        <Button
+                          className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                          disabled={true}
+                          type="submit"
+                          size="lg"
+                          variant="default"
+                        >
+                          Waiting for Bids...
+                        </Button>
+                        {showNoBidsHint && (
+                          <div className="text-xs text-muted-foreground mt-2">
+                            <span>If no bids appear, you can place a </span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="text-primary underline"
+                                  >
+                                    limit order
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Coming Soon</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

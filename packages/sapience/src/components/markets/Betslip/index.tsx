@@ -30,7 +30,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useAccount, useReadContracts } from 'wagmi';
 import type { Address } from 'viem';
-import ParlayPool from '@/protocol/deployments/ParlayPool.json';
 import type { Abi } from 'abitype';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { wagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
@@ -104,35 +103,65 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     buildMintRequestDataFromBid,
   } = useAuctionStart();
 
-  const configRead = useReadContracts({
-    contracts: [
-      {
-        address: PARLAY_CONTRACT_ADDRESS,
-        abi: ParlayPool.abi as Abi,
-        functionName: 'getConfig',
-        chainId: parlayChainId,
-      },
-    ],
-    query: { enabled: betSlipPositions.length > 0 },
+  // PredictionMarket address (constant)
+  const PREDICTION_MARKET_ADDRESS =
+    '0x85b38C1e35F42163C5b9DbDe357b191E1042F5f0' as Address;
+
+  // Minimal ABI for PredictionMarket.getConfig()
+  const PREDICTION_MARKET_ABI: Abi = [
+    {
+      type: 'function',
+      name: 'getConfig',
+      stateMutability: 'view',
+      inputs: [],
+      outputs: [
+        {
+          name: 'config',
+          type: 'tuple',
+          components: [
+            { name: 'collateralToken', type: 'address' },
+            { name: 'minCollateral', type: 'uint256' },
+          ],
+        },
+      ],
+    },
+  ];
+
+  // Prefer reading config from PredictionMarket for OTC symbol if address is provided
+  const predictionMarketConfigRead = useReadContracts({
+    contracts:
+      PREDICTION_MARKET_ADDRESS && betSlipPositions.length > 0
+        ? [
+            {
+              address: PREDICTION_MARKET_ADDRESS,
+              abi: PREDICTION_MARKET_ABI,
+              functionName: 'getConfig',
+              chainId: parlayChainId,
+            },
+          ]
+        : [],
+    query: {
+      enabled: !!PREDICTION_MARKET_ADDRESS && betSlipPositions.length > 0,
+    },
   });
 
   const collateralToken: Address | undefined = (() => {
-    const item = configRead.data?.[0];
+    const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
-      const cfg = item.result as {
-        collateralToken: Address;
-      };
+      const cfg =
+        (item.result as { collateralToken: Address }) ||
+        ({} as { collateralToken: Address });
       return cfg.collateralToken;
     }
     return undefined;
   })();
 
   const minCollateralRaw: bigint | undefined = (() => {
-    const item = configRead.data?.[0];
+    const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
-      const cfg = item.result as {
-        minCollateral: bigint;
-      };
+      const cfg =
+        (item.result as { minCollateral: bigint }) ||
+        ({} as { minCollateral: bigint });
       return cfg.minCollateral;
     }
     return undefined;
