@@ -28,7 +28,7 @@ import { encodeFunctionData, parseUnits, erc20Abi, formatUnits } from 'viem';
 import erc20ABI from '@sapience/ui/abis/erc20abi.json';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useReadContracts } from 'wagmi';
+import { useAccount, useReadContracts } from 'wagmi';
 import type { Address } from 'viem';
 import ParlayPool from '@/protocol/deployments/ParlayPool.json';
 import type { Abi } from 'abitype';
@@ -50,6 +50,7 @@ import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
 import { PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
+import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
 interface BetslipProps {
@@ -82,6 +83,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   const isParlayFeatureEnabled = parlayFeatureOverrideEnabled;
   const isCompact = useIsBelow(1024);
   const { login, authenticated } = usePrivy();
+  const { address } = useAccount();
   const { sendCalls, isPending: isPendingWriteContract } =
     useSapienceWriteContract({
       onSuccess: () => {
@@ -94,6 +96,13 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   const { toast } = useToast();
   // Parlay config: read minCollateral and collateral token decimals
   const parlayChainId = betSlipPositions[0]?.chainId || 8453;
+  const {
+    auctionId,
+    bids,
+    requestQuotes,
+    notifyOrderCreated,
+    buildMintRequestDataFromBid,
+  } = useAuctionStart();
 
   const configRead = useReadContracts({
     contracts: [
@@ -499,6 +508,13 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       clearBetSlip();
       setIsPopoverOpen(false);
     },
+    onOrderCreated: (requestId) => {
+      try {
+        notifyOrderCreated(requestId.toString());
+      } catch {
+        console.error('Failed to notify order created');
+      }
+    },
   });
 
   const handleIndividualSubmit = () => {
@@ -604,9 +620,9 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
         );
       if (!quoteData) {
         toast({
-          title: 'Quote not found',
+          title: 'Bid not found',
           description:
-            'Pricing data for one of your positions is missing. Please refresh the quotes.',
+            'Pricing data for one of your positions is missing. Please refresh the bids.',
           variant: 'destructive',
           duration: 5000,
         });
@@ -665,7 +681,35 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       return;
     }
 
-    // Submit the parlay using the hook
+    // If OTC/Parlay flow is enabled, and we have a bid, build the mint request for PredictionMarket
+    try {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const validBids = bids.filter((b) => b.takerDeadline > nowSec);
+      // Pick highest takerWager
+      const best = validBids.reduce((best, cur) => {
+        try {
+          return BigInt(cur.takerWager) > BigInt(best.takerWager) ? cur : best;
+        } catch {
+          return best;
+        }
+      }, validBids[0]);
+
+      if (best && address && buildMintRequestDataFromBid) {
+        const mintReq = buildMintRequestDataFromBid({
+          maker: address,
+          selectedBid: best,
+          // Optional refCode left empty (0x00..00)
+        });
+        // For now, just log; wiring actual write depends on contract address/ABI exposure
+        if (mintReq && process.env.NODE_ENV !== 'production') {
+          console.log('[OTC] Prepared MintPredictionRequestData', mintReq);
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Fallback to legacy parlay submit (will be removed once OTC is fully enabled)
     submitParlay();
   };
 
@@ -683,6 +727,9 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     parlayCollateralSymbol: collateralSymbol,
     parlayCollateralAddress: collateralToken,
     parlayChainId,
+    auctionId,
+    bids,
+    requestQuotes,
   };
 
   if (isCompact) {
