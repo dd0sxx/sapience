@@ -1,5 +1,4 @@
 import { Button } from '@sapience/ui/components/ui/button';
-import { Label } from '@sapience/ui/components/ui/label';
 import { useFormContext } from 'react-hook-form';
 import { useEffect } from 'react';
 
@@ -43,7 +42,6 @@ export default function YesNoWagerInput({
   return (
     <div className="space-y-4">
       <div>
-        <Label>Your Prediction</Label>
         <div className="grid grid-cols-2 gap-4 mt-2">
           <Button
             type="button"
@@ -84,7 +82,7 @@ export default function YesNoWagerInput({
       {showWagerInput && (
         <WagerInput
           name={wagerAmountFieldName}
-          collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
+          collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
           collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
           chainId={marketGroupData.chainId}
         />

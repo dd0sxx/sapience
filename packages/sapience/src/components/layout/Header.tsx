@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
@@ -15,15 +16,17 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen, Wallet } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen, Wallet, Settings } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
-import ModeToggle from './ModeToggle';
 import SusdeBalance from './SusdeBalance';
+import ChatButton from './ChatButton';
+import { shortenAddress } from '~/lib/utils/util';
+import { useEnsName } from '~/components/shared/AddressDisplay';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -57,6 +60,8 @@ const NavLinks = ({
     ? 'text-xl font-medium justify-start rounded-full'
     : 'text-base font-medium justify-start rounded-full';
   const activeClass = 'bg-secondary';
+
+  // No feature flag: Chat button is always available in the sidebar for authenticated users
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -114,32 +119,47 @@ const NavLinks = ({
           Build Bots
         </Button>
       </Link>
-      {ready && authenticated && connectedWallet && (
-        <div className="mt-6">
-          <SusdeBalance onClick={handleLinkClick} />
-          <Link
-            href={`/profile/${connectedWallet.address}`}
-            passHref
-            className="flex w-fit mx-3 mt-4"
+      {/* Mobile settings button when logged out, placed under links */}
+      {ready && !authenticated && (
+        <Link href="/settings" passHref className="flex w-fit md:hidden">
+          <Button
+            variant="ghost"
+            className={`${linkClass}`}
+            onClick={handleLinkClick}
           >
-            <Button
-              size="xs"
-              className="rounded-full px-3"
-              onClick={handleLinkClick}
-            >
-              <Wallet className="h-3 w-3 scale-[0.8]" />
-              Your Portfolio
-            </Button>
-          </Link>
-        </div>
+            Settings
+          </Button>
+        </Link>
+      )}
+      {ready && authenticated && connectedWallet && (
+        <>
+          <SusdeBalance className="md:hidden" onClick={handleLinkClick} />
+        </>
       )}
     </nav>
   );
 };
 
 const Header = () => {
-  const pathname = usePathname();
   const { login, ready, authenticated, logout } = usePrivy();
+  const { wallets } = useWallets();
+  const connectedWallet = wallets[0];
+  const { data: ensName } = useEnsName(connectedWallet?.address || '');
+
+  const handleLogout = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('chatToken');
+      }
+    } catch {
+      /* noop */
+    }
+    try {
+      await logout();
+    } catch {
+      /* noop */
+    }
+  };
 
   return (
     <>
@@ -183,25 +203,66 @@ const Header = () => {
 
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
             <div className="block">
-              {!pathname.startsWith('/earn') && <ModeToggle />}
+              {ready && authenticated ? null : (
+                <Link href="/settings" className="hidden md:block">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full md:h-9 md:w-9"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="sr-only">Settings</span>
+                  </Button>
+                </Link>
+              )}
             </div>
-            {ready && null}
-            {!ready && null /* Render nothing while Privy is loading */}
+            <div className="block">
+              <Suspense fallback={null}>
+                <ChatButton iconOnly />
+              </Suspense>
+            </div>
+            {ready && authenticated && (
+              <SusdeBalance
+                className="hidden md:flex mx-0"
+                buttonClassName="h-9 px-3"
+              />
+            )}
             {ready && authenticated && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    size="icon"
-                    className="rounded-full"
+                    className="rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 gap-2"
                   >
                     <User className="h-5 w-5" />
+                    {connectedWallet?.address && (
+                      <span className="hidden md:inline text-sm">
+                        {ensName || shortenAddress(connectedWallet.address)}
+                      </span>
+                    )}
                     <span className="sr-only">User Menu</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {connectedWallet?.address && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={`/profile/${connectedWallet.address}`}
+                        className="flex items-center"
+                      >
+                        <Wallet className="mr-2 h-4 w-4" />
+                        <span>Your Portfolio</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="flex items-center cursor-pointer"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
@@ -210,12 +271,13 @@ const Header = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            {/* Address now displayed inside the black default button on desktop */}
             {ready && !authenticated && (
               <Button
                 onClick={login}
-                className="bg-primary hover:bg-primary/90 rounded-full px-4 sm:px-6"
+                className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 gap-2"
               >
-                Log In
+                <span>Log in</span>
               </Button>
             )}
           </div>
