@@ -167,8 +167,10 @@ const SettingsPage = () => {
   // Live update: values persist on change when valid; reset removes override.
 
   return !hydrated ? (
-    <div className="container mx-auto px-4 md:p-8 max-w-3xl mt-16">
-      <h1 className="text-2xl font-semibold mb-6">Settings</h1>
+    <div className="container mx-auto px-4 max-w-3xl pt-32">
+      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-12">
+        Settings
+      </h1>
       <Card>
         <CardContent className="px-6 py-8">
           <div className="h-[720px] flex items-center justify-center">
@@ -178,8 +180,10 @@ const SettingsPage = () => {
       </Card>
     </div>
   ) : (
-    <div className="container mx-auto px-4 md:p-8 max-w-3xl mt-16">
-      <h1 className="text-2xl font-semibold mb-6">Settings</h1>
+    <div className="container mx-auto px-4 max-w-3xl pt-32">
+      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-12">
+        Settings
+      </h1>
       <Card>
         <CardContent className="px-6 py-8">
           <div className="space-y-8">

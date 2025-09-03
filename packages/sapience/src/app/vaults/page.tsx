@@ -133,7 +133,9 @@ const VaultsPage = () => {
         <div className="grid grid-cols-1 gap-16">
           {/* Vault */}
           <div>
-            {parlayFeatureOverrideEnabled ? (
+            {/* TEMP: Gate Active UI behind env. Set NEXT_PUBLIC_ENABLE_VAULTS="1" to enable. */}
+            {parlayFeatureOverrideEnabled &&
+            process.env.NEXT_PUBLIC_ENABLE_VAULTS === '1' ? (
               /* Active Vault Interface */
               <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
                 <CardContent className="p-6">
@@ -150,10 +152,14 @@ const VaultsPage = () => {
                         {vaultData && (
                           <div className="mt-2 text-xs text-muted-foreground">
                             Utilization:{' '}
-                            {formatUtilizationRate(vaultData.utilizationRate)}%
-                            • Delay:{' '}
-                            {formatWithdrawalDelay(vaultData.withdrawalDelay)}
-                            {vaultData.emergencyMode &&
+                            {formatUtilizationRate(
+                              vaultData?.utilizationRate ?? 0n
+                            )}
+                            % • Delay:{' '}
+                            {formatWithdrawalDelay(
+                              vaultData?.withdrawalDelay ?? 0n
+                            )}
+                            {vaultData?.emergencyMode &&
                               ' • Emergency Mode Active'}
                           </div>
                         )}
@@ -166,7 +172,7 @@ const VaultsPage = () => {
                           {isLoadingUserData
                             ? '...'
                             : userData
-                              ? formatSharesAmount(userData.balance)
+                              ? formatSharesAmount(userData?.balance ?? 0n)
                               : '0.00'}{' '}
                           testUSDe
                         </div>
@@ -307,7 +313,9 @@ const VaultsPage = () => {
                                   onClick={() =>
                                     setWithdrawAmount(
                                       userData
-                                        ? formatSharesAmount(userData.balance)
+                                        ? formatSharesAmount(
+                                            userData?.balance ?? 0n
+                                          )
                                         : '0'
                                     )
                                   }
@@ -317,7 +325,9 @@ const VaultsPage = () => {
                                 <div className="flex items-center gap-1 text-muted-foreground">
                                   <span>
                                     {userData
-                                      ? formatSharesAmount(userData.balance)
+                                      ? formatSharesAmount(
+                                          userData?.balance ?? 0n
+                                        )
                                       : '0'}{' '}
                                     testUSDe
                                   </span>
@@ -328,12 +338,14 @@ const VaultsPage = () => {
                         </div>
 
                         {/* Pending Withdrawal Info */}
-                        {userData && userData.pendingWithdrawal > 0n && (
+                        {(userData?.pendingWithdrawal ?? 0n) > 0n && (
                           <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
                             <div className="text-sm text-yellow-700 dark:text-yellow-300">
                               <p className="font-medium">Pending Withdrawal</p>
                               <p className="text-xs">
-                                {formatAssetAmount(userData.pendingWithdrawal)}{' '}
+                                {formatAssetAmount(
+                                  userData?.pendingWithdrawal ?? 0n
+                                )}{' '}
                                 testUSDe queued for withdrawal
                               </p>
                             </div>
@@ -345,7 +357,9 @@ const VaultsPage = () => {
                           <div className="text-sm text-muted-foreground">
                             Withdrawals are queued with a{' '}
                             {vaultData
-                              ? formatWithdrawalDelay(vaultData.withdrawalDelay)
+                              ? formatWithdrawalDelay(
+                                  vaultData?.withdrawalDelay ?? 0n
+                                )
                               : '1 day'}{' '}
                             delay to ensure vault stability and proper liquidity
                             management.
@@ -393,10 +407,14 @@ const VaultsPage = () => {
                         {vaultData && (
                           <div className="mt-2 text-xs text-muted-foreground">
                             Utilization:{' '}
-                            {formatUtilizationRate(vaultData.utilizationRate)}%
-                            • Delay:{' '}
-                            {formatWithdrawalDelay(vaultData.withdrawalDelay)}
-                            {vaultData.emergencyMode &&
+                            {formatUtilizationRate(
+                              vaultData?.utilizationRate ?? 0n
+                            )}
+                            % • Delay:{' '}
+                            {formatWithdrawalDelay(
+                              vaultData?.withdrawalDelay ?? 0n
+                            )}
+                            {vaultData?.emergencyMode &&
                               ' • Emergency Mode Active'}
                           </div>
                         )}
@@ -550,7 +568,9 @@ const VaultsPage = () => {
                                   onClick={() =>
                                     setWithdrawAmount(
                                       userData
-                                        ? formatSharesAmount(userData.balance)
+                                        ? formatSharesAmount(
+                                            userData?.balance ?? 0n
+                                          )
                                         : '0'
                                     )
                                   }
@@ -560,7 +580,9 @@ const VaultsPage = () => {
                                 <div className="flex items-center gap-1 text-muted-foreground">
                                   <span>
                                     {userData
-                                      ? formatSharesAmount(userData.balance)
+                                      ? formatSharesAmount(
+                                          userData?.balance ?? 0n
+                                        )
                                       : '0'}{' '}
                                     testUSDe
                                   </span>
@@ -571,12 +593,14 @@ const VaultsPage = () => {
                         </div>
 
                         {/* Pending Withdrawal Info */}
-                        {userData && userData.pendingWithdrawal > 0n && (
+                        {(userData?.pendingWithdrawal ?? 0n) > 0n && (
                           <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
                             <div className="text-sm text-yellow-700 dark:text-yellow-300">
                               <p className="font-medium">Pending Withdrawal</p>
                               <p className="text-xs">
-                                {formatAssetAmount(userData.pendingWithdrawal)}{' '}
+                                {formatAssetAmount(
+                                  userData?.pendingWithdrawal ?? 0n
+                                )}{' '}
                                 testUSDe queued for withdrawal
                               </p>
                             </div>
@@ -591,7 +615,7 @@ const VaultsPage = () => {
                               Withdrawals are queued with a{' '}
                               {vaultData
                                 ? formatWithdrawalDelay(
-                                    vaultData.withdrawalDelay
+                                    vaultData?.withdrawalDelay ?? 0n
                                   )
                                 : '1 day'}{' '}
                               delay to ensure vault stability and proper
