@@ -323,20 +323,7 @@ export const BetslipContent = ({
         >
           <div className="grid grid-cols-[auto_1fr_auto] items-center h-10">
             <span className="text-lg font-medium">Make a Prediction</span>
-            <span
-              onClick={clearBetSlip}
-              role="button"
-              aria-hidden={betSlipPositions.length === 0}
-              title="Reset"
-              className={`justify-self-center text-xs leading-none text-muted-foreground cursor-pointer transition-opacity duration-300 transform scale-[0.8] origin-center ${
-                betSlipPositions.length > 0
-                  ? 'opacity-100'
-                  : 'opacity-0 pointer-events-none'
-              }`}
-            >
-              Reset
-            </span>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 col-start-3 justify-self-end">
               <div className="flex items-center gap-2">
                 {!isParlayFeatureEnabled ? (
                   <TooltipProvider>
@@ -698,6 +685,21 @@ export const BetslipContent = ({
               </form>
             </FormProvider>
           )}
+        </div>
+        <div className="py-4 mt-auto flex justify-center">
+          <button
+            onClick={clearBetSlip}
+            type="button"
+            aria-hidden={betSlipPositions.length === 0}
+            title="Reset"
+            className={`text-xs leading-none text-muted-foreground cursor-pointer transition-opacity duration-300 ${
+              betSlipPositions.length > 0
+                ? 'opacity-100'
+                : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            Clear all
+          </button>
         </div>
       </div>
     </>

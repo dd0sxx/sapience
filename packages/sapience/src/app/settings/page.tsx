@@ -15,6 +15,98 @@ import { useChat } from '~/lib/context/ChatContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import LottieLoader from '~/components/shared/LottieLoader';
 
+type SettingFieldProps = {
+  id: string;
+  value: string;
+  setValue: (v: string) => void;
+  defaultValue: string;
+  onPersist: (v: string | null) => void;
+  validate: (v: string) => boolean;
+  normalizeOnChange?: (v: string) => string;
+  invalidMessage: string;
+};
+
+const SettingField = ({
+  id,
+  value,
+  setValue,
+  defaultValue,
+  onPersist,
+  validate,
+  normalizeOnChange,
+  invalidMessage,
+}: SettingFieldProps) => {
+  const [draft, setDraft] = useState<string>(value);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    if (raw === draft) return;
+    setDraft(raw);
+    if (!raw) {
+      setErrorMsg(null);
+      return;
+    }
+    if (validate(raw)) {
+      setErrorMsg(null);
+    } else {
+      setErrorMsg(invalidMessage);
+    }
+  };
+
+  const handleBlur = () => {
+    if (!draft) {
+      onPersist(null);
+      setValue('');
+      return;
+    }
+    const normalized = normalizeOnChange ? normalizeOnChange(draft) : draft;
+    setDraft(normalized);
+    setValue(normalized);
+    if (validate(normalized)) {
+      setErrorMsg(null);
+      onPersist(normalized);
+    } else {
+      setErrorMsg(invalidMessage);
+    }
+  };
+
+  const showReset = draft !== defaultValue;
+
+  return (
+    <div className="w-full">
+      <div className="flex gap-3 items-start">
+        <div className="flex-1">
+          <Input
+            id={id}
+            value={draft}
+            onChange={handleChange}
+            onBlur={handleBlur}
+          />
+        </div>
+        {showReset ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-10"
+            onClick={() => {
+              setDraft(defaultValue);
+              setValue(defaultValue);
+              setErrorMsg(null);
+              onPersist(null);
+            }}
+          >
+            Reset
+          </Button>
+        ) : null}
+      </div>
+      {errorMsg ? (
+        <p className="mt-2 text-xs text-red-500">{errorMsg}</p>
+      ) : null}
+    </div>
+  );
+};
+
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
   const { openChat } = useChat();
@@ -38,11 +130,7 @@ const SettingsPage = () => {
   const [chatInput, setChatInput] = useState('');
   const [rpcInput, setRpcInput] = useState('');
 
-  const [gqlError, setGqlError] = useState<string | null>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [quoterError, setQuoterError] = useState<string | null>(null);
-  const [chatError, setChatError] = useState<string | null>(null);
-  const [rpcError, setRpcError] = useState<string | null>(null);
+  // Validation hints handled within SettingField to avoid parent re-renders breaking focus
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -57,15 +145,9 @@ const SettingsPage = () => {
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
     setRpcInput(arbitrumRpcUrl ?? defaults.arbitrumRpcUrl);
     setHydrated(true);
-  }, [
-    mounted,
-    graphqlEndpoint,
-    apiBaseUrl,
-    quoterBaseUrl,
-    chatBaseUrl,
-    arbitrumRpcUrl,
-    defaults,
-  ]);
+    // Intentionally initialize once after mount to avoid overwriting while typing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   const isHttpUrl = (value: string) => {
     try {
@@ -83,83 +165,6 @@ const SettingsPage = () => {
   };
 
   // Live update: values persist on change when valid; reset removes override.
-
-  type SettingFieldProps = {
-    id: string;
-    value: string;
-    setValue: (v: string) => void;
-    defaultValue: string;
-    onPersist: (v: string | null) => void;
-    validate: (v: string) => boolean;
-    normalizeOnChange?: (v: string) => string;
-    setError: (msg: string | null) => void;
-    invalidMessage: string;
-  };
-
-  const SettingField = ({
-    id,
-    value,
-    setValue,
-    defaultValue,
-    onPersist,
-    validate,
-    normalizeOnChange,
-    setError,
-    invalidMessage,
-  }: SettingFieldProps) => {
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value;
-      const next = normalizeOnChange ? normalizeOnChange(raw) : raw;
-      setValue(next);
-      if (!next) {
-        setError(null);
-        return;
-      }
-      if (validate(next)) {
-        setError(null);
-      } else {
-        setError(invalidMessage);
-      }
-    };
-
-    const handleBlur = () => {
-      const current = value;
-      if (!current) {
-        onPersist(null);
-        return;
-      }
-      if (validate(current)) {
-        onPersist(current);
-      }
-    };
-
-    const showReset = value !== defaultValue;
-
-    return (
-      <div className="flex gap-3 items-start">
-        <Input
-          id={id}
-          value={value}
-          onChange={handleChange}
-          onBlur={handleBlur}
-        />
-        {showReset ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-10"
-            onClick={() => {
-              setValue(defaultValue);
-              setError(null);
-              onPersist(null);
-            }}
-          >
-            Reset
-          </Button>
-        ) : null}
-      </div>
-    );
-  };
 
   return !hydrated ? (
     <div className="container mx-auto px-4 md:p-8 max-w-3xl mt-16">
@@ -222,12 +227,8 @@ const SettingsPage = () => {
                 onPersist={setArbitrumRpcUrl}
                 validate={isHttpUrl}
                 normalizeOnChange={(s) => s.trim()}
-                setError={setRpcError}
                 invalidMessage="Must be an absolute http(s) URL"
               />
-              {rpcError ? (
-                <p className="text-xs text-red-500">{rpcError}</p>
-              ) : null}
               <p className="text-xs text-muted-foreground">
                 JSON-RPC URL for the{' '}
                 <a
@@ -251,12 +252,8 @@ const SettingsPage = () => {
                 defaultValue={defaults.graphqlEndpoint}
                 onPersist={setGraphqlEndpoint}
                 validate={isHttpUrl}
-                setError={setGqlError}
                 invalidMessage="Must be an absolute http(s) URL"
               />
-              {gqlError ? (
-                <p className="text-xs text-red-500">{gqlError}</p>
-              ) : null}
               <p className="text-xs text-muted-foreground">
                 Used to fetch metadata, historical data, and onchain data via
                 GraphQL
@@ -273,12 +270,8 @@ const SettingsPage = () => {
                 onPersist={setQuoterBaseUrl}
                 validate={isHttpUrl}
                 normalizeOnChange={normalizeBase}
-                setError={setQuoterError}
                 invalidMessage="Must be an absolute http(s) base URL"
               />
-              {quoterError ? (
-                <p className="text-xs text-red-500">{quoterError}</p>
-              ) : null}
               <p className="text-xs text-muted-foreground">
                 Used to generate quotes based on liquidity available onchain
               </p>
@@ -294,12 +287,8 @@ const SettingsPage = () => {
                 onPersist={setApiBaseUrl}
                 validate={isHttpUrl}
                 normalizeOnChange={normalizeBase}
-                setError={setApiError}
                 invalidMessage="Must be an absolute http(s) base URL"
               />
-              {apiError ? (
-                <p className="text-xs text-red-500">{apiError}</p>
-              ) : null}
               <p className="text-xs text-muted-foreground">
                 Used to relay bids in <em>Auction Mode</em>
               </p>
@@ -315,12 +304,8 @@ const SettingsPage = () => {
                 onPersist={setChatBaseUrl}
                 validate={isHttpUrl}
                 normalizeOnChange={normalizeBase}
-                setError={setChatError}
                 invalidMessage="Must be an absolute http(s) base URL"
               />
-              {chatError ? (
-                <p className="text-xs text-red-500">{chatError}</p>
-              ) : null}
               <p className="text-xs text-muted-foreground">
                 Used by the{' '}
                 <button
