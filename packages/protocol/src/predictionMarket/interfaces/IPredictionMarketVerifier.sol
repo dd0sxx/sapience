@@ -21,7 +21,7 @@ interface IPredictionMarketVerifier {
 
     function resolvePrediction(
         bytes calldata encodedOutcomes
-    ) external view returns (bool isValid, Error error, bool longWon);
+    ) external view returns (bool isValid, Error error, bool didLongWin);
 }
 
 

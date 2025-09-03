@@ -15,7 +15,7 @@ export interface MintParlayRequestData {
   predictedOutcomes: string[]; // Array of bytes strings that the verifier validates/understands
   verifier: string;
   wager: string;
-  shortCollateral: string;
+  collateralShort: string;
   // Note: ERC-20 approvals are handled off-chain by long and short separately
 }
 
@@ -25,7 +25,7 @@ export interface MintParlayRequestData {
 export function createMintParlayRequestData(
   auction: AuctionRequestPayload,
   short: string,
-  shortCollateral: string
+  collateralShort: string
 ): MintParlayRequestData {
   if (!auction.verifier) {
     throw new Error('Auction must have a verifier address');
@@ -36,7 +36,7 @@ export function createMintParlayRequestData(
     predictedOutcomes: auction.predictedOutcomes,
     verifier: auction.verifier,
     wager: auction.wager,
-    shortCollateral: shortCollateral,
+    collateralShort: collateralShort,
   };
 }
 
@@ -120,26 +120,6 @@ export function createValidationError(
     return `${baseMessage} (${contextStr})`;
   }
   return baseMessage;
-}
-
-/**
- * Extracts taker address from takerSignature (deprecated helper)
- * The signature should be signed by the taker's private key
- * This is a simplified implementation - in production you'd want proper signature recovery
- */
-export function extractTakerFromSignature(): string | null {
-  // Deprecated: short is not derivable from a signature alone. Use verifyShortBid instead.
-  return null;
-}
-
-/**
- * Extracts takerWager from takerSignature (deprecated helper)
- * The signature should sign a message containing the takerWager amount
- * This is a simplified implementation - in production you'd want proper EIP-712 verification
- */
-export function extractTakerWagerFromSignature(): string | null {
-  // Deprecated: wager is not derivable from a signature alone. Use verifyShortBid instead.
-  return null;
 }
 
 /**

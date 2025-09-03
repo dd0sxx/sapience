@@ -4,11 +4,11 @@ This guide reflects the current `PredictionMarket` implementation with a simple 
 
 ## Overview
 
-- **Long** initiates a prediction by calling `mint()` and paying `longCollateral`.
-- **Short** pre-approves the contract for `shortCollateral` and provides an off-chain signature authorizing this specific prediction; the long submits that signature to `mint()`.
+- **Long** initiates a prediction by calling `mint()` and paying `collateralLong`.
+- **Short** pre-approves the contract for `collateralShort` and provides an off-chain signature authorizing this specific prediction; the long submits that signature to `mint()`.
 - The verifier validates markets on `mint()`. Two NFTs are minted (long and short) and collateral is escrowed.
-- After referenced markets settle, anyone calls `burn(tokenId, refCode)` to resolve and pay the winner.
-- If long and short are the same address, `consolidatePrediction(tokenId, refCode)` settles immediately in favor of the long.
+- After referenced markets settle, anyone calls `burn(tokenId, referralCode)` to resolve and pay the winner.
+- If long and short are the same address, `consolidatePrediction(tokenId, referralCode)` settles immediately in favor of the long.
 
 ## Contracts
 
@@ -18,7 +18,7 @@ PredictionMarket market = new PredictionMarket(
     "Prediction Market NFT",
     "PMKT",
     collateralToken,   // ERC20 used as collateral
-    minCollateral      // minimum longCollateral
+    minCollateral      // minimum collateralLong
 );
 
 // Verifier with max number of markets per prediction
@@ -63,8 +63,8 @@ Message to approve (hashed inside `mint()`):
 ```solidity
 bytes32 messageHash = keccak256(abi.encode(
     encodedOutcomes,
-    shortCollateral,
-    longCollateral,
+    collateralShort,
+    collateralLong,
     address(verifier),
     long,
     shortDeadline
@@ -100,13 +100,13 @@ Prerequisites:
 IPredictionMarketStructs.OpenPositionsRequest memory req = IPredictionMarketStructs.OpenPositionsRequest({
     encodedOutcomes: encodedOutcomes,
     verifier: address(verifier),
-    longCollateral: 1_000e6,
-    shortCollateral: 200e6,
+    collateralLong: 1_000e6,
+    collateralShort: 200e6,
     long: ana,
     short: bob,
     shortSignature: bobApprovalSignature, // EIP-712 Approve over messageHash
     shortDeadline: block.timestamp + 60,
-    refCode: bytes32(0)
+    referralCode: bytes32(0)
 });
 
 (uint256 longNftTokenId, uint256 shortNftTokenId) = market.mint(req);
@@ -116,7 +116,7 @@ What `mint()` does:
 - Checks `msg.sender == long` and `shortDeadline >= block.timestamp`.
 - Verifies the short signature matches the exact prediction parameters.
 - Verifier validates markets are valid, unsolved Yes/No markets.
-- Pulls `longCollateral` and `shortCollateral` via `transferFrom`.
+- Pulls `collateralLong` and `collateralShort` via `transferFrom`.
 - Mints two NFTs: `longNftTokenId` to `long`, `shortNftTokenId` to `short`.
 - Stores the `MatchedPositions` and emits `PositionsOpened`.
 
@@ -137,10 +137,10 @@ event PositionsOpened(
 
 ## Get prediction details
 
-`getPrediction(tokenId)` returns `IPredictionMarketStructs.PredictionRecord` for the underlying prediction (pass either the long or short NFT tokenId):
+`getPrediction(tokenId)` returns `IPredictionMarketStructs.MatchedPositions` for the underlying prediction (pass either the long or short NFT tokenId):
 
 ```solidity
-IPredictionMarketStructs.PredictionRecord memory p = market.getPrediction(longNftTokenId);
+IPredictionMarketStructs.MatchedPositions memory p = market.getPrediction(longNftTokenId);
 // To decode outcomes for display:
 FoilMarketVerifier.PredictedOutcome[] memory decoded = verifier.decodePredictionOutcomes(p.encodedOutcomes);
 ```

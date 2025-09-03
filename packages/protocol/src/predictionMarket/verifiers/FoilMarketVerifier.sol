@@ -73,9 +73,9 @@ contract FoilMarketVerifier is IPredictionMarketVerifier {
 
     function resolvePrediction(
         bytes calldata encodedOutcomes
-    ) external view returns (bool isValid, Error error, bool longWon) {
+    ) external view returns (bool isValid, Error error, bool didLongWin) {
         PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedOutcomes);
-        longWon = true;
+        didLongWin = true;
         isValid = true;
         error = Error.NO_ERROR;
 
@@ -91,12 +91,12 @@ contract FoilMarketVerifier is IPredictionMarketVerifier {
             }
 
             if (predictedOutcomes[i].prediction != marketOutcome) {
-                longWon = false;
+                didLongWin = false;
                 break;
             }
         }
 
-        return (isValid, error, longWon);
+        return (isValid, error, didLongWin);
     }
 
     // ============ Sapience Encoding and Decoding Functions ============

@@ -33,7 +33,7 @@ interface UseSubmitParlayProps {
   orderExpirationHours?: number; // Hours from now when order expires (default: 24)
   onSuccess?: () => void;
   enabled?: boolean;
-  refCode?: string; // Optional referral code; empty/undefined allowed
+  referralCode?: string; // Optional referral code; empty/undefined allowed
   onOrderCreated?: (requestId: bigint, txHash?: string) => void;
 }
 
@@ -48,7 +48,7 @@ export function useSubmitParlay({
   orderExpirationHours = 24,
   onSuccess,
   enabled = true,
-  refCode,
+  referralCode,
   onOrderCreated,
 }: UseSubmitParlayProps) {
   const { address } = useAccount();
@@ -131,15 +131,16 @@ export function useSubmitParlay({
     );
   }, [orderExpirationHours]);
 
-  // Encode optional refCode to bytes32 (empty -> 0x00..00)
+  // Encode optional referralCode to bytes32 (empty -> 0x00..00)
   const encodedRefCode = useMemo(() => {
     const zero = '0x' + '0'.repeat(64);
-    if (!refCode || refCode.trim().length === 0) return zero as `0x${string}`;
+    if (!referralCode || referralCode.trim().length === 0)
+      return zero as `0x${string}`;
 
     // If already hex, pad/truncate to 32 bytes
-    if (isHex(refCode)) {
+    if (isHex(referralCode)) {
       try {
-        return padHex(refCode, { size: 32 });
+        return padHex(referralCode, { size: 32 });
       } catch {
         // Fallback to zero on invalid input
         return zero as `0x${string}`;
@@ -148,7 +149,7 @@ export function useSubmitParlay({
 
     // Convert plain string to hex and pad/truncate to 32 bytes
     try {
-      let hex = stringToHex(refCode);
+      let hex = stringToHex(referralCode);
       if (hex.length > 66) {
         hex = `0x${(hex as string).slice(2, 66)}`; // keep first 32 bytes
       }
@@ -156,7 +157,7 @@ export function useSubmitParlay({
     } catch {
       return zero as `0x${string}`;
     }
-  }, [refCode]);
+  }, [referralCode]);
 
   // Prepare calls for sendCalls
   const calls = useMemo(() => {
