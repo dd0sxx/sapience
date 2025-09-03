@@ -14,6 +14,7 @@ import {
 
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useAccount } from 'wagmi';
+import { Gavel } from 'lucide-react';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { MarketGroupClassification } from '~/lib/types';
 import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
@@ -318,25 +319,24 @@ export const BetslipContent = ({
     <>
       <div className="w-full h-full flex flex-col">
         <div
-          className={`px-4 py-1.5 bg-muted/50 border-b border-border/40 ${isMobile ? 'border-t' : ''}`}
+          className={`relative px-4 pt-1.5 pb-1.5 bg-muted/50 border-b border-border/40 ${isMobile ? 'border-t' : ''}`}
         >
-          <div className="flex items-center justify-between h-10">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center h-10">
             <span className="text-lg font-medium">Make a Prediction</span>
+            <span
+              onClick={clearBetSlip}
+              role="button"
+              aria-hidden={betSlipPositions.length === 0}
+              title="Reset"
+              className={`justify-self-center text-xs leading-none text-muted-foreground cursor-pointer transition-opacity duration-300 transform scale-[0.8] origin-center ${
+                betSlipPositions.length > 0
+                  ? 'opacity-100'
+                  : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              Reset
+            </span>
             <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={clearBetSlip}
-                type="button"
-                aria-hidden={betSlipPositions.length === 0}
-                className={`transition-opacity duration-200 ${
-                  betSlipPositions.length > 0
-                    ? 'opacity-100'
-                    : 'opacity-0 pointer-events-none'
-                }`}
-              >
-                Clear
-              </Button>
               <div className="flex items-center gap-2">
                 {!isParlayFeatureEnabled ? (
                   <TooltipProvider>
@@ -353,7 +353,11 @@ export const BetslipContent = ({
                           aria-disabled="true"
                         >
                           <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                            OTC/Parlays
+                            <Gavel
+                              className="w-4 h-4 opacity-70"
+                              style={{ transform: 'scaleX(-1)' }}
+                            />
+                            Auction Mode
                           </span>
                           <span className="flex items-center">
                             <Switch checked={false} disabled />
@@ -368,7 +372,11 @@ export const BetslipContent = ({
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                      OTC/Parlays
+                      <Gavel
+                        className="w-4 h-4 opacity-70"
+                        style={{ transform: 'scaleX(-1)' }}
+                      />
+                      Auction Mode
                     </span>
                     <span className="flex items-center">
                       <Switch
