@@ -119,8 +119,8 @@ const RATE_LIMIT_WINDOW_MS = 10_000;
 const RATE_LIMIT_MAX_MESSAGES = 100;
 
 export function attachAuctionWebSocketServer(server: HttpServer) {
-  const wss = new WebSocketServer({ server, path: '/ws/auction' });
-  console.log('[Auction-WS] WebSocket server attached at /ws/auction');
+  const wss = new WebSocketServer({ server, path: '/auction' });
+  console.log('[Auction-WS] WebSocket server attached at /auction');
 
   // Track which clients are subscribed to which auction channels
   const auctionSubscriptions = new Map<string, Set<WebSocket>>();
