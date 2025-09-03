@@ -19,10 +19,10 @@ args=[
 depends=[]
 highlight=true
 
-[deploy.SapienceResolver]
-artifact="PredictionMarketSapienceResolver"
+[deploy.FoilVerifier]
+artifact="FoilMarketVerifier"
 args=[
-  ["<%= settings.maxPredictionMarkets %>"]
+  { maxPredictionMarkets = "<%= settings.maxPredictionMarkets %>" }
 ]
 depends=["deploy.PredictionMarket"]
 highlight=true

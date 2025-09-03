@@ -46,14 +46,14 @@ function encodePredictedOutcomes(
 
 export function buildAuctionStartPayload(
   outcomes: PredictedOutcomeInputStub[],
-  resolverOverride?: string
-): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
-  const resolver: `0x${string}` = isHexAddress(resolverOverride)
-    ? resolverOverride
+  verifierOverride?: string
+): { verifier: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
+  const verifier: `0x${string}` = isHexAddress(verifierOverride)
+    ? verifierOverride
     : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
 
-  // Resolver expects a single bytes blob with abi.encode(PredictedOutcome[])
+  // Verifier expects a single bytes blob with abi.encode(PredictedOutcome[])
   const encoded = encodePredictedOutcomes(outcomes);
   const predictedOutcomes = [encoded];
-  return { resolver, predictedOutcomes };
+  return { verifier, predictedOutcomes };
 }

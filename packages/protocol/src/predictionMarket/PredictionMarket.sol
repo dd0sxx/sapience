@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IPredictionMarket.sol";
-import "./interfaces/IPredictionStructs.sol";
-import "./interfaces/IPredictionMarketResolver.sol";
-import "./interfaces/IPredictionEvents.sol";
+import "./interfaces/IPredictionMarketStructs.sol";
+import "./interfaces/IPredictionMarketVerifier.sol";
+import "./interfaces/IPredictionMarketEvents.sol";
 import "./utils/SignatureProcessor.sol";
 import "../market/interfaces/ISapience.sol";
 import "../market/interfaces/ISapienceStructs.sol";
@@ -31,33 +31,31 @@ contract PredictionMarket is
     // ============ Custom Errors ============
     error InvalidCollateralToken();
     error InvalidMinCollateral();
-    error MakerIsNotCaller();
+    error LongIsNotCaller();
     error CollateralBelowMinimum();
-    error MakerCollateralMustBeGreaterThanZero();
-    error TakerCollateralMustBeGreaterThanZero();
-    error InvalidTakerSignature();
-    error InvalidMarketsAccordingToResolver();
+    error LongCollateralMustBeGreaterThanZero();
+    error ShortCollateralMustBeGreaterThanZero();
+    error InvalidShortSignature();
+    error InvalidMarketsAccordingToVerifier();
     error PredictionNotFound();
-    error PredictionResolutionFailed();
-    error MakerAndTakerAreDifferent();
+    error OutcomeVerificationFailed();
+    error LongAndShortAreDifferent();
     error PredictionDoesNotExist();
     error TakerDeadlineExpired();
 
     // ============ State Variables ============
-    IPredictionStructs.Settings public config;
+    IPredictionMarketStructs.MarketConfig public config;
 
     // ============ Counters ============
     uint256 private _predictionIdCounter; // Single ID for both requests and predictions
-    uint256 private _nftTokenIdCounter; // Single counter for both maker and taker NFTs
+    uint256 private _nftTokenIdCounter; // Single counter for both long and short NFTs
 
     // ============ Mappings ============
-    mapping(uint256 => IPredictionStructs.PredictionData) private predictions;
+    mapping(uint256 => IPredictionMarketStructs.MatchedPositions) private predictions;
 
     mapping(uint256 => uint256) private nftToPredictionId; // nftTokenId => predictionId
 
-    // Auxiliary mappings to track all nft by maker and taker
-    mapping(address => EnumerableSet.UintSet) private nftByMakerAddress;
-    mapping(address => EnumerableSet.UintSet) private nftByTakerAddress;
+    // (no auxiliary owner mappings; use ERC721Enumerable)
 
     // ============ Constructor ============
 
@@ -70,7 +68,7 @@ contract PredictionMarket is
         if (_collateralToken == address(0)) revert InvalidCollateralToken();
         if (_minCollateral == 0) revert InvalidMinCollateral();
 
-        config = IPredictionStructs.Settings({
+        config = IPredictionMarketStructs.MarketConfig({
             collateralToken: _collateralToken,
             minCollateral: _minCollateral
         });
@@ -80,205 +78,203 @@ contract PredictionMarket is
     }
 
     function mint(
-        IPredictionStructs.MintPredictionRequestData
+        IPredictionMarketStructs.OpenPositionsRequest
             calldata mintPredictionRequestData
     )
         external
         nonReentrant
-        returns (uint256 makerNftTokenId, uint256 takerNftTokenId)
+        returns (uint256 longNftTokenId, uint256 shortNftTokenId)
     {
         // 1- Initial checks
-        if (mintPredictionRequestData.maker != msg.sender) revert MakerIsNotCaller();
-        if (mintPredictionRequestData.takerDeadline < block.timestamp) revert TakerDeadlineExpired();   
+        if (mintPredictionRequestData.long != msg.sender) revert LongIsNotCaller();
+        if (mintPredictionRequestData.shortDeadline < block.timestamp) revert TakerDeadlineExpired();   
 
-        if (mintPredictionRequestData.makerCollateral < config.minCollateral) revert CollateralBelowMinimum();
-        if (mintPredictionRequestData.makerCollateral == 0) revert MakerCollateralMustBeGreaterThanZero();
-        if (mintPredictionRequestData.takerCollateral == 0) revert TakerCollateralMustBeGreaterThanZero();
+        if (mintPredictionRequestData.collateralLong < config.minCollateral) revert CollateralBelowMinimum();
+        if (mintPredictionRequestData.collateralLong == 0) revert LongCollateralMustBeGreaterThanZero();
+        if (mintPredictionRequestData.collateralShort == 0) revert ShortCollateralMustBeGreaterThanZero();
 
-        // 2- Confirm the taker signature is valid for this prediction (hash of predicted outcomes, taker collateral and maker collateral, resolver and maker address)
+        // 2- Confirm the short signature is valid for this prediction (hash of predicted outcomes, short collateral and long collateral, verifier and long address)
         bytes32 messageHash = keccak256(
             abi.encode(
-                mintPredictionRequestData.encodedPredictedOutcomes,
-                mintPredictionRequestData.takerCollateral,
-                mintPredictionRequestData.makerCollateral,
-                mintPredictionRequestData.resolver,
-                mintPredictionRequestData.maker,
-                mintPredictionRequestData.takerDeadline
+                mintPredictionRequestData.encodedOutcomes,
+                mintPredictionRequestData.collateralShort,
+                mintPredictionRequestData.collateralLong,
+                mintPredictionRequestData.verifier,
+                mintPredictionRequestData.long,
+                mintPredictionRequestData.shortDeadline
             )
         );
 
         if (
             !_isApprovalValid(
                 messageHash,
-                mintPredictionRequestData.taker,
-                mintPredictionRequestData.takerSignature
+                mintPredictionRequestData.short,
+                mintPredictionRequestData.shortSignature
             )
         ) {
-            revert InvalidTakerSignature();
+            revert InvalidShortSignature();
         }
 
-        // 3- Ask resolver if markets are OK
-        (bool isValid, ) = IPredictionMarketResolver(
-            mintPredictionRequestData.resolver
+        // 3- Ask verifier if markets are OK
+        (bool isValid, ) = IPredictionMarketVerifier(
+            mintPredictionRequestData.verifier
         ).validatePredictionMarkets(
-                mintPredictionRequestData.encodedPredictedOutcomes
+                mintPredictionRequestData.encodedOutcomes
             );
 
-        if (!isValid) revert InvalidMarketsAccordingToResolver();
+        if (!isValid) revert InvalidMarketsAccordingToVerifier();
 
         // 4- Set the prediction data
         uint256 predictionId = _predictionIdCounter++;
 
-        makerNftTokenId = _nftTokenIdCounter++;
-        takerNftTokenId = _nftTokenIdCounter++;
-        predictions[predictionId] = IPredictionStructs.PredictionData({
-            encodedPredictedOutcomes: mintPredictionRequestData
-                .encodedPredictedOutcomes,
+        longNftTokenId = _nftTokenIdCounter++;
+        shortNftTokenId = _nftTokenIdCounter++;
+        predictions[predictionId] = IPredictionMarketStructs.MatchedPositions({
+            encodedOutcomes: mintPredictionRequestData
+                .encodedOutcomes,
             predictionId: predictionId,
-            resolver: mintPredictionRequestData.resolver,
-            maker: mintPredictionRequestData.maker,
-            taker: mintPredictionRequestData.taker,
-            makerNftTokenId: makerNftTokenId,
-            takerNftTokenId: takerNftTokenId,
-            makerCollateral: mintPredictionRequestData.makerCollateral,
-            takerCollateral: mintPredictionRequestData.takerCollateral,
-            settled: false,
-            makerWon: false
+            verifier: mintPredictionRequestData.verifier,
+            long: mintPredictionRequestData.long,
+            short: mintPredictionRequestData.short,
+            longNftTokenId: longNftTokenId,
+            shortNftTokenId: shortNftTokenId,
+            collateralLong: mintPredictionRequestData.collateralLong,
+            collateralShort: mintPredictionRequestData.collateralShort,
+            isSettled: false,
+            didLongWin: false
         });
 
         // 5- Collact collateral
         IERC20(config.collateralToken).safeTransferFrom(
-            mintPredictionRequestData.maker,
+            mintPredictionRequestData.long,
             address(this),
-            mintPredictionRequestData.makerCollateral
+            mintPredictionRequestData.collateralLong
         );
         IERC20(config.collateralToken).safeTransferFrom(
-            mintPredictionRequestData.taker,
+            mintPredictionRequestData.short,
             address(this),
-            mintPredictionRequestData.takerCollateral
+            mintPredictionRequestData.collateralShort
         );
 
         // 6- Mint NFTs and set prediction
-        _safeMint(mintPredictionRequestData.maker, makerNftTokenId);
-        _safeMint(mintPredictionRequestData.taker, takerNftTokenId);
+        _safeMint(mintPredictionRequestData.long, longNftTokenId);
+        _safeMint(mintPredictionRequestData.short, shortNftTokenId);
 
         // 7- Set NFT mappings
-        nftToPredictionId[makerNftTokenId] = predictionId;
-        nftToPredictionId[takerNftTokenId] = predictionId;
+        nftToPredictionId[longNftTokenId] = predictionId;
+        nftToPredictionId[shortNftTokenId] = predictionId;
 
-        // 8- Add to auxiliary mappings
-        nftByMakerAddress[mintPredictionRequestData.maker].add(makerNftTokenId);
-        nftByTakerAddress[mintPredictionRequestData.taker].add(takerNftTokenId);
+        // 8- Enumeration handled by ERC721Enumerable
 
         // 9- Create and store prediction data
         predictions[predictionId]
-            .encodedPredictedOutcomes = mintPredictionRequestData
-            .encodedPredictedOutcomes;
-        predictions[predictionId].resolver = mintPredictionRequestData.resolver;
-        predictions[predictionId].maker = mintPredictionRequestData.maker;
-        predictions[predictionId].taker = mintPredictionRequestData.taker;
-        predictions[predictionId].makerNftTokenId = makerNftTokenId;
-        predictions[predictionId].takerNftTokenId = takerNftTokenId;
-        predictions[predictionId].makerCollateral = mintPredictionRequestData
-            .makerCollateral;
-        predictions[predictionId].takerCollateral = mintPredictionRequestData
-            .takerCollateral;
-        predictions[predictionId].settled = false;
-        predictions[predictionId].makerWon = false;
+            .encodedOutcomes = mintPredictionRequestData
+            .encodedOutcomes;
+        predictions[predictionId].verifier = mintPredictionRequestData.verifier;
+        predictions[predictionId].long = mintPredictionRequestData.long;
+        predictions[predictionId].short = mintPredictionRequestData.short;
+        predictions[predictionId].longNftTokenId = longNftTokenId;
+        predictions[predictionId].shortNftTokenId = shortNftTokenId;
+        predictions[predictionId].collateralLong = mintPredictionRequestData
+            .collateralLong;
+        predictions[predictionId].collateralShort = mintPredictionRequestData
+            .collateralShort;
+        predictions[predictionId].isSettled = false;
+        predictions[predictionId].didLongWin = false;
 
-        emit PredictionMinted(
-            mintPredictionRequestData.maker,
-            mintPredictionRequestData.taker,
-            makerNftTokenId,
-            takerNftTokenId,
-            mintPredictionRequestData.makerCollateral,
-            mintPredictionRequestData.takerCollateral,
-            mintPredictionRequestData.makerCollateral +
-                mintPredictionRequestData.takerCollateral,
-            mintPredictionRequestData.refCode
+        emit PositionsOpened(
+            mintPredictionRequestData.long,
+            mintPredictionRequestData.short,
+            longNftTokenId,
+            shortNftTokenId,
+            mintPredictionRequestData.collateralLong,
+            mintPredictionRequestData.collateralShort,
+            mintPredictionRequestData.collateralLong +
+                mintPredictionRequestData.collateralShort,
+            mintPredictionRequestData.referralCode
         );
 
-        return (makerNftTokenId, takerNftTokenId);
+        return (longNftTokenId, shortNftTokenId);
     }
 
-    function burn(uint256 tokenId, bytes32 refCode) external nonReentrant {
+    function burn(uint256 tokenId, bytes32 referralCode) external nonReentrant {
         uint256 predictionId = nftToPredictionId[tokenId];
 
         // 1- Get prediction from Store
-        IPredictionStructs.PredictionData memory prediction = predictions[
+        IPredictionMarketStructs.MatchedPositions memory prediction = predictions[
             predictionId
         ];
 
         // 2- Initial checks
-        if (prediction.maker == address(0)) revert PredictionNotFound();
-        if (prediction.taker == address(0)) revert PredictionNotFound();
+        if (prediction.long == address(0)) revert PredictionNotFound();
+        if (prediction.short == address(0)) revert PredictionNotFound();
 
-        // 3- Ask resolver if markets are settled, and if prediction succeeded or not, it means maker won
-        (bool isValid, , bool makerWon) = IPredictionMarketResolver(
-            prediction.resolver
-        ).resolvePrediction(prediction.encodedPredictedOutcomes);
+        // 3- Ask verifier if all referenced markets have settled and verify predicted outcomes determine if long won
+        (bool isValid, , bool didLongWin) = IPredictionMarketVerifier(
+            prediction.verifier
+        ).resolvePrediction(prediction.encodedOutcomes);
 
-        if (!isValid) revert PredictionResolutionFailed();
+        if (!isValid) revert OutcomeVerificationFailed();
 
         // 4- Send collateral to winner
-        uint256 payout = prediction.makerCollateral +
-            prediction.takerCollateral;
-        address winner = makerWon ? prediction.maker : prediction.taker;
+        uint256 payout = prediction.collateralLong +
+            prediction.collateralShort;
+        address winner = didLongWin ? prediction.long : prediction.short;
         IERC20(config.collateralToken).safeTransfer(winner, payout);
 
         // 5- Set the prediction state (identify who won and set as closed)
-        prediction.settled = true;
-        prediction.makerWon = makerWon;
+        prediction.isSettled = true;
+        prediction.didLongWin = didLongWin;
 
         // 6- Burn NFTs
-        _burn(prediction.makerNftTokenId);
-        _burn(prediction.takerNftTokenId);
+        _burn(prediction.longNftTokenId);
+        _burn(prediction.shortNftTokenId);
 
-        emit PredictionBurned(
-            prediction.maker,
-            prediction.taker,
-            prediction.makerNftTokenId,
-            prediction.takerNftTokenId,
+        emit PositionsResolved(
+            prediction.long,
+            prediction.short,
+            prediction.longNftTokenId,
+            prediction.shortNftTokenId,
             payout,
-            makerWon,
-            refCode
+            didLongWin,
+            referralCode
         );
     }
 
     // ============ Prediction Consolidation (pre-close) ============
     function consolidatePrediction(
         uint256 tokenId,
-        bytes32 refCode
+        bytes32 referralCode
     ) external nonReentrant {
         uint256 predictionId = nftToPredictionId[tokenId];
 
         // 1- Get prediction from store
-        IPredictionStructs.PredictionData memory prediction = predictions[
+        IPredictionMarketStructs.MatchedPositions memory prediction = predictions[
             predictionId
         ];
 
         // 2- Initial checks
-        if (prediction.maker == address(0)) revert PredictionNotFound();
-        if (prediction.taker == address(0)) revert PredictionNotFound();
+        if (prediction.long == address(0)) revert PredictionNotFound();
+        if (prediction.short == address(0)) revert PredictionNotFound();
 
-        if (prediction.maker != prediction.taker) revert MakerAndTakerAreDifferent();
+        if (prediction.long != prediction.short) revert LongAndShortAreDifferent();
 
-        // 3- Set as settled and maker won and send the collateral to the maker
-        prediction.settled = true;
-        prediction.makerWon = true;
-        uint256 payout = prediction.makerCollateral +
-            prediction.takerCollateral;
-        IERC20(config.collateralToken).safeTransfer(prediction.maker, payout);
+        // 3- Set as settled and long won and send the collateral to the long
+        prediction.isSettled = true;
+        prediction.didLongWin = true;
+        uint256 payout = prediction.collateralLong +
+            prediction.collateralShort;
+        IERC20(config.collateralToken).safeTransfer(prediction.long, payout);
 
         // 4- Burn NFTs
-        _burn(prediction.makerNftTokenId);
-        _burn(prediction.takerNftTokenId);
+        _burn(prediction.longNftTokenId);
+        _burn(prediction.shortNftTokenId);
 
-        emit PredictionConsolidated(
-            prediction.makerNftTokenId,
-            prediction.takerNftTokenId,
+        emit PositionsClosed(
+            prediction.longNftTokenId,
+            prediction.shortNftTokenId,
             payout,
-            refCode
+            referralCode
         );
     }
 
@@ -287,7 +283,7 @@ contract PredictionMarket is
     function getConfig()
         external
         view
-        returns (IPredictionStructs.Settings memory)
+        returns (IPredictionMarketStructs.MarketConfig memory)
     {
         return config;
     }
@@ -297,7 +293,7 @@ contract PredictionMarket is
     )
         external
         view
-        returns (IPredictionStructs.PredictionData memory predictionData)
+        returns (IPredictionMarketStructs.MatchedPositions memory predictionData)
     {
         uint256 predictionId = nftToPredictionId[tokenId];
         if (predictionId == 0 || !_isPrediction(predictionId)) revert PredictionDoesNotExist();
@@ -305,45 +301,13 @@ contract PredictionMarket is
         predictionData = predictions[predictionId];
     }
 
-    /**
-     * @notice Get all NFT IDs where `account` is the maker or taker
-     * @dev Includes both unfilled and filled orders. Canceled orders are excluded (maker reset to address(0)).
-     * @param account Address to filter by
-     */
-    function getOwnedPredictions(
-        address account
-    ) external view returns (uint256[] memory nftTokenIds) {
-        // Get all nft by maker
-        uint256[] memory makerNftTokenIds = nftByMakerAddress[account].values();
-        uint256 makerNftTokenIdsLength = makerNftTokenIds.length;
-
-        // Get all nft by taker
-        uint256[] memory takerNftTokenIds = nftByTakerAddress[account].values();
-        uint256 takerNftTokenIdsLength = takerNftTokenIds.length;
-
-        uint256 totalCount = makerNftTokenIdsLength + takerNftTokenIdsLength;
-        nftTokenIds = new uint256[](totalCount);
-
-        for (uint256 i = 0; i < totalCount; i++) {
-            nftTokenIds[i] = i < makerNftTokenIdsLength
-                ? makerNftTokenIds[i]
-                : takerNftTokenIds[i - makerNftTokenIdsLength];
-        }
-    }
-
-    function getOwnedPredictionsCount(
-        address account
-    ) external view returns (uint256 count) {
-        return
-            nftByMakerAddress[account].length() +
-            nftByTakerAddress[account].length();
-    }
+    // Removed: use ERC-721 Enumerable interfaces off-chain
 
     // ============ Internal Functions ============
 
     function _isPrediction(uint256 id) internal view returns (bool) {
         return
-            predictions[id].maker != address(0) &&
-            predictions[id].taker != address(0);
+            predictions[id].long != address(0) &&
+            predictions[id].short != address(0);
     }
 }

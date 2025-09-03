@@ -2,9 +2,9 @@ export type HexString = `0x${string}`;
 
 export interface AuctionRequestPayload {
   wager: string; // wei string
-  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
-  resolver: string; // contract address for market validation
-  maker: string; // EOA address of the maker initiating the auction
+  predictedOutcomes: string[]; // Array of bytes strings that the verifier validates/understands
+  verifier: string; // contract address for market validation
+  long: string; // EOA address of the long initiating the auction
 }
 
 export interface BidQuote {
@@ -32,19 +32,19 @@ export interface BidFillCallData {
 }
 
 export interface MintParlayData {
-  taker: string; // EOA
-  takerWager: string; // wei string
-  takerSignature: string; // Taker's signature allowing this specific bid
+  short: string; // EOA
+  shortWager: string; // wei string
+  shortSignature: string; // Short's signature allowing this specific bid
 }
 
 export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
 
 export interface BidPayload {
   auctionId: string;
-  taker: string; // Taker's EOA address (0x...)
-  takerWager: string; // wei string
-  takerDeadline: number; // unix seconds
-  takerSignature: string; // Taker's signature authorizing this specific bid over the typed payload
+  short: string; // Short's EOA address (0x...)
+  shortWager: string; // wei string
+  shortDeadline: number; // unix seconds
+  shortSignature: string; // Short's signature authorizing this specific bid over the typed payload
 }
 
 export type ValidatedBid = BidPayload;

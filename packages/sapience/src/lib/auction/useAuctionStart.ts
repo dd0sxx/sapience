@@ -9,31 +9,31 @@ export interface PredictedOutcomeInput {
 }
 
 export interface AuctionParams {
-  wager: string; // wei string - maker's wager amount
-  resolver: string; // contract address for market validation
-  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
-  maker: `0x${string}`; // maker EOA address
+  wager: string; // wei string - long's wager amount
+  verifier: string; // contract address for market validation
+  predictedOutcomes: string[]; // Array of bytes strings that the verifier validates/understands
+  long: `0x${string}`; // long EOA address
 }
 
 export interface QuoteBid {
   auctionId: string;
-  taker: string;
-  takerWager: string; // wei
-  takerDeadline: number; // unix seconds
-  takerSignature: string; // Taker's bid signature
+  short: string;
+  shortWager: string; // wei
+  shortDeadline: number; // unix seconds
+  shortSignature: string; // Short's bid signature
 }
 
 // Struct shape expected by PredictionMarket.mint()
-export interface MintPredictionRequestData {
-  encodedPredictedOutcomes: `0x${string}`; // single bytes per contract
-  resolver: `0x${string}`;
-  makerCollateral: string; // wei
-  takerCollateral: string; // wei
-  maker: `0x${string}`;
-  taker: `0x${string}`;
-  takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
-  takerDeadline: string; // unix seconds (uint256 string)
-  refCode: `0x${string}`; // bytes32
+export interface OpenPositionsRequest {
+  encodedOutcomes: `0x${string}`; // single bytes per contract
+  verifier: `0x${string}`;
+  collateralLong: string; // wei
+  collateralShort: string; // wei
+  long: `0x${string}`;
+  short: `0x${string}`;
+  shortSignature: `0x${string}`; // short approval for this prediction (off-chain)
+  shortDeadline: string; // unix seconds (uint256 string)
+  referralCode: `0x${string}`; // bytes32
 }
 
 function toWsUrl(baseHttpUrl: string | undefined): string | null {
@@ -123,17 +123,20 @@ export function useAuctionStart() {
               try {
                 const auctionIdVal: string =
                   b.auctionId || latestAuctionIdRef.current || '';
-                const taker: string =
-                  b.taker || '0x0000000000000000000000000000000000000000';
-                const takerWager: string = b.takerWager || '0';
-                const takerDeadline: number = b.takerDeadline || 0;
+                const short: string =
+                  b.short ||
+                  b.taker ||
+                  '0x0000000000000000000000000000000000000000';
+                const shortWager: string = b.shortWager || b.takerWager || '0';
+                const shortDeadline: number =
+                  b.shortDeadline || b.takerDeadline || 0;
 
                 return {
                   auctionId: auctionIdVal,
-                  taker,
-                  takerWager,
-                  takerDeadline,
-                  takerSignature: b.takerSignature || '0x',
+                  short,
+                  shortWager,
+                  shortDeadline,
+                  shortSignature: b.shortSignature || b.takerSignature || '0x',
                 } as QuoteBid;
               } catch {
                 return null;
@@ -170,9 +173,9 @@ export function useAuctionStart() {
         type: 'auction.start',
         payload: {
           wager: params.wager,
-          resolver: params.resolver,
+          verifier: params.verifier,
           predictedOutcomes: params.predictedOutcomes,
-          maker: params.maker,
+          long: params.long,
         },
       };
 
@@ -254,28 +257,28 @@ export function useAuctionStart() {
 
   const buildMintRequestDataFromBid = useCallback(
     (args: {
-      maker: `0x${string}`;
+      long: `0x${string}`;
       selectedBid: QuoteBid;
-      refCode?: `0x${string}`;
-    }): MintPredictionRequestData | null => {
+      referralCode?: `0x${string}`;
+    }): OpenPositionsRequest | null => {
       const auction = lastAuctionRef.current;
       if (!auction) return null;
       try {
         const zeroBytes32 = `0x${'0'.repeat(64)}`;
-        const resolver = auction.resolver as `0x${string}`;
+        const verifier = auction.verifier as `0x${string}`;
         const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
-        if (!resolver || predictedOutcomes.length === 0) return null;
+        if (!verifier || predictedOutcomes.length === 0) return null;
 
         return {
-          encodedPredictedOutcomes: predictedOutcomes[0],
-          resolver,
-          makerCollateral: auction.wager,
-          takerCollateral: args.selectedBid.takerWager,
-          maker: args.maker,
-          taker: args.selectedBid.taker as `0x${string}`,
-          takerSignature: args.selectedBid.takerSignature as `0x${string}`,
-          takerDeadline: String(args.selectedBid.takerDeadline),
-          refCode: args.refCode || (zeroBytes32 as `0x${string}`),
+          encodedOutcomes: predictedOutcomes[0],
+          verifier,
+          collateralLong: auction.wager,
+          collateralShort: args.selectedBid.shortWager,
+          long: args.long,
+          short: args.selectedBid.short as `0x${string}`,
+          shortSignature: args.selectedBid.shortSignature as `0x${string}`,
+          shortDeadline: String(args.selectedBid.shortDeadline),
+          referralCode: args.referralCode || (zeroBytes32 as `0x${string}`),
         };
       } catch {
         return null;
@@ -296,37 +299,37 @@ export function useAuctionStart() {
 }
 
 // Helper to build PredictionMarket.mint() request from current auction + selected bid
-export function buildMintPredictionRequestData(args: {
-  maker: `0x${string}`;
+export function buildOpenPositionsRequest(args: {
+  long: `0x${string}`;
   selectedBid: QuoteBid;
-  // Optional overrides if caller wants to provide resolver/outcomes directly
-  resolver?: `0x${string}`;
+  // Optional overrides if caller wants to provide verifier/outcomes directly
+  verifier?: `0x${string}`;
   predictedOutcomes?: `0x${string}`[];
-  makerCollateral?: string; // wei
-  refCode?: `0x${string}`; // bytes32
-}): MintPredictionRequestData | null {
+  collateralLong?: string; // wei
+  referralCode?: `0x${string}`; // bytes32
+}): OpenPositionsRequest | null {
   try {
     const zeroBytes32 = `0x${'0'.repeat(64)}`;
-    const resolver = args.resolver || ('0x' as const);
+    const verifier = args.verifier || ('0x' as const);
     const predictedOutcomes = args.predictedOutcomes || [];
-    if (!resolver || predictedOutcomes.length === 0) return null;
+    if (!verifier || predictedOutcomes.length === 0) return null;
 
-    const makerCollateral = args.makerCollateral || '0';
-    if (!makerCollateral || BigInt(makerCollateral) === 0n) return null;
+    const collateralLong = args.collateralLong || '0';
+    if (!collateralLong || BigInt(collateralLong) === 0n) return null;
 
-    const taker = args.selectedBid.taker as `0x${string}`;
-    const takerCollateral = args.selectedBid.takerWager;
+    const short = args.selectedBid.short as `0x${string}`;
+    const collateralShort = args.selectedBid.shortWager;
 
-    const out: MintPredictionRequestData = {
-      encodedPredictedOutcomes: predictedOutcomes[0],
-      resolver,
-      makerCollateral,
-      takerCollateral,
-      maker: args.maker,
-      taker,
-      takerSignature: args.selectedBid.takerSignature as `0x${string}`,
-      takerDeadline: String(args.selectedBid.takerDeadline),
-      refCode: args.refCode || (zeroBytes32 as `0x${string}`),
+    const out: OpenPositionsRequest = {
+      encodedOutcomes: predictedOutcomes[0],
+      verifier,
+      collateralLong,
+      collateralShort,
+      long: args.long,
+      short,
+      shortSignature: args.selectedBid.shortSignature as `0x${string}`,
+      shortDeadline: String(args.selectedBid.shortDeadline),
+      referralCode: args.referralCode || (zeroBytes32 as `0x${string}`),
     };
 
     return out;

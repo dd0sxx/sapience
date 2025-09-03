@@ -27,36 +27,36 @@ export function basicValidateBid(
     };
   }
 
-  // Validate taker fields in payload
-  if (!bid.taker || typeof bid.taker !== 'string') {
-    return { ok: false, reason: 'invalid_taker' };
+  // Validate short fields in payload
+  if (!bid.short || typeof bid.short !== 'string') {
+    return { ok: false, reason: 'invalid_short' };
   }
-  if (!bid.takerWager) {
-    return { ok: false, reason: 'invalid_taker_wager' };
+  if (!bid.shortWager) {
+    return { ok: false, reason: 'invalid_short_wager' };
   }
 
   try {
-    const takerWagerBigInt = BigInt(bid.takerWager);
+    const shortWagerBigInt = BigInt(bid.shortWager);
     const wager = BigInt(auction.wager);
 
-    // Basic validation: taker wager should be positive and not exceed maker wager
-    if (takerWagerBigInt <= 0n) {
-      return { ok: false, reason: 'invalid_taker_wager' };
+    // Basic validation: short wager should be positive and not exceed long wager
+    if (shortWagerBigInt <= 0n) {
+      return { ok: false, reason: 'invalid_short_wager' };
     }
-    if (takerWagerBigInt > wager) {
-      return { ok: false, reason: 'taker_wager_too_high' };
+    if (shortWagerBigInt > wager) {
+      return { ok: false, reason: 'short_wager_too_high' };
     }
   } catch {
     return { ok: false, reason: 'invalid_wager_values' };
   }
 
-  // Validate taker signature payload and deadline (format + expiry)
+  // Validate short signature payload and deadline (format + expiry)
   const sigCheck = verifyTakerBid({
     auctionId: bid.auctionId,
-    taker: bid.taker,
-    takerWager: bid.takerWager,
-    takerDeadline: bid.takerDeadline,
-    takerSignature: bid.takerSignature,
+    short: bid.short,
+    shortWager: bid.shortWager,
+    shortDeadline: bid.shortDeadline,
+    shortSignature: bid.shortSignature,
   });
   if (!sigCheck.ok) {
     return { ok: false, reason: sigCheck.reason };
@@ -64,7 +64,7 @@ export function basicValidateBid(
 
   // Note: Collateral transfer now relies on standard ERC20 approvals, not permits.
   // Bots should ensure the taker has approved the Parlay contract prior to bid submission.
-  // TODO: verify resolver address and market validation
+  // TODO: verify verifier address and market validation
 
   return { ok: true };
 }

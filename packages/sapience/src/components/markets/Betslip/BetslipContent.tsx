@@ -3,6 +3,7 @@ import { Switch } from '@sapience/ui/components/ui/switch';
 
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { useRef, useState, useEffect, useMemo } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
 import {
@@ -155,7 +156,7 @@ export const BetslipContent = ({
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
 
-    const validBids = bids.filter((bid) => bid.takerDeadline * 1000 > nowMs);
+    const validBids = bids.filter((bid) => bid.shortDeadline * 1000 > nowMs);
 
     if (validBids.length === 0) return null;
 
@@ -167,18 +168,18 @@ export const BetslipContent = ({
       makerWager = 0n;
     }
 
-    // Find the bid with the highest payout (maker + taker)
+    // Find the bid with the highest payout (long + short)
     return validBids.reduce((best, current) => {
       const bestPayout = (() => {
         try {
-          return makerWager + BigInt(best.takerWager);
+          return makerWager + BigInt(best.shortWager);
         } catch {
           return 0n;
         }
       })();
       const currentPayout = (() => {
         try {
-          return makerWager + BigInt(current.takerWager);
+          return makerWager + BigInt(current.shortWager);
         } catch {
           return 0n;
         }
@@ -199,18 +200,18 @@ export const BetslipContent = ({
       makerWager = 0n;
     }
 
-    const active = bids.filter((b) => b.takerDeadline * 1000 > nowMs);
+    const active = bids.filter((b) => b.shortDeadline * 1000 > nowMs);
     return active.slice().sort((a, b) => {
       const aPayout = (() => {
         try {
-          return makerWager + BigInt(a.takerWager);
+          return makerWager + BigInt(a.shortWager);
         } catch {
           return 0n;
         }
       })();
       const bPayout = (() => {
         try {
-          return makerWager + BigInt(b.takerWager);
+          return makerWager + BigInt(b.shortWager);
         } catch {
           return 0n;
         }
@@ -290,19 +291,19 @@ export const BetslipContent = ({
       };
     });
 
-    const { resolver, predictedOutcomes } =
+    const { verifier, predictedOutcomes } =
       buildAuctionStartPayload(rawOutcomes);
 
     console.log('[OTC-BETSLIP] requestQuotes', {
       wager,
-      resolver,
+      verifier,
       outcomesCount: predictedOutcomes.length,
     });
     requestQuotes({
       wager,
-      resolver,
+      verifier,
       predictedOutcomes,
-      maker: makerAddress,
+      long: makerAddress,
     });
     setLastQuoteRequestMs(Date.now());
   }, [
@@ -588,7 +589,7 @@ export const BetslipContent = ({
                           disabled={
                             isParlaySubmitting ||
                             positionsWithMarketData.some((p) => p.isLoading) ||
-                            bestBid.takerDeadline * 1000 - nowMs <= 0
+                            bestBid.shortDeadline * 1000 - nowMs <= 0
                           }
                           type="submit"
                           size="lg"
@@ -615,14 +616,14 @@ export const BetslipContent = ({
                               const payout = (() => {
                                 try {
                                   return (
-                                    makerWager + BigInt(bid.takerWager)
+                                    makerWager + BigInt(bid.shortWager)
                                   ).toString();
                                 } catch {
                                   return '0';
                                 }
                               })();
                               const remainingMs =
-                                bid.takerDeadline * 1000 - nowMs;
+                                bid.shortDeadline * 1000 - nowMs;
                               const secs = Math.max(
                                 0,
                                 Math.ceil(remainingMs / 1000)
@@ -630,7 +631,7 @@ export const BetslipContent = ({
                               const suffix = secs === 1 ? 'second' : 'seconds';
                               return (
                                 <div
-                                  key={`${bid.takerWager}-${bid.takerDeadline}-${idx}`}
+                                  key={`${bid.shortWager}-${bid.shortDeadline}-${idx}`}
                                   className="flex items-center justify-between"
                                 >
                                   <span>
@@ -655,28 +656,37 @@ export const BetslipContent = ({
                           size="lg"
                           variant="default"
                         >
-                          Waiting for Bids...
+                          Waiting for Bids
                         </Button>
-                        {showNoBidsHint && (
-                          <div className="text-xs text-muted-foreground mt-2">
-                            <span>If no bids appear, you can place a </span>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="text-primary underline"
-                                  >
-                                    limit order
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Coming Soon</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        )}
+                        <AnimatePresence>
+                          {showNoBidsHint && (
+                            <motion.div
+                              key="no-bids-hint"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.3, ease: 'easeOut' }}
+                              className="text-xs text-muted-foreground mt-2"
+                            >
+                              <span>If no bids appear, you can place a </span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="text-primary underline"
+                                    >
+                                      limit order
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Coming Soon</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
                   </div>

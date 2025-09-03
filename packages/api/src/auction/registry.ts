@@ -39,10 +39,10 @@ export function addBid(
   // Validate passed-in fields and signature
   const verification = verifyTakerBid({
     auctionId,
-    taker: bid.taker,
-    takerWager: bid.takerWager,
-    takerDeadline: bid.takerDeadline,
-    takerSignature: bid.takerSignature,
+    short: bid.short,
+    shortWager: bid.shortWager,
+    shortDeadline: bid.shortDeadline,
+    shortSignature: bid.shortSignature,
   });
   if (!verification.ok) return undefined;
 

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../interfaces/IPredictionMarketResolver.sol";
+import "../interfaces/IPredictionMarketVerifier.sol";
 import "../../market/interfaces/ISapience.sol";
 import "../../market/interfaces/ISapienceStructs.sol";
 
 /**
- * @title PredictionNFT
- * @notice NFT contract for Prediction Market system
+ * @title FoilMarketVerifier
+ * @notice Verifier for Foil Prediction Market systems using Sapience markets
  */
-contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
+contract FoilMarketVerifier is IPredictionMarketVerifier {
     // ============ Custom Errors ============
     error MustHaveAtLeastOneMarket();
     error TooManyMarkets();
@@ -26,7 +26,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         config = _config;
     }
 
-    // ============ Sapience Market Resolver Structs ============
+    // ============ Sapience Market Verifier Structs ============
     struct MarketIdentifier {
         address marketGroup;
         uint256 marketId;
@@ -37,13 +37,13 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         bool prediction; // true for YES, false for NO
     }
 
-    // ============ Resolver Functions ============
+    // ============ Verifier Functions ============
     function validatePredictionMarkets(
-        bytes calldata encodedPredictedOutcomes
+        bytes calldata encodedOutcomes
     ) external view returns (bool isValid, Error error) {
         isValid = true;
         error = Error.NO_ERROR;
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedOutcomes);
 
         if (predictedOutcomes.length == 0) revert MustHaveAtLeastOneMarket();
         if (predictedOutcomes.length > config.maxPredictionMarkets) revert TooManyMarkets();
@@ -72,10 +72,10 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
     }
 
     function resolvePrediction(
-        bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isValid, Error error, bool makerWon) {
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
-        makerWon = true;
+        bytes calldata encodedOutcomes
+    ) external view returns (bool isValid, Error error, bool longWon) {
+        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedOutcomes);
+        longWon = true;
         isValid = true;
         error = Error.NO_ERROR;
 
@@ -91,12 +91,12 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
             }
 
             if (predictedOutcomes[i].prediction != marketOutcome) {
-                makerWon = false;
+                longWon = false;
                 break;
             }
         }
 
-        return (isValid, error, makerWon);
+        return (isValid, error, longWon);
     }
 
     // ============ Sapience Encoding and Decoding Functions ============
@@ -107,9 +107,9 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
     }
 
     function decodePredictionOutcomes(
-        bytes calldata encodedPredictedOutcomes
+        bytes calldata encodedOutcomes
     ) public pure returns (PredictedOutcome[] memory) {
-        return abi.decode(encodedPredictedOutcomes, (PredictedOutcome[]));
+        return abi.decode(encodedOutcomes, (PredictedOutcome[]));
     }
 
     // ============ Sapience Market Validation Functions ============

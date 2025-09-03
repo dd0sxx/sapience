@@ -11,12 +11,12 @@ import {
  * This matches the struct defined in the Solidity contract
  */
 export interface MintParlayRequestData {
-  taker: string;
-  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
-  resolver: string;
+  short: string;
+  predictedOutcomes: string[]; // Array of bytes strings that the verifier validates/understands
+  verifier: string;
   wager: string;
-  takerCollateral: string;
-  // Note: ERC-20 approvals are handled off-chain by maker and taker separately
+  shortCollateral: string;
+  // Note: ERC-20 approvals are handled off-chain by long and short separately
 }
 
 /**
@@ -24,19 +24,19 @@ export interface MintParlayRequestData {
  */
 export function createMintParlayRequestData(
   auction: AuctionRequestPayload,
-  taker: string,
-  takerCollateral: string
+  short: string,
+  shortCollateral: string
 ): MintParlayRequestData {
-  if (!auction.resolver) {
-    throw new Error('Auction must have a resolver address');
+  if (!auction.verifier) {
+    throw new Error('Auction must have a verifier address');
   }
 
   return {
-    taker: taker,
+    short: short,
     predictedOutcomes: auction.predictedOutcomes,
-    resolver: auction.resolver,
+    verifier: auction.verifier,
     wager: auction.wager,
-    takerCollateral: takerCollateral,
+    shortCollateral: shortCollateral,
   };
 }
 
@@ -53,19 +53,19 @@ export function validateAuctionForMint(auction: AuctionRequestPayload): {
   if (!auction.predictedOutcomes || auction.predictedOutcomes.length === 0) {
     return { valid: false, error: 'No predicted outcomes' };
   }
-  if (!auction.resolver) {
-    return { valid: false, error: 'Missing resolver address' };
+  if (!auction.verifier) {
+    return { valid: false, error: 'Missing verifier address' };
   }
-  if (!auction.maker) {
-    return { valid: false, error: 'Missing maker address' };
+  if (!auction.long) {
+    return { valid: false, error: 'Missing long address' };
   }
 
-  // Basic maker address validation (0x-prefixed 40-hex)
+  // Basic long address validation (0x-prefixed 40-hex)
   if (
-    typeof auction.maker !== 'string' ||
-    !/^0x[a-fA-F0-9]{40}$/.test(auction.maker)
+    typeof auction.long !== 'string' ||
+    !/^0x[a-fA-F0-9]{40}$/.test(auction.long)
   ) {
-    return { valid: false, error: 'Invalid maker address' };
+    return { valid: false, error: 'Invalid long address' };
   }
 
   // Validate predicted outcomes are non-empty bytes strings
@@ -128,7 +128,7 @@ export function createValidationError(
  * This is a simplified implementation - in production you'd want proper signature recovery
  */
 export function extractTakerFromSignature(): string | null {
-  // Deprecated: taker is not derivable from a signature alone. Use verifyTakerBid instead.
+  // Deprecated: short is not derivable from a signature alone. Use verifyShortBid instead.
   return null;
 }
 
@@ -138,7 +138,7 @@ export function extractTakerFromSignature(): string | null {
  * This is a simplified implementation - in production you'd want proper EIP-712 verification
  */
 export function extractTakerWagerFromSignature(): string | null {
-  // Deprecated: wager is not derivable from a signature alone. Use verifyTakerBid instead.
+  // Deprecated: wager is not derivable from a signature alone. Use verifyShortBid instead.
   return null;
 }
 
@@ -148,36 +148,36 @@ export function extractTakerWagerFromSignature(): string | null {
  */
 export function verifyTakerBid(params: {
   auctionId: string;
-  taker: string;
-  takerWager: string;
-  takerDeadline: number;
-  takerSignature: string;
+  short: string;
+  shortWager: string;
+  shortDeadline: number;
+  shortSignature: string;
 }): { ok: boolean; reason?: string } {
   try {
-    const { auctionId, taker, takerWager, takerDeadline, takerSignature } =
+    const { auctionId, short, shortWager, shortDeadline, shortSignature } =
       params;
     if (!auctionId || typeof auctionId !== 'string') {
       return { ok: false, reason: 'invalid_auction_id' };
     }
-    if (typeof taker !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(taker)) {
-      return { ok: false, reason: 'invalid_taker' };
+    if (typeof short !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(short)) {
+      return { ok: false, reason: 'invalid_short' };
     }
-    if (!takerWager || BigInt(takerWager) <= 0n) {
-      return { ok: false, reason: 'invalid_taker_wager' };
+    if (!shortWager || BigInt(shortWager) <= 0n) {
+      return { ok: false, reason: 'invalid_short_wager' };
     }
     if (
-      typeof takerDeadline !== 'number' ||
-      !Number.isFinite(takerDeadline) ||
-      takerDeadline <= Math.floor(Date.now() / 1000)
+      typeof shortDeadline !== 'number' ||
+      !Number.isFinite(shortDeadline) ||
+      shortDeadline <= Math.floor(Date.now() / 1000)
     ) {
       return { ok: false, reason: 'quote_expired' };
     }
     if (
-      typeof takerSignature !== 'string' ||
-      !takerSignature.startsWith('0x') ||
-      takerSignature.length < 10
+      typeof shortSignature !== 'string' ||
+      !shortSignature.startsWith('0x') ||
+      shortSignature.length < 10
     ) {
-      return { ok: false, reason: 'invalid_taker_bid_signature_format' };
+      return { ok: false, reason: 'invalid_short_bid_signature_format' };
     }
 
     // TODO: Implement real signature verification (EIP-712) against the exact typed payload
@@ -202,8 +202,7 @@ export async function verifyTakerBidStrict(params: {
     if (!auction.predictedOutcomes?.length)
       return { ok: false, reason: 'invalid_auction_outcomes' };
 
-    const encodedPredictedOutcomes = auction
-      .predictedOutcomes[0] as `0x${string}`;
+    const encodedOutcomes = auction.predictedOutcomes[0] as `0x${string}`;
 
     // Hash the inner message per contract
     const inner = encodeAbiParameters(
@@ -216,12 +215,12 @@ export async function verifyTakerBidStrict(params: {
         { type: 'uint256' },
       ],
       [
-        encodedPredictedOutcomes,
-        BigInt(bid.takerWager),
+        encodedOutcomes,
+        BigInt(bid.shortWager),
         BigInt(auction.wager),
-        auction.resolver as `0x${string}`,
-        auction.maker as `0x${string}`,
-        BigInt(bid.takerDeadline),
+        auction.verifier as `0x${string}`,
+        auction.long as `0x${string}`,
+        BigInt(bid.shortDeadline),
       ]
     );
 
@@ -244,16 +243,16 @@ export async function verifyTakerBidStrict(params: {
 
     const message = {
       messageHash,
-      owner: getAddress(bid.taker),
+      owner: getAddress(bid.short),
     } as const;
 
     const ok = await verifyTypedData({
-      address: getAddress(bid.taker),
+      address: getAddress(bid.short),
       domain,
       primaryType: 'Approve',
       types,
       message,
-      signature: bid.takerSignature as `0x${string}`,
+      signature: bid.shortSignature as `0x${string}`,
     });
 
     return ok ? { ok: true } : { ok: false, reason: 'invalid_signature' };

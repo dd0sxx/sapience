@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../../src/predictionMarket/interfaces/IPredictionMarketResolver.sol";
-import "../../src/predictionMarket/interfaces/IPredictionStructs.sol";
+import "../../src/predictionMarket/interfaces/IPredictionMarketVerifier.sol";
+import "../../src/predictionMarket/interfaces/IPredictionMarketStructs.sol";
 
-contract MockResolver is IPredictionMarketResolver {
+contract MockVerifier is IPredictionMarketVerifier {
     bool public shouldValidate = true;
-    bool public makerWon = true;
+    bool public longWon = true;
 
     function setShouldValidate(bool _shouldValidate) external {
         shouldValidate = _shouldValidate;
     }
 
-    function setMakerWon(bool _makerWon) external {
-        makerWon = _makerWon;
+    function setLongWon(bool _longWon) external {
+        longWon = _longWon;
     }
 
     function validatePredictionMarkets(
@@ -26,6 +26,6 @@ contract MockResolver is IPredictionMarketResolver {
         bytes calldata
     ) external view returns (bool, Error, bool) {
         // Mock implementation - does nothing
-        return (shouldValidate, Error.NO_ERROR, makerWon);
+        return (shouldValidate, Error.NO_ERROR, longWon);
     }
 }

@@ -713,11 +713,11 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     // If OTC/Parlay flow is enabled, and we have a bid, build the mint request for PredictionMarket
     try {
       const nowSec = Math.floor(Date.now() / 1000);
-      const validBids = bids.filter((b) => b.takerDeadline > nowSec);
-      // Pick highest takerWager
+      const validBids = bids.filter((b) => b.shortDeadline > nowSec);
+      // Pick highest shortWager
       const best = validBids.reduce((best, cur) => {
         try {
-          return BigInt(cur.takerWager) > BigInt(best.takerWager) ? cur : best;
+          return BigInt(cur.shortWager) > BigInt(best.shortWager) ? cur : best;
         } catch {
           return best;
         }
@@ -725,13 +725,13 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
 
       if (best && address && buildMintRequestDataFromBid) {
         const mintReq = buildMintRequestDataFromBid({
-          maker: address,
+          long: address,
           selectedBid: best,
-          // Optional refCode left empty (0x00..00)
+          // Optional referralCode left empty (0x00..00)
         });
         // For now, just log; wiring actual write depends on contract address/ABI exposure
         if (mintReq && process.env.NODE_ENV !== 'production') {
-          console.log('[OTC] Prepared MintPredictionRequestData', mintReq);
+          console.log('[OTC] Prepared OpenPositionsRequest', mintReq);
         }
       }
     } catch {

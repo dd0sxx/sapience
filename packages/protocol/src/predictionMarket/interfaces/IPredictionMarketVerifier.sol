@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./IPredictionStructs.sol";
+import "./IPredictionMarketStructs.sol";
 
 /**
- * @title IPredictionMarketResolver
+ * @title IPredictionMarketVerifier
  */
-interface IPredictionMarketResolver {
+interface IPredictionMarketVerifier {
     enum Error {
         NO_ERROR,
         INVALID_MARKET_GROUP,
@@ -16,10 +16,12 @@ interface IPredictionMarketResolver {
     }
 
     function validatePredictionMarkets(
-        bytes calldata encodedPredictedOutcomes
+        bytes calldata encodedOutcomes
     ) external view returns (bool isValid, Error error);
 
     function resolvePrediction(
-        bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isValid, Error error, bool makerWon);
+        bytes calldata encodedOutcomes
+    ) external view returns (bool isValid, Error error, bool longWon);
 }
+
+
