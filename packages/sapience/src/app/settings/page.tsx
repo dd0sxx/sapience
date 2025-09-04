@@ -8,9 +8,10 @@ import { Label } from '@sapience/ui/components/ui/label';
 import { Input } from '@sapience/ui/components/ui/input';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Monitor } from 'lucide-react';
+import { Moon, Sun, Monitor, Key } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
+import { usePrivy } from '@privy-io/react-auth';
 import { useChat } from '~/lib/context/ChatContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import LottieLoader from '~/components/shared/LottieLoader';
@@ -129,6 +130,13 @@ const SettingsPage = () => {
   const [quoterInput, setQuoterInput] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [rpcInput, setRpcInput] = useState('');
+  const { ready, authenticated, user, exportWallet } = usePrivy();
+  const hasEmbeddedWallet = !!user?.linkedAccounts?.find(
+    (account) =>
+      account.type === 'wallet' &&
+      account.walletClientType === 'privy' &&
+      account.chainType === 'ethereum'
+  );
 
   // Validation hints handled within SettingField to avoid parent re-renders breaking focus
   const [hydrated, setHydrated] = useState(false);
@@ -180,7 +188,7 @@ const SettingsPage = () => {
       </Card>
     </div>
   ) : (
-    <div className="container mx-auto px-4 max-w-3xl pt-32">
+    <div className="container mx-auto px-4 max-w-3xl py-32">
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-12">
         Settings
       </h1>
@@ -322,6 +330,22 @@ const SettingsPage = () => {
                 to send and receive signed messages
               </p>
             </div>
+
+            {ready && hasEmbeddedWallet ? (
+              <div className="grid gap-2">
+                <Label htmlFor="export-wallet">Back Up Account</Label>
+                <div id="export-wallet">
+                  <Button
+                    onClick={exportWallet}
+                    disabled={!(ready && authenticated)}
+                    size="sm"
+                  >
+                    <Key className="h-4 w-4" />
+                    Export Private Key
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>
