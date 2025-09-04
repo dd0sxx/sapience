@@ -28,6 +28,7 @@ interface TraderPositionsTableProps {
   parentChainId?: number;
   parentMarketId?: number;
   showHeader?: boolean;
+  onRefresh?: () => void;
 }
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
@@ -154,6 +155,7 @@ export default function TraderPositionsTable({
   parentChainId,
   parentMarketId,
   showHeader = true,
+  onRefresh,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -350,6 +352,10 @@ export default function TraderPositionsTable({
                                     console.log(
                                       `Close action for position ${position.positionId} sent.`
                                     );
+                                    // Trigger data refresh if callback is provided
+                                    if (onRefresh) {
+                                      onRefresh();
+                                    }
                                   }}
                                 />
                               )

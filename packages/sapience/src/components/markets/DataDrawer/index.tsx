@@ -111,6 +111,7 @@ const MarketDataTables = () => {
     data: allPositions = [],
     isLoading: isLoadingPositions,
     error: positionsError,
+    refetch: refetchPositions,
   } = usePositions({
     address: targetAddress,
     marketAddress: marketData?.marketGroup?.address || undefined,
@@ -258,6 +259,7 @@ const MarketDataTables = () => {
           parentChainId={chainId || undefined}
           parentMarketId={numericMarketId || undefined}
           showHeader={false}
+          onRefresh={() => refetchPositions()}
         />
       );
     }

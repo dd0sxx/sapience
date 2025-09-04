@@ -126,6 +126,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             parentChainId={chainId}
             parentMarketId={marketId}
             showHeader={false}
+            onRefresh={() => refetchPositions()}
           />
         </TabsContent>
 

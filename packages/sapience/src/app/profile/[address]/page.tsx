@@ -27,7 +27,7 @@ export default function PortfolioPage() {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
 
-  const { data: positionsData } = usePositions({ address });
+  const { data: positionsData, refetch: refetchPositions } = usePositions({ address });
   const traderPositions = (positionsData || []).filter((p) => !p.isLP);
   const lpPositions = (positionsData || []).filter((p) => p.isLP);
 
@@ -101,6 +101,7 @@ export default function PortfolioPage() {
           <TraderPositionsTable
             positions={traderPositions}
             showHeader={false}
+            onRefresh={() => refetchPositions()}
           />
         </TabsContent>
 
