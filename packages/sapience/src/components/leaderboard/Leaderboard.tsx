@@ -53,7 +53,7 @@ const RankCell = ({ row }: { row: { index: number } }) => (
 );
 
 const LoadingIndicator = () => (
-  <div className="flex justify-center items-center min-h-[100vh] w-full">
+  <div className="flex justify-center items-center min-h-[200px] w-full">
     <LottieLoader width={32} height={32} />
   </div>
 );

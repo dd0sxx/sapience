@@ -89,8 +89,8 @@ export default function PortfolioPage() {
           <TabsTrigger className="w-full" value="lp">
             Prediction Market Liquidity
           </TabsTrigger>
-          <TabsTrigger className="w-full" value="parlays">
-            OTC/Parlays
+          <TabsTrigger className="w-full" value="auction">
+            Auction Wagers/Parlays
           </TabsTrigger>
           <TabsTrigger className="w-full" value="forecasts">
             Forecasts
@@ -108,7 +108,7 @@ export default function PortfolioPage() {
           <LpPositionsTable positions={lpPositions} showHeader={false} />
         </TabsContent>
 
-        <TabsContent value="parlays">
+        <TabsContent value="auction">
           <UserParlaysTable account={address} showHeaderText={false} />
         </TabsContent>
 
