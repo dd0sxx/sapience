@@ -16,7 +16,7 @@ import {
 } from '@tanstack/react-table';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { cn } from '@sapience/ui/lib/utils';
 import {
@@ -59,12 +59,40 @@ const LoadingIndicator = () => (
 );
 
 const Leaderboard = () => {
+  const [tabValue, setTabValue] = useState<'pnl' | 'brier'>('pnl');
+
+  useEffect(() => {
+    const setFromHash = () => {
+      const hash = window.location.hash;
+      if (hash === '#accuracy') {
+        setTabValue('brier');
+      } else if (hash === '#profit') {
+        setTabValue('pnl');
+      } else {
+        setTabValue('pnl');
+      }
+    };
+    setFromHash();
+    const onHashChange = () => setFromHash();
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const handleTabChange = (value: string) => {
+    setTabValue(value as 'pnl' | 'brier');
+    const newHash = value === 'brier' ? '#accuracy' : '#profit';
+    if (window.location.hash !== newHash) {
+      // Update URL hash without triggering default anchor scrolling
+      window.history.replaceState(null, '', newHash);
+    }
+  };
+
   return (
     <div className="container max-w-[540px] mx-auto py-32">
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-5">
         Leaderboard
       </h1>
-      <Tabs defaultValue="pnl" className="w-full">
+      <Tabs value={tabValue} onValueChange={handleTabChange} className="w-full">
         <div className="mb-6">
           <TabsList>
             <TabsTrigger value="pnl">Profit</TabsTrigger>
