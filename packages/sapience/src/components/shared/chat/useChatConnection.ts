@@ -35,7 +35,7 @@ export function useChatConnection(isOpen: boolean) {
           typeof window !== 'undefined'
             ? window.localStorage.getItem('chatToken')
             : null;
-        if (!force && storedRaw) {
+        if (storedRaw) {
           try {
             const stored = JSON.parse(storedRaw) as {
               token: string;
@@ -53,62 +53,12 @@ export function useChatConnection(isOpen: boolean) {
             /* noop */
           }
         }
-
-        const base =
-          (typeof window !== 'undefined' &&
-            window.localStorage.getItem('sapience.settings.chatBaseUrl')) ||
-          (process.env.NEXT_PUBLIC_FOIL_API_URL as string);
-        // Build chat auth endpoints from chat base path
-        const authBase = (() => {
-          try {
-            const u = new URL(base);
-            // If base already includes a path (e.g., https://api.sapience.xyz/chat), append /auth under that path
-            const path =
-              u.pathname && u.pathname !== '/' ? u.pathname : '/chat';
-            return `${u.origin}${path}/auth`;
-          } catch {
-            // If base is just an origin, default to /chat/auth
-            try {
-              const u2 = new URL(`${base}`);
-              const path =
-                u2.pathname && u2.pathname !== '/' ? u2.pathname : '/chat';
-              return `${u2.origin}${path}/auth`;
-            } catch {
-              return `${base}/chat/auth`;
-            }
-          }
-        })();
-        const resNonce = await fetch(`${authBase}/nonce`);
-        const { message } = await resNonce.json();
-        const wallet = connectedWallet;
-        if (!wallet) return null;
-        const signature = await wallet.sign(message);
-        const resVerify = await fetch(`${authBase}/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address: userAddress,
-            signature,
-            nonce: (message.match(/Nonce: (.+)/)?.[1] || '').trim(),
-          }),
-        });
-        if (!resVerify.ok) return null;
-        const { token, expiresAt } = await resVerify.json();
-        tokenRef.current = token;
-        try {
-          window.localStorage.setItem(
-            'chatToken',
-            JSON.stringify({ token, expiresAt, address: userAddress })
-          );
-        } catch {
-          /* noop */
-        }
-        return token;
+        return null;
       } catch {
         return null;
       }
     },
-    [connectedWallet, userAddress]
+    [userAddress]
   );
 
   const connectSocket = useCallback(
@@ -117,9 +67,53 @@ export function useChatConnection(isOpen: boolean) {
       socketRef.current = ws;
       socketTokenRef.current = token;
 
-      const onMessage = (event: MessageEvent) => {
+      const onMessage = async (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
+          // Handle websocket auth handshake
+          if (data?.type === 'auth.nonce') {
+            try {
+              const wallet = connectedWallet;
+              if (!wallet || !userAddress) return;
+              const signature = await wallet.sign(data.message);
+              ws.send(
+                JSON.stringify({
+                  type: 'auth.verify',
+                  address: userAddress,
+                  signature,
+                  nonce: data.nonce,
+                })
+              );
+              return;
+            } catch {
+              return;
+            }
+          }
+          if (data?.type === 'auth.verified' && typeof data.token === 'string') {
+            tokenRef.current = data.token;
+            socketTokenRef.current = data.token;
+            try {
+              window.localStorage.setItem(
+                'chatToken',
+                JSON.stringify({ token: data.token, expiresAt: data.expiresAt, address: userAddress })
+              );
+            } catch {
+              /* noop */
+            }
+            // Flush any queued messages now that we're authed
+            if (outgoingQueueRef.current.length > 0) {
+              const toSend = [...outgoingQueueRef.current];
+              outgoingQueueRef.current = [];
+              toSend.forEach(({ text, clientId }) => {
+                try {
+                  ws.send(JSON.stringify({ text, clientId }));
+                } catch {
+                  /* noop */
+                }
+              });
+            }
+            return;
+          }
           if (data?.type === 'history' && Array.isArray(data.messages)) {
             const history = data.messages as Array<{
               text: string;
@@ -280,6 +274,19 @@ export function useChatConnection(isOpen: boolean) {
             ws.removeEventListener('close', onClose);
           };
           reconnectAttemptsRef.current = 0;
+          if (!socketTokenRef.current && connectedWallet && userAddress) {
+            try {
+              // Try to reuse a stored token over WS without reconnect
+              const stored = tokenRef.current;
+              if (stored) {
+                ws.send(JSON.stringify({ type: 'auth.useToken', token: stored }));
+              } else {
+                ws.send(JSON.stringify({ type: 'auth.nonce' }));
+              }
+            } catch {
+              /* noop */
+            }
+          }
           if (socketTokenRef.current && outgoingQueueRef.current.length > 0) {
             try {
               const toSend = [...outgoingQueueRef.current];

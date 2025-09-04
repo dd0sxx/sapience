@@ -11,7 +11,6 @@ import { router as cryptoPricesRoutes } from './crypto-prices';
 import { router as refreshCacheRoutes } from './refreshCache';
 import { router as quoterRoutes } from './quoter';
 import { router as createMarketRoutes } from './createMarket';
-import chatAuthRoutes from './chat-auth';
 import { Router } from 'express';
 
 const router = Router();
@@ -30,6 +29,6 @@ router.use('/cache', refreshCacheRoutes);
 router.use('/quoter', quoterRoutes);
 router.use('/create-market-group', createMarketRoutes);
 
-router.use('/chat/auth', chatAuthRoutes);
+// Chat auth REST endpoints removed; chat auth is handled over WebSocket
 
 export { router };

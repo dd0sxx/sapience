@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket, RawData } from 'ws';
 import http from 'http';
 import type { Socket } from 'net';
-import { validateToken } from './chatAuth';
+import { validateToken, createChallenge, verifyAndCreateToken } from './chatAuth';
 
 export type StoredMessage = {
   text: string;
@@ -32,22 +32,107 @@ export function createChatWebSocketServer(server: http.Server) {
 
   wss.on(
     'connection',
-    (ws: WebSocket & { userAddress?: string; _ip?: string }) => {
+    (ws: WebSocket & { userAddress?: string; _ip?: string; _host?: string }, req: http.IncomingMessage) => {
+      try {
+        ws._host =
+          (req.headers['x-forwarded-host'] as string) ||
+          (req.headers.host as string) ||
+          'localhost';
+      } catch {
+        ws._host = 'localhost';
+      }
       try {
         ws.send(JSON.stringify({ type: 'history', messages }));
       } catch {
         // no-op
       }
 
-      ws.on('message', (raw: RawData) => {
+      ws.on('message', async (raw: RawData) => {
         let clientId: string | undefined;
         try {
           const data = JSON.parse(String(raw));
+          const type = typeof data.type === 'string' ? data.type : undefined;
+          clientId = typeof data.clientId === 'string' ? data.clientId : undefined;
+
+          // Handle auth flows over WebSocket
+          if (type === 'auth.nonce') {
+            const { nonce, message, expiresAt } = createChallenge(ws._host || 'localhost');
+            try {
+              ws.send(
+                JSON.stringify({ type: 'auth.nonce', nonce, message, expiresAt, clientId })
+              );
+            } catch {
+              // no-op
+            }
+            return;
+          }
+
+          if (type === 'auth.verify') {
+            const address = typeof data.address === 'string' ? data.address : '';
+            const signature = typeof data.signature === 'string' ? data.signature : '';
+            const nonce = typeof data.nonce === 'string' ? data.nonce : '';
+            const result = await verifyAndCreateToken({ address, signature, nonce });
+            if (!result) {
+              try {
+                ws.send(
+                  JSON.stringify({ type: 'error', text: 'invalid_signature', clientId })
+                );
+              } catch {
+                // no-op
+              }
+              return;
+            }
+            ws.userAddress = address.toLowerCase();
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'auth.verified',
+                  address: ws.userAddress,
+                  token: result.token,
+                  expiresAt: result.expiresAt,
+                  clientId,
+                })
+              );
+            } catch {
+              // no-op
+            }
+            return;
+          }
+
+          if (type === 'auth.useToken') {
+            const token = typeof data.token === 'string' ? data.token : undefined;
+            const sess = validateToken(token);
+            if (!sess) {
+              try {
+                ws.send(
+                  JSON.stringify({ type: 'error', text: 'invalid_token', clientId })
+                );
+              } catch {
+                // no-op
+              }
+              return;
+            }
+            ws.userAddress = sess.address;
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'auth.verified',
+                  address: ws.userAddress,
+                  token,
+                  expiresAt: sess.expiresAt,
+                  clientId,
+                })
+              );
+            } catch {
+              // no-op
+            }
+            return;
+          }
+
+          // Normal chat message flow
           const text = typeof data.text === 'string' ? data.text : '';
-          clientId =
-            typeof data.clientId === 'string' ? data.clientId : undefined;
-          // Require authenticated address for posting
           const address = ws.userAddress || undefined;
+          // Require authenticated address for posting
           if (!address) {
             try {
               ws.send(
@@ -168,7 +253,7 @@ export function createChatWebSocketServer(server: http.Server) {
             request,
             socket,
             head,
-            (ws: WebSocket & { userAddress?: string; _ip?: string }) => {
+            (ws: WebSocket & { userAddress?: string; _ip?: string; _host?: string }) => {
               ws._ip = ip;
               ipToConnectionCount.set(
                 ip,
