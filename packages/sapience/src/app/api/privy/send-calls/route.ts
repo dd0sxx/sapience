@@ -34,18 +34,25 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify caller's Privy access token from cookie "privy-token"
-    const cookieHeader = request.headers.get('cookie') || '';
-    const rawCookie = cookieHeader
-      .split(';')
-      .map((v) => v.trim())
-      .find((v) => v.startsWith('privy-token='));
-    const token = rawCookie
-      ? decodeURIComponent(rawCookie.split('=')[1] || '')
-      : '';
+    // Verify caller's Privy access token (prefer Authorization header per Privy docs; fallback to privy-token cookie)
+    const authHeader = request.headers.get('authorization') || '';
+    let token = '';
+    if (authHeader.toLowerCase().startsWith('bearer ')) {
+      token = authHeader.slice('bearer '.length).trim();
+    }
+    if (!token) {
+      const cookieHeader = request.headers.get('cookie') || '';
+      const rawCookie = cookieHeader
+        .split(';')
+        .map((v) => v.trim())
+        .find((v) => v.startsWith('privy-token='));
+      token = rawCookie
+        ? decodeURIComponent(rawCookie.split('=')[1] || '')
+        : '';
+    }
     if (!token) {
       return NextResponse.json(
-        { error: 'Unauthorized: missing privy-token cookie' },
+        { error: 'Unauthorized: missing Privy access token' },
         { status: 401 }
       );
     }
