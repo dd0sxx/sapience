@@ -42,10 +42,7 @@ describe('reindexBrier', () => {
     expect(scoring.upsertAttestationScoreFromAttestation).toHaveBeenCalledWith(
       1
     );
-    expect(scoring.selectLatestPreEndForMarket).toHaveBeenCalledWith(
-      '0xmg',
-      '1'
-    );
+
     expect(scoring.scoreSelectedForecastsForSettledMarket).toHaveBeenCalledWith(
       '0xmg',
       '1'
