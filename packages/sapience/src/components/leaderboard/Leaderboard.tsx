@@ -271,7 +271,7 @@ const BrierLeaderboard = () => {
                 <TooltipTrigger>
                   <Info className="w-3 h-3 opacity-80" />
                 </TooltipTrigger>
-                <TooltipContent>Smaller is better</TooltipContent>
+                <TooltipContent>Lower is better</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>

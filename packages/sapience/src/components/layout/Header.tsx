@@ -118,24 +118,6 @@ const NavLinks = ({
             Prediction Markets
           </Button>
         </Link>
-        <Link href="/vaults" passHref className="flex w-fit">
-          <Button
-            variant="ghost"
-            className={`${linkClass} ${isActive('/vaults', pathname) ? activeClass : ''}`}
-            onClick={handleLinkClick}
-          >
-            Vaults
-          </Button>
-        </Link>
-        <Link href="/leaderboard" passHref className="flex w-fit">
-          <Button
-            variant="ghost"
-            className={`${linkClass} ${isActive('/leaderboard', pathname) ? activeClass : ''}`}
-            onClick={handleLinkClick}
-          >
-            Leaderboard
-          </Button>
-        </Link>
         <Link href="/forecast" passHref className="flex w-fit">
           <Button
             variant="ghost"
@@ -145,6 +127,15 @@ const NavLinks = ({
             Forecasting
           </Button>
         </Link>
+        <Link href="/vaults" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/vaults', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Vaults
+          </Button>
+        </Link>
         <Link href="/bots" passHref className="flex w-fit">
           <Button
             variant="ghost"
@@ -152,6 +143,15 @@ const NavLinks = ({
             onClick={handleLinkClick}
           >
             Build Bots
+          </Button>
+        </Link>
+        <Link href="/leaderboard" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/leaderboard', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Leaderboard
           </Button>
         </Link>
         {/* Mobile settings button when logged out, placed under links */}
@@ -240,24 +240,22 @@ const Header = () => {
 
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
             <div className="block">
-              {ready && authenticated ? null : (
-                <Link href="/settings" className="hidden md:block">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full md:h-9 md:w-9"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span className="sr-only">Settings</span>
-                  </Button>
-                </Link>
-              )}
-            </div>
-            <div className="block">
               <Suspense fallback={null}>
                 <ChatButton iconOnly />
               </Suspense>
             </div>
+            {ready && !authenticated && (
+              <Link href="/settings" className="hidden md:block">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full md:h-9 md:w-9"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="sr-only">Settings</span>
+                </Button>
+              </Link>
+            )}
             {ready && authenticated && (
               <SusdeBalance className="hidden md:flex" />
             )}

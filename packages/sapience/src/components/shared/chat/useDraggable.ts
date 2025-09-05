@@ -10,6 +10,7 @@ export function useDraggable() {
     top: number;
     left: number;
   } | null>(null);
+  const positionRef = useRef<{ top: number; left: number } | null>(null);
   const isDraggingRef = useRef<boolean>(false);
   const dragOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
 
@@ -17,7 +18,9 @@ export function useDraggable() {
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setPosition({ top: rect.top, left: rect.left });
+    const next = { top: rect.top, left: rect.left };
+    positionRef.current = next;
+    setPosition(next);
     isDraggingRef.current = true;
     dragOffsetRef.current = { dx: clientX - rect.left, dy: clientY - rect.top };
   }, []);
@@ -25,6 +28,17 @@ export function useDraggable() {
   const endDrag = useCallback(() => {
     isDraggingRef.current = false;
     dragOffsetRef.current = null;
+    try {
+      const p = positionRef.current;
+      if (p && Number.isFinite(p.top) && Number.isFinite(p.left)) {
+        window.localStorage.setItem(
+          'sapience.chat.position',
+          JSON.stringify({ top: Math.round(p.top), left: Math.round(p.left) })
+        );
+      }
+    } catch {
+      /* noop */
+    }
   }, []);
 
   useEffect(() => {
@@ -43,7 +57,9 @@ export function useDraggable() {
       const maxTop = Math.max(padding, window.innerHeight - h - padding);
       nextLeft = Math.min(Math.max(padding, nextLeft), maxLeft);
       nextTop = Math.min(Math.max(padding, nextTop), maxTop);
-      setPosition({ top: nextTop, left: nextLeft });
+      const next = { top: nextTop, left: nextLeft };
+      positionRef.current = next;
+      setPosition(next);
     };
 
     const onTouchMove = (e: TouchEvent) => {
@@ -63,7 +79,9 @@ export function useDraggable() {
       const maxTop = Math.max(padding, window.innerHeight - h - padding);
       nextLeft = Math.min(Math.max(padding, nextLeft), maxLeft);
       nextTop = Math.min(Math.max(padding, nextTop), maxTop);
-      setPosition({ top: nextTop, left: nextLeft });
+      const next = { top: nextTop, left: nextLeft };
+      positionRef.current = next;
+      setPosition(next);
     };
 
     const onUp = () => endDrag();
@@ -79,6 +97,31 @@ export function useDraggable() {
       window.removeEventListener('touchend', onUp);
     };
   }, [endDrag]);
+
+  // Load persisted position on mount
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('sapience.chat.position');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (
+        parsed &&
+        typeof parsed.top === 'number' &&
+        typeof parsed.left === 'number' &&
+        Number.isFinite(parsed.top) &&
+        Number.isFinite(parsed.left)
+      ) {
+        const next = { top: parsed.top, left: parsed.left } as {
+          top: number;
+          left: number;
+        };
+        positionRef.current = next;
+        setPosition(next);
+      }
+    } catch {
+      /* noop */
+    }
+  }, []);
 
   const onHeaderMouseDown = useCallback(
     (e: React.MouseEvent) => {
