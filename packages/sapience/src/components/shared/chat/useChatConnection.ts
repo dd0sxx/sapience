@@ -562,9 +562,12 @@ export function useChatConnection(isOpen: boolean, addressOverride?: string) {
     recomputeAuthors();
   }, [normalizedUserAddress, recomputeAuthors]);
 
-  const canChat = useMemo(() => true, []);
+  const canChat = useMemo(() => {
+    if (!requireAuth) return true;
+    return !!userAddress;
+  }, [requireAuth, userAddress]);
 
-  const canType = useMemo(() => true, []);
+  const canType = useMemo(() => canChat, [canChat]);
 
   // Clear chat auth when wallet disconnects or address changes
   const prevAddressRef = useRef<string | null>(null);

@@ -13,7 +13,7 @@ import { useChat } from '~/lib/context/ChatContext';
 const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
   const { wallets } = useWallets();
-  const { ready, authenticated } = usePrivy();
+  const { ready, authenticated, login } = usePrivy();
   const connectedWallet = wallets[0];
   const addressOverride =
     ready && authenticated ? connectedWallet?.address : undefined;
@@ -22,6 +22,18 @@ const ChatWidget = () => {
     state: { messages, pendingText, setPendingText, canChat, canType },
     actions: { sendMessage, loginNow },
   } = useChatConnection(isOpen, addressOverride);
+
+  const handleLogin = () => {
+    if (ready && !authenticated) {
+      try {
+        login();
+        return;
+      } catch {
+        /* noop */
+      }
+    }
+    loginNow();
+  };
 
   const {
     refs: { containerRef, headerRef, closeBtnRef },
@@ -58,7 +70,7 @@ const ChatWidget = () => {
               onSend={sendMessage}
               canChat={canChat}
               canType={canType}
-              onLogin={loginNow}
+              onLogin={handleLogin}
             />
           </Card>
         </motion.div>

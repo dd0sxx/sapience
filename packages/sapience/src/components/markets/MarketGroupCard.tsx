@@ -164,7 +164,15 @@ const MarketGroupCard = ({
               <div className="flex flex-col px-4 py-3 gap-3 h-full">
                 <div className="flex flex-col h-full">
                   <h3 className="text-sm md:text-base leading-snug mb-1">
-                    <span className="transition-colors block overflow-hidden max-h-12 md:max-h-[3.25rem]">
+                    <span
+                      className="transition-colors block overflow-hidden"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
                       {displayQuestion}
                     </span>
                   </h3>
