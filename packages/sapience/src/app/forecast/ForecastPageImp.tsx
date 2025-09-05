@@ -178,6 +178,9 @@ const ForecastPageImp = () => {
     }))
   );
 
+  // All public markets (for suggestions we want any market that hasn't ended yet)
+  const publicMarkets = allMarkets.filter((market) => market.public);
+
   // Filter to only show active markets
   const activeMarkets = allMarkets.filter((market) => {
     const now = Math.floor(Date.now() / 1000);
@@ -289,7 +292,7 @@ const ForecastPageImp = () => {
           <div className="border-b border-border relative pb-3">
             {!selectedMarket ? (
               <QuestionSuggestions
-                markets={activeMarkets}
+                markets={publicMarkets}
                 onMarketSelect={handleMarketSelect}
               />
             ) : (

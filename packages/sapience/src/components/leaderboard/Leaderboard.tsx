@@ -278,7 +278,12 @@ const BrierLeaderboard = () => {
         accessorKey: 'timeWeightedMeanBrier',
         cell: ({ getValue }) => {
           const v = getValue<number>();
-          return <span className="font-mono">{v.toFixed(4)}</span>;
+          return (
+            <>
+              <span className="font-mono md:hidden">{v.toFixed(4)}</span>
+              <span className="font-mono hidden md:inline">{v.toFixed(8)}</span>
+            </>
+          );
         },
       },
     ],
