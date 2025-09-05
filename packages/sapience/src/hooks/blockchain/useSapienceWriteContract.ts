@@ -33,7 +33,7 @@ export function useSapienceWriteContract({
   const { toast } = useToast();
   const [chainId, setChainId] = useState<number | undefined>(undefined);
   const { wallets } = useWallets();
-  const { user } = usePrivy();
+  const { user, getAccessToken } = usePrivy();
   const embeddedWallet = useMemo(() => {
     const match = wallets?.find(
       (wallet) => (wallet as any)?.walletClientType === 'privy'
@@ -106,10 +106,15 @@ export function useSapienceWriteContract({
               'Embedded walletId not found for sponsorship. Please relogin.'
             );
           }
+          const accessToken = await getAccessToken();
+          if (!accessToken) {
+            throw new Error('Missing access token. Please relogin.');
+          }
           const response = await fetch('/api/privy/send-calls', {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
+              authorization: `Bearer ${accessToken}`,
             },
             credentials: 'include',
             body: JSON.stringify({
@@ -213,11 +218,16 @@ export function useSapienceWriteContract({
                 );
               }
               // Execute each call sequentially as individual sponsored txs
+              const accessToken = await getAccessToken();
+              if (!accessToken) {
+                throw new Error('Missing access token. Please relogin.');
+              }
               for (const call of calls) {
                 const response = await fetch('/api/privy/send-calls', {
                   method: 'POST',
                   headers: {
                     'content-type': 'application/json',
+                    authorization: `Bearer ${accessToken}`,
                   },
                   credentials: 'include',
                   body: JSON.stringify({
