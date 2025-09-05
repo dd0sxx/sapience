@@ -7,10 +7,7 @@ import { PrivyClient } from '@privy-io/server-auth';
 // Expects JSON body: { walletId: string, chainId: number, to: string, data: string, value?: string, sponsor?: boolean }
 // Builds a Privy RPC call to: https://api.privy.io/v1/wallets/<wallet_id>/rpc with required auth headers.
 
-let privyClient: PrivyClient | null = null;
-
-function getPrivyClient() {
-  if (privyClient) return privyClient;
+function createPrivyClient() {
   const appId = process.env.PRIVY_APP_ID;
   const appSecret = process.env.PRIVY_APP_SECRET;
   if (!appId || !appSecret) {
@@ -18,8 +15,8 @@ function getPrivyClient() {
       'Server not configured: missing PRIVY_APP_ID/PRIVY_APP_SECRET'
     );
   }
-  privyClient = new PrivyClient(appId, appSecret);
-  return privyClient;
+  // Create a new client per request to avoid racing on walletApi.updateAuthorizationKey
+  return new PrivyClient(appId, appSecret);
 }
 
 export async function POST(request: Request) {
@@ -34,21 +31,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify caller's Privy access token (prefer Authorization header per Privy docs; fallback to privy-token cookie)
+    // Verify caller's Privy access token from Authorization header (Bearer token required)
     const authHeader = request.headers.get('authorization') || '';
     let token = '';
     if (authHeader.toLowerCase().startsWith('bearer ')) {
       token = authHeader.slice('bearer '.length).trim();
-    }
-    if (!token) {
-      const cookieHeader = request.headers.get('cookie') || '';
-      const rawCookie = cookieHeader
-        .split(';')
-        .map((v) => v.trim())
-        .find((v) => v.startsWith('privy-token='));
-      token = rawCookie
-        ? decodeURIComponent(rawCookie.split('=')[1] || '')
-        : '';
     }
     if (!token) {
       return NextResponse.json(
@@ -57,7 +44,7 @@ export async function POST(request: Request) {
       );
     }
     try {
-      const client = getPrivyClient();
+      const client = createPrivyClient();
       await client.verifyAuthToken(token);
     } catch (_err) {
       return NextResponse.json(
@@ -67,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     const caip2 = `eip155:${chainId}`;
-    const client = getPrivyClient();
+    const client = createPrivyClient();
 
     const { authorizationKey } = await client.walletApi.generateUserSigner({
       userJwt: token,
