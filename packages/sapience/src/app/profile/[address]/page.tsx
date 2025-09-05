@@ -20,7 +20,7 @@ import { usePositions } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 
-const TAB_VALUES = ['forecasts', 'trades', 'lp', 'parlays'] as const;
+const TAB_VALUES = ['forecasts', 'trades', 'lp', 'auction'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 export default function PortfolioPage() {

@@ -64,7 +64,7 @@ export default function SusdeBalance({
         asChild
         variant="outline"
         size="xs"
-        className={`rounded-full px-3 min-w-[122px] justify-start gap-2 ${buttonClassName ?? ''}`}
+        className={`rounded-full h-9 px-3 min-w-[122px] justify-start gap-2 ${buttonClassName ?? ''}`}
         onClick={onClick}
       >
         <div className="flex items-center justify-between gap-2 w-full">
@@ -72,15 +72,15 @@ export default function SusdeBalance({
             <Image
               src="/usde.svg"
               alt="USDe"
-              width={17}
-              height={17}
-              className="opacity-90 ml-[-2px] w-[17px] h-[17px] md:w-5 md:h-5"
+              width={20}
+              height={20}
+              className="opacity-90 ml-[-2px] w-5 h-5"
             />
-            <span className="relative top-[1px] md:top-0 text-xs md:text-sm">
+            <span className="relative top-[1px] md:top-0 text-sm">
               {formattedBalance}
             </span>
           </div>
-          <div className="hidden md:inline-flex ml-1 rounded-full w-fit shadow-[0_0_10px_rgba(136,180,245,0.25)] -mr-1">
+          <div className="inline-flex ml-1 rounded-full w-fit shadow-[0_0_10px_rgba(136,180,245,0.25)] -mr-1">
             <Badge
               variant="outline"
               className="rounded-full border-[#91B3F0]/80 bg-[#91B3F0]/20"
