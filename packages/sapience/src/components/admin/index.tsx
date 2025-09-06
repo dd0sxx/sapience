@@ -25,6 +25,7 @@ import { useSignMessage } from 'wagmi';
 
 import CategoryFilter from './CategoryFilter';
 import columns from './columns';
+import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
 import DataTable from './data-table';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
@@ -140,7 +141,7 @@ const ReindexFactoryForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [factoryAddress, setFactoryAddress] = useState(
-    '0x8ba766895a6be31e92a0279c0a5c879b38f52904'
+    DEFAULT_FACTORY_ADDRESS
   );
   const [chainId, setChainId] = useState('42161'); // Default to Arbitrum
 
