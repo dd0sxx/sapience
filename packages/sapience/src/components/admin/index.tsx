@@ -140,9 +140,7 @@ const ReindexFactoryForm = () => {
   const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [factoryAddress, setFactoryAddress] = useState(
-    DEFAULT_FACTORY_ADDRESS
-  );
+  const [factoryAddress, setFactoryAddress] = useState(DEFAULT_FACTORY_ADDRESS);
   const [chainId, setChainId] = useState('42161'); // Default to Arbitrum
 
   const onSubmit = async (e: React.FormEvent) => {

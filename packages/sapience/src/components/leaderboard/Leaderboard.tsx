@@ -149,7 +149,9 @@ const PnLLeaderboard = () => {
       },
       {
         id: 'totalPnL',
-        header: () => 'Realized Profit',
+        header: () => (
+          <span className="whitespace-nowrap">Realized Profit</span>
+        ),
         accessorKey: 'totalPnL',
         cell: ProfitCell,
       },
@@ -188,7 +190,7 @@ const PnLLeaderboard = () => {
                     {
                       'text-center': header.id === 'rank',
                       'w-14 md:w-16': header.id === 'rank',
-                      'text-right': header.id === 'totalPnL',
+                      'text-right whitespace-nowrap': header.id === 'totalPnL',
                     }
                   )}
                 >
@@ -214,7 +216,8 @@ const PnLLeaderboard = () => {
                     className={cn('p-3 text-sm md:text-base', {
                       'text-right font-normal': cell.column.id === 'rank',
                       'w-14 md:w-16': cell.column.id === 'rank',
-                      'text-right': cell.column.id === 'totalPnL',
+                      'text-right whitespace-nowrap':
+                        cell.column.id === 'totalPnL',
                     })}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -262,7 +265,7 @@ const AccuracyLeaderboard = () => {
         id: 'accuracyScore',
         header: () => (
           <div className="w-full flex items-center justify-end gap-1">
-            <span className="hidden md:inline">Accuracy Score</span>
+            <span className="whitespace-nowrap">Accuracy Score</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>

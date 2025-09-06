@@ -264,7 +264,7 @@ const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    className="rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 gap-2"
+                    className="rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 ml-1.5 md:ml-0 gap-2"
                   >
                     <User className="h-5 w-5" />
                     {connectedWallet?.address && (
@@ -307,7 +307,7 @@ const Header = () => {
             {ready && !authenticated && (
               <Button
                 onClick={login}
-                className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 gap-2"
+                className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
               >
                 <span>Log in</span>
               </Button>
