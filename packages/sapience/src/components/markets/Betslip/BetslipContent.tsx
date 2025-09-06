@@ -468,16 +468,9 @@ export const BetslipContent = ({
                         !positionData.error &&
                         (!positionData.marketGroupData ||
                           !positionData.marketClassification) && (
-                          <>
-                            <div className="mb-2">
-                              <h3 className="font-medium text-foreground pr-2">
-                                {positionData.position.question}
-                              </h3>
-                            </div>
-                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                              Market data not available
-                            </div>
-                          </>
+                          <div className="flex w-full justify-center py-2">
+                            <LottieLoader width={20} height={20} />
+                          </div>
                         )}
                     </div>
                   );
