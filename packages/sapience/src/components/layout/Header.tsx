@@ -30,7 +30,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
-import SusdeBalance from './SusdeBalance';
+import CollateralBalanceButton from './CollateralBalanceButton';
 import ChatButton from './ChatButton';
 import { shortenAddress } from '~/lib/utils/util';
 import { useEnsName } from '~/components/shared/AddressDisplay';
@@ -102,7 +102,7 @@ const NavLinks = ({
               </Link>
             </Button>
           </div>
-          <SusdeBalance
+          <CollateralBalanceButton
             className="md:hidden mt-2 ml-4"
             onClick={handleLinkClick}
           />
@@ -257,7 +257,7 @@ const Header = () => {
               </Link>
             )}
             {ready && authenticated && (
-              <SusdeBalance className="hidden md:flex" />
+              <CollateralBalanceButton className="hidden md:flex" />
             )}
             {ready && authenticated && (
               <DropdownMenu>
