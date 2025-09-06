@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import * as React from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
+import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getChainShortName } from '~/lib/utils/util';
@@ -33,6 +35,7 @@ const MarketGroupCard = ({
   displayUnit,
 }: MarketGroupCardProps) => {
   const { addPosition } = useBetSlipContext();
+  const router = useRouter();
 
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
@@ -101,12 +104,14 @@ const MarketGroupCard = ({
   const handleYesClick = () => {
     const yesMarket = market.find((m) => m.optionName === 'Yes') || market[0];
     handleAddToBetSlip(yesMarket, true);
+    router.push('/markets');
   };
 
   // Handler for No button
   const handleNoClick = () => {
     const noMarket = market.find((m) => m.optionName === 'No') || market[0];
     handleAddToBetSlip(noMarket, false);
+    router.push('/markets');
   };
 
   // Handler for Multiple Choice predict button (selects first option)
@@ -250,29 +255,19 @@ const MarketGroupCard = ({
                   className="block"
                   onClick={handlePredictClick}
                 >
-                  <Button className="w-full">Make a Prediction</Button>
+                  <Button className="w-full border border-border">
+                    Make a Prediction
+                  </Button>
                 </Link>
               )}
             {isActive &&
               marketClassification === MarketGroupClassificationEnum.YES_NO && (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/markets"
-                    className="flex-1"
-                    onClick={handleYesClick}
-                  >
-                    <Button className="w-full">Yes</Button>
-                  </Link>
-                  <Link
-                    href="/markets"
-                    className="flex-1"
-                    onClick={handleNoClick}
-                  >
-                    <Button variant="outline" className="w-full">
-                      No
-                    </Button>
-                  </Link>
-                </div>
+                <YesNoSplitButton
+                  onYes={handleYesClick}
+                  onNo={handleNoClick}
+                  className="w-full"
+                  size="md"
+                />
               )}
           </div>
         </div>
