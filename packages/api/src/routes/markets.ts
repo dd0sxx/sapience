@@ -1,7 +1,6 @@
 import { Request, Response, Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import prisma from '../db';
-import { isValidWalletSignature } from '../middleware';
 
 const router = Router();
 
@@ -10,20 +9,6 @@ router.delete(
   '/:id',
   handleAsyncErrors(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { signature, timestamp } = req.body as {
-      signature?: `0x${string}`;
-      timestamp?: number;
-    };
-
-    // Authenticate request (required in all environments for destructive action)
-    const isAuthenticated = await isValidWalletSignature(
-      signature as `0x${string}`,
-      Number(timestamp)
-    );
-    if (!isAuthenticated) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
 
     // Locate market group by numeric id
     const groupId = Number(id);
@@ -73,26 +58,13 @@ router.put(
     const {
       chainId,
       data,
-      signature,
-      timestamp,
     }: {
       chainId: number | string;
       data: Record<string, unknown>;
-      signature?: `0x${string}`;
-      timestamp?: number;
     } = req.body;
 
     if (!chainId || !data) {
       res.status(400).json({ error: 'Missing chainId or data' });
-      return;
-    }
-
-    const isAuthenticated = await isValidWalletSignature(
-      signature as `0x${string}`,
-      Number(timestamp)
-    );
-    if (!isAuthenticated) {
-      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
@@ -233,26 +205,13 @@ router.put(
     const {
       chainId,
       data,
-      signature,
-      timestamp,
     }: {
       chainId: number | string;
       data: Record<string, unknown>;
-      signature?: `0x${string}`;
-      timestamp?: number;
     } = req.body;
 
     if (!chainId || !data) {
       res.status(400).json({ error: 'Missing chainId or data' });
-      return;
-    }
-
-    const isAuthenticated = await isValidWalletSignature(
-      signature as `0x${string}`,
-      Number(timestamp)
-    );
-    if (!isAuthenticated) {
-      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 

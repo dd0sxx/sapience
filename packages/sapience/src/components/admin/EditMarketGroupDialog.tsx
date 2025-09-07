@@ -20,13 +20,11 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useSignMessage } from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { useResources } from '~/hooks/useResources';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { foilApi } from '~/lib/utils/util';
+import { useAdminApi } from '~/hooks/useAdminApi';
 
 type Props = {
   group: EnrichedMarketGroup;
@@ -36,8 +34,8 @@ const EditMarketGroupDialog = ({ group }: Props) => {
   const isDeployed = Boolean(group.address);
   const { data: resources } = useResources();
   const { toast } = useToast();
-  const { signMessageAsync } = useSignMessage();
   const queryClient = useQueryClient();
+  const { putJson } = useAdminApi();
 
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState(group.question || '');
@@ -70,11 +68,6 @@ const EditMarketGroupDialog = ({ group }: Props) => {
   const canEditTokens = !isDeployed;
 
   const updateCall = async () => {
-    const timestamp = Math.floor(Date.now() / 1000);
-    const signature = await signMessageAsync({
-      message: ADMIN_AUTHENTICATE_MSG,
-    });
-
     const data: Record<string, unknown> = {
       question,
       rules,
@@ -87,24 +80,10 @@ const EditMarketGroupDialog = ({ group }: Props) => {
       data.quoteTokenName = quoteTokenName;
     }
 
-    const res = await fetch(
-      `${foilApi.baseUrl}/marketGroups/${group.address}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chainId: group.chainId,
-          data,
-          signature,
-          timestamp,
-        }),
-      }
-    );
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json?.error || 'Failed to update market group');
-    }
-    return json;
+    return putJson(`/marketGroups/${group.address}`, {
+      chainId: group.chainId,
+      data,
+    });
   };
 
   const { mutate, isPending } = useMutation({

@@ -28,15 +28,14 @@ import { AlertCircle, Loader2, Plus, Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { isAddress } from 'viem';
-import { useAccount, useChainId, useSignMessage } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { z } from 'zod';
 
 import { FOCUS_AREAS } from '../../lib/constants/focusAreas';
 import CopyMarketParametersDialog from './CopyMarketParametersDialog';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useResources } from '~/hooks/useResources';
-import { foilApi } from '~/lib/utils/util';
+import { useAdminApi } from '~/hooks/useAdminApi';
 
 // API base URL resolved at call time via foilApi
 
@@ -94,8 +93,6 @@ interface CreateCombinedPayload {
   isCumulative?: boolean;
   isBridged?: boolean;
   markets: Omit<MarketInput, 'id'>[]; // Send markets without client-side id
-  signature: `0x${string}` | undefined;
-  signatureTimestamp: number;
 }
 
 // Zod validation schemas
@@ -265,7 +262,6 @@ const createMarketFromPrevious = (
 const CreateMarketGroupForm = () => {
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
-  const { signMessageAsync } = useSignMessage();
   const { toast } = useToast();
   // Remove unused queryClient
   const { data: resources } = useResources();
@@ -497,18 +493,8 @@ const CreateMarketGroupForm = () => {
   };
 
   const createCombinedMarketGroup = async (payload: CreateCombinedPayload) => {
-    const response = await fetch(`${foilApi.baseUrl}/create-market-group`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(
-        data.message || 'Failed to create market group and markets'
-      );
-    }
-    return data;
+    const { postJson } = useAdminApi();
+    return postJson(`/marketGroups`, payload);
   };
 
   const { mutate: createMarketGroup, isPending } = useMutation<
@@ -549,10 +535,7 @@ const CreateMarketGroupForm = () => {
     }
 
     try {
-      // Generate signature timestamp
-      const signatureTimestamp = Math.floor(Date.now() / 1000);
-
-      // Create the payload
+      // Create the payload (no signature in body; headers used)
       const payload: CreateCombinedPayload = {
         chainId,
         owner,
@@ -570,21 +553,7 @@ const CreateMarketGroupForm = () => {
         isCumulative: selectedResourceId ? isCumulative : undefined,
         isBridged,
         markets: markets.map(({ id: _id, ...market }) => market), // Remove client-side id
-        signature: undefined, // Will be set after signing
-        signatureTimestamp,
       };
-
-      // Sign the message
-      const message = ADMIN_AUTHENTICATE_MSG;
-      const signature = await signMessageAsync({ message });
-
-      if (!signature) {
-        setFormError('Failed to sign message');
-        return;
-      }
-
-      // Add signature to payload
-      payload.signature = signature;
 
       // Create the market group
       await createMarketGroup(payload); // eslint-disable-line @typescript-eslint/await-thenable
