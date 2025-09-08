@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
@@ -31,7 +30,7 @@ import { usePathname } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
 import CollateralBalanceButton from './CollateralBalanceButton';
-import ChatButton from './ChatButton';
+// Chat button moved to app layout as a floating action button
 import { shortenAddress } from '~/lib/utils/util';
 import { useEnsName } from '~/components/shared/AddressDisplay';
 
@@ -239,11 +238,6 @@ const Header = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
-            <div className="block">
-              <Suspense fallback={null}>
-                <ChatButton iconOnly />
-              </Suspense>
-            </div>
             {ready && !authenticated && (
               <Link href="/settings" className="hidden md:block">
                 <Button
