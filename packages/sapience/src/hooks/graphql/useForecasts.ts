@@ -220,7 +220,7 @@ export const useForecasts = ({
     enabled: Boolean(schemaId),
     retry: 3,
     retryDelay: 1000,
-    refetchInterval: 4000, // Refetch every 4 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   // Transform raw attestations data into the proper format for the table

@@ -19,8 +19,8 @@ import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
-import { FrownIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
+import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { getChainShortName, tickToPrice } from '~/lib/utils/util';
 
@@ -142,12 +142,7 @@ export default function LpPositionsTable({
   const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
 
   if (!positions || positions.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground py-16">
-        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-        No liquidity positions found
-      </div>
-    );
+    return <EmptyTabState message="No liquidity positions found" />;
   }
 
   const validPositions = positions.filter(
@@ -164,12 +159,7 @@ export default function LpPositionsTable({
   );
 
   if (validPositions.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground py-16">
-        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-        No liquidity positions found
-      </div>
-    );
+    return <EmptyTabState message="No liquidity positions found" />;
   }
 
   let displayQuestionColumn;

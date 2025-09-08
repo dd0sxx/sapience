@@ -16,10 +16,11 @@ import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
-import { FrownIcon, InfoIcon } from 'lucide-react';
+import { InfoIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SellPositionButton from '../markets/SellPositionButton';
 import SharePositionDialog from '../markets/SharePositionDialog';
+import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
@@ -254,12 +255,7 @@ export default function TraderPositionsTable({
   const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
 
   if (!positions || positions.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground py-16">
-        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-        No trades found
-      </div>
-    );
+    return <EmptyTabState message="No trades found" />;
   }
 
   const validPositions = positions.filter(
@@ -267,12 +263,7 @@ export default function TraderPositionsTable({
   );
 
   if (validPositions.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground py-16">
-        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-        No trades found
-      </div>
-    );
+    return <EmptyTabState message="No trades found" />;
   }
 
   let displayQuestionColumn;
