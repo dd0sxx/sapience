@@ -13,7 +13,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Info } from 'lucide-react';
 import Link from 'next/link';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
@@ -86,27 +85,7 @@ function PriceTickCell({
   );
 }
 
-// Helper component for PnL Header Cell
-function PnLHeaderCell() {
-  return (
-    <span className="flex items-center gap-1 ">
-      Unrealized Profit/Loss{' '}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger>
-            <Info className="h-4 w-4 text-muted-foreground" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="font-normal">
-              Estimate ignoring slippage and fees. May not be applicable if
-              market is closed.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </span>
-  );
-}
+// removed Unrealized PnL column and related header
 
 export default function LpPositionsTable({
   positions,
@@ -188,9 +167,7 @@ export default function LpPositionsTable({
               <TableHead>Quote Tokens</TableHead>
               <TableHead>Low Price</TableHead>
               <TableHead>High Price</TableHead>
-              <TableHead>
-                <PnLHeaderCell />
-              </TableHead>
+              {/* Removed Unrealized PnL column */}
               <TableHead className="text-right"></TableHead>
             </TableRow>
           </TableHeader>
@@ -213,7 +190,7 @@ export default function LpPositionsTable({
               const chainShortName = marketGroup?.chainId
                 ? getChainShortName(marketGroup.chainId)
                 : 'unknown';
-              const positionUrl = `/positions/${chainShortName}:${marketGroup?.address}/${position.market?.marketId}?positionId=${position.positionId}`;
+              const positionUrl = `/markets/${chainShortName}:${marketGroup?.address}/${position.market?.marketId}?positionId=${position.positionId}`;
 
               const isOwner =
                 connectedAddress &&
@@ -230,7 +207,7 @@ export default function LpPositionsTable({
               const marketAddress = marketGroup?.address || '';
               const chainId = marketGroup?.chainId || 0;
 
-              const numColumns = displayQuestionColumn ? 8 : 7;
+              const numColumns = displayQuestionColumn ? 7 : 6;
 
               return (
                 <TableRow
@@ -327,12 +304,7 @@ export default function LpPositionsTable({
                         />
                       </TableCell>
 
-                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
-                        <div className="text-xs text-muted-foreground md:hidden">
-                          Unrealized Profit/Loss
-                        </div>
-                        <span className="text-muted-foreground">N/A</span>
-                      </TableCell>
+                      {/* Removed Unrealized PnL value cell */}
 
                       <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3 text-left md:text-right whitespace-nowrap md:mt-0">
                         {isExpired && !isPositionSettled ? (
@@ -382,7 +354,7 @@ export default function LpPositionsTable({
                                 type="button"
                                 className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
                               >
-                                Sell
+                                Modify
                               </button>
                             </Link>
                           ) : (
@@ -395,17 +367,17 @@ export default function LpPositionsTable({
                                       variant="outline"
                                       disabled
                                     >
-                                      Sell
+                                      Modify
                                     </Button>
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p className="max-w-[220px]">
                                     {!connectedAddress
-                                      ? 'Connect your wallet to sell this position.'
+                                      ? 'Connect your wallet to modify this position.'
                                       : isClosed
                                         ? 'This position is already closed.'
-                                        : 'You can only sell from the account that owns this position.'}
+                                        : 'You can only modify from the account that owns this position.'}
                                   </p>
                                 </TooltipContent>
                               </Tooltip>
