@@ -13,7 +13,7 @@ import type { PositionType } from '@sapience/ui/types';
 import { InfoIcon } from 'lucide-react';
 import Link from 'next/link';
 import SettlePositionButton from '../markets/SettlePositionButton';
-import SellPositionButton from '../markets/SellPositionButton';
+import SellPositionDialog from '../markets/SellPositionDialog';
 import SharePositionDialog from '../markets/SharePositionDialog';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -485,10 +485,10 @@ function TraderPositionRow({
                 ) : (
                   !isMarketPage &&
                   (isOwner && !isClosed ? (
-                    <SellPositionButton
+                    <SellPositionDialog
+                      position={position}
                       marketAddress={marketAddress}
                       chainId={position.market?.marketGroup?.chainId || 0}
-                      positionId={position.positionId}
                       onSuccess={() => {
                         console.log(
                           `Close action for position ${position.positionId} sent.`
