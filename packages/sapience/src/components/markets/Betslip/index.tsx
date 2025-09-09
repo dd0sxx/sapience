@@ -493,6 +493,23 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     return Number.isFinite(payout) ? payout.toFixed(2) : '0';
   }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
 
+  // Select best bid for PredictionMarket.mint
+  const selectedBid = useMemo(() => {
+    if (bids.length === 0) return undefined;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const validBids = bids.filter((b) => b.takerDeadline > nowSec);
+    if (validBids.length === 0) return undefined;
+    
+    // Pick highest takerWager
+    return validBids.reduce((best, cur) => {
+      try {
+        return BigInt(cur.takerWager) > BigInt(best.takerWager) ? cur : best;
+      } catch {
+        return best;
+      }
+    }, validBids[0]);
+  }, [bids]);
+
   // Use the parlay submission hook
   const {
     submitParlay,
@@ -500,7 +517,6 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     error: parlayError,
   } = useSubmitParlay({
     chainId: betSlipPositions[0]?.chainId || 8453, // Use first position's chainId or default to Base
-    parlayContractAddress: PARLAY_CONTRACT_ADDRESS,
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',
     collateralTokenDecimals: collateralDecimals ?? 18,
@@ -509,18 +525,22 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       formMethods.watch('wagerAmount') ||
       (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
     payoutAmount,
+    selectedBid,
     enabled:
       parlayPositions.length > 0 &&
       !!collateralToken &&
-      collateralDecimals != null,
+      collateralDecimals != null &&
+      !!selectedBid, // Also require selectedBid for PredictionMarket.mint
     onSuccess: () => {
       // Clear betslip and close popover; hook handles redirect to profile
       clearBetSlip();
       setIsPopoverOpen(false);
     },
-    onOrderCreated: (requestId) => {
+    onOrderCreated: (makerTokenId, takerTokenId, txHash) => {
       try {
-        notifyOrderCreated(requestId.toString());
+        // For PredictionMarket, we get NFT token IDs instead of order IDs
+        // notifyOrderCreated expects (requestId, txHash), so we'll use makerTokenId as requestId
+        notifyOrderCreated(makerTokenId.toString(), txHash);
       } catch {
         console.error('Failed to notify order created');
       }
@@ -691,35 +711,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       return;
     }
 
-    // If Auction flow is enabled, and we have a bid, build the mint request for PredictionMarket
-    try {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const validBids = bids.filter((b) => b.takerDeadline > nowSec);
-      // Pick highest takerWager
-      const best = validBids.reduce((best, cur) => {
-        try {
-          return BigInt(cur.takerWager) > BigInt(best.takerWager) ? cur : best;
-        } catch {
-          return best;
-        }
-      }, validBids[0]);
-
-      if (best && address && buildMintRequestDataFromBid) {
-        const mintReq = buildMintRequestDataFromBid({
-          maker: address,
-          selectedBid: best,
-          // Optional refCode left empty (0x00..00)
-        });
-        // For now, just log; wiring actual write depends on contract address/ABI exposure
-        if (mintReq && process.env.NODE_ENV !== 'production') {
-          console.log('[OTC] Prepared MintPredictionRequestData', mintReq);
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    // Fallback to legacy parlay submit (will be removed once OTC is fully enabled)
+    // Use the new PredictionMarket.mint flow
     submitParlay();
   };
 
