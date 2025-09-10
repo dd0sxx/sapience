@@ -472,7 +472,7 @@ export const reindexMarketGroupEvents = async (marketGroup: any) => {
     `Reindexing market group events for market group ${marketGroup.address} from block ${startBlock} to ${endBlock.number}`
   );
 
-  //marking all the settled markets so we dont need to reindex them. 
+  //marking all the settled markets so we dont need to reindex them.
   const settledMarkets = await prisma.market.findMany({
     where: {
       marketGroupId: marketGroup.id,
@@ -482,8 +482,8 @@ export const reindexMarketGroupEvents = async (marketGroup: any) => {
       marketId: true,
     },
   });
-  
-  const settledMarketIds = new Set(settledMarkets.map(m => m.marketId));
+
+  const settledMarketIds = new Set(settledMarkets.map((m) => m.marketId));
 
   // Function to process logs regardless of how they were fetched
   const processLogs = async (logs: Log[]) => {

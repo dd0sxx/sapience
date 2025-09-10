@@ -2,7 +2,11 @@ import 'reflect-metadata';
 import { initializeDataSource } from '../db';
 import { initializeFixtures } from '../fixtures';
 import { CandleCacheBuilder } from '../candle-cache/candleCacheBuilder';
-import { createResilientProcess, getBlockByTimestamp, getProviderForChain } from '../utils/utils';
+import {
+  createResilientProcess,
+  getBlockByTimestamp,
+  getProviderForChain,
+} from '../utils/utils';
 import prisma from '../db';
 import { reindexMarketGroupEvents } from '../controllers/market';
 import { initializeMarket } from '../controllers/market';
@@ -12,7 +16,15 @@ import { Abi } from 'viem';
 import { PnlAccuracyReconciler } from '../precompute/reconciler';
 
 // Track markets with recent trading activity for targeted reindexing
-let activeIndividualMarkets: Map<string, { marketId: number; chainId: number; marketGroupAddress: string; lastActivity: number }> = new Map();
+const activeIndividualMarkets: Map<
+  string,
+  {
+    marketId: number;
+    chainId: number;
+    marketGroupAddress: string;
+    lastActivity: number;
+  }
+> = new Map();
 let lastCandleBuildTime: number = 0;
 
 async function runCandleCacheBuilder(intervalSeconds: number) {
@@ -24,32 +36,40 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
 
   while (true) {
     const cycleStartTime = Date.now();
-    
+
     try {
       console.log(`Running candle cache update at ${new Date().toISOString()}`);
-      
+
       // Build candles and detect which markets have new trading activity
       await buildCandlesAndDetectActivity(candleCacheBuilder);
-      
+
       // After candle build, run synchronous precompute reconciliation
       console.log('[CANDLE_CACHE] Starting PnL/accuracy reconciliation...');
       await reconciler.runOnce();
       console.log('[CANDLE_CACHE] PnL/accuracy reconciliation completed');
-      
+
       // Reindex only market groups that have active trading
-      const reindexedCount = await reindexActiveIndividualMarkets(intervalSeconds + 10);
-      
-      console.log(`Candle cache update completed at ${new Date().toISOString()}`);
-      
+      const reindexedCount = await reindexActiveIndividualMarkets(
+        intervalSeconds + 10
+      );
+
+      console.log(
+        `Candle cache update completed at ${new Date().toISOString()}`
+      );
+
       // Log cycle summary for monitoring
       const totalDuration = Date.now() - cycleStartTime;
       const totalSeconds = (totalDuration / 1000).toFixed(1);
-      
+
       if (reindexedCount > 0 || totalDuration > 5000) {
-        console.log(`Cycle: ${totalSeconds}s | Groups: ${reindexedCount} | Tracked: ${activeIndividualMarkets.size}`);
-        
+        console.log(
+          `Cycle: ${totalSeconds}s | Groups: ${reindexedCount} | Tracked: ${activeIndividualMarkets.size}`
+        );
+
         if (totalDuration > intervalSeconds * 1000) {
-          console.warn(`Cycle exceeded interval: ${totalSeconds}s > ${intervalSeconds}s`);
+          console.warn(
+            `Cycle exceeded interval: ${totalSeconds}s > ${intervalSeconds}s`
+          );
         }
       }
     } catch (error) {
@@ -62,23 +82,25 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
   }
 }
 
-async function buildCandlesAndDetectActivity(candleCacheBuilder: CandleCacheBuilder) {
+async function buildCandlesAndDetectActivity(
+  candleCacheBuilder: CandleCacheBuilder
+) {
   // Build candles and process market prices
   await candleCacheBuilder.buildCandles();
-  
+
   // Small buffer to catch concurrent trades
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
   const buildEndTime = Math.floor(Date.now() / 1000);
-  
+
   // Query for market prices created since last cycle (with overlap for safety)
   const queryStartTime = lastCandleBuildTime > 0 ? lastCandleBuildTime - 5 : 0;
-  
+
   const recentMarketPrices = await prisma.marketPrice.findMany({
     where: {
-      timestamp: { 
+      timestamp: {
         gt: BigInt(queryStartTime.toString()),
-        lte: BigInt(buildEndTime.toString())
+        lte: BigInt(buildEndTime.toString()),
       },
     },
     include: {
@@ -89,7 +111,7 @@ async function buildCandlesAndDetectActivity(candleCacheBuilder: CandleCacheBuil
               market: {
                 include: {
                   market_group: true,
-                }
+                },
               },
             },
           },
@@ -99,21 +121,15 @@ async function buildCandlesAndDetectActivity(candleCacheBuilder: CandleCacheBuil
   });
 
   // Process market prices to identify active markets
-  let newActiveMarkets = 0;
-  
   for (const price of recentMarketPrices) {
     if (!price.transaction?.position?.market?.market_group?.address) {
       continue;
     }
-    
+
     const market = price.transaction.position.market;
     const marketGroup = market.market_group!;
     const key = `${marketGroup.chainId}:${marketGroup.address!}:${market.id}`;
-    
-    if (!activeIndividualMarkets.has(key)) {
-      newActiveMarkets++;
-    }
-    
+
     // Track this market as recently active
     activeIndividualMarkets.set(key, {
       marketId: market.id,
@@ -129,28 +145,32 @@ async function buildCandlesAndDetectActivity(candleCacheBuilder: CandleCacheBuil
       where: {
         timestamp: {
           gt: BigInt(queryStartTime.toString()),
-          lte: BigInt(buildEndTime.toString())
+          lte: BigInt(buildEndTime.toString()),
         },
       },
       include: { market_group: true },
     });
-    
-    const tradeEvents = recentEvents.filter(e => {
+
+    const tradeEvents = recentEvents.filter((e) => {
       if (!e.logData || typeof e.logData !== 'object') return false;
-      const eventData = e.logData as any;
-      return eventData.eventName === 'TraderPositionCreated' || 
-             eventData.eventName === 'TraderPositionModified';
+      const eventData = e.logData as { eventName?: string };
+      return (
+        eventData.eventName === 'TraderPositionCreated' ||
+        eventData.eventName === 'TraderPositionModified'
+      );
     });
-    
+
     if (tradeEvents.length > recentMarketPrices.length) {
-      console.warn(`Event/Price mismatch: ${tradeEvents.length} events, ${recentMarketPrices.length} prices`);
+      console.warn(
+        `Event/Price mismatch: ${tradeEvents.length} events, ${recentMarketPrices.length} prices`
+      );
     }
   }
 
   // Fallback: catch any very recent trades that might have been missed
   const veryRecentPrices = await prisma.marketPrice.findMany({
     where: {
-      timestamp: { 
+      timestamp: {
         gt: BigInt((buildEndTime - 30).toString()),
       },
     },
@@ -162,7 +182,7 @@ async function buildCandlesAndDetectActivity(candleCacheBuilder: CandleCacheBuil
               market: {
                 include: {
                   market_group: true,
-                }
+                },
               },
             },
           },
@@ -175,11 +195,11 @@ async function buildCandlesAndDetectActivity(candleCacheBuilder: CandleCacheBuil
   let additionalMarkets = 0;
   for (const price of veryRecentPrices) {
     if (!price.transaction?.position?.market?.market_group?.address) continue;
-    
+
     const market = price.transaction.position.market;
     const marketGroup = market.market_group!;
     const key = `${marketGroup.chainId}:${marketGroup.address!}:${market.id}`;
-    
+
     const existing = activeIndividualMarkets.get(key);
     if (!existing || existing.lastActivity < Number(price.timestamp)) {
       activeIndividualMarkets.set(key, {
@@ -188,7 +208,7 @@ async function buildCandlesAndDetectActivity(candleCacheBuilder: CandleCacheBuil
         marketGroupAddress: marketGroup.address!,
         lastActivity: Number(price.timestamp),
       });
-      
+
       if (!existing) {
         additionalMarkets++;
       }
@@ -196,49 +216,61 @@ async function buildCandlesAndDetectActivity(candleCacheBuilder: CandleCacheBuil
   }
 
   // Log activity when detected
-  if (recentMarketPrices.length > 0 || additionalMarkets > 0) {
-    const marketIds = Array.from(new Set(
-      recentMarketPrices
-        .filter(p => p.transaction?.position?.market)
-        .map(p => p.transaction!.position!.market!.id)
-    ));
-    
-    const suffix = additionalMarkets > 0 ? ` (+${additionalMarkets} recent)` : '';
-    console.log(`Activity: ${recentMarketPrices.length} prices, markets [${marketIds.join(', ')}]${suffix}`);
+  if (recentMarketPrices.length > 0) {
+    const marketIds = Array.from(
+      new Set(
+        recentMarketPrices
+          .filter((p) => p.transaction?.position?.market)
+          .map((p) => p.transaction!.position!.market!.id)
+      )
+    );
+
+    const suffix =
+      additionalMarkets > 0 ? ` (+${additionalMarkets} recent)` : '';
+    console.log(
+      `Activity: ${recentMarketPrices.length} prices, markets [${marketIds.join(', ')}]${suffix}`
+    );
   }
-  
+
   lastCandleBuildTime = buildEndTime;
 }
 
-async function reindexActiveIndividualMarkets(lookbackSeconds: number): Promise<number> {
+async function reindexActiveIndividualMarkets(
+  lookbackSeconds: number
+): Promise<number> {
   const currentTime = Math.floor(Date.now() / 1000);
   const cutoffTime = currentTime - lookbackSeconds;
-  
+
   // Get markets that have been active recently
   const recentActiveMarkets = Array.from(activeIndividualMarkets.entries())
-    .filter(([_, info]) => info.lastActivity >= cutoffTime)
-    .map(([_, info]) => info);
+    .filter(([, info]) => info.lastActivity >= cutoffTime)
+    .map(([, info]) => info);
 
   // Group by market group to avoid duplicate reindexing
-  const marketGroupsToReindex = new Map<string, { chainId: number; address: string; activeMarkets: number[] }>();
-  
+  const marketGroupsToReindex = new Map<
+    string,
+    { chainId: number; address: string; activeMarkets: number[] }
+  >();
+
   for (const marketInfo of recentActiveMarkets) {
     const groupKey = `${marketInfo.chainId}:${marketInfo.marketGroupAddress}`;
-    
+
     if (!marketGroupsToReindex.has(groupKey)) {
       marketGroupsToReindex.set(groupKey, {
         chainId: marketInfo.chainId,
         address: marketInfo.marketGroupAddress,
-        activeMarkets: []
+        activeMarkets: [],
       });
     }
-    
-    marketGroupsToReindex.get(groupKey)!.activeMarkets.push(marketInfo.marketId);
+
+    marketGroupsToReindex
+      .get(groupKey)!
+      .activeMarkets.push(marketInfo.marketId);
   }
 
   // Process each active market group
   let processedCount = 0;
-  for (const [groupKey, groupInfo] of marketGroupsToReindex) {
+  for (const [, groupInfo] of marketGroupsToReindex) {
     try {
       await reindexSpecificMarket(
         groupInfo.chainId,
@@ -246,7 +278,7 @@ async function reindexActiveIndividualMarkets(lookbackSeconds: number): Promise<
         groupInfo.activeMarkets[0].toString(),
         Math.ceil(lookbackSeconds / 60)
       );
-      
+
       processedCount++;
     } catch (error) {
       console.error(`Failed to reindex ${groupInfo.address}:`, error);
@@ -271,8 +303,6 @@ async function reindexSpecificMarket(
   marketId: string,
   lookbackMinutes: number
 ) {
-  const groupStartTime = Date.now();
-
   // Get market group details from database
   const marketEntity = await prisma.marketGroup.findFirst({
     where: {
@@ -285,7 +315,9 @@ async function reindexSpecificMarket(
   });
 
   if (!marketEntity) {
-    throw new Error(`Market not found for chainId ${chainId} and address ${address}`);
+    throw new Error(
+      `Market not found for chainId ${chainId} and address ${address}`
+    );
   }
 
   // Initialize market for reindexing
@@ -295,7 +327,8 @@ async function reindexSpecificMarket(
       address,
       abi: Sapience.abi as Abi,
       deployTimestamp: marketEntity.deployTimestamp?.toString() || '0',
-      deployTxnBlockNumber: marketEntity.deployTxnBlockNumber?.toString() || '0',
+      deployTxnBlockNumber:
+        marketEntity.deployTxnBlockNumber?.toString() || '0',
     },
     isCumulative: marketEntity.isCumulative || false,
     isBridged: marketEntity.isBridged || false,
@@ -311,14 +344,14 @@ async function reindexSpecificMarket(
 
   // Calculate recent block range for reindexing
   const currentTimestamp = Math.floor(Date.now() / 1000);
-  const lookbackTimestamp = currentTimestamp - (lookbackMinutes * 60);
+  const lookbackTimestamp = currentTimestamp - lookbackMinutes * 60;
   const client = getProviderForChain(chainId);
 
   let startBlock;
   try {
     const startBlockData = await getBlockByTimestamp(client, lookbackTimestamp);
     startBlock = Number(startBlockData.number);
-  } catch (error) {
+  } catch {
     // Fallback: estimate blocks using average block time
     const currentBlockNumber = await client.getBlockNumber();
     const estimatedBlocksBack = Math.ceil((lookbackMinutes * 60) / 12);
@@ -331,7 +364,7 @@ async function reindexSpecificMarket(
 
   // Reindex recent events for this market group
   await reindexMarketGroupEvents(market);
-  
+
   // Restore original block number
   market.deployTxnBlockNumber = originalDeployTxnBlockNumber;
 }
@@ -349,7 +382,9 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
       return true;
     }
 
-    console.log(`Starting candle cache worker with smart reindexing (${intervalSeconds}s interval)`);
+    console.log(
+      `Starting candle cache worker with smart reindexing (${intervalSeconds}s interval)`
+    );
     await createResilientProcess(
       () => runCandleCacheBuilder(intervalSeconds),
       'candleCacheBuilder'
@@ -363,9 +398,11 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
 // Start the worker
 (async () => {
   const workerHandled = await handleWorkerCommands(process.argv);
-// If no worker command was handled, proceed with the default main logic
+  // If no worker command was handled, proceed with the default main logic
   if (!workerHandled) {
-    console.log('Starting candle cache worker with smart reindexing (15s interval)');
+    console.log(
+      'Starting candle cache worker with smart reindexing (15s interval)'
+    );
     await createResilientProcess(
       () => runCandleCacheBuilder(15),
       'candleCacheBuilder'
