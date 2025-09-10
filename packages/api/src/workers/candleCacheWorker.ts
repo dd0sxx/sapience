@@ -9,6 +9,7 @@ import { initializeMarket } from '../controllers/market';
 import { INDEXERS } from '../fixtures';
 import Sapience from '@sapience/protocol/deployments/Sapience.json';
 import { Abi } from 'viem';
+import { PnlAccuracyReconciler } from '../precompute/reconciler';
 
 // Track markets with recent trading activity for targeted reindexing
 let activeIndividualMarkets: Map<string, { marketId: number; chainId: number; marketGroupAddress: string; lastActivity: number }> = new Map();
@@ -19,16 +20,26 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
   await initializeFixtures();
 
   const candleCacheBuilder = CandleCacheBuilder.getInstance();
+  const reconciler = PnlAccuracyReconciler.getInstance();
 
   while (true) {
     const cycleStartTime = Date.now();
     
     try {
+      console.log(`Running candle cache update at ${new Date().toISOString()}`);
+      
       // Build candles and detect which markets have new trading activity
       await buildCandlesAndDetectActivity(candleCacheBuilder);
       
+      // After candle build, run synchronous precompute reconciliation
+      console.log('[CANDLE_CACHE] Starting PnL/accuracy reconciliation...');
+      await reconciler.runOnce();
+      console.log('[CANDLE_CACHE] PnL/accuracy reconciliation completed');
+      
       // Reindex only market groups that have active trading
       const reindexedCount = await reindexActiveIndividualMarkets(intervalSeconds + 10);
+      
+      console.log(`Candle cache update completed at ${new Date().toISOString()}`);
       
       // Log cycle summary for monitoring
       const totalDuration = Date.now() - cycleStartTime;
@@ -41,7 +52,6 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
           console.warn(`Cycle exceeded interval: ${totalSeconds}s > ${intervalSeconds}s`);
         }
       }
-      
     } catch (error) {
       const cycleDuration = Date.now() - cycleStartTime;
       console.error(`Error in cycle (${cycleDuration}ms):`, error);

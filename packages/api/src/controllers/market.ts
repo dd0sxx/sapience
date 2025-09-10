@@ -39,6 +39,7 @@ import Sentry from '../instrument';
 import { Transaction } from '../../generated/prisma';
 import { fetchRenderServices, createRenderJob } from '../utils/utils';
 import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
+import { updateTwErrorForMarket } from '../workers/jobs/updateTwErrorForMarket';
 
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -856,7 +857,9 @@ export const upsertEntitiesFromEvent = async (
                 console.error(
                   'Background worker not found for accuracy reindex. Falling back to inline reindex.'
                 );
+                // Update existing scoring and precompute table
                 await reindexAccuracy(addr, mId);
+                await updateTwErrorForMarket(addr, mId);
                 return;
               }
 
@@ -878,6 +881,12 @@ export const upsertEntitiesFromEvent = async (
               );
               child.unref();
               console.log('[Accuracy] Spawned local detached reindex process');
+              // Additionally, update precompute table inline for local dev
+              try {
+                await updateTwErrorForMarket(addr, mId);
+              } catch (e) {
+                console.error('[Precompute] TW error update failed', e);
+              }
             }
           } catch (err) {
             console.error(
@@ -886,6 +895,7 @@ export const upsertEntitiesFromEvent = async (
             );
             try {
               await reindexAccuracy(addr, mId);
+              await updateTwErrorForMarket(addr, mId);
             } catch (fallbackErr) {
               console.error(
                 '[Accuracy] Inline reindex fallback failed:',
