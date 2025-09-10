@@ -360,10 +360,10 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
   return false;
 }
 
-// Initialize worker
+// Start the worker
 (async () => {
   const workerHandled = await handleWorkerCommands(process.argv);
-
+// If no worker command was handled, proceed with the default main logic
   if (!workerHandled) {
     console.log('Starting candle cache worker with smart reindexing (15s interval)');
     await createResilientProcess(
