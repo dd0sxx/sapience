@@ -342,7 +342,7 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
     console.log(`Starting candle cache worker with smart reindexing (${intervalSeconds}s interval)`);
     await createResilientProcess(
       () => runCandleCacheBuilder(intervalSeconds),
-      'combinedCacheReindexWorker'
+      'candleCacheBuilder'
     )();
     return true;
   }
@@ -358,7 +358,7 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
     console.log('Starting candle cache worker with smart reindexing (15s interval)');
     await createResilientProcess(
       () => runCandleCacheBuilder(15),
-      'combinedCacheReindexWorker'
+      'candleCacheBuilder'
     )();
   }
 })();

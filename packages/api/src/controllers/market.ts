@@ -562,8 +562,6 @@ export const reindexMarketGroupEvents = async (marketGroup: any) => {
         );
         await processLogs(logs);
         totalLogsProcessed += logs.length;
-      } else {
-        console.log(`No logs found in blocks ${currentBlock}-${chunkEndBlock}`);
       }
 
       // Move to the next chunk
