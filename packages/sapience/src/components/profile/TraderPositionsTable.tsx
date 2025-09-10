@@ -222,7 +222,7 @@ export default function TraderPositionsTable({
       {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
       <div className="rounded border">
         {/* Table Header (desktop) */}
-        <div className="hidden md:grid md:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] items-center px-4 py-4 bg-muted/30 text-sm font-medium text-muted-foreground border-b">
+        <div className="hidden md:grid md:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] items-center px-4 py-1 bg-muted/30 text-sm font-medium text-muted-foreground border-b">
           {displayQuestionColumn && (
             <div className="md:col-span-5">Prediction Market</div>
           )}
