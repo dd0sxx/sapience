@@ -317,7 +317,7 @@ const Header = () => {
         </SidebarContent>
         <SidebarFooter>
           <div className="flex flex-col gap-2 text-xs w-full ml-4 rounded-lg">
-            <div className="flex flex-col items-start gap-2 mb-1.5">
+            <div className="flex flex-col items-start gap-2 mb-3">
               <span>Powered by</span>
               <a
                 href="https://ethena.fi"
