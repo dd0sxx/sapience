@@ -471,6 +471,19 @@ export const reindexMarketGroupEvents = async (marketGroup: any) => {
     `Reindexing market group events for market group ${marketGroup.address} from block ${startBlock} to ${endBlock.number}`
   );
 
+  //marking all the settled markets so we dont need to reindex them. 
+  const settledMarkets = await prisma.market.findMany({
+    where: {
+      marketGroupId: marketGroup.id,
+      settled: true,
+    },
+    select: {
+      marketId: true,
+    },
+  });
+  
+  const settledMarketIds = new Set(settledMarkets.map(m => m.marketId));
+
   // Function to process logs regardless of how they were fetched
   const processLogs = async (logs: Log[]) => {
     for (const log of logs) {
@@ -498,6 +511,12 @@ export const reindexMarketGroupEvents = async (marketGroup: any) => {
 
         // Extract marketId from logData
         const eventMarketId = logData.args?.marketId || 0;
+
+        //skips events for settled markets
+        if (settledMarketIds.has(eventMarketId)) {
+          console.log(`Skipping event for settled market ${eventMarketId}`);
+          continue;
+        }
 
         await upsertEvent(
           chainId,
@@ -543,6 +562,8 @@ export const reindexMarketGroupEvents = async (marketGroup: any) => {
         );
         await processLogs(logs);
         totalLogsProcessed += logs.length;
+      } else {
+        console.log(`No logs found in blocks ${currentBlock}-${chunkEndBlock}`);
       }
 
       // Move to the next chunk
