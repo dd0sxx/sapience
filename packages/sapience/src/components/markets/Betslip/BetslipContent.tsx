@@ -1,34 +1,31 @@
 'use client';
-import { Switch } from '@sapience/ui/components/ui/switch';
-
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
+
+import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
+import { useAccount } from 'wagmi';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-
-import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
-import { useAccount } from 'wagmi';
+import { parseUnits, formatUnits } from 'viem';
+import { formatNumber } from '~/lib/utils/util';
 import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-import { MarketGroupClassification } from '~/lib/types';
-import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
+
 import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWithQuote';
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
-import { YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
-  setIsParlayMode: (mode: boolean) => void;
   individualMethods: UseFormReturn<{
     positions: Record<string, { predictionValue: string; wagerAmount: string }>;
   }>;
@@ -47,6 +44,7 @@ interface BetslipContentProps {
   parlayCollateralSymbol?: string;
   parlayCollateralAddress?: `0x${string}`;
   parlayChainId?: number;
+  parlayCollateralDecimals?: number;
   // Auction integration (provided by parent to share a single WS connection)
   auctionId?: string | null;
   bids?: QuoteBid[];
@@ -55,7 +53,6 @@ interface BetslipContentProps {
 
 export const BetslipContent = ({
   isParlayMode,
-  setIsParlayMode,
   individualMethods,
   parlayMethods,
   handleIndividualSubmit,
@@ -67,84 +64,26 @@ export const BetslipContent = ({
   parlayCollateralSymbol,
   parlayCollateralAddress,
   parlayChainId,
-  auctionId: _auctionId,
+  parlayCollateralDecimals,
   bids = [],
   requestQuotes,
 }: BetslipContentProps) => {
-  // Temporary feature flag: disable parlay UI while keeping code paths intact for easy re-enable
-  const PARLAY_FEATURE_ENABLED = false;
-  // Allow enabling via localStorage("otc") === "true" or URL param ?otc=true
-  const [parlayFeatureOverrideEnabled, setParlayFeatureOverrideEnabled] =
-    useState(false);
-  useEffect(() => {
-    try {
-      const params =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search)
-          : null;
-      const urlParlays = params?.get('otc');
-      if (urlParlays === 'true') {
-        window.localStorage.setItem('otc', 'true');
-      }
-      const stored =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('otc')
-          : null;
-      if (stored === 'true') {
-        setParlayFeatureOverrideEnabled(true);
-      }
-    } catch {
-      // no-op
-    }
-  }, []);
   const isMobile = useIsMobile();
-  const [parlayTooltipOpen, setParlayTooltipOpen] = useState(false);
-  const closeTooltipTimeoutRef = useRef<number | null>(null);
-  const triggerParlayTooltip = () => {
-    if (!isMobile) return;
-    setParlayTooltipOpen(true);
-    if (closeTooltipTimeoutRef.current) {
-      window.clearTimeout(closeTooltipTimeoutRef.current);
-    }
-    closeTooltipTimeoutRef.current = window.setTimeout(() => {
-      setParlayTooltipOpen(false);
-    }, 1500);
-  };
-  useEffect(() => {
-    return () => {
-      if (closeTooltipTimeoutRef.current) {
-        window.clearTimeout(closeTooltipTimeoutRef.current);
-      }
-    };
-  }, []);
   const {
     betSlipPositions,
     removePosition,
     positionsWithMarketData,
     clearBetSlip,
+    parlaySelections,
+    updateParlaySelection,
+    removeParlaySelection,
+    clearParlaySelections,
   } = useBetSlipContext();
   const hasAtLeastOneLoadedQuestion = positionsWithMarketData.some(
     (p) =>
       !p.isLoading && !p.error && p.marketGroupData && p.marketClassification
   );
-  const hasNumericMarket = positionsWithMarketData.some(
-    (p) => p.marketClassification === MarketGroupClassification.NUMERIC
-  );
-  const parlayEligiblePositionsCount = useMemo(() => {
-    return positionsWithMarketData.filter(
-      (p) =>
-        p.marketClassification !== MarketGroupClassification.NUMERIC &&
-        !p.isLoading &&
-        !p.error &&
-        p.marketGroupData &&
-        p.marketClassification
-    ).length;
-  }, [positionsWithMarketData]);
-  const isParlayFeatureEnabled =
-    PARLAY_FEATURE_ENABLED || parlayFeatureOverrideEnabled;
-  const canBuildParlay = parlayEligiblePositionsCount >= 2;
-  const effectiveParlayMode =
-    isParlayFeatureEnabled && isParlayMode && canBuildParlay;
+  const effectiveParlayMode = isParlayMode;
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
     positionsWithMarketData.every((p) => p.isLoading);
@@ -153,10 +92,6 @@ export const BetslipContent = ({
     control: parlayMethods.control,
     name: 'wagerAmount',
   });
-  const parlayPositionsForm = useWatch({
-    control: parlayMethods.control,
-    name: 'positions',
-  }) as Record<string, { predictionValue?: string }> | undefined;
 
   // Ticking clock reference for expiry countdowns
   const [nowMs, setNowMs] = useState<number>(Date.now());
@@ -247,86 +182,47 @@ export const BetslipContent = ({
     return () => window.clearInterval(id);
   }, []);
 
-  // Emit Auction when parlay form values change
+  // Trigger RFQ quote requests when selections or wager change
   useEffect(() => {
-    if (!effectiveParlayMode) {
-      console.log('[OTC-BETSLIP] skip: not in parlay mode');
-      return;
-    }
-    if (positionsWithMarketData.length === 0) {
-      console.log('[OTC-BETSLIP] skip: no positions');
-      return;
-    }
-    if (!requestQuotes) {
-      console.log('[OTC-BETSLIP] skip: requestQuotes missing');
-      return;
-    }
-    if (!makerAddress) {
-      console.log('[OTC-BETSLIP] skip: no wallet connected');
-      return; // require connected wallet to request quotes
-    }
-    const eligiblePositions = positionsWithMarketData.filter(
-      (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-    );
-    if (eligiblePositions.length === 0) {
-      console.log('[OTC-BETSLIP] skip: no eligible positions');
-      return;
-    }
+    if (!effectiveParlayMode) return;
+    if (!requestQuotes) return;
+    if (!makerAddress) return;
+    if (!parlaySelections || parlaySelections.length === 0) return;
+    const wagerStr = parlayWagerAmount || '0';
+    try {
+      const decimals = Number.isFinite(parlayCollateralDecimals as number)
+        ? (parlayCollateralDecimals as number)
+        : 18;
+      const wagerWei = parseUnits(wagerStr, decimals).toString();
 
-    const wager = parlayWagerAmount || '0';
+      const outcomes = parlaySelections.map((s) => ({
+        // For RFQ conditions, encode id as marketId and leave address zeroed
+        marketGroup: '0x0000000000000000000000000000000000000000',
+        marketId: Number.parseInt(s.conditionId || '0', 10) || 0,
+        prediction: !!s.prediction,
+      }));
 
-    const rawOutcomes = eligiblePositions.map((p) => {
-      const posId = p.position.id;
-      const predValue = parlayPositionsForm?.[posId]?.predictionValue;
-
-      if (
-        p.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
-      ) {
-        const selectedMarketId = Number(
-          predValue != null && predValue !== ''
-            ? predValue
-            : p.position.marketId
-        );
-        return {
-          marketGroup: p.position.marketAddress,
-          marketId: selectedMarketId,
-          prediction: true,
-        };
-      }
-
-      // YES/NO default path
-      const isYes = predValue === YES_SQRT_PRICE_X96;
-      return {
-        marketGroup: p.position.marketAddress,
-        marketId: p.position.marketId,
-        prediction: Boolean(isYes),
+      const payload = buildAuctionStartPayload(outcomes);
+      const params: AuctionParams = {
+        wager: wagerWei,
+        resolver: payload.resolver,
+        predictedOutcomes: payload.predictedOutcomes,
+        maker: makerAddress,
       };
-    });
-
-    const { resolver, predictedOutcomes } =
-      buildAuctionStartPayload(rawOutcomes);
-
-    console.log('[OTC-BETSLIP] requestQuotes', {
-      wager,
-      resolver,
-      outcomesCount: predictedOutcomes.length,
-    });
-    requestQuotes({
-      wager,
-      resolver,
-      predictedOutcomes,
-      maker: makerAddress,
-    });
-    setLastQuoteRequestMs(Date.now());
+      requestQuotes(params);
+      setLastQuoteRequestMs(Date.now());
+    } catch {
+      // ignore formatting errors
+    }
   }, [
     effectiveParlayMode,
-    positionsWithMarketData,
-    parlayMethods,
-    parlayWagerAmount,
-    parlayPositionsForm,
     requestQuotes,
+    parlaySelections,
+    parlayWagerAmount,
     makerAddress,
+    parlayCollateralDecimals,
   ]);
+
   return (
     <>
       <div className="w-full h-full flex flex-col">
@@ -335,55 +231,21 @@ export const BetslipContent = ({
         >
           <div className="grid grid-cols-[auto_1fr_auto] items-center h-10">
             <span className="text-lg font-medium">Make a Prediction</span>
-            <div className="flex items-center gap-4 col-start-3 justify-self-end">
-              <div className="flex items-center gap-2">
-                {!isParlayFeatureEnabled || !canBuildParlay ? (
-                  <TooltipProvider>
-                    <Tooltip
-                      open={isMobile ? parlayTooltipOpen : undefined}
-                      onOpenChange={isMobile ? setParlayTooltipOpen : undefined}
-                    >
-                      <TooltipTrigger asChild>
-                        <div
-                          className="flex items-center gap-2"
-                          onClick={triggerParlayTooltip}
-                          onTouchStart={triggerParlayTooltip}
-                          role="button"
-                          aria-disabled="true"
-                        >
-                          <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                            Parlay
-                          </span>
-                          <span className="flex items-center">
-                            <Switch checked={false} disabled />
-                          </span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          {isParlayFeatureEnabled
-                            ? 'Add more than one prediction to build a parlay.'
-                            : 'Coming Soon'}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                      Parlay
-                    </span>
-                    <span className="flex items-center">
-                      <Switch
-                        checked={isParlayMode}
-                        onCheckedChange={(checked) =>
-                          setIsParlayMode(Boolean(checked))
-                        }
-                      />
-                    </span>
-                  </div>
-                )}
-              </div>
+            <div className="col-start-3 justify-self-end">
+              {(effectiveParlayMode
+                ? parlaySelections.length > 0
+                : betSlipPositions.length > 0) && (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={
+                    effectiveParlayMode ? clearParlaySelections : clearBetSlip
+                  }
+                  title="Reset"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -393,12 +255,16 @@ export const BetslipContent = ({
             betSlipPositions.length === 0 ? '' : 'overflow-y-auto'
           }`}
         >
-          {betSlipPositions.length === 0 ? (
+          {(
+            effectiveParlayMode
+              ? parlaySelections.length === 0
+              : betSlipPositions.length === 0
+          ) ? (
             <div className="w-full h-full flex items-center justify-center text-center">
               <div className="flex flex-col items-center gap-4">
                 <Image src="/usde.svg" alt="USDe" width={42} height={42} />
                 <p className="text-base text-muted-foreground max-w-[180px] mx-auto">
-                  Add predictions to see your potential winnings
+                  {'Add predictions to see your potential winnings'}
                 </p>
               </div>
             </div>
@@ -501,123 +367,139 @@ export const BetslipContent = ({
                 onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)}
                 className="space-y-4 p-4"
               >
-                {hasNumericMarket && (
-                  <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                    Numeric markets are excluded from parlays.
-                  </div>
-                )}
                 <div className="space-y-4">
-                  {positionsWithMarketData
-                    .filter(
-                      (p) =>
-                        p.marketClassification !==
-                        MarketGroupClassification.NUMERIC
-                    )
-                    .map((positionData) => (
-                      <div
-                        key={positionData.position.id}
-                        className="pb-4 mb-4 border-b border-border"
-                      >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <h3 className="font-medium text-foreground pr-2 text-sm">
-                            {positionData.marketGroupData?.markets?.find(
-                              (m) =>
-                                m.marketId === positionData.position.marketId
-                            )?.question || positionData.position.question}
-                          </h3>
-                          <button
-                            onClick={() =>
-                              removePosition(positionData.position.id)
-                            }
-                            className="text-[18px] leading-none text-muted-foreground hover:text-foreground"
+                  {parlaySelections.map((s) => (
+                    <div
+                      key={s.id}
+                      className="pb-4 mb-4 border-b border-border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-medium text-foreground pr-2 text-sm whitespace-normal break-words flex-1">
+                          {s.question}
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2 ml-auto">
+                          <Button
+                            size="sm"
                             type="button"
-                            aria-label="Remove"
+                            onClick={() =>
+                              updateParlaySelection(s.id, { prediction: true })
+                            }
+                            className={`${
+                              s.prediction
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                            }`}
                           >
-                            ×
-                          </button>
+                            Yes
+                          </Button>
+                          <Button
+                            size="sm"
+                            type="button"
+                            onClick={() =>
+                              updateParlaySelection(s.id, { prediction: false })
+                            }
+                            className={`${
+                              !s.prediction
+                                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                            }`}
+                          >
+                            No
+                          </Button>
                         </div>
-
-                        {positionData.marketGroupData && (
-                          <YesNoWagerInput
-                            marketGroupData={positionData.marketGroupData}
-                            positionId={positionData.position.id}
-                            showWagerInput={false}
-                          />
-                        )}
+                        <button
+                          onClick={() => removeParlaySelection(s.id)}
+                          className="text-[18px] leading-none text-muted-foreground hover:text-foreground"
+                          type="button"
+                          aria-label="Remove"
+                        >
+                          ×
+                        </button>
                       </div>
-                    ))}
+                    </div>
+                  ))}
 
                   <div className="pt-1">
                     <WagerInput
                       minAmount={minParlayWager}
-                      collateralSymbol={'testUSDe'}
+                      collateralSymbol={parlayCollateralSymbol}
                       collateralAddress={parlayCollateralAddress}
                       chainId={parlayChainId}
                     />
                   </div>
 
-                  <div className="pt-2 space-y-2">
-                    <div className="text-xs text-muted-foreground flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <LottieLoader width={16} height={16} />
-                        <span>Broadcasting a request for bids...</span>
-                      </span>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="text-primary underline"
-                            >
-                              Limit Order
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Coming Soon</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-
-                    {effectiveParlayMode && bestBid && (
+                  <div className="space-y-1">
+                    {/* RFQ auction status header row (main-style) */}
+                    {effectiveParlayMode ? (
+                      <div className="py-1 flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <LottieLoader width={16} height={16} />
+                          <span>Broadcasting a request for bids...</span>
+                        </span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-primary underline"
+                              >
+                                Limit Order
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Coming Soon</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : null}
+                    {effectiveParlayMode && bestBid ? (
                       <div className="text-center">
                         <WagerDisclaimer className="mt-2 mb-1" />
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={
                             isParlaySubmitting ||
-                            positionsWithMarketData.some((p) => p.isLoading) ||
                             bestBid.takerDeadline * 1000 - nowMs <= 0
                           }
                           type="submit"
                           size="lg"
                           variant="default"
                         >
-                          {(() => {
-                            if (isParlaySubmitting)
-                              return 'Submitting Wager...';
-                            return 'Submit Wager';
-                          })()}
+                          {isParlaySubmitting
+                            ? 'Submitting Wager...'
+                            : 'Submit Wager'}
                         </Button>
                         <div className="text-xs text-muted-foreground mt-2 space-y-1">
                           {(() => {
                             const makerWagerStr =
                               parlayMethods.getValues('wagerAmount') || '0';
-                            let makerWager: bigint;
+                            const decimals = Number.isFinite(
+                              parlayCollateralDecimals as number
+                            )
+                              ? (parlayCollateralDecimals as number)
+                              : 18;
+                            let makerWagerWei: bigint = 0n;
                             try {
-                              makerWager = BigInt(makerWagerStr);
+                              makerWagerWei = parseUnits(
+                                makerWagerStr,
+                                decimals
+                              );
                             } catch {
-                              makerWager = 0n;
+                              makerWagerWei = 0n;
                             }
                             const symbol = parlayCollateralSymbol || 'testUSDe';
                             return unexpiredBids.map((bid, idx) => {
-                              const payout = (() => {
+                              const payoutDisplay = (() => {
                                 try {
-                                  return (
-                                    makerWager + BigInt(bid.takerWager)
-                                  ).toString();
+                                  const wei =
+                                    makerWagerWei + BigInt(bid.takerWager);
+                                  const human = Number(
+                                    formatUnits(wei, decimals)
+                                  );
+                                  return formatNumber(human, 2);
                                 } catch {
-                                  return '0';
+                                  return '0.00';
                                 }
                               })();
                               const remainingMs =
@@ -633,8 +515,10 @@ export const BetslipContent = ({
                                   className="flex items-center justify-between"
                                 >
                                   <span>
-                                    <span className="font-medium">{`To Win: `}</span>
-                                    {`${payout} ${symbol}`}
+                                    <span className="font-medium">
+                                      To Win:{' '}
+                                    </span>
+                                    {`${payoutDisplay} ${symbol}`}
                                   </span>
                                   <span className="font-medium text-right">{`Expires in ${secs} ${suffix}`}</span>
                                 </div>
@@ -643,9 +527,7 @@ export const BetslipContent = ({
                           })()}
                         </div>
                       </div>
-                    )}
-
-                    {effectiveParlayMode && !bestBid && (
+                    ) : (
                       <div className="text-center">
                         <WagerDisclaimer className="mt-2 mb-1" />
                         <Button
@@ -657,7 +539,7 @@ export const BetslipContent = ({
                         >
                           Waiting for Bids...
                         </Button>
-                        {showNoBidsHint && (
+                        {effectiveParlayMode && showNoBidsHint ? (
                           <div className="text-xs text-muted-foreground mt-2">
                             <span>If no bids appear, you can place a </span>
                             <TooltipProvider>
@@ -676,36 +558,21 @@ export const BetslipContent = ({
                               </Tooltip>
                             </TooltipProvider>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </div>
+                  {parlayError && (
+                    <div className="text-sm text-destructive p-2 bg-destructive/10 rounded">
+                      {parlayError}
+                    </div>
+                  )}
                 </div>
-
-                {parlayError && (
-                  <div className="text-sm text-destructive p-2 bg-destructive/10 rounded">
-                    {parlayError}
-                  </div>
-                )}
               </form>
             </FormProvider>
           )}
         </div>
-        <div className="py-4 mt-auto flex justify-center">
-          <button
-            onClick={clearBetSlip}
-            type="button"
-            aria-hidden={betSlipPositions.length === 0}
-            title="Reset"
-            className={`text-xs leading-none text-muted-foreground cursor-pointer transition-opacity duration-300 ${
-              betSlipPositions.length > 0
-                ? 'opacity-100'
-                : 'opacity-0 pointer-events-none'
-            }`}
-          >
-            Clear all
-          </button>
-        </div>
+        {/* Footer actions removed as Clear all is now in the header */}
       </div>
     </>
   );

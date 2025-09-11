@@ -1,6 +1,7 @@
 'use client';
 
 import { Input } from '@sapience/ui/components/ui/input';
+import { Switch } from '@sapience/ui/components/ui/switch';
 import {} from '@sapience/ui/components/ui/sheet';
 import { Skeleton } from '@sapience/ui/components/ui/skeleton';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
@@ -10,13 +11,24 @@ import { FrownIcon, LayoutGridIcon, TagIcon, SearchIcon } from 'lucide-react';
 import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketGroupsRow from './MarketGroupsRow';
+import ParlayModeRow from './ParlayModeRow';
 import {
   useEnrichedMarketGroups,
   useCategories,
 } from '~/hooks/graphql/useMarketGroups';
+import {
+  useConditions,
+  type ConditionType,
+} from '~/hooks/graphql/useConditions';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
@@ -56,7 +68,7 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 
 // Constants for button classes
 const selectedStatusClass = 'bg-secondary';
-const hoverStatusClass = 'hover:bg-secondary/50';
+const hoverStatusClass = '';
 const DEFAULT_CATEGORY_COLOR = '#71717a';
 
 // Define local interfaces based on expected data shape
@@ -93,19 +105,25 @@ const FocusAreaFilter = ({
   handleCategoryClick,
   statusFilter,
   handleStatusFilterClick,
+  parlayMode,
+  onParlayModeChange,
   isLoadingCategories,
   categories,
   getCategoryStyle,
   containerClassName,
+  parlayFeatureEnabled,
 }: {
   selectedCategorySlug: string | null;
   handleCategoryClick: (categorySlug: string | null) => void;
   statusFilter: 'all' | 'active';
   handleStatusFilterClick: (filter: 'all' | 'active') => void;
+  parlayMode: boolean;
+  onParlayModeChange: (enabled: boolean) => void;
   isLoadingCategories: boolean;
   categories: Category[] | null | undefined; // Use defined Category type
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
   containerClassName?: string;
+  parlayFeatureEnabled: boolean;
 }) => (
   <div className={containerClassName || 'px-0 py-0 w-full'}>
     <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
@@ -115,29 +133,43 @@ const FocusAreaFilter = ({
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <div className="w-max flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => handleCategoryClick(null)}
-            className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 md:gap-0 md:group-hover:gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap ${
-              selectedCategorySlug === null
-                ? `md:px-2.5 ${selectedStatusClass} md:gap-2`
-                : `md:px-2 ${hoverStatusClass}`
-            } px-2.5`}
-          >
-            <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
-              <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
-            </div>
-            <div
-              className={`ml-1 overflow-hidden transition-[width,margin,opacity] duration-200 ${
-                selectedCategorySlug === null
-                  ? 'md:ml-1 md:w-auto md:opacity-100'
-                  : 'md:ml-0 md:w-0 md:opacity-0 md:group-hover:ml-1 md:group-hover:w-auto md:group-hover:opacity-100'
-              }`}
-              aria-expanded={selectedCategorySlug === null}
+          {selectedCategorySlug === null ? (
+            <button
+              type="button"
+              onClick={() => handleCategoryClick(null)}
+              className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2.5 ${selectedStatusClass} px-2.5`}
             >
-              <span className="font-medium pr-1">All Focus Areas</span>
-            </div>
-          </button>
+              <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
+                <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
+              </div>
+              <div
+                className="ml-1 md:ml-1 md:w-auto md:opacity-100"
+                aria-expanded
+              >
+                <span className="font-medium pr-1">All Focus Areas</span>
+              </div>
+            </button>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleCategoryClick(null)}
+                    className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2 px-2.5`}
+                  >
+                    <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
+                      <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
+                    </div>
+                    <span className="sr-only">All Focus Areas</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>All Focus Areas</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           {isLoadingCategories &&
             [...Array(3)].map((_, i) => (
@@ -154,20 +186,20 @@ const FocusAreaFilter = ({
               const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
               const displayName = styleInfo?.name || category.name;
 
-              return (
+              return selectedCategorySlug === category.slug ? (
                 <button
                   type="button"
                   key={category.id}
                   onClick={() => handleCategoryClick(category.slug)}
-                  className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 md:gap-0 md:group-hover:gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap ${
-                    selectedCategorySlug === category.slug
-                      ? `md:px-2.5 ${selectedStatusClass} md:gap-2`
-                      : `md:px-2 ${hoverStatusClass}`
-                  } px-2.5`}
+                  className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2.5 ${selectedStatusClass} px-2.5`}
                 >
                   <div
-                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
-                    style={{ backgroundColor: `${categoryColor}1A` }}
+                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-[var(--chip-bg)]"
+                    style={
+                      {
+                        '--chip-bg': `${categoryColor}1A`,
+                      } as React.CSSProperties
+                    }
                   >
                     {styleInfo?.iconSvg ? (
                       <div style={{ transform: 'scale(0.65)' }}>
@@ -186,16 +218,53 @@ const FocusAreaFilter = ({
                     )}
                   </div>
                   <div
-                    className={`ml-1 overflow-hidden transition-[width,margin,opacity] duration-200 ${
-                      selectedCategorySlug === category.slug
-                        ? 'md:ml-1 md:w-auto md:opacity-100'
-                        : 'md:ml-0 md:w-0 md:opacity-0 md:group-hover:ml-1 md:group-hover:w-auto md:group-hover:opacity-100'
-                    }`}
-                    aria-expanded={selectedCategorySlug === category.slug}
+                    className="ml-1 md:ml-1 md:w-auto md:opacity-100"
+                    aria-expanded
                   >
                     <span className="font-medium pr-1">{displayName}</span>
                   </div>
                 </button>
+              ) : (
+                <TooltipProvider key={category.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => handleCategoryClick(category.slug)}
+                        className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2 px-2.5`}
+                      >
+                        <div
+                          className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-[var(--chip-bg)]"
+                          style={
+                            {
+                              '--chip-bg': `${categoryColor}1A`,
+                            } as React.CSSProperties
+                          }
+                        >
+                          {styleInfo?.iconSvg ? (
+                            <div style={{ transform: 'scale(0.65)' }}>
+                              <div
+                                style={{ color: categoryColor }}
+                                dangerouslySetInnerHTML={{
+                                  __html: styleInfo.iconSvg,
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <TagIcon
+                              className="w-3 h-3"
+                              style={{ color: categoryColor }}
+                            />
+                          )}
+                        </div>
+                        <span className="sr-only">{displayName}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>{displayName}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               );
             })}
         </div>
@@ -203,24 +272,45 @@ const FocusAreaFilter = ({
 
       {/* Status on the right (stacks below on small screens) */}
       <div className="w-full md:w-auto flex-shrink-0 mt-2 md:mt-0">
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-medium text-muted-foreground mr-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground mr-1.5">
             Status
           </span>
           <button
             type="button"
-            className={`px-3 py-1 text-xs rounded-full ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
+            className={`px-2.5 py-1 text-xs rounded-full ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
             onClick={() => handleStatusFilterClick('active')}
           >
             Active
           </button>
           <button
             type="button"
-            className={`px-3 py-1 text-xs rounded-full ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
+            className={`px-2.5 py-1 text-xs rounded-full ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
             onClick={() => handleStatusFilterClick('all')}
           >
             All
           </button>
+
+          <div className="h-4 w-px bg-border mx-1" />
+          <span className="text-xs font-medium text-muted-foreground ml-2">
+            Parlay Mode
+          </span>
+          {parlayFeatureEnabled ? (
+            <Switch checked={parlayMode} onCheckedChange={onParlayModeChange} />
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Switch checked={false} disabled />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Coming Soon</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
     </div>
@@ -259,6 +349,34 @@ const ForecastingTable = () => {
     'active'
   );
 
+  // Parlay Mode toggle
+  const [parlayMode, setParlayMode] = React.useState<boolean>(false);
+  // Feature flag for Parlay Mode via localStorage `sapience.parlays` or URL ?parlays=true
+  const [parlayFeatureEnabled, setParlayFeatureEnabled] =
+    React.useState<boolean>(false);
+  React.useEffect(() => {
+    try {
+      const params =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : null;
+      if (params?.get('parlays') === 'true') {
+        window.localStorage.setItem('sapience.parlays', 'true');
+      }
+      const stored =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('sapience.parlays')
+          : null;
+      setParlayFeatureEnabled(stored === 'true');
+    } catch {
+      setParlayFeatureEnabled(false);
+    }
+  }, []);
+
+  // RFQ Conditions via GraphQL
+  const { data: allConditions = [], isLoading: isLoadingConditions } =
+    useConditions({ take: 200 });
+
   // State for text filter
   const [searchTerm, setSearchTerm] = React.useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -272,6 +390,8 @@ const ForecastingTable = () => {
     // Basic validation: just set if it exists or is null
     setSelectedCategorySlug(currentCategorySlug);
   }, [searchParams]);
+
+  // Conditions fetched via GraphQL; no REST fetch required
 
   // Handler for text filter changes
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -585,6 +705,72 @@ const ForecastingTable = () => {
     });
   }, [marketGroupsByDay, dayEndTimes, statusFilter]);
 
+  // ===== Parlay Mode: group RFQ conditions by end date =====
+  const filteredRfqConditions = React.useMemo(() => {
+    const publicConditions: ConditionType[] = (allConditions || []).filter(
+      (c) => c.public
+    );
+    if (publicConditions.length === 0) return [] as ConditionType[];
+    const lower = debouncedSearchTerm.toLowerCase();
+    return publicConditions.filter((c) => {
+      // filter by category
+      if (selectedCategorySlug && c.category?.slug !== selectedCategorySlug) {
+        return false;
+      }
+      // filter by search
+      if (!lower) return true;
+      const haystacks: string[] = [];
+      if (typeof c.question === 'string') haystacks.push(c.question);
+      if (typeof c.claimStatement === 'string')
+        haystacks.push(c.claimStatement);
+      if (typeof c.description === 'string') haystacks.push(c.description);
+      if (typeof c.category?.name === 'string') haystacks.push(c.category.name);
+      if (typeof c.category?.slug === 'string') haystacks.push(c.category.slug);
+      if (Array.isArray(c.similarMarkets)) haystacks.push(...c.similarMarkets);
+      return haystacks.some((h) => h.toLowerCase().includes(lower));
+    });
+  }, [allConditions, selectedCategorySlug, debouncedSearchTerm]);
+
+  const rfqConditionsByDay = React.useMemo(() => {
+    if (!filteredRfqConditions || filteredRfqConditions.length === 0)
+      return {} as Record<string, ConditionType[]>;
+    const grouped = filteredRfqConditions.reduce<
+      Record<string, ConditionType[]>
+    >((acc, c) => {
+      const end = typeof c.endTime === 'number' ? c.endTime : 0;
+      const dayKey = end > 0 ? getDayKey(end) : 'No end time';
+      if (!acc[dayKey]) acc[dayKey] = [];
+      acc[dayKey].push(c);
+      return acc;
+    }, {});
+    return grouped;
+  }, [filteredRfqConditions]);
+
+  const rfqDayEndTimes = React.useMemo(() => {
+    const result: Record<string, number> = {};
+    Object.entries(rfqConditionsByDay).forEach(([dayKey, list]) => {
+      const withEnds = list.filter(
+        (c) => typeof c.endTime === 'number' && c.endTime > 0
+      ) as Array<ConditionType & { endTime: number }>;
+      if (withEnds.length > 0) {
+        const earliest = [...withEnds].sort((a, b) => a.endTime - b.endTime)[0]
+          .endTime;
+        result[dayKey] = earliest;
+      } else {
+        result[dayKey] = Math.floor(Date.now() / 1000);
+      }
+    });
+    return result;
+  }, [rfqConditionsByDay]);
+
+  const sortedRfqDays = React.useMemo(() => {
+    return Object.keys(rfqConditionsByDay).sort((a, b) => {
+      const timeA = rfqDayEndTimes[a] ?? 0;
+      const timeB = rfqDayEndTimes[b] ?? 0;
+      return timeA - timeB;
+    });
+  }, [rfqConditionsByDay, rfqDayEndTimes]);
+
   // Create a key that changes whenever filters change to force complete re-render
   const filterKey = React.useMemo(() => {
     return `${selectedCategorySlug || 'all'}-${statusFilter}-${debouncedSearchTerm}`;
@@ -659,7 +845,7 @@ const ForecastingTable = () => {
       {/* Render only one betslip instance based on viewport */}
       {isMobile ? (
         <div className="block md:hidden">
-          <Betslip />
+          <Betslip isParlayMode={parlayMode} />
         </div>
       ) : null}
 
@@ -696,88 +882,165 @@ const ForecastingTable = () => {
                 handleCategoryClick={handleCategoryClick}
                 statusFilter={statusFilter}
                 handleStatusFilterClick={handleStatusFilterClick}
+                parlayMode={parlayMode}
+                onParlayModeChange={setParlayMode}
                 isLoadingCategories={isLoadingCategories}
                 categories={categories}
                 getCategoryStyle={getCategoryStyle}
                 containerClassName="px-0 md:px-0 py-0 w-full"
+                parlayFeatureEnabled={parlayFeatureEnabled}
               />
             </motion.div>
           </div>
         </div>
 
-        {/* Removed the inline loading checks here */}
+        {/* Results area */}
         <div className="relative min-h-[300px]">
-          <AnimatePresence mode="wait" key={filterKey}>
-            {groupedMarketGroups.length === 0 && (
-              <motion.div
-                key="zero-state"
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="w-full pt-48 text-center text-muted-foreground"
-              >
-                <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-                No questions match the selected filters.
-              </motion.div>
-            )}
+          {!parlayMode ? (
+            <AnimatePresence mode="wait" key={filterKey}>
+              {groupedMarketGroups.length === 0 && (
+                <motion.div
+                  key="zero-state"
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full pt-48 text-center text-muted-foreground"
+                >
+                  <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+                  No questions match the selected filters.
+                </motion.div>
+              )}
 
-            {groupedMarketGroups.length > 0 && (
-              <motion.div
-                key="results-container"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                {sortedDays.map((dayKey) => (
-                  <motion.div
-                    key={dayKey}
-                    className="mb-8"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    <div className="flex flex-col mb-2">
-                      <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                        {formatEndDate(dayEndTimes[dayKey])}
-                      </h3>
-                      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
-                        {marketGroupsByDay[dayKey].map((marketGroup) => (
-                          <motion.div
-                            layout
-                            key={marketGroup.key}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.25 }}
-                            className="border-b last:border-b-0 border-border"
-                          >
-                            <MarketGroupsRow
-                              marketAddress={marketGroup.marketAddress}
-                              chainId={marketGroup.chainId}
-                              displayQuestion={
-                                marketGroup.displayQuestion || 'Loading...'
-                              }
-                              color={marketGroup.color}
-                              market={marketGroup.markets}
-                              isActive={marketGroup.isActive}
-                              marketClassification={
-                                marketGroup.marketClassification
-                              }
-                              displayUnit={marketGroup.displayUnit}
-                            />
-                          </motion.div>
-                        ))}
+              {groupedMarketGroups.length > 0 && (
+                <motion.div
+                  key="results-container"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {sortedDays.map((dayKey) => (
+                    <motion.div
+                      key={dayKey}
+                      className="mb-8"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <div className="flex flex-col mb-2">
+                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                          {formatEndDate(dayEndTimes[dayKey])}
+                        </h3>
+                        <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
+                          {marketGroupsByDay[dayKey].map((marketGroup) => (
+                            <motion.div
+                              layout
+                              key={marketGroup.key}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.25 }}
+                              className="border-b last:border-b-0 border-border"
+                            >
+                              <MarketGroupsRow
+                                marketAddress={marketGroup.marketAddress}
+                                chainId={marketGroup.chainId}
+                                displayQuestion={
+                                  marketGroup.displayQuestion || 'Loading...'
+                                }
+                                color={marketGroup.color}
+                                market={marketGroup.markets}
+                                isActive={marketGroup.isActive}
+                                marketClassification={
+                                  marketGroup.marketClassification
+                                }
+                                displayUnit={marketGroup.displayUnit}
+                              />
+                            </motion.div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          ) : (
+            <AnimatePresence mode="wait" key="parlay-mode">
+              {isLoadingConditions ? (
+                <motion.div
+                  key="loading-rfq"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full pt-48 text-center text-muted-foreground"
+                >
+                  Loading parlay conditions...
+                </motion.div>
+              ) : filteredRfqConditions.length === 0 ? (
+                <motion.div
+                  key="empty-rfq"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="w-full pt-48 text-center text-muted-foreground"
+                >
+                  No public conditions found.
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="rfq-list"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {sortedRfqDays.map((dayKey) => (
+                    <motion.div
+                      key={`rfq-day-${dayKey}`}
+                      className="mb-8"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <div className="flex flex-col mb-2">
+                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                          {dayKey === 'No end time'
+                            ? 'No end time'
+                            : formatEndDate(rfqDayEndTimes[dayKey])}
+                        </h3>
+                        <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
+                          {[...(rfqConditionsByDay[dayKey] || [])]
+                            .sort((a, b) => (a.endTime ?? 0) - (b.endTime ?? 0))
+                            .map((c) => {
+                              const categorySlug = c.category?.slug || '';
+                              const styleInfo = categorySlug
+                                ? getCategoryStyle(categorySlug)
+                                : undefined;
+                              const color =
+                                styleInfo?.color || DEFAULT_CATEGORY_COLOR;
+                              return (
+                                <ParlayModeRow
+                                  key={c.id}
+                                  condition={c}
+                                  color={color}
+                                />
+                              );
+                            })}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
         </div>
       </div>
 
@@ -786,7 +1049,7 @@ const ForecastingTable = () => {
         <div className="hidden md:block w-[24rem] shrink-0 self-start sticky top-24">
           <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
-              <Betslip variant="panel" />
+              <Betslip variant="panel" isParlayMode={parlayMode} />
             </div>
           </div>
         </div>

@@ -18,7 +18,7 @@ import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import Image from 'next/image';
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { usePrivy } from '@privy-io/react-auth';
@@ -54,9 +54,13 @@ import { tickToPrice } from '~/lib/utils/tickUtils';
 
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
+  isParlayMode?: boolean; // controlled by page-level switch
 }
 
-const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
+const Betslip = ({
+  variant = 'triggered',
+  isParlayMode: externalParlayMode = false,
+}: BetslipProps) => {
   const {
     betSlipPositions,
     isPopoverOpen,
@@ -65,21 +69,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     positionsWithMarketData,
   } = useBetSlipContext();
 
-  const [isParlayMode, setIsParlayMode] = useState(false);
-  const [parlayFeatureOverrideEnabled] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('otc') === 'true') {
-        window.localStorage.setItem('otc', 'true');
-        return true;
-      }
-      return window.localStorage.getItem('otc') === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const isParlayFeatureEnabled = parlayFeatureOverrideEnabled;
+  const isParlayMode = externalParlayMode;
   const isCompact = useIsBelow(1024);
   const { login, authenticated } = usePrivy();
   const { address } = useAccount();
@@ -214,16 +204,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     }
   }, [minCollateralRaw, collateralDecimals]);
 
-  // Disable parlay mode automatically when fewer than two positions, unless feature override is enabled
-  useEffect(() => {
-    if (
-      betSlipPositions.length < 2 &&
-      isParlayMode &&
-      !isParlayFeatureEnabled
-    ) {
-      setIsParlayMode(false);
-    }
-  }, [betSlipPositions.length, isParlayMode, isParlayFeatureEnabled]);
+  // Disable logic is handled by page-level UI; no internal toggling
 
   // Create dynamic form schema based on positions and from type (individual or parlay)
   const formSchema: z.ZodType<any> = useMemo(() => {
@@ -725,7 +706,6 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
 
   const contentProps = {
     isParlayMode,
-    setIsParlayMode,
     individualMethods: formMethods as unknown as UseFormReturn<{
       positions: Record<
         string,
@@ -749,6 +729,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     parlayCollateralSymbol: collateralSymbol,
     parlayCollateralAddress: collateralToken,
     parlayChainId,
+    parlayCollateralDecimals: collateralDecimals,
     auctionId,
     bids,
     requestQuotes,

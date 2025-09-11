@@ -6,8 +6,8 @@ import "../../market/interfaces/ISapience.sol";
 import "../../market/interfaces/ISapienceStructs.sol";
 
 /**
- * @title PredictionNFT
- * @notice NFT contract for Prediction Market system
+ * @title PredictionMarketSapienceResolver
+ * @notice SapienceResolver contract for Prediction Market system
  */
 contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
     // ============ Custom Errors ============
@@ -51,7 +51,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             if (predictedOutcomes[i].market.marketGroup == address(0)) {
                 isValid = false;
-                error = Error.INVALID_MARKET_GROUP;
+                error = Error.INVALID_MARKET;
                 break;
             }
 
@@ -64,7 +64,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
             (, bool settled) = _getMarketOutcome(predictedOutcomes[i].market);
             if (settled) {
                 isValid = false;
-                error = Error.MARKET_SETTLED;
+                error = Error.MARKET_NOT_OPENED;
                 break;
             }
         }
@@ -143,6 +143,9 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
     ) internal view returns (bool outcome, bool settled) {
         // Validate market address
         if (market.marketGroup == address(0)) revert InvalidMarketGroupAddress();
+        
+        // Check if this is a Yes/No market first
+        if (!_isYesNoMarket(market)) revert MarketIsNotYesNoMarket();
 
         // Get the specific market data from the Sapience market group
         (ISapienceStructs.MarketData memory marketData, ) = ISapience(
@@ -157,22 +160,24 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         }
 
         // For Yes/No markets, the settlement price will be at the extreme bounds
-        // YES = maxPriceD18, NO = minPriceD18
+        // Due to price clamping in Sapience markets:
+        // - YES settlements (prices > max) get clamped to maxPriceD18
+        // - NO settlements (prices < min) get clamped to minPriceD18
         uint256 settlementPrice = marketData.settlementPriceD18;
         uint256 minPrice = marketData.minPriceD18;
         uint256 maxPrice = marketData.maxPriceD18;
 
         // Check if this is a Yes/No market by comparing settlement price to bounds
-        if (settlementPrice >= maxPrice) {
-            // Market settled as YES
+        // For Yes/No markets, the settlement price should be at one of the extreme bounds
+        // We use the midpoint between min and max to determine the outcome
+        uint256 midpoint = (minPrice + maxPrice) / 2;
+        
+        if (settlementPrice >= midpoint) {
+            // Market settled as YES (price is closer to max than min)
             outcome = true;
-        } else if (settlementPrice <= minPrice) {
-            // Market settled as NO
-            outcome = false;
         } else {
-            // This is a numeric market, not Yes/No
-            // For prediction purposes, we only support Yes/No markets
-            revert MarketIsNotYesNoMarket();
+            // Market settled as NO (price is closer to min than max)
+            outcome = false;
         }
     }
 }

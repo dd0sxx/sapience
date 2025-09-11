@@ -6,6 +6,7 @@ import { router as quoterRoutes } from './quoter';
 import { router as createMarketRoutes } from './createMarket';
 import { Router } from 'express';
 import { adminAuth } from '../middleware';
+import { router as conditionsRoutes } from './conditions';
 
 const router = Router();
 const adminRouter = Router();
@@ -20,6 +21,7 @@ adminRouter.use('/reindex', reindexRoutes);
 adminRouter.use('/cache', refreshCacheRoutes);
 adminRouter.use('/precompute', precomputeRoutes);
 adminRouter.use('/marketGroups', createMarketRoutes);
+adminRouter.use('/conditions', conditionsRoutes);
 
 router.use('/admin', adminRouter);
 
