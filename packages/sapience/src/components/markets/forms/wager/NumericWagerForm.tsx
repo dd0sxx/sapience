@@ -141,11 +141,15 @@ export default function NumericWagerForm({
           decimalPlaces={6}
         />
         <div>
-          <WagerInput
-            collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
-            collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
-            chainId={marketGroupData.chainId}
-          />
+          <div className="my-4">
+            <WagerInput
+              collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
+              collateralAddress={
+                marketGroupData.collateralAsset as `0x${string}`
+              }
+              chainId={marketGroupData.chainId}
+            />
+          </div>
 
           <QuoteDisplay
             quoteData={quoteData}

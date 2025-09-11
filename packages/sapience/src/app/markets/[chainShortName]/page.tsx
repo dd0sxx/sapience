@@ -13,8 +13,11 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
+import { Button } from '@sapience/ui/components/ui/button';
+import { RefreshCw, CandlestickChart } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
+import { useWagerFlip } from '../../../lib/context/WagerFlipContext';
 import { CommentFilters } from '../../../components/shared/Comments';
 import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
 import MarketGroupChart from '~/components/markets/MarketGroupChart';
@@ -118,6 +121,7 @@ const WagerForm = ({
   onWagerSuccess: () => void;
   activeMarket?: MarketType;
 }) => {
+  const { toggle } = useWagerFlip();
   // Check if market is active (not expired or settled)
   const isActive = useMemo(() => {
     if (!activeMarket) {
@@ -145,7 +149,19 @@ const WagerForm = ({
 
   return (
     <div className="bg-card p-5 rounded shadow-sm border flex flex-col flex-1">
-      <h2 className="text-2xl font-medium mb-2">Make a Prediction</h2>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-2xl font-medium">Make a Prediction</h2>
+        {marketClassification === MarketGroupClassification.MULTIPLE_CHOICE && (
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={toggle}
+          >
+            <RefreshCw className="scale-75 -mr-1" />
+            Flip
+          </Button>
+        )}
+      </div>
       <div className="flex-1">
         <WagerFormFactory
           marketClassification={marketClassification}
@@ -303,7 +319,6 @@ const MarketGroupPageContent = () => {
           chainId={chainId}
           marketClassification={marketClassification}
           chainShortName={chainShortName}
-          onOrderbookClick={handleAdvancedViewClick}
         />
 
         {/* Main content layout: Apply gap-6 and px-3 for tighter spacing */}
@@ -369,25 +384,34 @@ const MarketGroupPageContent = () => {
                   onValueChange={setActiveContentTab}
                 >
                   <div className="px-3 py-1 border-b border-border">
-                    <div className="flex items-center">
-                      <TabsList className="h-auto p-0 bg-transparent">
-                        <TabsTrigger
-                          value="forecasts"
-                          className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
-                        >
-                          Forecasts
-                        </TabsTrigger>
-                        {address && (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <div className="order-2 sm:order-1">
+                        <TabsList className="h-auto p-0 bg-transparent">
                           <TabsTrigger
-                            value="positions"
+                            value="forecasts"
                             className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
                           >
-                            Your Positions
+                            Forecasts
                           </TabsTrigger>
-                        )}
-                      </TabsList>
-
-                      {/* Advanced view button moved to header */}
+                          {address && (
+                            <TabsTrigger
+                              value="positions"
+                              className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                            >
+                              Your Positions
+                            </TabsTrigger>
+                          )}
+                        </TabsList>
+                      </div>
+                      <div className="order-1 sm:order-2 sm:ml-auto">
+                        <Button
+                          size="xs"
+                          onClick={handleAdvancedViewClick}
+                        >
+                          <CandlestickChart className="h-3 w-3 -mr-0.5" />
+                          View Orderbook
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   <TabsContent value="forecasts" className="mt-0">

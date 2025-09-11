@@ -13,6 +13,7 @@ import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketGroupCard from '../markets/MarketGroupCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
+import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 
 // Removed LottieLoader in favor of simple fade-in cards and fixed-height placeholder
@@ -310,7 +311,14 @@ function MobileAndDesktopLists({
   const [mobileApi, setMobileApi] = React.useState<CarouselApi | null>(null);
   const [desktopApi, setDesktopApi] = React.useState<CarouselApi | null>(null);
   const items = React.useMemo(
-    () => groupedMarketGroups.slice(0, 8),
+    () =>
+      groupedMarketGroups
+        .filter(
+          (g) =>
+            g.marketClassification !==
+            MarketGroupClassificationEnum.MULTIPLE_CHOICE
+        )
+        .slice(0, 8),
     [groupedMarketGroups]
   );
 

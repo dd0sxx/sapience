@@ -1,10 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import * as React from 'react';
-import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
@@ -12,6 +10,7 @@ import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/li
 import { getChainShortName } from '~/lib/utils/util';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
+import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
 
 export interface MarketGroupCardProps {
   chainId: number;
@@ -86,16 +85,17 @@ const MarketGroupCard = ({
   // Helper function to handle adding market to bet slip
   const handleAddToBetSlip = (
     marketItem: MarketWithContext,
-    prediction: boolean
+    prediction?: boolean,
+    classificationOverride?: MarketGroupClassification
   ) => {
     const position = {
-      prediction,
+      prediction: typeof prediction === 'boolean' ? prediction : true,
       marketAddress,
       marketId: marketItem.marketId,
       question: marketItem.question || marketItem.optionName || displayQuestion,
       chainId,
-      marketClassification,
-      wagerAmount: '10', // Default wager amount
+      marketClassification: classificationOverride || marketClassification,
+      wagerAmount: DEFAULT_WAGER_AMOUNT,
     };
     addPosition(position);
   };
@@ -112,28 +112,6 @@ const MarketGroupCard = ({
     const noMarket = market.find((m) => m.optionName === 'No') || market[0];
     handleAddToBetSlip(noMarket, false);
     router.push('/markets');
-  };
-
-  // Handler for Multiple Choice predict button (selects first option)
-  const handlePredictClick = () => {
-    if (market.length === 0) return;
-
-    // Mirror the MarketPrediction logic: choose the highest priced option if available
-    const marketPriceData = market.map((marketItem) => ({
-      marketItem,
-      price: latestPrices[marketItem.marketId] || 0,
-    }));
-
-    const highestPricedMarket = marketPriceData.reduce((highest, current) =>
-      current.price > highest.price ? current : highest
-    );
-
-    const selectedMarket =
-      highestPricedMarket.price > 0
-        ? highestPricedMarket.marketItem
-        : sortedMarkets[0];
-
-    handleAddToBetSlip(selectedMarket, true);
   };
 
   const MarketPrediction = () => {
@@ -250,15 +228,52 @@ const MarketGroupCard = ({
             {isActive &&
               marketClassification ===
                 MarketGroupClassificationEnum.MULTIPLE_CHOICE && (
-                <Link
-                  href="/markets"
-                  className="block"
-                  onClick={handlePredictClick}
-                >
-                  <Button className="w-full border border-border">
-                    Make a Prediction
-                  </Button>
-                </Link>
+                <YesNoSplitButton
+                  onYes={() => {
+                    if (market.length === 0) return;
+                    const marketPriceData = market.map((marketItem) => ({
+                      marketItem,
+                      price: latestPrices[marketItem.marketId] || 0,
+                    }));
+                    const highestPricedMarket = marketPriceData.reduce(
+                      (highest, current) =>
+                        current.price > highest.price ? current : highest
+                    );
+                    const selectedMarket =
+                      highestPricedMarket.price > 0
+                        ? highestPricedMarket.marketItem
+                        : sortedMarkets[0];
+                    handleAddToBetSlip(
+                      selectedMarket,
+                      true,
+                      MarketGroupClassificationEnum.YES_NO
+                    );
+                    router.push('/markets');
+                  }}
+                  onNo={() => {
+                    if (market.length === 0) return;
+                    const marketPriceData = market.map((marketItem) => ({
+                      marketItem,
+                      price: latestPrices[marketItem.marketId] || 0,
+                    }));
+                    const highestPricedMarket = marketPriceData.reduce(
+                      (highest, current) =>
+                        current.price > highest.price ? current : highest
+                    );
+                    const selectedMarket =
+                      highestPricedMarket.price > 0
+                        ? highestPricedMarket.marketItem
+                        : sortedMarkets[0];
+                    handleAddToBetSlip(
+                      selectedMarket,
+                      false,
+                      MarketGroupClassificationEnum.YES_NO
+                    );
+                    router.push('/markets');
+                  }}
+                  className="w-full"
+                  size="md"
+                />
               )}
             {isActive &&
               marketClassification === MarketGroupClassificationEnum.YES_NO && (

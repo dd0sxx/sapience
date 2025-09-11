@@ -19,14 +19,14 @@ const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
       <Button
         variant="outline"
         size="icon"
-        className="rounded-full md:h-9 md:w-9"
+        className="rounded-full h-11 w-11"
         onClick={() => {
           if (onAfterClick) onAfterClick();
           toggleChat();
         }}
         aria-label="Toggle chat"
       >
-        <MessageCircle />
+        <MessageCircle className="h-5 w-5" />
       </Button>
     );
   }

@@ -2,7 +2,6 @@ import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import Image from 'next/image';
 import type { MarketGroupType } from '@sapience/ui/types';
 import { MarketGroupClassification } from '~/lib/types';
-import LottieLoader from '~/components/shared/LottieLoader';
 
 interface QuoteDisplayProps {
   quoteData: { maxSize: string } | null | undefined;
@@ -45,9 +44,7 @@ export default function QuoteDisplay({
             />
             <span className="font-medium text-foreground">To Win:</span>
           </span>
-          <span className="inline-flex items-center align-middle">
-            <LottieLoader width={20} height={20} />
-          </span>
+          <span className="text-muted-foreground">Loading...</span>
         </div>
       </div>
     );

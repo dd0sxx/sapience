@@ -6,6 +6,7 @@ import QuoteDisplay from './QuoteDisplay';
 import { MarketGroupClassification } from '~/lib/types';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
+import { useWagerFlip } from '~/lib/context/WagerFlipContext';
 
 interface WagerInputWithQuoteProps {
   positionId: string;
@@ -25,6 +26,7 @@ export default function WagerInputWithQuote({
   selectedMarketId,
 }: WagerInputWithQuoteProps) {
   const { watch } = useFormContext();
+  const { isFlipped } = useWagerFlip();
 
   const predictionValue =
     watch(`positions.${positionId}.predictionValue`) || '';
@@ -38,6 +40,7 @@ export default function WagerInputWithQuote({
     predictionValue,
     wagerAmount,
     selectedMarketId,
+    isFlipped,
   });
 
   // Use quoter hook for this position

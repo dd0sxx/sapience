@@ -15,7 +15,9 @@ import MultipleChoiceWagerChoiceSelect from '../inputs/MultipleChoiceWager';
 import WagerDisclaimer from '../shared/WagerDisclaimer';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
+import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { MarketGroupClassification } from '~/lib/types';
+import { useWagerFlip } from '~/lib/context/WagerFlipContext';
 
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -27,6 +29,7 @@ export default function MultipleChoiceWagerForm({
   onSuccess,
 }: MultipleChoiceWagerFormProps) {
   const successHandled = useRef(false);
+  const { isFlipped } = useWagerFlip();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -54,11 +57,23 @@ export default function MultipleChoiceWagerForm({
   const predictionValue = methods.watch('predictionValue');
   const wagerAmount = methods.watch('wagerAmount');
 
-  // Use the quoter hook directly
+  // Get quote parameters that respect the flip state
+  const quoteParams = useMemo(() => {
+    return getQuoteParamsFromPosition({
+      positionId: 'single-wager',
+      marketGroupData,
+      marketClassification: MarketGroupClassification.MULTIPLE_CHOICE,
+      predictionValue,
+      wagerAmount,
+      isFlipped,
+    });
+  }, [marketGroupData, predictionValue, wagerAmount, isFlipped]);
+
+  // Use the quoter hook with flip-aware expectedPrice
   const { quoteData, isQuoteLoading, quoteError } = useQuoter({
-    marketData: marketGroupData,
-    marketId: Number(predictionValue),
-    expectedPrice: 1, // 1 for YES
+    marketData: quoteParams.marketData,
+    marketId: quoteParams.marketId,
+    expectedPrice: quoteParams.expectedPrice,
     wagerAmount,
   });
 
@@ -130,11 +145,15 @@ export default function MultipleChoiceWagerForm({
           </div>
         </div>
         <div>
-          <WagerInput
-            collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
-            collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
-            chainId={marketGroupData.chainId}
-          />
+          <div className="my-4">
+            <WagerInput
+              collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
+              collateralAddress={
+                marketGroupData.collateralAsset as `0x${string}`
+              }
+              chainId={marketGroupData.chainId}
+            />
+          </div>
 
           <QuoteDisplay
             quoteData={quoteData}

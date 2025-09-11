@@ -1,4 +1,5 @@
 import { Button } from '@sapience/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -8,7 +9,9 @@ import {
 } from '@sapience/ui/components/ui/select';
 import { useFormContext } from 'react-hook-form';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
+import { useWagerFlip } from '~/lib/context/WagerFlipContext';
 
 interface MultipleChoicePredictProps {
   name?: string;
@@ -25,6 +28,7 @@ export default function MultipleChoiceWagerChoiceSelect({
 }: MultipleChoicePredictProps) {
   const { register, setValue, watch } = useFormContext();
   const value = watch(name) ?? defaultValue;
+  const { isFlipped } = useWagerFlip();
 
   // Overflow indicators
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -120,7 +124,38 @@ export default function MultipleChoiceWagerChoiceSelect({
               .sort((a, b) => a.marketId - b.marketId)
               .map(({ name: optionName, marketId }) => (
                 <SelectItem key={marketId} value={marketId.toString()}>
-                  {optionName}
+                  <div
+                    className="inline-block relative"
+                    style={{ perspective: 800 }}
+                  >
+                    <motion.div
+                      animate={{ rotateX: isFlipped ? 180 : 0 }}
+                      transition={{ duration: 0.3, ease: [0.65, 0, 0.35, 1] }}
+                      style={{
+                        transformStyle: 'preserve-3d',
+                        position: 'relative',
+                      }}
+                    >
+                      <div
+                        className="truncate"
+                        style={{ backfaceVisibility: 'hidden' }}
+                      >
+                        {optionName}
+                      </div>
+                      <div
+                        className="absolute inset-0 truncate"
+                        style={{
+                          backfaceVisibility: 'hidden',
+                          transform: 'rotateX(180deg)',
+                        }}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <Badge variant="destructive">NOT</Badge>
+                          <span className="truncate">{optionName}</span>
+                        </span>
+                      </div>
+                    </motion.div>
+                  </div>
                 </SelectItem>
               ))}
             {dropdownOverflowing && !dropdownAtBottom && (
@@ -157,51 +192,125 @@ export default function MultipleChoiceWagerChoiceSelect({
             const borderColor = withAlpha(seriesColor, 0.24);
 
             return (
-              <Button
+              <div
                 key={marketId}
-                type="button"
-                onClick={() => {
-                  setValue(name, marketId.toString(), { shouldValidate: true });
-                }}
-                role="radio"
-                aria-checked={isSelected}
-                className={`text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
-                style={{
-                  backgroundColor: unselectedBg,
-                  borderColor,
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                    hoverBg;
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                    unselectedBg;
-                }}
+                className="relative"
+                style={{ perspective: 1000 }}
               >
-                {/* Radio indicator */}
-                <span
-                  className="inline-flex items-center justify-center rounded-full"
+                <motion.div
+                  animate={{ rotateX: isFlipped ? 180 : 0 }}
+                  transition={{ duration: 0.3, ease: [0.65, 0, 0.35, 1] }}
                   style={{
-                    width: 16,
-                    height: 16,
-                    border: `2px solid ${seriesColor}`,
+                    transformStyle: 'preserve-3d',
+                    position: 'relative',
                   }}
-                  aria-hidden
                 >
-                  {isSelected ? (
+                  {/* Front face */}
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setValue(name, marketId.toString(), {
+                        shouldValidate: true,
+                      });
+                    }}
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`w-full text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
+                    style={{
+                      backgroundColor: unselectedBg,
+                      borderColor,
+                      backfaceVisibility: 'hidden',
+                    }}
+                    onMouseEnter={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = hoverBg;
+                    }}
+                    onMouseLeave={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = unselectedBg;
+                    }}
+                  >
                     <span
-                      className="block rounded-full"
+                      className="inline-flex items-center justify-center rounded-full"
                       style={{
-                        width: 8,
-                        height: 8,
-                        backgroundColor: seriesColor,
+                        width: 16,
+                        height: 16,
+                        border: `2px solid ${seriesColor}`,
                       }}
-                    />
-                  ) : null}
-                </span>
-                <span className="truncate">{optionName}</span>
-              </Button>
+                      aria-hidden
+                    >
+                      {isSelected ? (
+                        <span
+                          className="block rounded-full"
+                          style={{
+                            width: 8,
+                            height: 8,
+                            backgroundColor: seriesColor,
+                          }}
+                        />
+                      ) : null}
+                    </span>
+                    <span className="truncate">{optionName}</span>
+                  </Button>
+
+                  {/* Back face */}
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setValue(name, marketId.toString(), {
+                        shouldValidate: true,
+                      });
+                    }}
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`w-full text-center justify-start font-normal border flex items-center gap-3 text-foreground absolute inset-0`}
+                    style={{
+                      backgroundColor: unselectedBg,
+                      borderColor,
+                      transform: 'rotateX(180deg)',
+                      backfaceVisibility: 'hidden',
+                      pointerEvents: isFlipped ? 'auto' : 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = hoverBg;
+                    }}
+                    onMouseLeave={(e) => {
+                      (
+                        e.currentTarget as HTMLButtonElement
+                      ).style.backgroundColor = unselectedBg;
+                    }}
+                  >
+                    <span
+                      className="inline-flex items-center justify-center rounded-full"
+                      style={{
+                        width: 16,
+                        height: 16,
+                        border: `2px solid ${seriesColor}`,
+                      }}
+                      aria-hidden
+                    >
+                      {isSelected ? (
+                        <span
+                          className="block rounded-full"
+                          style={{
+                            width: 8,
+                            height: 8,
+                            backgroundColor: seriesColor,
+                          }}
+                        />
+                      ) : null}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                      <Badge variant="destructive">NOT</Badge>
+                      <span className="truncate">{optionName}</span>
+                    </span>
+                  </Button>
+                </motion.div>
+              </div>
             );
           })}
         </div>

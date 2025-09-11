@@ -9,6 +9,7 @@ export interface PositionQuoteData {
   predictionValue: string;
   wagerAmount: string;
   selectedMarketId?: number;
+  isFlipped?: boolean; // For MULTIPLE_CHOICE markets, determines if we're betting short
 }
 
 export interface QuoteParams {
@@ -27,6 +28,7 @@ export function getQuoteParamsFromPosition(
     marketClassification,
     predictionValue,
     wagerAmount,
+    isFlipped = false,
   } = position;
 
   // Calculate expected price and marketId based on market classification
@@ -43,7 +45,7 @@ export function getQuoteParamsFromPosition(
         0;
       break;
     case MarketGroupClassification.MULTIPLE_CHOICE:
-      expectedPrice = 1; // 1 for YES
+      expectedPrice = isFlipped ? 0.0000009 : 1; // Short when flipped, long when not flipped
       marketId = Number(predictionValue);
       break;
     case MarketGroupClassification.NUMERIC:

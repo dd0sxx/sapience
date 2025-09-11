@@ -136,7 +136,7 @@ export default function YesNoWagerForm({
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-2">
+      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-3">
         <div className="space-y-4">
           <div>
             <div className="grid grid-cols-1 gap-2 mt-2">
@@ -263,11 +263,15 @@ export default function YesNoWagerForm({
           </div>
         </div>
         <div>
-          <WagerInput
-            collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
-            collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
-            chainId={marketGroupData.chainId}
-          />
+          <div className="my-4">
+            <WagerInput
+              collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
+              collateralAddress={
+                marketGroupData.collateralAsset as `0x${string}`
+              }
+              chainId={marketGroupData.chainId}
+            />
+          </div>
 
           <QuoteDisplay
             quoteData={quoteData}

@@ -51,6 +51,7 @@ import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import { tickToPrice } from '~/lib/utils/tickUtils';
+import { useWagerFlip } from '~/lib/context/WagerFlipContext';
 
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
@@ -68,6 +69,7 @@ const Betslip = ({
     clearBetSlip,
     positionsWithMarketData,
   } = useBetSlipContext();
+  const { isFlipped } = useWagerFlip();
 
   const isParlayMode = externalParlayMode;
   const isCompact = useIsBelow(1024);
@@ -563,7 +565,11 @@ const Betslip = ({
 
       const positionId = pos.position.id;
       const marketAddress = pos.position.marketAddress as `0x${string}`;
-      const marketId = pos.position.marketId;
+      // For Multiple Choice, use the current form selection; otherwise use the original
+      const isMulti = pos.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE;
+      const marketId = isMulti
+        ? Number(formValues?.positions?.[positionId]?.predictionValue ?? pos.position.marketId)
+        : pos.position.marketId;
 
       const wagerAmountStr =
         formValues?.positions?.[positionId]?.wagerAmount ||
@@ -596,6 +602,7 @@ const Betslip = ({
         marketClassification: pos.marketClassification,
         predictionValue,
         wagerAmount: wagerAmountStr,
+        isFlipped,
       });
 
       const quoteKey = generateQuoteQueryKey(

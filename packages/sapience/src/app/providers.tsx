@@ -17,6 +17,7 @@ import ThemeProvider from '~/lib/context/ThemeProvider';
 import { BetSlipProvider } from '~/lib/context/BetSlipContext';
 import { SettingsProvider } from '~/lib/context/SettingsContext';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { WagerFlipProvider } from '~/lib/context/WagerFlipContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -124,7 +125,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
           <SettingsProvider>
             <WagmiRoot>
               <SapienceProvider>
-                <BetSlipProvider>{children}</BetSlipProvider>
+                <BetSlipProvider>
+                  <WagerFlipProvider>{children}</WagerFlipProvider>
+                </BetSlipProvider>
               </SapienceProvider>
             </WagmiRoot>
           </SettingsProvider>
