@@ -7,15 +7,12 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@sapience/ui/components/ui/tabs';
-import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-
-import { ChartLineIcon } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
@@ -26,7 +23,6 @@ import MarketStatusDisplay from '~/components/markets/MarketStatusDisplay';
 import UserPositionsTable from '~/components/markets/UserPositionsTable';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import WagerFormFactory from '~/components/markets/forms/WagerFormFactory';
-import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,
@@ -148,11 +144,8 @@ const WagerForm = ({
   }
 
   return (
-    <div className="bg-card p-6 rounded shadow-sm border flex flex-col flex-1">
+    <div className="bg-card p-5 rounded shadow-sm border flex flex-col flex-1">
       <h2 className="text-2xl font-medium mb-2">Make a Prediction</h2>
-      <div className="mb-4">
-        <EndTimeDisplay endTime={activeMarket?.endTimestamp} />
-      </div>
       <div className="flex-1">
         <WagerFormFactory
           marketClassification={marketClassification}
@@ -310,12 +303,13 @@ const MarketGroupPageContent = () => {
           chainId={chainId}
           marketClassification={marketClassification}
           chainShortName={chainShortName}
+          onOrderbookClick={handleAdvancedViewClick}
         />
 
-        {/* Main content layout: Apply gap-12 and px-3 for consistent spacing */}
-        <div className="flex flex-col gap-12 px-4 md:px-3 lg:px-6">
+        {/* Main content layout: Apply gap-6 and px-3 for tighter spacing */}
+        <div className="flex flex-col gap-6 px-4 md:px-3 lg:px-6">
           {/* Row 1: Chart/List + Form */}
-          <div className="flex flex-col lg:flex-row gap-12 lg:items-stretch">
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
             {/* Left Column (Chart/List) */}
             <div className="flex flex-col w-full md:flex-1">
               <div className="border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
@@ -393,14 +387,7 @@ const MarketGroupPageContent = () => {
                     )}
                   </TabsList>
 
-                  {/* Advanced View tab-like link (After tabs) */}
-                  <Button
-                    onClick={handleAdvancedViewClick}
-                    className="ml-auto text-base"
-                  >
-                    <ChartLineIcon className="h-8 w-8" />
-                    Advanced View
-                  </Button>
+                  {/* Advanced view button moved to header */}
                 </div>
               </div>
               <TabsContent value="forecasts" className="mt-0">

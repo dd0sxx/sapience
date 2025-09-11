@@ -217,7 +217,7 @@ const ForecastContent = () => {
   availableMarkets = availableMarkets.sort((a, b) => a.marketId - b.marketId);
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-20">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-24">
       <div className="container max-w-6xl mx-auto flex flex-col">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div>
