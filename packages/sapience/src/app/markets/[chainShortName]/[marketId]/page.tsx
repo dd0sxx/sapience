@@ -12,6 +12,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
 import { LineType, TimeInterval } from '@sapience/ui/types/charts';
+import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
 
 import OrderBookChart from '~/components/markets/charts/OrderBookChart';
 import PriceChart from '~/components/markets/charts/PriceChart';
@@ -218,45 +219,104 @@ const ForecastContent = () => {
 
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-24">
-      <div className="container max-w-6xl mx-auto flex flex-col">
+      <div className="flex flex-col w-full">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
-          <div>
-            {marketClassification ===
-              MarketGroupClassification.MULTIPLE_CHOICE &&
-              marketData?.marketGroup?.markets &&
-              marketData.marketGroup.markets.length > 1 &&
-              availableMarkets.length > 0 && (
-                <div className="mt-6 mb-2">
-                  <Tabs
-                    defaultValue={
-                      numericMarketId !== null
-                        ? String(numericMarketId)
-                        : undefined
-                    }
-                    onValueChange={(value) => {
-                      router.push(`/markets/${chainShortName}/${value}`);
-                    }}
-                  >
-                    <TabsList className="gap-1 py-6">
-                      {availableMarkets.map((market: GqlMarketType) => {
+          <div className="mt-2 mb-6">
+            <div className="flex items-center gap-4">
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    router.push(`/markets/${chainShortName}`);
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Overview
+                </Button>
+              </div>
+              <div className="flex-1 min-w-0">
+                {marketClassification ===
+                  MarketGroupClassification.MULTIPLE_CHOICE &&
+                  marketData?.marketGroup?.markets &&
+                  marketData.marketGroup.markets.length > 1 &&
+                  availableMarkets.length > 0 && (
+                    <div
+                      role="radiogroup"
+                      aria-label="Market options"
+                      className="flex gap-3 overflow-x-auto py-0 pr-2"
+                    >
+                      {availableMarkets.map((market: GqlMarketType, idx) => {
+                        const isSelected =
+                          String(market.marketId) === String(numericMarketId);
                         const buttonText =
                           market.optionName ||
                           market.question ||
                           `Market ${market.marketId}`;
+
+                        const seriesColor = getSeriesColorByIndex(idx);
+                        const unselectedBg = withAlpha(seriesColor, 0.08);
+                        const hoverBg = withAlpha(seriesColor, 0.16);
+                        const borderColor = withAlpha(seriesColor, 0.24);
+
                         return (
-                          <TabsTrigger
+                          <button
                             key={market.id}
-                            value={String(market.marketId)}
-                            className="py-2.5 px-4 whitespace-nowrap flex-shrink-0 data-[state=active]:shadow-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            onClick={() =>
+                              router.push(
+                                `/markets/${chainShortName}/${market.marketId}`
+                              )
+                            }
+                            className={`inline-flex items-center gap-2 rounded border px-3 py-2 text-sm whitespace-nowrap flex-shrink-0 transition-colors text-foreground`}
+                            style={{
+                              backgroundColor: unselectedBg,
+                              borderColor,
+                            }}
+                            onMouseEnter={(e) => {
+                              (
+                                e.currentTarget as HTMLButtonElement
+                              ).style.backgroundColor = hoverBg;
+                            }}
+                            onMouseLeave={(e) => {
+                              (
+                                e.currentTarget as HTMLButtonElement
+                              ).style.backgroundColor = unselectedBg;
+                            }}
                           >
-                            {buttonText}
-                          </TabsTrigger>
+                            <span
+                              className="inline-flex items-center justify-center rounded-full"
+                              style={{
+                                width: 16,
+                                height: 16,
+                                border: `2px solid ${seriesColor}`,
+                              }}
+                              aria-hidden
+                            >
+                              {isSelected ? (
+                                <span
+                                  className="block rounded-full"
+                                  style={{
+                                    width: 8,
+                                    height: 8,
+                                    backgroundColor: seriesColor,
+                                  }}
+                                />
+                              ) : null}
+                            </span>
+                            <span className="truncate max-w-[220px]">
+                              {buttonText}
+                            </span>
+                          </button>
                         );
                       })}
-                    </TabsList>
-                  </Tabs>
-                </div>
-              )}
+                    </div>
+                  )}
+              </div>
+            </div>
           </div>
           <MarketHeader
             marketData={marketData!}
@@ -276,52 +336,40 @@ const ForecastContent = () => {
             <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
               {/* Chart Column */}
               <div className="flex flex-col w-full relative xl:col-span-6 h-[460px]">
-                <div className="w-full flex-1 relative mb-4 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden">
-                  <PriceChart
-                    market={{
-                      marketId: numericMarketId!,
-                      chainId: chainId!,
-                      address: marketAddress!,
-                      quoteTokenName:
-                        marketData?.marketGroup?.quoteTokenName || undefined,
-                      startTimestamp: marketData?.startTimestamp,
-                      endTimestamp: marketData?.endTimestamp,
-                    }}
-                    selectedInterval={selectedInterval}
-                    selectedPrices={selectedPrices}
-                    resourceSlug={resourceSlug}
-                  />
-                </div>
-                <div className="flex flex-col lg:flex-row justify-between w-full items-start lg:items-center gap-2 flex-shrink-0">
-                  <div className="flex flex-row flex-wrap gap-3 w-full items-center">
-                    {/* Easy Mode Button - Left Side */}
-                    <div className="order-1">
-                      <Button
-                        variant="outline"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          router.push(`/markets/${chainShortName}`);
-                        }}
-                        className="flex items-center gap-1"
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                        Overview
-                      </Button>
+                <div className="w-full flex-1 relative border border-border rounded p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
+                  <div className="flex-1 relative">
+                    <div className="absolute top-0 left-0 z-10">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-md shadow-sm">
+                          <IntervalSelector
+                            selectedInterval={selectedInterval}
+                            setSelectedInterval={setSelectedInterval}
+                          />
+                        </div>
+                        {marketData?.marketGroup?.resource?.slug && (
+                          <PriceSelector
+                            selectedPrices={selectedPrices}
+                            setSelectedPrices={handlePriceSelection}
+                          />
+                        )}
+                      </div>
                     </div>
-
-                    <div className="order-2 sm:order-2 ml-auto flex flex-wrap gap-3">
-                      <IntervalSelector
-                        selectedInterval={selectedInterval}
-                        setSelectedInterval={setSelectedInterval}
-                      />
-                      {marketData?.marketGroup?.resource?.slug && (
-                        <PriceSelector
-                          selectedPrices={selectedPrices}
-                          setSelectedPrices={handlePriceSelection}
-                        />
-                      )}
-                    </div>
+                    <PriceChart
+                      market={{
+                        marketId: numericMarketId!,
+                        chainId: chainId!,
+                        address: marketAddress!,
+                        quoteTokenName:
+                          marketData?.marketGroup?.quoteTokenName || undefined,
+                        startTimestamp: marketData?.startTimestamp,
+                        endTimestamp: marketData?.endTimestamp,
+                      }}
+                      selectedInterval={selectedInterval}
+                      selectedPrices={selectedPrices}
+                      resourceSlug={resourceSlug}
+                    />
                   </div>
+                  {/* Footer removed: PriceSelector moved next to IntervalSelector at top-left */}
                 </div>
               </div>
 
@@ -344,28 +392,33 @@ const ForecastContent = () => {
               </div>
 
               {/* Forms Column */}
-              <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0">
+              <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0 mb-5">
                 <div className="bg-card rounded border overflow-auto h-[460px]">
                   <div className="w-full">
-                    {!positionId && (
-                      <Tabs
-                        value={activeFormTab}
-                        onValueChange={(value) => setActiveFormTab(value)}
-                        className="w-full"
-                      >
-                        <TabsList className="grid w-full grid-cols-2 rounded-none h-12 p-1">
-                          <TabsTrigger value="trade" className="py-2 text-base">
-                            Trade
-                          </TabsTrigger>
-                          <TabsTrigger
-                            value="liquidity"
-                            className="py-2 text-base"
-                          >
-                            Liquidity
-                          </TabsTrigger>
-                        </TabsList>
-                      </Tabs>
-                    )}
+                    <div className="px-3 py-1 border-b border-border">
+                      {!positionId && (
+                        <Tabs
+                          value={activeFormTab}
+                          onValueChange={(value) => setActiveFormTab(value)}
+                          className="w-full"
+                        >
+                          <TabsList className="grid w-full grid-cols-2 h-auto p-0 bg-transparent">
+                            <TabsTrigger
+                              value="trade"
+                              className="w-full justify-center text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0"
+                            >
+                              Trade
+                            </TabsTrigger>
+                            <TabsTrigger
+                              value="liquidity"
+                              className="w-full justify-center text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0"
+                            >
+                              Liquidity
+                            </TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      )}
+                    </div>
                     <div className="p-4">
                       <PositionSelector />
                       <div className="mt-3 relative">
@@ -399,7 +452,7 @@ const ForecastContent = () => {
             </div>
 
             {/* Full Width Data Tables Below */}
-            <div className="w-full my-5">
+            <div className="w-full mb-4">
               <MarketDataTables />
             </div>
           </div>

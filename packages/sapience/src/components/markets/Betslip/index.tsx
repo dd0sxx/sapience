@@ -566,9 +566,13 @@ const Betslip = ({
       const positionId = pos.position.id;
       const marketAddress = pos.position.marketAddress as `0x${string}`;
       // For Multiple Choice, use the current form selection; otherwise use the original
-      const isMulti = pos.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE;
+      const isMulti =
+        pos.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE;
       const marketId = isMulti
-        ? Number(formValues?.positions?.[positionId]?.predictionValue ?? pos.position.marketId)
+        ? Number(
+            formValues?.positions?.[positionId]?.predictionValue ??
+              pos.position.marketId
+          )
         : pos.position.marketId;
 
       const wagerAmountStr =

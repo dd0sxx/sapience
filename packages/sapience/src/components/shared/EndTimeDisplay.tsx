@@ -64,7 +64,7 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
             Ends {displayTime}
             <span
               aria-hidden="true"
-              className="hidden lg:inline-block mx-2.5 h-4 w-px bg-muted-foreground/30"
+              className="hidden md:inline-block mx-2.5 h-4 w-px bg-muted-foreground/30"
             />
             <span className="whitespace-nowrap text-muted-foreground font-normal">
               {fullLabel}

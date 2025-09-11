@@ -152,11 +152,7 @@ const WagerForm = ({
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-2xl font-medium">Make a Prediction</h2>
         {marketClassification === MarketGroupClassification.MULTIPLE_CHOICE && (
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={toggle}
-          >
+          <Button variant="outline" size="xs" onClick={toggle}>
             <RefreshCw className="scale-75 -mr-1" />
             Flip
           </Button>
@@ -404,10 +400,7 @@ const MarketGroupPageContent = () => {
                         </TabsList>
                       </div>
                       <div className="order-1 sm:order-2 sm:ml-auto">
-                        <Button
-                          size="xs"
-                          onClick={handleAdvancedViewClick}
-                        >
+                        <Button size="xs" onClick={handleAdvancedViewClick}>
                           <CandlestickChart className="h-3 w-3 -mr-0.5" />
                           View Orderbook
                         </Button>
