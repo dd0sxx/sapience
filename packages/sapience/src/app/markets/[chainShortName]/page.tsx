@@ -26,6 +26,7 @@ import MarketStatusDisplay from '~/components/markets/MarketStatusDisplay';
 import UserPositionsTable from '~/components/markets/UserPositionsTable';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import WagerFormFactory from '~/components/markets/forms/WagerFormFactory';
+import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,
@@ -149,6 +150,9 @@ const WagerForm = ({
   return (
     <div className="bg-card p-6 rounded shadow-sm border flex flex-col flex-1">
       <h2 className="text-2xl font-medium mb-2">Make a Prediction</h2>
+      <div className="mb-4">
+        <EndTimeDisplay endTime={activeMarket?.endTimestamp} />
+      </div>
       <div className="flex-1">
         <WagerFormFactory
           marketClassification={marketClassification}
@@ -299,7 +303,7 @@ const MarketGroupPageContent = () => {
   // Otherwise show the main content
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-24">
-      <div className="container mx-auto max-w-4xl flex flex-col">
+      <div className="container max-w-6xl mx-auto flex flex-col">
         <MarketGroupHeader
           marketGroupData={marketGroupData}
           activeMarket={activeMarket}
@@ -309,7 +313,7 @@ const MarketGroupPageContent = () => {
         />
 
         {/* Main content layout: Apply gap-12 and px-3 for consistent spacing */}
-        <div className="flex flex-col gap-12 px-3">
+        <div className="flex flex-col gap-12 px-4 md:px-3 lg:px-6">
           {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col lg:flex-row gap-12 lg:items-stretch">
             {/* Left Column (Chart/List) */}
