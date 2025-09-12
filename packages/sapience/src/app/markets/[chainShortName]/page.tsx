@@ -442,7 +442,7 @@ const MarketGroupPageContent = () => {
                   value={activeContentTab}
                   onValueChange={setActiveContentTab}
                 >
-                  <div className="px-3 py-0">
+                  <div className="py-0">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="order-2 sm:order-1">
                         <TabsList className="h-auto p-0 bg-transparent">
@@ -488,7 +488,7 @@ const MarketGroupPageContent = () => {
                     </div>
                   </div>
                   <TabsContent value="all-positions" className="mt-0">
-                    <div className="px-3 pt-1 pb-4">
+                    <div className="pt-1 pb-4">
                       <WagersTable
                         showHeaderText={false}
                         marketAddress={marketAddress}
@@ -498,9 +498,36 @@ const MarketGroupPageContent = () => {
                     </div>
                   </TabsContent>
                   <TabsContent value="forecasts" className="mt-0">
-                    <div className="px-3 pt-1">
-                      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-4">
+                    <div className="pt-1">
+                      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-6">
                         <div className="space-y-4">
+                          <p className="text-lg leading-relaxed text-muted-foreground">
+                            Submit forecasts on{' '}
+                            <a
+                              href="https://attest.org"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Ethereum
+                            </a>{' '}
+                            or{' '}
+                            <Link
+                              href="/bots"
+                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              deploy an agent
+                            </Link>{' '}
+                            that does. Forecasts can{' '}
+                            <Link
+                              href="/leaderboard#accuracy"
+                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              provide signal
+                            </Link>{' '}
+                            for prediction market participants and trigger
+                            automation.
+                          </p>
                           <ForecastInfoNotice />
                           {/* Prediction Form */}
                           <PredictForm
@@ -530,7 +557,7 @@ const MarketGroupPageContent = () => {
                   </TabsContent>
                   {ready && authenticated && connectedPrivyWallet?.address && (
                     <TabsContent value="positions" className="mt-0">
-                      <div className="px-3 pt-1 pb-4">
+                      <div className="pt-1 pb-4">
                         <UserPositionsTable
                           showHeaderText={false}
                           showParlaysTab={false}

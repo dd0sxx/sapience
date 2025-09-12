@@ -350,7 +350,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
                   />
                 ) : null}
                 <div className="[&_span.font-mono]:text-foreground">
-                  <AddressDisplay address={position.owner || ''} compact />
+                  <AddressDisplay address={position.owner || ''} />
                 </div>
               </div>
             </div>
