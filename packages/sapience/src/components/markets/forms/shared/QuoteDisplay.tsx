@@ -1,6 +1,7 @@
 import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import Image from 'next/image';
 import type { MarketGroupType } from '@sapience/ui/types';
+import { AlertTriangle } from 'lucide-react';
 import { MarketGroupClassification } from '~/lib/types';
 
 interface QuoteDisplayProps {
@@ -45,18 +46,12 @@ export default function QuoteDisplay({
   if (quoteError) {
     return (
       <div className="mt-3">
-        <div className="flex items-center gap-2 rounded-md border-[1.5px] border-[#91B3F0]/80 bg-[#91B3F0]/20 px-3 py-2.5 w-full whitespace-nowrap h-12">
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
-            <Image
-              src="/usde.svg"
-              alt="USDe"
-              width={20}
-              height={20}
-              className="opacity-90 w-5 h-5"
-            />
-            <span className="font-medium text-foreground">To Win:</span>
-          </span>
-          <span className="text-destructive">{quoteError}</span>
+        <div className="flex items-center rounded-md border border-destructive/80 bg-destructive/10 px-3 py-2.5 w-full h-12 text-xs">
+          <AlertTriangle
+            className="w-8 h-8 mr-2.5 text-destructive"
+            strokeWidth={1.5}
+          />
+          <span className="text-destructive pr-3">{quoteError}</span>
         </div>
       </div>
     );
