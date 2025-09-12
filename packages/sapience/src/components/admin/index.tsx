@@ -24,7 +24,7 @@ import {
 } from '@sapience/ui/components/ui/tabs';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useResources } from '@sapience/ui/hooks/useResources';
-import { Plus, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, RefreshCw, Loader2, Upload } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
@@ -449,6 +449,7 @@ const Admin = () => {
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
   const [accuracyReindexOpen, setAccuracyReindexOpen] = useState(false);
   const [createConditionOpen, setCreateConditionOpen] = useState(false);
+  const [rfqCsvImportOpen, setRfqCsvImportOpen] = useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState(
@@ -638,6 +639,14 @@ const Admin = () => {
             </div>
           ) : activeTab === 'rfq' ? (
             <div className="md:ml-auto flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRfqCsvImportOpen(true)}
+              >
+                <Upload className="mr-1 h-4 w-4" />
+                Import CSV
+              </Button>
               <Button size="sm" onClick={() => setCreateConditionOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" />
                 New Condition
@@ -670,6 +679,8 @@ const Admin = () => {
           <RFQTab
             createOpen={createConditionOpen}
             setCreateOpen={setCreateConditionOpen}
+            csvImportOpen={rfqCsvImportOpen}
+            onCsvImportOpenChange={setRfqCsvImportOpen}
           />
         </TabsContent>
       </Tabs>

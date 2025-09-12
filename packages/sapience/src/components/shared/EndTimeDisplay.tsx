@@ -41,7 +41,7 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
               <span className="inline-flex cursor-default md:hidden">
                 <Badge
                   variant="outline"
-                  className="h-8 items-center px-3 text-xs leading-none"
+                  className="bg-background dark:bg-muted/50 border-muted h-8 items-center px-3 text-xs leading-none"
                 >
                   <Timer className="h-4 w-4 mr-1" />
                   Ends {displayTime}
@@ -58,7 +58,7 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
         <span className="hidden md:inline-flex cursor-default">
           <Badge
             variant="outline"
-            className="h-8 items-center px-3 text-xs leading-none inline-flex"
+            className="bg-background dark:bg-muted/50 border-muted h-8 items-center px-3 text-xs leading-none inline-flex"
           >
             <Timer className="h-3.5 w-3.5 mr-1 -mt-0.5 opacity-70" />
             Ends {displayTime}

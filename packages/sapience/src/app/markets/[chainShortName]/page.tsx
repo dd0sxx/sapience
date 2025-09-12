@@ -148,11 +148,11 @@ const WagerForm = ({
   }
 
   return (
-    <div className="bg-card p-5 rounded shadow-sm border flex flex-col flex-1">
+    <div className="bg-background dark:bg-muted/50 p-5 rounded shadow-sm border flex flex-col flex-1">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-2xl font-medium">Make a Prediction</h2>
         {marketClassification === MarketGroupClassification.MULTIPLE_CHOICE && (
-          <Button variant="outline" size="xs" onClick={toggle}>
+          <Button variant="secondary" size="xs" onClick={toggle}>
             <RefreshCw className="scale-75 -mr-1" />
             Flip
           </Button>
@@ -323,7 +323,7 @@ const MarketGroupPageContent = () => {
           <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
             {/* Left Column (Chart/List) */}
             <div className="flex flex-col w-full md:flex-1 min-w-0">
-              <div className="border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
+              <div className="bg-background dark:bg-muted/50 border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
                 <div className="flex-1">
                   {isDeployed ? (
                     <MarketGroupChart
@@ -385,14 +385,14 @@ const MarketGroupPageContent = () => {
                         <TabsList className="h-auto p-0 bg-transparent">
                           <TabsTrigger
                             value="forecasts"
-                            className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                            className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                           >
                             Forecasts
                           </TabsTrigger>
                           {address && (
                             <TabsTrigger
                               value="positions"
-                              className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                              className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                             >
                               Your Positions
                             </TabsTrigger>

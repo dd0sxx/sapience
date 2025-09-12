@@ -125,7 +125,11 @@ export default function DataTable<
                         header.getContext()
                       );
                   return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className="whitespace-nowrap"
+                    >
                       {typeof content === 'bigint'
                         ? content.toString()
                         : (content as number)}

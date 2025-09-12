@@ -87,28 +87,31 @@ export const useLightweightChart = ({
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
       layout: {
-        background: { color: resolvedTheme === 'dark' ? '#09090B' : '#ffffff' },
-        textColor: resolvedTheme === 'dark' ? '#ffffff' : '#000000',
+        // Transparent background in dark mode so container color shows through
+        background: {
+          color: resolvedTheme === 'dark' ? 'transparent' : '#ffffff',
+        },
+        textColor: resolvedTheme === 'dark' ? '#e4e4e7' : '#111827',
       },
       grid: {
         vertLines: {
           color:
             resolvedTheme === 'dark'
-              ? 'rgba(197, 203, 206, 0.2)'
-              : 'rgba(197, 203, 206, 0.5)',
+              ? 'rgba(63, 63, 70, 0.6)'
+              : 'rgba(203, 213, 225, 0.6)',
         },
         horzLines: {
           color:
             resolvedTheme === 'dark'
-              ? 'rgba(197, 203, 206, 0.2)'
-              : 'rgba(197, 203, 206, 0.5)',
+              ? 'rgba(63, 63, 70, 0.6)'
+              : 'rgba(203, 213, 225, 0.6)',
         },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
       },
       timeScale: {
-        borderColor: resolvedTheme === 'dark' ? '#363537' : '#cccccc',
+        borderColor: resolvedTheme === 'dark' ? '#3f3f46' : '#e5e7eb',
         timeVisible: true,
         secondsVisible: false,
         maxBarSpacing: 30,
@@ -116,7 +119,7 @@ export const useLightweightChart = ({
         // fixLeftEdge: true, // Avoid fixing left edge
       },
       rightPriceScale: {
-        borderColor: resolvedTheme === 'dark' ? '#363537' : '#cccccc',
+        borderColor: resolvedTheme === 'dark' ? '#3f3f46' : '#e5e7eb',
         visible: true,
         autoScale: true, // Enable auto-scaling
       },

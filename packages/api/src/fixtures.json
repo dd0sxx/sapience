@@ -28,11 +28,11 @@
   ],
   "CATEGORIES": [
     {
-      "name": "Blockchains",
+      "name": "Crypto",
       "slug": "decentralized-compute"
     },
     {
-      "name": "Climate Change",
+      "name": "Weather",
       "slug": "climate-change"
     },
     {
@@ -48,7 +48,7 @@
       "slug": "economy-finance"
     },
     {
-      "name": "Athletics",
+      "name": "Sports",
       "slug": "athletics"
     },
     {

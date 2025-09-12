@@ -274,33 +274,40 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                 );
               })}
             </defs>
-            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
+              strokeOpacity={0.2}
+            />
             <XAxis
               dataKey="timestamp"
               ticks={dailyTicks}
-              axisLine
+              axisLine={{ stroke: 'hsl(var(--border))' }}
               tickLine={false}
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
               tickFormatter={formatTimestampCompact}
               fontSize={12}
               dy={10} // Adjust vertical position of ticks
               domain={minTimestamp ? [minTimestamp, 'auto'] : ['auto', 'auto']}
-              stroke="rgba(0, 0, 0, 0.5)"
             />
             <YAxis
               axisLine={false}
               tickLine={false}
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
               tickFormatter={yAxisConfig.tickFormatter}
               fontSize={12}
               dx={0}
               domain={yAxisConfig.domain}
               width={40}
-              stroke="rgba(0, 0, 0, 0.5)"
             />
             {/* Tooltip configured to show a custom cursor line */}
             <Tooltip
               content={() => null} // Still render no actual tooltip content
               wrapperStyle={{ display: 'none' }} // Ensure no wrapper is rendered
-              cursor={{ stroke: 'lightgray', strokeDasharray: '3 3' }} // Show a light gray dashed vertical line
+              cursor={{
+                stroke: 'hsl(var(--muted-foreground) / 0.4)',
+                strokeDasharray: '3 3',
+              }} // Show a dashed vertical line
             />
 
             {/* Dynamically render a Line for each marketId */}

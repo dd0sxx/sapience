@@ -8,6 +8,7 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
@@ -225,15 +226,14 @@ const ForecastContent = () => {
             <div className="flex items-center gap-4">
               <div>
                 <Button
+                  asChild
                   variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    router.push(`/markets/${chainShortName}`);
-                  }}
                   className="flex items-center gap-1"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                  Overview
+                  <Link href={`/markets/${chainShortName}`}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Overview
+                  </Link>
                 </Button>
               </div>
               <div className="flex-1 min-w-0">
@@ -336,7 +336,7 @@ const ForecastContent = () => {
             <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
               {/* Chart Column */}
               <div className="flex flex-col w-full relative xl:col-span-6 h-[460px]">
-                <div className="w-full flex-1 relative border border-border rounded p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
+                <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
                   <div className="flex-1 relative">
                     <div className="absolute top-0 left-0 z-10">
                       <div className="flex items-center gap-2">
@@ -393,7 +393,7 @@ const ForecastContent = () => {
 
               {/* Forms Column */}
               <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0 mb-5">
-                <div className="bg-card rounded border overflow-auto h-[460px]">
+                <div className="bg-background dark:bg-muted/50 rounded border border-border shadow-sm overflow-auto h-[460px]">
                   <div className="w-full">
                     <div className="px-3 py-1 border-b border-border">
                       {!positionId && (
@@ -405,13 +405,13 @@ const ForecastContent = () => {
                           <TabsList className="grid w-full grid-cols-2 h-auto p-0 bg-transparent">
                             <TabsTrigger
                               value="trade"
-                              className="w-full justify-center text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0"
+                              className="w-full justify-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                             >
                               Trade
                             </TabsTrigger>
                             <TabsTrigger
                               value="liquidity"
-                              className="w-full justify-center text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0"
+                              className="w-full justify-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                             >
                               Liquidity
                             </TabsTrigger>

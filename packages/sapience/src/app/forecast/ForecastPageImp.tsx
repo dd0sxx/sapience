@@ -202,13 +202,6 @@ const ForecastPageImp = () => {
 
   // Handler to select a market and switch to the selected question tab
   const handleMarketSelect = (market: any) => {
-    console.log('Market selected:', {
-      id: market?.id,
-      marketId: market?.marketId,
-      question: market?.question,
-      optionName: market?.optionName,
-      groupQuestion: market?.group?.question,
-    });
     setSelectedCategory(CommentFilters.SelectedQuestion);
     setTimeout(() => {
       setSelectedMarket(market);
@@ -276,12 +269,6 @@ const ForecastPageImp = () => {
                 markets={activeMarkets}
                 selectedMarketId={(() => {
                   const marketId = selectedMarket?.id?.toString();
-                  console.log(
-                    'Passing selectedMarketId to QuestionSelect:',
-                    marketId,
-                    'from market:',
-                    selectedMarket
-                  );
                   return marketId;
                 })()}
                 onMarketGroupSelect={handleMarketSelect}

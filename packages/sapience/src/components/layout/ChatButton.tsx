@@ -26,7 +26,7 @@ const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
         }}
         aria-label="Toggle chat"
       >
-        <MessageCircle className="h-5 w-5" />
+        <MessageCircle className="h-7 w-7" />
       </Button>
     );
   }
