@@ -106,9 +106,7 @@ export const BetslipContent = ({
       !p.isLoading && !p.error && p.marketGroupData && p.marketClassification
   );
   const effectiveParlayMode = isParlayMode;
-  const allPositionsLoading =
-    positionsWithMarketData.length > 0 &&
-    positionsWithMarketData.every((p) => p.isLoading);
+  // Removed global loading gate; show per-item loaders to avoid flicker
   // Watch parlay form values to react to changes
   const parlayWagerAmount = useWatch({
     control: parlayMethods.control,
@@ -257,10 +255,6 @@ export const BetslipContent = ({
                 </p>
               </div>
             </div>
-          ) : !effectiveParlayMode && allPositionsLoading ? (
-            <div className="w-full h-full flex items-center justify-center">
-              <LottieLoader width={24} height={24} />
-            </div>
           ) : !effectiveParlayMode ? (
             <FormProvider {...individualMethods}>
               <form
@@ -276,12 +270,6 @@ export const BetslipContent = ({
                       key={positionData.position.id}
                       className={`mb-4 ${!isLast ? 'border-b border-border pb-5' : ''}`}
                     >
-                      {positionData.isLoading && (
-                        <div className="flex w-full justify-center py-2">
-                          <LottieLoader width={20} height={20} />
-                        </div>
-                      )}
-
                       {positionData.error && (
                         <>
                           <div className="mb-2">
@@ -303,35 +291,26 @@ export const BetslipContent = ({
                         </>
                       )}
 
-                      {positionData.marketGroupData &&
-                        positionData.marketClassification && (
-                          <IndividualPositionRow
-                            positionId={positionData.position.id}
-                            question={positionData.position.question}
-                            marketGroupData={positionData.marketGroupData}
-                            marketClassification={
-                              positionData.marketClassification
-                            }
-                            selectedMarketId={positionData.position.marketId}
-                            onRemove={() =>
-                              removePosition(positionData.position.id)
-                            }
-                          />
-                        )}
+                      <IndividualPositionRow
+                        positionId={positionData.position.id}
+                        question={positionData.position.question}
+                        marketGroupData={positionData.marketGroupData}
+                        marketClassification={
+                          positionData.marketClassification ||
+                          MarketGroupClassificationEnum.YES_NO
+                        }
+                        selectedMarketId={positionData.position.marketId}
+                        onRemove={() =>
+                          removePosition(positionData.position.id)
+                        }
+                      />
 
-                      {!positionData.isLoading &&
-                        !positionData.error &&
-                        (!positionData.marketGroupData ||
-                          !positionData.marketClassification) && (
-                          <div className="flex w-full justify-center py-2">
-                            <LottieLoader width={20} height={20} />
-                          </div>
-                        )}
+                      {/* No placeholder needed; row renders immediately with fallbacks */}
                     </div>
                   );
                 })}
 
-                {hasAtLeastOneLoadedQuestion && !allPositionsLoading && (
+                {hasAtLeastOneLoadedQuestion && (
                   <>
                     <WagerDisclaimer className="mt-2 mb-3" />
                     <Button
@@ -585,7 +564,7 @@ export const BetslipContent = ({
 interface IndividualPositionRowProps {
   positionId: string;
   question: string;
-  marketGroupData: MarketGroupType;
+  marketGroupData?: MarketGroupType;
   marketClassification: MarketGroupClassification;
   onRemove: () => void;
   selectedMarketId?: number;
@@ -601,6 +580,10 @@ function IndividualPositionRow({
 }: IndividualPositionRowProps) {
   const { watch, getValues, setValue } = useFormContext();
   const { isFlipped } = useWagerFlip();
+  const { betSlipPositions } = useBetSlipContext();
+
+  // Lookup base position for fallback chainId/address
+  const basePos = betSlipPositions.find((p) => p.id === positionId);
 
   const predictionValue =
     watch(`positions.${positionId}.predictionValue`) || '';
@@ -651,9 +634,17 @@ function IndividualPositionRow({
     marketGroupData,
   ]);
 
+  // Build minimal market data if full marketGroupData not yet loaded
+  const minimalMarketData = {
+    chainId: basePos?.chainId,
+    address: basePos?.marketAddress,
+  } as unknown as MarketGroupType;
+
+  const marketDataForQuote = marketGroupData || minimalMarketData;
+
   const quoteParams = getQuoteParamsFromPosition({
     positionId,
-    marketGroupData,
+    marketGroupData: marketDataForQuote,
     marketClassification,
     predictionValue,
     wagerAmount,
@@ -696,9 +687,12 @@ function IndividualPositionRow({
       <div className="pt-1">
         <WagerInput
           name={`positions.${positionId}.wagerAmount`}
-          collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
-          collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
-          chainId={marketGroupData.chainId}
+          collateralSymbol={marketGroupData?.collateralSymbol || 'testUSDe'}
+          collateralAddress={
+            (marketGroupData?.collateralAsset as `0x${string}`) ||
+            ('0x0000000000000000000000000000000000000000' as `0x${string}`)
+          }
+          chainId={marketGroupData?.chainId || basePos?.chainId}
         />
       </div>
 
@@ -709,7 +703,7 @@ function IndividualPositionRow({
           quoteData={quoteData}
           quoteError={quoteError}
           isLoading={isQuoteLoading}
-          marketGroupData={marketGroupData}
+          marketGroupData={marketDataForQuote}
           marketClassification={marketClassification}
           predictionValue={predictionValue}
         />

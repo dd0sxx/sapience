@@ -1,23 +1,16 @@
 'use client';
 
 import type React from 'react';
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-} from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { createPositionDefaults } from '~/lib/utils/betslipUtils';
 import {
-  marketGroupQueryConfig,
-  getMarketGroupFromCache,
   prefetchMarketGroup,
   normalizeMarketIdentifier,
+  useMarketGroupsForPositions,
 } from '~/hooks/graphql/useMarketGroup';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 
@@ -91,46 +84,44 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
   );
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const queryClient = useQueryClient();
-  const [_queryVersion, setQueryVersion] = useState(0);
+  // Removed manual cache subscription; useQueries handles re-renders
 
-  // Subscribe to React Query cache updates for marketGroup queries so the
-  // provider re-renders when loading/data/error changes
-  useEffect(() => {
-    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      const q = (event as unknown as { query?: { queryKey?: unknown[] } })
-        ?.query;
-      if (Array.isArray(q?.queryKey) && q?.queryKey?.[0] === 'marketGroup') {
-        setQueryVersion((v) => v + 1);
+  // Hydrate market data for all positions via React Query and map back to positions
+  const { unique, queries } = useMarketGroupsForPositions(singlePositions);
+
+  // Build a lookup from normalizedId:chainId -> query result
+  const resultLookup = (() => {
+    const map = new Map<
+      string,
+      {
+        data: MarketGroupType | undefined;
+        isLoading: boolean;
+        isError: boolean;
       }
+    >();
+    unique.forEach((u, idx) => {
+      const q = queries[idx];
+      const key = `${u.id}:${u.chainId}`;
+      map.set(key, {
+        data: (q as any)?.data as MarketGroupType | undefined,
+        isLoading: (q as any)?.isLoading ?? false,
+        isError: (q as any)?.isError ?? false,
+      });
     });
-    return () => unsubscribe();
-  }, [queryClient]);
+    return map;
+  })();
 
-  // Create positions with market data from cache
   const positionsWithMarketData = singlePositions.map((position) => {
-    // Use same fallback logic for consistency
     const effectiveChainId = position.chainId || 8453;
     const normalizedIdentifier = normalizeMarketIdentifier(
       position.marketAddress
     );
-    const queryKey = marketGroupQueryConfig.queryKey(
-      normalizedIdentifier,
-      effectiveChainId
-    );
+    const key = `${normalizedIdentifier}:${effectiveChainId}`;
+    const entry = resultLookup.get(key);
+    const marketGroupData = entry?.data;
+    const isLoading = entry?.isLoading ?? false;
+    const isError = entry?.isError ?? false;
 
-    // Get data from cache
-    const marketGroupData = getMarketGroupFromCache(
-      queryClient,
-      effectiveChainId,
-      position.marketAddress
-    );
-    const queryState = queryClient.getQueryState(queryKey);
-    const isLoading =
-      !marketGroupData &&
-      (queryState ? queryState?.fetchStatus === 'fetching' : true);
-    const isError = !marketGroupData && !!queryState?.error;
-
-    // Determine market classification, preferring any explicit classification on the position
     const computedClassification = marketGroupData
       ? getMarketGroupClassification(marketGroupData)
       : undefined;
@@ -140,7 +131,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
     return {
       position: {
         ...position,
-        chainId: effectiveChainId, // Ensure position has chainId for UI display
+        chainId: effectiveChainId,
       },
       marketGroupData,
       marketClassification,
@@ -150,7 +141,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
   });
 
   const addPosition = useCallback(
-    async (position: Omit<BetSlipPosition, 'id'>) => {
+    (position: Omit<BetSlipPosition, 'id'>) => {
       // Create intelligent defaults based on market classification
       const defaults = createPositionDefaults(position.marketClassification);
 
@@ -183,7 +174,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
           );
 
           const effectiveChainId = position.chainId || 8453;
-          await prefetchMarketGroup(
+          void prefetchMarketGroup(
             queryClient,
             effectiveChainId,
             position.marketAddress
@@ -218,9 +209,8 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
           )
         );
 
-        // Ensure market data is available (re)prefetch in case it was evicted or never fetched
         const effectiveChainId = position.chainId || 8453;
-        await prefetchMarketGroup(
+        void prefetchMarketGroup(
           queryClient,
           effectiveChainId,
           position.marketAddress
@@ -238,44 +228,23 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
           prediction: position.prediction ?? defaults.prediction ?? false,
         };
 
-        const newPositions = [...singlePositions, enhancedPosition];
-        setSinglePositions(newPositions);
-
-        // Fetch market data for new markets
+        // Prefetch market data before adding, so collateral is known on first render
         const effectiveChainId = position.chainId || 8453;
-        await prefetchMarketGroup(
+        void prefetchMarketGroup(
           queryClient,
           effectiveChainId,
           position.marketAddress
-        );
+        ).then(() => {
+          setSinglePositions((prev) => [...prev, enhancedPosition]);
+          setIsPopoverOpen(true);
+        });
+        return;
       }
 
       setIsPopoverOpen(true); // Open popover when position is added or updated
     },
     [singlePositions, queryClient]
   );
-
-  // Background ensure: prefetch any missing market data for positions currently in the betslip
-  useEffect(() => {
-    (() => {
-      for (const position of singlePositions) {
-        const effectiveChainId = position.chainId || 8453;
-        const existing = getMarketGroupFromCache(
-          queryClient,
-          effectiveChainId,
-          position.marketAddress
-        );
-        if (!existing) {
-          // Fire and forget; internal prefetch handles dedupe and errors
-          prefetchMarketGroup(
-            queryClient,
-            effectiveChainId,
-            position.marketAddress
-          );
-        }
-      }
-    })();
-  }, [singlePositions, queryClient]);
 
   const removePosition = useCallback(
     (id: string) => {

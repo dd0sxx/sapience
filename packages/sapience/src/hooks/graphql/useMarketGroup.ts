@@ -1,5 +1,5 @@
 import { graphqlRequest } from '@sapience/ui/lib';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
@@ -119,7 +119,7 @@ export function normalizeMarketIdentifier(marketIdentifier: string): string {
   const nonce = !isAddress && !mgIdMatch && nonceMatch ? nonceMatch[1] : null;
 
   return isAddress
-    ? `addr:${marketIdentifier}`
+    ? `addr:${marketIdentifier.toLowerCase()}`
     : mgId !== null
       ? `mg:${mgId}`
       : nonce !== null
@@ -151,7 +151,7 @@ async function fetchMarketGroup(
     const data = await graphqlRequest<Res>(MARKET_GROUP_BY_ADDRESS_QUERY, {
       where: {
         address_chainId: {
-          address: marketIdentifier,
+          address: marketIdentifier.toLowerCase(),
           chainId,
         },
       },
@@ -198,21 +198,7 @@ export const useMarketGroup = ({
   const [activeMarkets, setActiveMarkets] = useState<MarketType[]>([]);
 
   // Determine identifier type
-  const addressRegex = /^0x[a-fA-F0-9]{40}$/;
-  const mgIdMatch = /^mg-(\d+)$/i.exec(marketAddress || '');
-  const nonceMatch = /^(?:nonce-)?(\d+)$/i.exec(marketAddress || '');
-
-  const isAddress = addressRegex.test(marketAddress || '');
-  const mgId = mgIdMatch ? parseInt(mgIdMatch[1], 10) : null;
-  const nonce = !isAddress && !mgIdMatch && nonceMatch ? nonceMatch[1] : null;
-
-  const identifierKey = isAddress
-    ? `addr:${marketAddress}`
-    : mgId !== null
-      ? `mg:${mgId}`
-      : nonce !== null
-        ? `nonce:${nonce}`
-        : marketAddress;
+  const identifierKey = normalizeMarketIdentifier(marketAddress);
 
   const {
     data: marketGroupData,
@@ -248,6 +234,40 @@ export const useMarketGroup = ({
     marketClassification,
   };
 };
+
+// Batch hook: fetch market groups for many positions (deduped by identifier+chainId)
+export function useMarketGroupsForPositions(
+  positions: Array<{ marketAddress: string; chainId?: number }>
+) {
+  const unique = (positions || []).reduce(
+    (acc, p) => {
+      const id = normalizeMarketIdentifier(p.marketAddress);
+      const chainId = p.chainId ?? 8453;
+      const key = `${id}:${chainId}`;
+      if (!acc.seen.has(key)) {
+        acc.seen.add(key);
+        acc.list.push({ id, chainId, marketAddress: p.marketAddress });
+      }
+      return acc;
+    },
+    {
+      seen: new Set<string>(),
+      list: [] as Array<{ id: string; chainId: number; marketAddress: string }>,
+    }
+  ).list;
+
+  const queries = useQueries({
+    queries: unique.map(({ id, chainId, marketAddress }) => ({
+      queryKey: marketGroupQueryConfig.queryKey(id, chainId),
+      queryFn: () => fetchMarketGroup(marketAddress, chainId),
+      staleTime: 30_000,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    })),
+  });
+
+  return { unique, queries };
+}
 
 // Cache utilities for market group data
 export function getMarketGroupFromCache(

@@ -292,13 +292,17 @@ const MarketGroupPageContent = () => {
     const upcomingMarketsList = allMarkets.filter((market: MarketType) => {
       const start = market.startTimestamp;
       return (
-        typeof start === 'number' && !Number.isNaN(start) && currentTimeSeconds < start
+        typeof start === 'number' &&
+        !Number.isNaN(start) &&
+        currentTimeSeconds < start
       );
     });
     const pastMarketsList = allMarkets.filter((market: MarketType) => {
       const end = market.endTimestamp;
       return (
-        typeof end === 'number' && !Number.isNaN(end) && currentTimeSeconds >= end
+        typeof end === 'number' &&
+        !Number.isNaN(end) &&
+        currentTimeSeconds >= end
       );
     });
 
