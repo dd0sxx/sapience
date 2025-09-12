@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -114,7 +115,16 @@ contract PredictionMarket is
                 mintPredictionRequestData.takerSignature
             )
         ) {
-            revert InvalidTakerSignature();
+            // Not valid signature for EOA (ERC-712), 
+            // Check if it's a contract that implements ERC-1271            
+            try IERC1271(mintPredictionRequestData.taker).isValidSignature(messageHash, mintPredictionRequestData.takerSignature) returns (bytes4 magicValue) {
+                if (magicValue != IERC1271.isValidSignature.selector) {
+                    revert InvalidTakerSignature();
+                }
+            } catch {
+                // Using the try-catch to handle the case where the taker is not a contract that implements ERC-1271
+                revert InvalidTakerSignature();
+            }
         }
 
         // 3- Ask resolver if markets are OK

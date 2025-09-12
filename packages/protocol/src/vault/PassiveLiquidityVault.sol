@@ -3,10 +3,14 @@ pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "../predictionMarket/interfaces/IPredictionStructs.sol";
+import "../predictionMarket/interfaces/IPredictionMarket.sol";
+import "../predictionMarket/utils/SignatureProcessor.sol";
 
 /**
  * @title PassiveLiquidityVault
@@ -29,7 +33,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
  * 
  * @dev Implements utilization rate management, withdrawal queue, and EOA-controlled fund deployment
  */
-contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
+contract PassiveLiquidityVault is ERC4626, Ownable2Step, ReentrancyGuard, Pausable, SignatureProcessor {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
@@ -75,9 +79,6 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
     /// @notice Withdrawal delay in seconds (default: 1 day)
     uint256 public withdrawalDelay = 1 days;
     
-    /// @notice Total assets deployed to external protocols
-    uint256 public totalDeployed;
-    
     /// @notice Withdrawal queue
     WithdrawalRequest[] public withdrawalQueue;
     
@@ -92,6 +93,7 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
     
     /// @notice Mapping to check if protocol is in active list
     mapping(address => bool) public isActiveProtocol;
+    // TOOD Use a set instead of mapping 
     
     /// @notice Emergency mode flag
     bool public emergencyMode = false;
@@ -101,6 +103,7 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
     
     /// @notice Minimum deposit amount
     uint256 public constant MIN_DEPOSIT = 1e6; // 1 token (assuming 6 decimals)
+    // TODO should be configurable, at least on constructor
 
     // ============ Modifiers ============
     
@@ -121,7 +124,7 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
         address _manager,
         string memory _name,
         string memory _symbol
-    ) ERC4626(IERC20(_asset)) ERC20(_name, _symbol) Ownable(msg.sender) {
+    ) ERC4626(IERC20(_asset)) ERC20(_name, _symbol) Ownable(msg.sender) SignatureProcessor() {
         require(_asset != address(0), "Invalid asset");
         require(_manager != address(0), "Invalid manager");
         
@@ -182,8 +185,46 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
      * @return Total assets (available + deployed)
      */
     function totalAssets() public view override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this)) + totalDeployed;
+        return IERC20(asset()).balanceOf(address(this)) + _deployedLiquidity();
     }
+
+    function availableAssets() public view returns (uint256) {
+        return IERC20(asset()).balanceOf(address(this));
+    }
+
+    function deployedAssets() public view returns (uint256) {
+        return _deployedLiquidity();
+    }
+
+    function utilizationRate() public view returns (uint256) {
+        uint256 deployedLiquidity = _deployedLiquidity();
+        return ((deployedLiquidity * BASIS_POINTS) / (availableAssets() + deployedLiquidity));
+    }
+
+    function _deployedLiquidity() internal view returns (uint256) {
+        // get vault's owned NFTs and sum the collateral of each for each NFT
+        uint256 totalDeployed = 0;
+        for(uint256 protocolIndex = 0; protocolIndex < activeProtocols.length; protocolIndex++) {
+            address protocol = activeProtocols[protocolIndex];
+            PredictionMarket pm = PredictionMarket(protocol);
+            uint256[] memory nftIds = pm.getOwnedPredictions(address(this));
+            for(uint256 nftIndex = 0; nftIndex < nftIds.length; nftIndex++) {
+                IPredictionStructs.PredictionData memory prediction = pm.getPrediction(nftIds[nftIndex]);
+                bool isTaker;
+                if (prediction.maker == address(this)) {
+                    isTaker = false;
+                } else if (prediction.taker == address(this)) {
+                    isTaker = true;
+                } else {
+                    continue;
+                }
+                uint256 collateral = isTaker ? prediction.takerCollateral : prediction.makerCollateral;
+                totalDeployed += collateral;
+            }
+        }
+        return totalDeployed;
+    }
+
 
     // ============ Custom Withdrawal Functions ============
     
@@ -200,7 +241,8 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
         
         // Burn shares immediately
         _burn(owner, shares);
-        
+        // TODO (Bug here?) we should also account for the assets here because the delay will change the shareToAsset ratio 
+
         // Add to withdrawal queue
         withdrawalQueue.push(WithdrawalRequest({
             user: owner,
@@ -232,6 +274,7 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
         uint256 processed = 0;
         uint256 availableAssets = _getAvailableAssets();
         
+        // TODO: Should start from latest successful withdrawal or at least latest "all processed" index
         for (uint256 i = 0; i < withdrawalQueue.length && processed < maxRequests; i++) {
             WithdrawalRequest storage request = withdrawalQueue[i];
             
@@ -279,84 +322,93 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
     }
 
     // ============ Manager Functions ============
-    
-    /**
-     * @notice Deploy funds to an external protocol
-     * @param protocol Address of the target protocol
-     * @param amount Amount of assets to deploy
-     * @param data Calldata for the protocol interaction
-     */
-    function deployFunds(address protocol, uint256 amount, bytes calldata data) external onlyManager nonReentrant {
-        require(protocol != address(0), "Invalid protocol");
-        require(amount > 0, "Invalid amount");
-        require(amount <= _getAvailableAssets(), "Insufficient available assets");
+    // /**
+    //  * @notice Deploy funds to an external protocol
+    //  * @param protocol Address of the target protocol
+    //  * @param amount Amount of assets to deploy
+    //  * @param data Calldata for the protocol interaction
+    //  */
+    // function deployFunds(address protocol, uint256 amount, bytes calldata data) external onlyManager nonReentrant {
+    //     require(protocol != address(0), "Invalid protocol");
+    //     require(amount > 0, "Invalid amount");
+    //     require(amount <= _getAvailableAssets(), "Insufficient available assets");
         
-        // Check utilization rate limits
-        uint256 newUtilization = ((totalDeployed + amount) * BASIS_POINTS) / totalAssets();
-        require(newUtilization <= maxUtilizationRate, "Exceeds max utilization");
+    //     // Check utilization rate limits
+    //     uint256 newUtilization = ((_deployedLiquidity() + amount) * BASIS_POINTS) / totalAssets();
+    //     require(newUtilization <= maxUtilizationRate, "Exceeds max utilization");
         
-        // Update deployment info
-        if (!isActiveProtocol[protocol]) {
-            activeProtocols.push(protocol);
-            isActiveProtocol[protocol] = true;
-        }
+    //     // Update deployment info
+    //     if (!isActiveProtocol[protocol]) {
+    //         activeProtocols.push(protocol);
+    //         isActiveProtocol[protocol] = true;
+    //     }
         
-        deployments[protocol] = DeploymentInfo({
-            protocol: protocol,
-            amount: deployments[protocol].amount + amount,
-            timestamp: block.timestamp,
-            active: true
-        });
+    //     deployments[protocol] = DeploymentInfo({
+    //         protocol: protocol,
+    //         amount: deployments[protocol].amount + amount,
+    //         timestamp: block.timestamp,
+    //         active: true
+    //     });
         
-        totalDeployed += amount;
-        utilizationRate = newUtilization;
+    //     totalDeployed += amount;
+    //     utilizationRate = newUtilization;
         
-        // Transfer assets to protocol
-        IERC20(asset()).safeTransfer(protocol, amount);
+    //     // Approve assets to protocol
+    //     IERC20(asset()).approve(protocol, amount);
         
-        // Call protocol function if data provided
-        if (data.length > 0) {
-            (bool success, ) = protocol.call(data);
-            require(success, "Protocol call failed");
-        }
+    //     // Call protocol function if data provided
+    //     if (data.length > 0) {
+    //         (bool success, ) = protocol.call(data);
+    //         require(success, "Protocol call failed");
+    //     }
         
-        emit FundsDeployed(msg.sender, amount, protocol);
-        emit UtilizationRateUpdated(utilizationRate, newUtilization);
-    }
+    //     emit FundsDeployed(msg.sender, amount, protocol);
+    //     emit UtilizationRateUpdated(utilizationRate, newUtilization);
+    // }
 
-    /**
-     * @notice Recall funds from an external protocol
-     * @param protocol Address of the protocol to recall from
-     * @param amount Amount of assets to recall
-     * @param data Calldata for the protocol interaction
-     */
-    function recallFunds(address protocol, uint256 amount, bytes calldata data) external onlyManager nonReentrant {
-        require(protocol != address(0), "Invalid protocol");
-        require(amount > 0, "Invalid amount");
-        require(deployments[protocol].amount >= amount, "Insufficient deployed amount");
+    // /**
+    //  * @notice Recall funds from an external protocol
+    //  * @param protocol Address of the protocol to recall from
+    //  * @param amount Amount of assets to recall
+    //  * @param data Calldata for the protocol interaction
+    //  */
+    // function recallFunds(address protocol, uint256 amount, bytes calldata data) external onlyManager nonReentrant {
+    //     require(protocol != address(0), "Invalid protocol");
+    //     require(amount > 0, "Invalid amount");
+    //     require(deployments[protocol].amount >= amount, "Insufficient deployed amount");
         
-        // Call protocol function if data provided
-        if (data.length > 0) {
-            (bool success, ) = protocol.call(data);
-            require(success, "Protocol call failed");
+    //     // Call protocol function if data provided
+    //     if (data.length > 0) {
+    //         (bool success, ) = protocol.call(data);
+    //         require(success, "Protocol call failed");
+    //     }
+        
+    //     // Update deployment info
+    //     deployments[protocol].amount -= amount;
+    //     totalDeployed -= amount;
+        
+    //     // Remove from active protocols if fully recalled
+    //     if (deployments[protocol].amount == 0) {
+    //         deployments[protocol].active = false;
+    //         _removeActiveProtocol(protocol);
+    //     }
+        
+    //     // Update utilization rate
+    //     uint256 newUtilization = totalAssets() > 0 ? (totalDeployed * BASIS_POINTS) / totalAssets() : 0;
+    //     utilizationRate = newUtilization;
+        
+    //     emit FundsRecalled(msg.sender, amount, protocol);
+    //     emit UtilizationRateUpdated(utilizationRate, newUtilization);
+    // }
+
+    // ============ Signature Functions ============
+
+    function isValidSignature(bytes32 messageHash, bytes memory signature) public view returns (bytes4) {
+        // check if the signer was the manager
+        if (_isApprovalValid(messageHash, manager, signature)) {
+            return IERC1271.isValidSignature.selector;
         }
-        
-        // Update deployment info
-        deployments[protocol].amount -= amount;
-        totalDeployed -= amount;
-        
-        // Remove from active protocols if fully recalled
-        if (deployments[protocol].amount == 0) {
-            deployments[protocol].active = false;
-            _removeActiveProtocol(protocol);
-        }
-        
-        // Update utilization rate
-        uint256 newUtilization = totalAssets() > 0 ? (totalDeployed * BASIS_POINTS) / totalAssets() : 0;
-        utilizationRate = newUtilization;
-        
-        emit FundsRecalled(msg.sender, amount, protocol);
-        emit UtilizationRateUpdated(utilizationRate, newUtilization);
+        return 0xFFFFFFFF;
     }
 
     // ============ View Functions ============

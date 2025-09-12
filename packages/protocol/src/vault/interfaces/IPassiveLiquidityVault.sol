@@ -2,12 +2,13 @@
 pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 /**
  * @title IPassiveLiquidityVault
  * @notice Interface for the ERC-4626 compliant PassiveLiquidityVault contract
  */
-interface IPassiveLiquidityVault is IERC4626 {
+interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     // ============ Structs ============
     
     struct WithdrawalRequest {
@@ -42,19 +43,27 @@ interface IPassiveLiquidityVault is IERC4626 {
     function maxUtilizationRate() external view returns (uint256);
     function utilizationRate() external view returns (uint256);
     function withdrawalDelay() external view returns (uint256);
-    function totalDeployed() external view returns (uint256);
+    function availableAssets() external view returns (uint256);
+    function deployedAssets() external view returns (uint256);
     function emergencyMode() external view returns (bool);
 
-    // ============ Custom Withdrawal Functions ============
+    // ============ Custom Deposit/Withdrawal Functions ============
     
+    function requestDeposit(uint256 amount) external returns (uint256 queuePosition);
+    function processDeposits(uint256 maxRequests) external;
     function requestWithdrawal(uint256 shares) external returns (uint256 queuePosition);
     function processWithdrawals(uint256 maxRequests) external;
     function emergencyWithdraw(uint256 shares) external;
 
     // ============ Manager Functions ============
     
-    function deployFunds(address protocol, uint256 amount, bytes calldata data) external;
-    function recallFunds(address protocol, uint256 amount, bytes calldata data) external;
+    // /**
+    //  * @notice Approve funds usage to an external protocol
+    //  * @param protocol Address of the target protocol (PredictionMarket)
+    //  * @param amount Amount of assets to approve
+    //  * @param (optional) data Calldata for the protocol interaction (e.g. mint()). Can be empty if not call
+    //  */
+    function approveFundsUsage(address protocol, uint256 amount, bytes calldata data) external;
 
     // ============ View Functions ============
     
@@ -68,8 +77,13 @@ interface IPassiveLiquidityVault is IERC4626 {
     
     function setManager(address newManager) external;
     function setMaxUtilizationRate(uint256 newMaxRate) external;
+    // TODO: function setMaxUtilizationRatePerProtocol(address protocol, uint256 newMaxRate) external; // risk balancing across protocols
     function setWithdrawalDelay(uint256 newDelay) external;
     function toggleEmergencyMode() external;
     function pause() external;
     function unpause() external;
+
+    // TODO add two steps change ownership from OZ
+    // TODO list of approved protocols?
+    
 }
