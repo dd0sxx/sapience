@@ -7,14 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
-import { Badge } from '@sapience/ui/components/ui/badge';
 import type { MarketWithContext } from './MarketGroupsList';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getChainShortName } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-import { useWagerFlip } from '~/lib/context/WagerFlipContext';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
 
@@ -41,7 +39,6 @@ const MarketGroupsRow = ({
 }: MarketGroupsRowProps) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const { addPosition } = useBetSlipContext();
-  const { isFlipped } = useWagerFlip();
 
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
@@ -382,20 +379,10 @@ const MarketGroupsRow = ({
                           {/* Left Side: Option Name + Prediction */}
                           <div className="flex-grow">
                             <div className="font-medium text-foreground inline-flex items-center gap-2">
-                              {isFlipped ? (
-                                <>
-                                  <Badge variant="destructive">NOT</Badge>
-                                  <span>
-                                    {marketItem.optionName ||
-                                      `Market ${marketItem.marketId}`}
-                                  </span>
-                                </>
-                              ) : (
-                                <span>
-                                  {marketItem.optionName ||
-                                    `Market ${marketItem.marketId}`}
-                                </span>
-                              )}
+                              <span>
+                                {marketItem.optionName ||
+                                  `Market ${marketItem.marketId}`}
+                              </span>
                             </div>
                             <div className="text-sm text-muted-foreground">
                               <span className="text-muted-foreground">

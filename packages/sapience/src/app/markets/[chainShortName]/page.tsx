@@ -224,6 +224,24 @@ const MarketGroupPageContent = () => {
     return markets[0];
   }, [marketGroupByEndTime, marketAddress]);
 
+  // Build a consistent, sorted subset for chart/legend and labels
+  const chartMarkets = useMemo(() => {
+    if (!marketGroupByEndTime) return [] as MarketType[];
+    return marketGroupByEndTime.markets
+      .slice()
+      .sort((a, b) => Number(a.marketId) - Number(b.marketId));
+  }, [marketGroupByEndTime]);
+
+  const chartMarketIds = useMemo(
+    () => chartMarkets.map((market) => Number(market.marketId)),
+    [chartMarkets]
+  );
+
+  const chartOptionNames = useMemo(
+    () => chartMarkets.map((market) => market.optionName || ''),
+    [chartMarkets]
+  );
+
   // Define callbacks before any conditional returns to keep hook order stable
   const handleAdvancedViewClick = useCallback(() => {
     const allMarkets = marketGroupData?.markets || [];
@@ -301,9 +319,7 @@ const MarketGroupPageContent = () => {
     : false;
   const isDeployed = isValidAddress && hasDeployedMarket;
 
-  const optionNames = (marketGroupData.markets || []).map(
-    (market: MarketType) => market.optionName || ''
-  );
+  // option names aligned with chart markets are computed above
 
   // Otherwise show the main content
   return (
@@ -329,25 +345,18 @@ const MarketGroupPageContent = () => {
                     <MarketGroupChart
                       chainShortName={chainShortName}
                       marketAddress={marketAddress}
-                      marketIds={
-                        marketGroupByEndTime
-                          ? marketGroupByEndTime.markets.map((market) =>
-                              Number(market.marketId)
-                            )
-                          : []
-                      }
+                      marketIds={chartMarketIds}
                       market={marketGroupData}
                       minTimestamp={
-                        marketGroupByEndTime &&
-                        marketGroupByEndTime.markets.length > 0
+                        chartMarkets.length > 0
                           ? Math.min(
-                              ...marketGroupByEndTime.markets.map((market) =>
+                              ...chartMarkets.map((market) =>
                                 Number(market.startTimestamp)
                               )
                             )
                           : undefined
                       }
-                      optionNames={optionNames}
+                      optionNames={chartOptionNames}
                     />
                   ) : (
                     <div className="min-h-[300px] h-full w-full flex items-center justify-center text-muted-foreground">
