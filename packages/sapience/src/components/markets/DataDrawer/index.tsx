@@ -20,8 +20,11 @@ import {
   ArrowLeftRightIcon,
   DropletsIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { formatEther } from 'viem';
+import Image from 'next/image';
+import { blo } from 'blo';
+import * as chains from 'viem/chains';
 
 import DataDrawerFilter from './DataDrawerFilter';
 import MarketLeaderboard from './MarketLeaderboard';
@@ -31,6 +34,11 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
+import {
+  getSeriesColorByIndex,
+  withAlpha,
+  CHART_SERIES_COLORS,
+} from '~/lib/theme/chartColors';
 
 const CenteredMessage = ({
   children,
@@ -43,6 +51,8 @@ const CenteredMessage = ({
     <p>{children}</p>
   </div>
 );
+
+// using public/etherscan.svg asset for tx links
 
 interface TransactionTypeDisplay {
   label: string;
@@ -93,6 +103,16 @@ const MarketDataTables = () => {
     marketData,
   } = useMarketPage();
 
+  // Build a stable order for option colors based on marketId asc
+  const sortedMarketsForColors = useMemo(() => {
+    const list = marketData?.marketGroup?.markets || [];
+    return list
+      .slice()
+      .sort(
+        (a: any, b: any) => Number(a?.marketId ?? 0) - Number(b?.marketId ?? 0)
+      );
+  }, [marketData]);
+
   // Fetch GraphQL-based positions (includes transaction data)
   // Only use walletAddress if it's explicitly set (not null)
   // If walletAddress is null, it means "All Market Data" is selected
@@ -135,6 +155,14 @@ const MarketDataTables = () => {
     'lp-positions': 'Liquidity Positions',
   };
 
+  const getExplorerTxUrl = (id: number | undefined, txHash?: string | null) => {
+    if (!id || !txHash) return null;
+    const chainObj = Object.values(chains).find((c: any) => c?.id === id);
+    const baseUrl = (chainObj as any)?.blockExplorers?.default?.url;
+    if (!baseUrl) return null;
+    return `${baseUrl}/tx/${txHash}`;
+  };
+
   const renderTransactionTable = () => {
     if (isLoadingPositions) {
       return <CenteredMessage>Loading transactions...</CenteredMessage>;
@@ -166,8 +194,9 @@ const MarketDataTables = () => {
                 <TableHead>Time</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Position ID</TableHead>
+                <TableHead>Position</TableHead>
                 <TableHead>Owner</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -176,14 +205,22 @@ const MarketDataTables = () => {
                 const collateralAmount = tx.position.collateral
                   ? Number(formatEther(BigInt(tx.position.collateral)))
                   : 0;
+                const txHash = (tx as any)?.event?.transactionHash as
+                  | string
+                  | undefined;
+                const txUrl = getExplorerTxUrl(chainId || undefined, txHash);
+                const createdDisplay = formatDistanceToNow(
+                  new Date(tx.createdAt),
+                  {
+                    addSuffix: true,
+                  }
+                );
 
                 return (
                   <TableRow key={tx.id}>
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(tx.createdAt), {
-                          addSuffix: true,
-                        })}
+                      <span className="whitespace-nowrap">
+                        {createdDisplay}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -197,18 +234,113 @@ const MarketDataTables = () => {
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <NumberDisplay value={Math.abs(collateralAmount)} />
-                        <span className="text-muted-foreground text-sm">
-                          {collateralAssetTicker}
-                        </span>
+                        <span>{collateralAssetTicker}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-muted-foreground">
-                        #{tx.position.positionId}
-                      </span>
+                      {(() => {
+                        const position = tx.position;
+                        const optionName = position.market?.optionName;
+                        const positionMarketIdNum = Number(
+                          position.market?.marketId
+                        );
+                        let optionIndex = sortedMarketsForColors.findIndex(
+                          (m: any) =>
+                            Number(m?.marketId) === positionMarketIdNum
+                        );
+                        if (optionIndex < 0 && optionName) {
+                          optionIndex = sortedMarketsForColors.findIndex(
+                            (m: any) => (m?.optionName ?? '') === optionName
+                          );
+                        }
+                        let seriesColor =
+                          optionIndex >= 0
+                            ? getSeriesColorByIndex(optionIndex)
+                            : undefined;
+                        if (!seriesColor) {
+                          const paletteSize = CHART_SERIES_COLORS.length || 5;
+                          const idNum = Number(positionMarketIdNum);
+                          const fallbackIndex =
+                            ((idNum % paletteSize) + paletteSize) % paletteSize;
+                          seriesColor = getSeriesColorByIndex(fallbackIndex);
+                        }
+                        const isLiquidity =
+                          (tx as any)?.positionType === 'LP' || position.isLP;
+                        return (
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="whitespace-nowrap">
+                                #{position.positionId}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="font-normal whitespace-nowrap"
+                              >
+                                {isLiquidity ? 'Liquidity' : 'Trader'}
+                              </Badge>
+                              {optionName ? (
+                                <Badge
+                                  variant="outline"
+                                  className="truncate max-w-[220px]"
+                                  style={{
+                                    backgroundColor: seriesColor
+                                      ? withAlpha(seriesColor, 0.08)
+                                      : undefined,
+                                    borderColor: seriesColor
+                                      ? withAlpha(seriesColor, 0.24)
+                                      : undefined,
+                                    color: seriesColor || undefined,
+                                  }}
+                                  title={optionName}
+                                >
+                                  {optionName}
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
-                      <AddressDisplay address={tx.position.owner || ''} />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          {tx.position.owner ? (
+                            <Image
+                              alt={tx.position.owner}
+                              src={blo(tx.position.owner as `0x${string}`)}
+                              className="w-5 h-5 rounded-sm ring-1 ring-border/50"
+                              width={20}
+                              height={20}
+                            />
+                          ) : null}
+                          <div className="[&_span.font-mono]:text-foreground">
+                            <AddressDisplay address={tx.position.owner || ''} />
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      {txUrl ? (
+                        <a
+                          href={txUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="View transaction"
+                          className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                        >
+                          <Image
+                            src="/etherscan.svg"
+                            alt="Etherscan"
+                            width={16}
+                            height={16}
+                            className="h-4 w-4 opacity-80"
+                          />
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">
+                          N/A
+                        </span>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -251,6 +383,8 @@ const MarketDataTables = () => {
           parentMarketId={numericMarketId || undefined}
           showHeader={false}
           showActions={false}
+          showOwnerColumn
+          showPositionColumn
         />
       );
     }
@@ -262,6 +396,8 @@ const MarketDataTables = () => {
         parentMarketId={numericMarketId || undefined}
         showHeader={false}
         showActions={false}
+        showOwnerColumn
+        showPositionColumn
       />
     );
   };

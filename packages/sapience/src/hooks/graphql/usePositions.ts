@@ -58,6 +58,9 @@ export const POSITIONS_QUERY = /* GraphQL */ `
         id
         type
         createdAt
+        event {
+          transactionHash
+        }
       }
     }
   }
@@ -118,6 +121,9 @@ export const ALL_POSITIONS_QUERY = /* GraphQL */ `
         id
         type
         createdAt
+        event {
+          transactionHash
+        }
       }
     }
   }

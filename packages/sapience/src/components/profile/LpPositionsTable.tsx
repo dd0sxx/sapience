@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@sapience/ui/components/ui/button';
-import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
@@ -9,16 +8,19 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import Link from 'next/link';
+import Image from 'next/image';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
+import { blo } from 'blo';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SharePositionDialog from '../markets/SharePositionDialog';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
-import { getChainShortName, tickToPrice } from '~/lib/utils/util';
+import PositionRange from '~/components/shared/PositionRange';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import { getChainShortName } from '~/lib/utils/util';
 
 interface LpPositionsTableProps {
   positions: PositionType[];
@@ -27,6 +29,8 @@ interface LpPositionsTableProps {
   parentMarketId?: number;
   showHeader?: boolean;
   showActions?: boolean;
+  showOwnerColumn?: boolean;
+  showPositionColumn?: boolean;
 }
 
 // Helper component for Collateral Cell
@@ -41,56 +45,7 @@ function CollateralCell({ position }: { position: PositionType }) {
   return (
     <div className="flex items-center gap-1">
       <NumberDisplay value={displayValue} />
-      <span className="text-muted-foreground text-sm">{symbol}</span>
-    </div>
-  );
-}
-
-// Helper chip for displaying range and in-range status
-function RangeStatusCell({ position }: { position: PositionType }) {
-  const marketGroup = position.market?.marketGroup;
-  const unitQuote = `${marketGroup?.collateralSymbol || 'Quote'}`;
-
-  const lowPrice = tickToPrice(position.lowPriceTick);
-  const highPrice = tickToPrice(position.highPriceTick);
-
-  const address = marketGroup?.address || '';
-  const chainId = marketGroup?.chainId || 0;
-  const marketId = position.market?.marketId;
-
-  const { data: currentMarketPriceRaw } = useMarketPrice(
-    address,
-    chainId,
-    marketId
-  );
-  const hasMarketPrice =
-    currentMarketPriceRaw !== undefined && currentMarketPriceRaw !== null;
-  const currentMarketPrice = hasMarketPrice
-    ? Number(currentMarketPriceRaw)
-    : undefined;
-
-  const inRange = hasMarketPrice
-    ? currentMarketPrice! >= lowPrice && currentMarketPrice! <= highPrice
-    : null;
-
-  return (
-    <div className="whitespace-nowrap text-sm flex items-center gap-2">
-      <span>
-        <NumberDisplay value={lowPrice} /> → <NumberDisplay value={highPrice} />{' '}
-        {unitQuote}
-      </span>
-      {hasMarketPrice && (
-        <Badge
-          variant="outline"
-          className={
-            inRange
-              ? 'border-green-500/40 bg-green-500/10 text-green-600'
-              : 'border-red-500/40 bg-red-500/10 text-red-600'
-          }
-        >
-          {inRange ? 'In Range' : 'Out of Range'}
-        </Badge>
-      )}
+      <span>{symbol}</span>
     </div>
   );
 }
@@ -102,6 +57,8 @@ export default function LpPositionsTable({
   parentMarketId,
   showHeader = true,
   showActions = true,
+  showOwnerColumn = false,
+  showPositionColumn,
 }: LpPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -130,7 +87,9 @@ export default function LpPositionsTable({
   }
 
   let displayQuestionColumn;
-  if (isProfilePageContext) {
+  if (showPositionColumn !== undefined) {
+    displayQuestionColumn = Boolean(showPositionColumn);
+  } else if (isProfilePageContext) {
     displayQuestionColumn = true; // Always show on profile page
   } else if (isMarketPage) {
     // Specific market page
@@ -171,12 +130,16 @@ export default function LpPositionsTable({
         <div
           className={`hidden xl:grid ${
             showActions
-              ? 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-              : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
+              ? showOwnerColumn
+                ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
+                : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
+              : showOwnerColumn
+                ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
+                : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
           } items-center h-12 px-4 text-sm font-medium text-muted-foreground border-b`}
         >
           {displayQuestionColumn && (
-            <div className="xl:col-span-5">Prediction Market</div>
+            <div className="xl:col-span-5">Position</div>
           )}
           <div
             className={
@@ -193,8 +156,11 @@ export default function LpPositionsTable({
           >
             <span>Range</span>
           </div>
+          {showOwnerColumn && <div className="xl:col-span-1">Owner</div>}
           {showActions && (
-            <div className="xl:col-start-12 xl:col-span-1 xl:justify-self-end">
+            <div
+              className={`${showOwnerColumn ? 'xl:col-start-13' : 'xl:col-start-12'} xl:col-span-1 xl:justify-self-end`}
+            >
               <div className="invisible flex gap-3" aria-hidden>
                 <Button size="sm" variant="outline">
                   Modify
@@ -243,8 +209,12 @@ export default function LpPositionsTable({
               <div
                 className={`flex flex-col gap-3 xl:grid ${
                   showActions
-                    ? 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-                    : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
+                    ? showOwnerColumn
+                      ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
+                      : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
+                    : showOwnerColumn
+                      ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
+                      : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
                 } xl:items-center`}
               >
                 {displayQuestionColumn && (
@@ -315,11 +285,51 @@ export default function LpPositionsTable({
                       <div className="text-xs text-muted-foreground xl:hidden">
                         Range
                       </div>
-                      <RangeStatusCell position={position} />
+                      <PositionRange
+                        lowPriceTick={position.lowPriceTick}
+                        highPriceTick={position.highPriceTick}
+                        unitQuote={`${position.market?.marketGroup?.collateralSymbol || 'Quote'}`}
+                        marketGroupAddress={
+                          position.market?.marketGroup?.address ?? undefined
+                        }
+                        chainId={
+                          position.market?.marketGroup?.chainId ?? undefined
+                        }
+                        marketId={
+                          position.market?.marketId != null
+                            ? Number(position.market?.marketId)
+                            : undefined
+                        }
+                        showBadge
+                      />
                     </div>
 
+                    {showOwnerColumn && (
+                      <div className="xl:col-span-1">
+                        <div className="text-xs text-muted-foreground xl:hidden">
+                          Owner
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {position.owner ? (
+                            <Image
+                              alt={position.owner}
+                              src={blo(position.owner as `0x${string}`)}
+                              className="w-5 h-5 rounded-sm ring-1 ring-border/50"
+                              width={20}
+                              height={20}
+                            />
+                          ) : null}
+                          <div className="[&_span.font-mono]:text-foreground">
+                            <AddressDisplay address={position.owner || ''} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {showActions && (
-                      <div className="mt-3 xl:mt-0 xl:col-span-1 xl:col-start-12 xl:justify-self-end">
+                      <div
+                        className={`mt-3 xl:mt-0 xl:col-span-1 ${showOwnerColumn ? 'xl:col-start-13' : 'xl:col-start-12'} xl:justify-self-end`}
+                      >
                         <div className="flex gap-3 justify-start xl:justify-end">
                           {isExpired && !isPositionSettled ? (
                             isOwner ? (

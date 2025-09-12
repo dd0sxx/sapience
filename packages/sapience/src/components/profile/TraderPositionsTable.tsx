@@ -7,6 +7,8 @@ import {
 import { Button } from '@sapience/ui/components/ui/button';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
+import Image from 'next/image';
+import { blo } from 'blo';
 
 import type { PositionType } from '@sapience/ui/types';
 import { InfoIcon } from 'lucide-react';
@@ -16,6 +18,7 @@ import SellPositionDialog from '../markets/SellPositionDialog';
 import SharePositionDialog from '../markets/SharePositionDialog';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import PositionSharesBadge from '~/components/shared/PositionSharesBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
 import {
@@ -30,6 +33,8 @@ interface TraderPositionsTableProps {
   parentMarketId?: number;
   showHeader?: boolean;
   showActions?: boolean;
+  showOwnerColumn?: boolean;
+  showPositionColumn?: boolean;
 }
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
@@ -165,6 +170,8 @@ export default function TraderPositionsTable({
   parentMarketId,
   showHeader = true,
   showActions = true,
+  showOwnerColumn = false,
+  showPositionColumn,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -183,16 +190,19 @@ export default function TraderPositionsTable({
     return <EmptyTabState message="No trades found" />;
   }
 
-  const displayQuestionColumn = isProfilePageContext
-    ? true
-    : isMarketPage
-      ? false
-      : validPositions.some(
-          (p) =>
-            p.market?.marketGroup &&
-            p.market?.marketGroup?.markets &&
-            p.market?.marketGroup?.markets.length > 1
-        );
+  const displayQuestionColumn =
+    showPositionColumn !== undefined
+      ? Boolean(showPositionColumn)
+      : isProfilePageContext
+        ? true
+        : isMarketPage
+          ? false
+          : validPositions.some(
+              (p) =>
+                p.market?.marketGroup &&
+                p.market?.marketGroup?.markets &&
+                p.market?.marketGroup?.markets.length > 1
+            );
 
   // Sort newest to oldest by createdAt; fallback to latest transaction.createdAt
   const getPositionCreatedMs = (p: PositionType) => {
@@ -220,12 +230,16 @@ export default function TraderPositionsTable({
         <div
           className={`hidden xl:grid ${
             showActions
-              ? 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-              : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
+              ? showOwnerColumn
+                ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
+                : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
+              : showOwnerColumn
+                ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
+                : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
           } items-center h-12 px-4 text-sm font-medium text-muted-foreground border-b`}
         >
           {displayQuestionColumn && (
-            <div className={'xl:col-span-5'}>Prediction Market</div>
+            <div className={'xl:col-span-5'}>Position</div>
           )}
           <div
             className={
@@ -254,9 +268,12 @@ export default function TraderPositionsTable({
               </Tooltip>
             </TooltipProvider>
           </div>
+          {showOwnerColumn && <div className="xl:col-span-1">Owner</div>}
           {/* Header actions sizer to align auto-width column with row actions */}
           {showActions && (
-            <div className="xl:col-start-12 xl:col-span-1 xl:justify-self-end">
+            <div
+              className={`${showOwnerColumn ? 'xl:col-start-13' : 'xl:col-start-12'} xl:col-span-1 xl:justify-self-end`}
+            >
               <div className="invisible flex gap-3" aria-hidden>
                 <Button size="sm" variant="outline">
                   Settle
@@ -308,6 +325,7 @@ export default function TraderPositionsTable({
               marketAddress={marketAddress}
               displayQuestionColumn={Boolean(displayQuestionColumn)}
               showActions={showActions}
+              showOwnerColumn={Boolean(showOwnerColumn)}
             />
           );
         })}
@@ -327,6 +345,7 @@ type TraderPositionRowProps = {
   marketAddress: string;
   displayQuestionColumn: boolean;
   showActions: boolean;
+  showOwnerColumn: boolean;
 };
 
 function TraderPositionRow({
@@ -340,14 +359,19 @@ function TraderPositionRow({
   marketAddress,
   displayQuestionColumn,
   showActions,
+  showOwnerColumn,
 }: TraderPositionRowProps) {
   return (
     <div className="px-4 py-4 xl:py-4 border-b last:border-b-0">
       <div
         className={`flex flex-col gap-3 xl:grid ${
           showActions
-            ? 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-            : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
+            ? showOwnerColumn
+              ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
+              : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
+            : showOwnerColumn
+              ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
+              : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
         } xl:items-center`}
       >
         {displayQuestionColumn && (
@@ -395,7 +419,17 @@ function TraderPositionRow({
         )}
 
         {isClosed ? (
-          <div className="xl:col-span-7 text-center font-medium text-muted-foreground tracking-wider">
+          <div
+            className={`${
+              displayQuestionColumn
+                ? showOwnerColumn
+                  ? 'xl:col-span-7'
+                  : 'xl:col-span-6'
+                : showOwnerColumn
+                  ? 'xl:col-span-12'
+                  : 'xl:col-span-11'
+            } text-center font-medium text-muted-foreground tracking-wider`}
+          >
             CLOSED
           </div>
         ) : (
@@ -436,8 +470,32 @@ function TraderPositionRow({
               <PositionValueCell position={position} />
             </div>
 
+            {showOwnerColumn && (
+              <div className="xl:col-span-1">
+                <div className="text-xs text-muted-foreground xl:hidden">
+                  Owner
+                </div>
+                <div className="flex items-center gap-2">
+                  {position.owner ? (
+                    <Image
+                      alt={position.owner}
+                      src={blo(position.owner as `0x${string}`)}
+                      className="w-5 h-5 rounded-sm ring-1 ring-border/50"
+                      width={20}
+                      height={20}
+                    />
+                  ) : null}
+                  <div className="[&_span.font-mono]:text-foreground">
+                    <AddressDisplay address={position.owner || ''} />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {showActions && (
-              <div className="mt-3 xl:mt-0 xl:col-span-1 xl:col-start-12 xl:justify-self-end">
+              <div
+                className={`mt-3 xl:mt-0 xl:col-span-1 ${showOwnerColumn ? 'xl:col-start-13' : 'xl:col-start-12'} xl:justify-self-end`}
+              >
                 <div className="flex gap-3 justify-start xl:justify-end">
                   {/* Exclusively show Settle when expired and not settled; otherwise show Sell (not on market page) */}
                   {isExpired && !isPositionSettled ? (

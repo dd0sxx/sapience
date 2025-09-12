@@ -33,7 +33,7 @@ import {
 } from '~/hooks/contract';
 import { useModifyLP } from '~/hooks/contract/useModifyLP';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
-import { tickToPrice } from '~/lib/utils/tickUtils';
+import PositionRange from '~/components/shared/PositionRange';
 
 interface ModifyLiquidityFormValues {
   percentage: string;
@@ -367,15 +367,15 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
           <FormLabel className="block mb-2 flex items-center">
             Position Range
           </FormLabel>
-          <div className="text-base flex items-center">
-            <NumberDisplay
-              value={tickToPrice(Number(marketDetails.lowPriceTick))}
-              precision={6}
-            />
-            {' - '}
-            <NumberDisplay
-              value={tickToPrice(Number(marketDetails.highPriceTick))}
-              precision={6}
+          <div className="flex items-center gap-2">
+            <PositionRange
+              lowPriceTick={Number(marketDetails.lowPriceTick ?? 0)}
+              highPriceTick={Number(marketDetails.highPriceTick ?? 0)}
+              unitQuote={marketDetails.collateralAssetTicker}
+              marketGroupAddress={marketDetails.marketAddress}
+              chainId={marketDetails.chainId}
+              marketId={Number(marketDetails.marketId)}
+              showBadge
             />
             <span
               className="ml-1"
