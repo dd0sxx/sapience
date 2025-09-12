@@ -25,12 +25,20 @@ contract MockERC20 is ERC20 {
     }
 }
 
-// Mock protocol for testing fund deployment
-contract MockProtocol {
+// Mock prediction market for testing fund deployment
+contract MockPredictionMarket {
     using SafeERC20 for IERC20;
     
     IERC20 public asset;
     uint256 public totalDeposited;
+    uint256 private nextTokenId = 1;
+    
+    // Mapping from token ID to prediction data
+    mapping(uint256 => IPredictionStructs.PredictionData) public predictions;
+    // Mapping from owner to list of owned token IDs
+    mapping(address => uint256[]) public ownedTokens;
+    // Mapping from token ID to owner
+    mapping(uint256 => address) public tokenOwners;
     
     constructor(address _asset) {
         asset = IERC20(_asset);
@@ -39,24 +47,86 @@ contract MockProtocol {
     function deposit(uint256 amount) external {
         asset.safeTransferFrom(msg.sender, address(this), amount);
         totalDeposited += amount;
+        
+        // Create a mock prediction NFT for the deposited amount
+        uint256 tokenId = nextTokenId++;
+        
+        // Create prediction data where the vault is the maker
+        predictions[tokenId] = IPredictionStructs.PredictionData({
+            predictionId: tokenId,
+            resolver: address(this),
+            maker: msg.sender,
+            taker: address(0), // No taker for this mock
+            encodedPredictedOutcomes: "",
+            makerNftTokenId: tokenId,
+            takerNftTokenId: 0,
+            makerCollateral: amount,
+            takerCollateral: 0,
+            settled: false,
+            makerWon: false
+        });
+        
+        // Mint NFT to the depositor
+        tokenOwners[tokenId] = msg.sender;
+        ownedTokens[msg.sender].push(tokenId);
     }
     
     function withdraw(uint256 amount) external {
         require(totalDeposited >= amount, "Insufficient balance");
         totalDeposited -= amount;
         asset.safeTransfer(msg.sender, amount);
+        
+        // Remove NFTs that represent the withdrawn amount
+        // For simplicity, we'll remove the most recent NFTs
+        uint256[] storage tokens = ownedTokens[msg.sender];
+        uint256 remainingToRemove = amount;
+        
+        while (remainingToRemove > 0 && tokens.length > 0) {
+            uint256 tokenId = tokens[tokens.length - 1];
+            uint256 collateral = predictions[tokenId].makerCollateral;
+            
+            if (collateral <= remainingToRemove) {
+                // Remove entire NFT
+                remainingToRemove -= collateral;
+                delete tokenOwners[tokenId];
+                delete predictions[tokenId];
+                tokens.pop();
+            } else {
+                // Partially reduce collateral
+                predictions[tokenId].makerCollateral -= remainingToRemove;
+                remainingToRemove = 0;
+            }
+        }
     }
     
     function getBalance() external view returns (uint256) {
         return asset.balanceOf(address(this));
+    }
+    
+    // IPredictionMarket interface functions
+    function getOwnedPredictions(address owner) external view returns (uint256[] memory) {
+        return ownedTokens[owner];
+    }
+    
+    function getPrediction(uint256 tokenId) external view returns (IPredictionStructs.PredictionData memory) {
+        return predictions[tokenId];
+    }
+    
+    // ERC721-like functions for compatibility
+    function ownerOf(uint256 tokenId) external view returns (address) {
+        return tokenOwners[tokenId];
+    }
+    
+    function balanceOf(address owner) external view returns (uint256) {
+        return ownedTokens[owner].length;
     }
 }
 
 contract PassiveLiquidityVaultTest is Test {
     PassiveLiquidityVault public vault;
     MockERC20 public asset;
-    MockProtocol public protocol1;
-    MockProtocol public protocol2;
+    MockPredictionMarket public protocol1;
+    MockPredictionMarket public protocol2;
     
     address public owner = address(0x1);
     address public manager = address(0x2);
@@ -82,8 +152,8 @@ contract PassiveLiquidityVaultTest is Test {
         );
         
         // Deploy mock protocols
-        protocol1 = new MockProtocol(address(asset));
-        protocol2 = new MockProtocol(address(asset));
+        protocol1 = new MockPredictionMarket(address(asset));
+        protocol2 = new MockPredictionMarket(address(asset));
         
         // Mint tokens to users
         asset.mint(user1, INITIAL_SUPPLY);
@@ -104,14 +174,14 @@ contract PassiveLiquidityVaultTest is Test {
     
     function _deployFunds(address protocol, uint256 amount) internal {
         vm.startPrank(manager);
-        asset.approve(address(protocol), amount);
-        vault.deployFunds(protocol, amount, "");
+        vault.approveFundsUsage(protocol, amount, abi.encodeWithSignature("deposit(uint256)", amount));
         vm.stopPrank();
     }
     
     function _recallFunds(address protocol, uint256 amount) internal {
         vm.startPrank(manager);
-        vault.recallFunds(protocol, amount, "");
+        // Note: recallFunds functionality is now handled by the protocol itself
+        // The vault only approves funds, the protocol manages withdrawals
         vm.stopPrank();
     }
     
@@ -244,7 +314,7 @@ contract PassiveLiquidityVaultTest is Test {
         assertEq(vault.getWithdrawalQueueLength(), 1);
         assertEq(vault.userWithdrawalIndex(user1), 1);
         
-        PassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
+        IPassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
         assertEq(request.user, user1);
         assertEq(request.shares, shares);
         assertEq(request.processed, false);
@@ -280,7 +350,7 @@ contract PassiveLiquidityVaultTest is Test {
         assertTrue(actualBalance >= expectedBalance - 1e8, "Balance too low"); // Allow 1e8 precision loss
         assertEq(vault.userWithdrawalIndex(user1), 0);
         
-        PassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
+        IPassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
         assertTrue(request.processed);
     }
     
@@ -298,7 +368,7 @@ contract PassiveLiquidityVaultTest is Test {
         vault.processWithdrawals(10);
         
         // Should not be processed
-        PassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
+        IPassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
         assertFalse(request.processed);
         assertEq(vault.userWithdrawalIndex(user1), 1);
     }
@@ -350,7 +420,7 @@ contract PassiveLiquidityVaultTest is Test {
         asset.approve(address(protocol1), deployAmount);
         
         vm.expectRevert("Insufficient available assets");
-        vault.deployFunds(address(protocol1), deployAmount, abi.encodeWithSignature("deposit(uint256)", deployAmount));
+        vault.approveFundsUsage(address(protocol1), deployAmount, abi.encodeWithSignature("deposit(uint256)", deployAmount));
         
         vm.stopPrank();
     }
@@ -371,7 +441,7 @@ contract PassiveLiquidityVaultTest is Test {
         asset.approve(address(protocol1), deployAmount);
         
         vm.expectRevert("Exceeds max utilization");
-        vault.deployFunds(address(protocol1), deployAmount, abi.encodeWithSignature("deposit(uint256)", deployAmount));
+        vault.approveFundsUsage(address(protocol1), deployAmount, abi.encodeWithSignature("deposit(uint256)", deployAmount));
         
         vm.stopPrank();
     }
@@ -495,7 +565,7 @@ contract PassiveLiquidityVaultTest is Test {
         
         vm.startPrank(user1);
         vm.expectRevert("Only manager");
-        vault.deployFunds(address(protocol1), DEPOSIT_AMOUNT / 2, "");
+        vault.approveFundsUsage(address(protocol1), DEPOSIT_AMOUNT / 2, "");
         vm.stopPrank();
     }
     
@@ -507,7 +577,7 @@ contract PassiveLiquidityVaultTest is Test {
         
         vm.startPrank(user1);
         vm.expectRevert("Only manager");
-        vault.recallFunds(address(protocol1), DEPOSIT_AMOUNT / 4, "");
+        // vault.recallFunds - Function removed, protocol handles withdrawals(address(protocol1), DEPOSIT_AMOUNT / 4, "");
         vm.stopPrank();
     }
     

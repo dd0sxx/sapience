@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
  */
 interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     // ============ Structs ============
-    
     struct WithdrawalRequest {
         address user;
         uint256 shares;
@@ -18,17 +17,19 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
         bool processed;
     }
 
-    struct DeploymentInfo {
-        address protocol;
+    struct DepositRequest {
+        address user;
         uint256 amount;
         uint256 timestamp;
-        bool active;
+        bool processed;
     }
 
     // ============ Events ============
     
     event WithdrawalRequested(address indexed user, uint256 shares, uint256 queuePosition);
     event WithdrawalProcessed(address indexed user, uint256 shares, uint256 amount);
+    event DepositRequested(address indexed user, uint256 amount, uint256 queuePosition);
+    event DepositProcessed(address indexed user, uint256 amount, uint256 shares);
     event FundsDeployed(address indexed manager, uint256 amount, address targetProtocol);
     event FundsRecalled(address indexed manager, uint256 amount, address targetProtocol);
     event UtilizationRateUpdated(uint256 oldRate, uint256 newRate);
@@ -44,8 +45,10 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     function utilizationRate() external view returns (uint256);
     function withdrawalDelay() external view returns (uint256);
     function availableAssets() external view returns (uint256);
-    function deployedAssets() external view returns (uint256);
+    function totalDeployed() external view returns (uint256);
     function emergencyMode() external view returns (bool);
+    function getReservedAssets() external view returns (uint256);
+    function getReservedShares() external view returns (uint256);
 
     // ============ Custom Deposit/Withdrawal Functions ============
     
@@ -72,18 +75,29 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     function getWithdrawalRequest(uint256 index) external view returns (WithdrawalRequest memory);
     function getActiveProtocolsCount() external view returns (uint256);
     function getActiveProtocol(uint256 index) external view returns (address);
+    function getPendingDeposit(address user) external view returns (uint256 amount);
+    function getDepositQueueLength() external view returns (uint256);
+    function getDepositRequest(uint256 index) external view returns (DepositRequest memory);
 
     // ============ Admin Functions ============
     
     function setManager(address newManager) external;
     function setMaxUtilizationRate(uint256 newMaxRate) external;
-    // TODO: function setMaxUtilizationRatePerProtocol(address protocol, uint256 newMaxRate) external; // risk balancing across protocols
     function setWithdrawalDelay(uint256 newDelay) external;
     function toggleEmergencyMode() external;
     function pause() external;
     function unpause() external;
 
-    // TODO add two steps change ownership from OZ
-    // TODO list of approved protocols?
+    // ============ Additional Functions Available in Contract ============
+    // Note: The following functions are implemented in the contract but not declared in this interface
     
+    // ERC-4626 Standard Functions (inherited from IERC4626)
+    // function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+    // function mint(uint256 shares, address receiver) external returns (uint256 assets);
+    // function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
+    // function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
+    // function totalAssets() external view returns (uint256);
+    
+    // IERC1271 Signature Validation Function
+    // function isValidSignature(bytes32 messageHash, bytes memory signature) external view returns (bytes4);
 }
