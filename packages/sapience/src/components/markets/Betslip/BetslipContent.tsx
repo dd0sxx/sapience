@@ -364,9 +364,9 @@ export const BetslipContent = ({
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-1">
-                          <h3 className="font-medium text-foreground pr-2 text-base md:text-lg whitespace-normal break-words">
+                          <h3 className="font-medium text-foreground pr-2 text-sm md:text-base whitespace-normal break-words">
                             {s.question}{' '}
-                            <span className="relative -top-1">
+                            <span className="relative -top-0.5">
                               <Badge
                                 className={`${
                                   s.prediction
@@ -673,9 +673,9 @@ function IndividualPositionRow({
     <div className="border-b border-border last:border-b-0">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex-1">
-          <h3 className="font-medium text-foreground pr-2 text-base md:text-lg whitespace-normal break-words">
+          <h3 className="font-medium text-foreground pr-2 text-sm md:text-base whitespace-normal break-words">
             {question}&nbsp;&nbsp;
-            <span className="relative -top-1">
+            <span className="relative -top-0.5">
               <ReadOnlyPredictionBadge
                 positionId={positionId}
                 marketClassification={marketClassification}
