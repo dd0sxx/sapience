@@ -32,6 +32,12 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import { MarketGroupClassification } from '~/lib/types';
 // removed classification check; show optionName whenever available
+import {
+  getSeriesColorByIndex,
+  withAlpha,
+  CHART_SERIES_COLORS,
+} from '~/lib/theme/chartColors';
+import { useMarketGroupPage } from '~/lib/context/MarketGroupPageProvider';
 
 interface WagersTableProps {
   marketAddress?: string;
@@ -75,6 +81,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
   showHeaderText = true,
 }) => {
   const { data: positionsData, refetch } = useAllPositions({ marketAddress });
+  const { marketGroupData } = useMarketGroupPage();
 
   useEffect(() => {
     refetch();
@@ -101,6 +108,16 @@ const WagersTable: React.FC<WagersTableProps> = ({
   );
 
   // show option name if present on the position's market
+
+  // Build a stable, globally consistent order for options based on marketId asc
+  const sortedMarketsForColors = useMemo(() => {
+    const list = marketGroupData?.markets || [];
+    return list
+      .slice()
+      .sort(
+        (a: any, b: any) => Number(a?.marketId ?? 0) - Number(b?.marketId ?? 0)
+      );
+  }, [marketGroupData]);
 
   const columns = useMemo<ColumnDef<PositionType>[]>(
     () => [
@@ -140,6 +157,25 @@ const WagersTable: React.FC<WagersTableProps> = ({
         ),
         cell: ({ row }) => {
           const position = row.original;
+          const optionName = position.market?.optionName;
+          const positionMarketIdNum = Number(position.market?.marketId);
+          let optionIndex = sortedMarketsForColors.findIndex(
+            (m: any) => Number(m?.marketId) === positionMarketIdNum
+          );
+          if (optionIndex < 0 && optionName) {
+            optionIndex = sortedMarketsForColors.findIndex(
+              (m: any) => (m?.optionName ?? '') === optionName
+            );
+          }
+          let seriesColor =
+            optionIndex >= 0 ? getSeriesColorByIndex(optionIndex) : undefined;
+          if (!seriesColor) {
+            const paletteSize = CHART_SERIES_COLORS.length || 5;
+            const idNum = Number(positionMarketIdNum);
+            const fallbackIndex =
+              ((idNum % paletteSize) + paletteSize) % paletteSize;
+            seriesColor = getSeriesColorByIndex(fallbackIndex);
+          }
           const createdAtStr = (
             position as PositionType & { createdAt?: string }
           ).createdAt;
@@ -161,6 +197,24 @@ const WagersTable: React.FC<WagersTableProps> = ({
                     ).positionId
                   }
                 </span>
+                {optionName ? (
+                  <Badge
+                    variant="outline"
+                    className="truncate max-w-[220px]"
+                    style={{
+                      backgroundColor: seriesColor
+                        ? withAlpha(seriesColor, 0.08)
+                        : undefined,
+                      borderColor: seriesColor
+                        ? withAlpha(seriesColor, 0.24)
+                        : undefined,
+                      color: seriesColor || undefined,
+                    }}
+                    title={optionName}
+                  >
+                    {optionName}
+                  </Badge>
+                ) : null}
               </div>
               {createdDisplay ? (
                 <div className="text-sm text-muted-foreground mt-0.5">
@@ -207,7 +261,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
           );
           const collateralSymbol =
             position.market?.marketGroup?.collateralSymbol || 'Unknown';
-          const optionName = position.market?.optionName;
+          // option name moved to Position column
 
           // Determine Yes/No for YES_NO markets based on net position
           const baseTokenAmount = Number(
@@ -229,13 +283,8 @@ const WagersTable: React.FC<WagersTableProps> = ({
                 <span className="whitespace-nowrap">
                   <NumberDisplay value={collateralAmount} /> {collateralSymbol}
                 </span>
-                {optionName ? <span>on</span> : null}
-                {optionName ? (
-                  <span className="font-medium">{optionName}</span>
-                ) : null}
                 {isYesNo ? (
                   <>
-                    {!optionName ? <span>on</span> : null}
                     <Badge
                       variant="outline"
                       className={
@@ -309,7 +358,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
         },
       },
     ],
-    []
+    [sortedMarketsForColors]
   );
 
   const [sorting, setSorting] = useState<SortingState>([

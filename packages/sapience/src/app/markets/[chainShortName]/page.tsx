@@ -442,7 +442,7 @@ const MarketGroupPageContent = () => {
                   value={activeContentTab}
                   onValueChange={setActiveContentTab}
                 >
-                  <div className="px-3 py-1 border-b border-border">
+                  <div className="px-3 py-0">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="order-2 sm:order-1">
                         <TabsList className="h-auto p-0 bg-transparent">
@@ -488,7 +488,7 @@ const MarketGroupPageContent = () => {
                     </div>
                   </div>
                   <TabsContent value="all-positions" className="mt-0">
-                    <div className="px-3 py-4">
+                    <div className="px-3 pt-1 pb-4">
                       <WagersTable
                         showHeaderText={false}
                         marketAddress={marketAddress}
@@ -498,36 +498,39 @@ const MarketGroupPageContent = () => {
                     </div>
                   </TabsContent>
                   <TabsContent value="forecasts" className="mt-0">
-                    <div className="px-3 py-4">
-                      <ForecastInfoNotice className="mb-4" />
-                      {/* Prediction Form */}
-                      <div className="mb-6">
-                        <PredictForm
-                          marketGroupData={marketGroupData}
-                          marketClassification={marketClassification!}
-                          onSuccess={handleUserPositionsRefetch}
-                        />
+                    <div className="px-3 pt-1">
+                      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-4">
+                        <div className="space-y-4">
+                          <ForecastInfoNotice />
+                          {/* Prediction Form */}
+                          <PredictForm
+                            marketGroupData={marketGroupData}
+                            marketClassification={marketClassification!}
+                            onSuccess={handleUserPositionsRefetch}
+                          />
+                          {/* Comments */}
+                          <Comments
+                            selectedCategory={
+                              marketClassification ===
+                              MarketGroupClassification.MULTIPLE_CHOICE
+                                ? CommentFilters.AllMultichoiceQuestions
+                                : CommentFilters.SelectedQuestion
+                            }
+                            question={activeMarket?.question?.toString()}
+                            address={authenticatedAddress}
+                            refetchTrigger={userPositionsTrigger}
+                            marketGroupAddress={
+                              marketGroupData?.address || null
+                            }
+                            fullBleed
+                          />
+                        </div>
                       </div>
-
-                      {/* Comments */}
-                      <Comments
-                        selectedCategory={
-                          marketClassification ===
-                          MarketGroupClassification.MULTIPLE_CHOICE
-                            ? CommentFilters.AllMultichoiceQuestions
-                            : CommentFilters.SelectedQuestion
-                        }
-                        question={activeMarket?.question?.toString()}
-                        address={authenticatedAddress}
-                        refetchTrigger={userPositionsTrigger}
-                        marketGroupAddress={marketGroupData?.address || null}
-                        fullBleed
-                      />
                     </div>
                   </TabsContent>
                   {ready && authenticated && connectedPrivyWallet?.address && (
                     <TabsContent value="positions" className="mt-0">
-                      <div className="px-3 py-4">
+                      <div className="px-3 pt-1 pb-4">
                         <UserPositionsTable
                           showHeaderText={false}
                           showParlaysTab={false}
@@ -549,13 +552,15 @@ const MarketGroupPageContent = () => {
             {/* Right Column: Rules */}
             <div className="w-full lg:w-[340px] lg:shrink-0 h-full">
               <div className="flex flex-col h-full">
-                <div className="px-3 py-1 border-b border-border">
+                <div className="py-0">
                   <h2 className="text-lg font-medium py-1.5">Rules</h2>
                 </div>
-                <div className="flex-1 px-3 py-4">
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {marketGroupData?.rules ||
-                      'No additional rules clarification provided.'}
+                <div className="pt-1">
+                  <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-4">
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {marketGroupData?.rules ||
+                        'No additional rules clarification provided.'}
+                    </div>
                   </div>
                 </div>
               </div>

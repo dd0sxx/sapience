@@ -49,15 +49,7 @@ function CollateralCell({ position }: { position: PositionType }) {
 // Helper chip for displaying range and in-range status
 function RangeStatusCell({ position }: { position: PositionType }) {
   const marketGroup = position.market?.marketGroup;
-  const unitBase = `${marketGroup?.baseTokenName || 'Base'}`;
   const unitQuote = `${marketGroup?.collateralSymbol || 'Quote'}`;
-  const hideQuote = (unitQuote || '').toUpperCase().includes('USD');
-  const priceUnit =
-    unitBase === 'Yes'
-      ? ''
-      : hideQuote
-        ? `${unitBase}`
-        : `${unitBase}/${unitQuote}`;
 
   const lowPrice = tickToPrice(position.lowPriceTick);
   const highPrice = tickToPrice(position.highPriceTick);
@@ -71,27 +63,34 @@ function RangeStatusCell({ position }: { position: PositionType }) {
     chainId,
     marketId
   );
-  const currentMarketPrice = currentMarketPriceRaw ?? 0;
+  const hasMarketPrice =
+    currentMarketPriceRaw !== undefined && currentMarketPriceRaw !== null;
+  const currentMarketPrice = hasMarketPrice
+    ? Number(currentMarketPriceRaw)
+    : undefined;
 
-  const inRange =
-    currentMarketPrice >= lowPrice && currentMarketPrice <= highPrice;
+  const inRange = hasMarketPrice
+    ? currentMarketPrice! >= lowPrice && currentMarketPrice! <= highPrice
+    : null;
 
   return (
     <div className="whitespace-nowrap text-sm flex items-center gap-2">
       <span>
         <NumberDisplay value={lowPrice} /> → <NumberDisplay value={highPrice} />{' '}
-        {priceUnit}
+        {unitQuote}
       </span>
-      <Badge
-        variant="outline"
-        className={
-          inRange
-            ? 'border-green-500/40 bg-green-500/10 text-green-600'
-            : 'border-red-500/40 bg-red-500/10 text-red-600'
-        }
-      >
-        {inRange ? 'In Range' : 'Out of Range'}
-      </Badge>
+      {hasMarketPrice && (
+        <Badge
+          variant="outline"
+          className={
+            inRange
+              ? 'border-green-500/40 bg-green-500/10 text-green-600'
+              : 'border-red-500/40 bg-red-500/10 text-red-600'
+          }
+        >
+          {inRange ? 'In Range' : 'Out of Range'}
+        </Badge>
+      )}
     </div>
   );
 }
