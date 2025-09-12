@@ -159,7 +159,7 @@ export default function LpPositionsTable({
       {showHeader && <h3 className="font-medium mb-4">Liquidity Positions</h3>}
       <div className="rounded border bg-background dark:bg-muted/50">
         <Table>
-          <TableHeader className="hidden md:table-header-group text-sm font-medium text-muted-foreground border-b">
+          <TableHeader className="hidden xl:table-header-group text-sm font-medium text-muted-foreground border-b">
             <TableRow>
               {displayQuestionColumn && <TableHead>Question</TableHead>}
               <TableHead>Collateral</TableHead>
@@ -212,10 +212,10 @@ export default function LpPositionsTable({
               return (
                 <TableRow
                   key={position.id}
-                  className="md:table-row block border-b space-y-3 md:space-y-0 px-4 py-4 md:py-0"
+                  className="xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0"
                 >
                   {displayQuestionColumn && (
-                    <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
+                    <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3">
                       <div className="space-y-2">
                         {(() => {
                           const mGroup = position.market?.marketGroup;
@@ -251,21 +251,21 @@ export default function LpPositionsTable({
                   {isClosed ? (
                     <TableCell
                       colSpan={numColumns}
-                      className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3 text-center font-medium text-muted-foreground align-middle tracking-wider"
+                      className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 text-center font-medium text-muted-foreground align-middle tracking-wider"
                     >
                       CLOSED
                     </TableCell>
                   ) : (
                     <>
-                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
-                        <div className="text-xs text-muted-foreground md:hidden">
+                      <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3">
+                        <div className="text-xs text-muted-foreground xl:hidden">
                           Collateral
                         </div>
                         <CollateralCell position={position} />
                       </TableCell>
 
-                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
-                        <div className="text-xs text-muted-foreground md:hidden">
+                      <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3">
+                        <div className="text-xs text-muted-foreground xl:hidden">
                           Base Tokens
                         </div>
                         <VirtualTokenCell
@@ -274,8 +274,8 @@ export default function LpPositionsTable({
                         />
                       </TableCell>
 
-                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
-                        <div className="text-xs text-muted-foreground md:hidden">
+                      <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3">
+                        <div className="text-xs text-muted-foreground xl:hidden">
                           Quote Tokens
                         </div>
                         <VirtualTokenCell
@@ -284,8 +284,8 @@ export default function LpPositionsTable({
                         />
                       </TableCell>
 
-                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
-                        <div className="text-xs text-muted-foreground md:hidden">
+                      <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3">
+                        <div className="text-xs text-muted-foreground xl:hidden">
                           Low Price
                         </div>
                         <PriceTickCell
@@ -294,8 +294,8 @@ export default function LpPositionsTable({
                         />
                       </TableCell>
 
-                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
-                        <div className="text-xs text-muted-foreground md:hidden">
+                      <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3">
+                        <div className="text-xs text-muted-foreground xl:hidden">
                           High Price
                         </div>
                         <PriceTickCell
@@ -306,7 +306,7 @@ export default function LpPositionsTable({
 
                       {/* Removed Unrealized PnL value cell */}
 
-                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3 text-left md:text-right whitespace-nowrap md:mt-0">
+                      <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 text-left xl:text-right whitespace-nowrap xl:mt-0">
                         {isExpired && !isPositionSettled ? (
                           isOwner ? (
                             <SettlePositionButton

@@ -405,7 +405,7 @@ const ForecastsTable = ({
   return (
     <div className="rounded border">
       <Table>
-        <TableHeader className="hidden md:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
+        <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
@@ -436,7 +436,7 @@ const ForecastsTable = ({
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && 'selected'}
-                className="md:table-row block border-b space-y-3 md:space-y-0 px-4 py-4 md:py-0"
+                className="xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0"
               >
                 {row.getVisibleCells().map((cell) => {
                   const content = flexRender(
@@ -453,15 +453,15 @@ const ForecastsTable = ({
                   return (
                     <TableCell
                       key={cell.id}
-                      className={`block md:table-cell w-full px-0 py-0 md:px-4 md:py-3 ${
+                      className={`block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 ${
                         colId === 'actions'
-                          ? 'text-left md:text-right whitespace-nowrap md:mt-0'
+                          ? 'text-left xl:text-right whitespace-nowrap xl:mt-0'
                           : ''
                       }`}
                     >
                       {mobileLabel ? (
                         <div
-                          className={`text-xs text-muted-foreground md:hidden ${
+                          className={`text-xs text-muted-foreground xl:hidden ${
                             mobileLabel === 'Prediction' ? 'mb-1.5' : ''
                           }`}
                         >

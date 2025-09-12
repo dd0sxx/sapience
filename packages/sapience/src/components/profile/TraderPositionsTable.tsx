@@ -222,20 +222,20 @@ export default function TraderPositionsTable({
       {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
       <div className="rounded border bg-background dark:bg-muted/50">
         {/* Table Header (desktop) */}
-        <div className="hidden md:grid md:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] items-center px-4 py-1 bg-muted/30 text-sm font-medium text-muted-foreground border-b">
+        <div className="hidden xl:grid xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] items-center px-4 py-1 bg-muted/30 text-sm font-medium text-muted-foreground border-b">
           {displayQuestionColumn && (
-            <div className="md:col-span-5">Prediction Market</div>
+            <div className="xl:col-span-5">Prediction Market</div>
           )}
           <div
             className={
-              displayQuestionColumn ? 'md:col-span-3' : 'md:col-span-5'
+              displayQuestionColumn ? 'xl:col-span-3' : 'xl:col-span-5'
             }
           >
             Wager
           </div>
           <div
             className={
-              (displayQuestionColumn ? 'md:col-span-3' : 'md:col-span-6') +
+              (displayQuestionColumn ? 'xl:col-span-3' : 'xl:col-span-6') +
               ' flex items-center gap-1'
             }
           >
@@ -254,7 +254,7 @@ export default function TraderPositionsTable({
             </TooltipProvider>
           </div>
           {/* Header actions sizer to align auto-width column with row actions */}
-          <div className="md:col-start-12 md:col-span-1 md:justify-self-end">
+          <div className="xl:col-start-12 xl:col-span-1 xl:justify-self-end">
             <div className="invisible flex gap-3" aria-hidden>
               <Button size="sm" variant="outline">
                 Settle
@@ -336,10 +336,10 @@ function TraderPositionRow({
   displayQuestionColumn,
 }: TraderPositionRowProps) {
   return (
-    <div className="px-4 py-4 md:py-4 border-b last:border-b-0">
-      <div className="flex flex-col gap-3 md:grid md:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] md:items-center">
+    <div className="px-4 py-4 xl:py-4 border-b last:border-b-0">
+      <div className="flex flex-col gap-3 xl:grid xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] xl:items-center">
         {displayQuestionColumn && (
-          <div className="md:col-span-5">
+          <div className="xl:col-span-5">
             {(() => {
               const chainShortName = position.market?.marketGroup?.chainId
                 ? getChainShortName(position.market.marketGroup.chainId)
@@ -439,7 +439,7 @@ function TraderPositionRow({
         )}
 
         {isClosed ? (
-          <div className="md:col-span-7 text-center font-medium text-muted-foreground tracking-wider">
+          <div className="xl:col-span-7 text-center font-medium text-muted-foreground tracking-wider">
             CLOSED
           </div>
         ) : (
@@ -448,10 +448,10 @@ function TraderPositionRow({
 
             <div
               className={
-                displayQuestionColumn ? 'md:col-span-3' : 'md:col-span-5'
+                displayQuestionColumn ? 'xl:col-span-3' : 'xl:col-span-5'
               }
             >
-              <div className="text-xs text-muted-foreground md:hidden">
+              <div className="text-xs text-muted-foreground xl:hidden">
                 Wager
               </div>
               <div>
@@ -471,17 +471,17 @@ function TraderPositionRow({
 
             <div
               className={
-                displayQuestionColumn ? 'md:col-span-3' : 'md:col-span-6'
+                displayQuestionColumn ? 'xl:col-span-3' : 'xl:col-span-6'
               }
             >
-              <div className="text-xs text-muted-foreground md:hidden">
+              <div className="text-xs text-muted-foreground xl:hidden">
                 Position Value
               </div>
               <PositionValueCell position={position} />
             </div>
 
-            <div className="mt-3 md:mt-0 md:col-span-1 md:col-start-12 md:justify-self-end">
-              <div className="flex gap-3 justify-start md:justify-end">
+            <div className="mt-3 xl:mt-0 xl:col-span-1 xl:col-start-12 xl:justify-self-end">
+              <div className="flex gap-3 justify-start xl:justify-end">
                 {/* Exclusively show Settle when expired and not settled; otherwise show Sell (not on market page) */}
                 {isExpired && !isPositionSettled ? (
                   isOwner ? (
