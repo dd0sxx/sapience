@@ -49,6 +49,8 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     function emergencyMode() external view returns (bool);
     function getReservedAssets() external view returns (uint256);
     function getReservedShares() external view returns (uint256);
+    function isProcessingWithdrawals() external view returns (bool);
+    function isProcessingDeposits() external view returns (bool);
 
     // ============ Custom Deposit/Withdrawal Functions ============
     

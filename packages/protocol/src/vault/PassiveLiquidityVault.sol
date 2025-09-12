@@ -94,6 +94,12 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     
     /// @notice Total shares reserved for pending deposits
     uint256 private reservedShares = 0;
+    
+    /// @notice Lock to prevent concurrent withdrawal processing
+    bool private processingWithdrawals = false;
+    
+    /// @notice Lock to prevent concurrent deposit processing
+    bool private processingDeposits = false;
 
     // ============ Modifiers ============
     
@@ -104,6 +110,11 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     
     modifier notEmergency() {
         require(!emergencyMode, "Emergency mode active");
+        _;
+    }
+    
+    modifier notProcessing() {
+        require(!processingWithdrawals && !processingDeposits, "Processing in progress");
         _;
     }
 
@@ -299,8 +310,11 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @notice Process withdrawal requests (can be called by anyone)
      * @param maxRequests Maximum number of requests to process in this call
      */
-    function processWithdrawals(uint256 maxRequests) external nonReentrant {
+    function processWithdrawals(uint256 maxRequests) external nonReentrant notProcessing {
         require(maxRequests <= MAX_PROCESS_QUEUE_LENGTH, "Too many requests");
+        require(!processingWithdrawals, "Withdrawal processing in progress");
+        
+        processingWithdrawals = true;
         
         uint256 processed = 0;
         uint256 availableAssetsAmount = _getAvailableAssets();
@@ -340,14 +354,20 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         
         // Update the last processed index to the current position
         lastProcessedWithdrawalIndex = lastProcessedWithdrawalIndex + examined;
+        
+        // Release the processing lock
+        processingWithdrawals = false;
     }
 
     /**
      * @notice Process deposit requests (can be called by anyone)
      * @param maxRequests Maximum number of requests to process in this call
      */
-    function processDeposits(uint256 maxRequests) external nonReentrant {
+    function processDeposits(uint256 maxRequests) external nonReentrant notProcessing {
         require(maxRequests <= MAX_PROCESS_QUEUE_LENGTH, "Too many requests");
+        require(!processingDeposits, "Deposit processing in progress");
+        
+        processingDeposits = true;
         
         uint256 processed = 0;
         
@@ -382,6 +402,9 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         
         // Update the last processed index to the current position
         lastProcessedDepositIndex = lastProcessedDepositIndex + examined;
+        
+        // Release the processing lock
+        processingDeposits = false;
     }
 
     /**
@@ -426,7 +449,8 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
             isActiveProtocol[protocol] = true;
         }
         
-        // Approve assets to protocol
+        // Safe approval: reset to 0 first, then approve (prevents approval race conditions)
+        IERC20(asset()).approve(protocol, 0);
         IERC20(asset()).approve(protocol, amount);
         
         // Call protocol function if data provided
@@ -549,6 +573,14 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
 
     function getReservedShares() external view returns (uint256) {
         return reservedShares;
+    }
+
+    function isProcessingWithdrawals() external view returns (bool) {
+        return processingWithdrawals;
+    }
+
+    function isProcessingDeposits() external view returns (bool) {
+        return processingDeposits;
     }
 
     // ============ Admin Functions ============
