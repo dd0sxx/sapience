@@ -482,7 +482,7 @@ export function CreateLiquidityForm({
                   <p
                     className={`text-sm ${hasInsufficientFunds ? 'text-red-500' : ''}`}
                   >
-                    <span className="text-muted-foreground">
+                    <span>
                       <NumberDisplay value={walletBalance} />
                     </span>{' '}
                     → <NumberDisplay value={estimatedResultingBalance} />{' '}

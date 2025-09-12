@@ -1,8 +1,8 @@
 import { Button } from '@sapience/ui/components/ui/button';
-import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useAccount, useBalance } from 'wagmi';
 import { usePrivy } from '@privy-io/react-auth';
+import LottieLoader from '~/components/shared/LottieLoader';
 
 interface CollateralBalanceProps {
   collateralSymbol?: string;
@@ -113,8 +113,8 @@ export default function CollateralBalance({
 
   if (isBalanceLoading) {
     return (
-      <div className="flex items-center space-x-2 px-2 py-1">
-        <Loader2 className="h-5 w-5 animate-spin text-xs text-muted-foreground" />
+      <div className="flex items-center space-x-2 opacity-50 py-1">
+        <LottieLoader width={16} height={16} />
       </div>
     );
   }
