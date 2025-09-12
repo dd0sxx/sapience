@@ -56,7 +56,7 @@ export default function MultipleChoicePredict({
       <div>
         {options && options.length > 1 ? (
           <>
-            <div className="grid grid-cols-1 gap-2 mt-2 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-2 mb-4">
               {options
                 .slice()
                 .sort((a, b) => a.marketId - b.marketId)
@@ -66,6 +66,14 @@ export default function MultipleChoicePredict({
                   const unselectedBg = withAlpha(seriesColor, 0.08);
                   const hoverBg = withAlpha(seriesColor, 0.16);
                   const borderColor = withAlpha(seriesColor, 0.24);
+                  const totalOptions = options.length;
+                  const remainder = totalOptions % 3;
+                  const shouldSpanFullRowMd =
+                    remainder === 1
+                      ? idx === totalOptions - 1
+                      : remainder === 2
+                        ? idx === totalOptions - 2 || idx === totalOptions - 1
+                        : false;
 
                   return (
                     <Button
@@ -77,7 +85,7 @@ export default function MultipleChoicePredict({
                       }}
                       role="radio"
                       aria-checked={isSelected}
-                      className={`text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
+                      className={`w-full text-center justify-start font-normal border flex items-center gap-3 text-foreground ${shouldSpanFullRowMd ? 'md:col-span-3' : ''}`}
                       style={{
                         backgroundColor: unselectedBg,
                         borderColor,

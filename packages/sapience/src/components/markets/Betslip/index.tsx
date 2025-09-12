@@ -210,15 +210,13 @@ const Betslip = ({
 
   // Create dynamic form schema based on positions and from type (individual or parlay)
   const formSchema: z.ZodType<any> = useMemo(() => {
-    const positionsSchema: Record<
-      string,
-      z.ZodObject<{ predictionValue: z.ZodString; wagerAmount: z.ZodTypeAny }>
-    > = {};
+    const positionsSchema: Record<string, z.ZodTypeAny> = {};
 
     betSlipPositions.forEach((position) => {
       positionsSchema[position.id] = z.object({
         predictionValue: z.string().min(1, 'Please make a prediction'),
         wagerAmount: wagerAmountSchema,
+        isFlipped: z.boolean().optional(),
       });
     });
 
@@ -300,11 +298,17 @@ const Betslip = ({
 
           const wagerAmount = position.wagerAmount || DEFAULT_WAGER_AMOUNT;
 
+          const isFlipped =
+            classification === MarketGroupClassification.MULTIPLE_CHOICE
+              ? !position.prediction
+              : undefined;
+
           return [
             position.id,
             {
               predictionValue,
               wagerAmount,
+              isFlipped,
             },
           ];
         })
@@ -314,7 +318,10 @@ const Betslip = ({
 
   // Single form for both individual and parlay modes
   const formMethods = useForm<{
-    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+    positions: Record<
+      string,
+      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+    >;
     wagerAmount?: string;
     limitAmount?: string | number;
   }>({
@@ -361,15 +368,15 @@ const Betslip = ({
     // Merge defaults then existing inputs
     const mergedPositions: Record<
       string,
-      { predictionValue: string; wagerAmount: string }
+      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
     > = {
       ...(defaults as Record<
         string,
-        { predictionValue: string; wagerAmount: string }
+        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >),
       ...((current?.positions as Record<
         string,
-        { predictionValue: string; wagerAmount: string }
+        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >) || {}),
     };
 
@@ -379,14 +386,35 @@ const Betslip = ({
         const id = p.position.id;
         if (defaults?.[id]?.predictionValue) {
           mergedPositions[id] = {
-            // Override predictionValue to default derived from position.prediction
             predictionValue: defaults[id].predictionValue,
-            // Preserve existing wager if present, else use default
             wagerAmount:
               current?.positions?.[id]?.wagerAmount ||
               defaults?.[id]?.wagerAmount ||
               DEFAULT_WAGER_AMOUNT,
-          } as { predictionValue: string; wagerAmount: string };
+            // Preserve isFlipped if it exists (not used for YES/NO but safe to keep)
+            isFlipped: (current?.positions?.[id] as { isFlipped?: boolean })
+              ?.isFlipped,
+          } as {
+            predictionValue: string;
+            wagerAmount: string;
+            isFlipped?: boolean;
+          };
+        }
+      }
+      if (
+        p.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
+      ) {
+        const id = p.position.id;
+        const existing = mergedPositions[id];
+        if (existing) {
+          mergedPositions[id] = {
+            ...existing,
+            // Force isFlipped based on latest position.prediction from market components
+            isFlipped:
+              typeof p.position.prediction === 'boolean'
+                ? !p.position.prediction
+                : existing.isFlipped,
+          };
         }
       }
     });
@@ -606,7 +634,10 @@ const Betslip = ({
         marketClassification: pos.marketClassification,
         predictionValue,
         wagerAmount: wagerAmountStr,
-        isFlipped,
+        isFlipped:
+          typeof formValues?.positions?.[positionId]?.isFlipped === 'boolean'
+            ? formValues.positions[positionId].isFlipped
+            : isFlipped,
       });
 
       const quoteKey = generateQuoteQueryKey(
@@ -720,7 +751,7 @@ const Betslip = ({
     individualMethods: formMethods as unknown as UseFormReturn<{
       positions: Record<
         string,
-        { predictionValue: string; wagerAmount: string }
+        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >;
     }>,
     parlayMethods: formMethods as unknown as UseFormReturn<{
@@ -728,7 +759,7 @@ const Betslip = ({
       limitAmount: string | number;
       positions: Record<
         string,
-        { predictionValue: string; wagerAmount: string }
+        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >;
     }>,
     handleIndividualSubmit,

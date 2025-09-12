@@ -89,7 +89,7 @@ const ProfileStats = ({ address, className }: ProfileStatsProps) => {
   return (
     <div
       className={cn(
-        'grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 my-4 md:my-6',
+        'grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 my-4 lg:my-6',
         className
       )}
     >

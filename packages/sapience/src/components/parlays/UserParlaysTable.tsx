@@ -69,7 +69,7 @@ export default function UserParlaysTable({
       )}
       <div className="rounded border">
         <Table>
-          <TableHeader className="bg-muted/30 text-sm font-medium text-muted-foreground border-b">
+          <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
             <TableRow>
               <TableHead>Position ID</TableHead>
               <TableHead>Conditions</TableHead>
@@ -79,11 +79,20 @@ export default function UserParlaysTable({
           </TableHeader>
           <TableBody>
             {mockParlays.map((parlay) => (
-              <TableRow key={parlay.positionId} className="align-top">
-                <TableCell className="whitespace-nowrap">
+              <TableRow
+                key={parlay.positionId}
+                className="xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top"
+              >
+                <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 whitespace-nowrap">
+                  <div className="text-xs text-muted-foreground xl:hidden">
+                    Position ID
+                  </div>
                   #{parlay.positionId}
                 </TableCell>
-                <TableCell>
+                <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3">
+                  <div className="text-xs text-muted-foreground xl:hidden">
+                    Conditions
+                  </div>
                   <div className="space-y-1">
                     {parlay.legs.map((leg, idx) => (
                       <div key={idx} className="text-sm">
@@ -101,12 +110,15 @@ export default function UserParlaysTable({
                     ))}
                   </div>
                 </TableCell>
-                <TableCell className="whitespace-nowrap">
+                <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 whitespace-nowrap">
+                  <div className="text-xs text-muted-foreground xl:hidden">
+                    Side
+                  </div>
                   {parlay.direction === 'Long'
                     ? 'Conditions will be met'
                     : 'Not all conditions will be met'}
                 </TableCell>
-                <TableCell className="whitespace-nowrap text-right">
+                <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 whitespace-nowrap text-left xl:text-right xl:mt-0">
                   {parlay.status === 'active' && (
                     <Button size="sm" variant="outline" disabled>
                       {`Ends In ${Math.max(1, Math.ceil((parlay.endsAt - Date.now()) / (1000 * 60 * 60 * 24)))} Days`}

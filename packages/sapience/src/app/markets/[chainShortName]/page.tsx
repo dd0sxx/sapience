@@ -11,8 +11,9 @@ import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { useMemo, useState, useCallback } from 'react';
-import { useAccount } from 'wagmi';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import type { Address } from 'viem';
 import { Button } from '@sapience/ui/components/ui/button';
 import { RefreshCw, CandlestickChart } from 'lucide-react';
 
@@ -24,8 +25,10 @@ import MarketGroupChart from '~/components/markets/MarketGroupChart';
 import MarketGroupHeader from '~/components/markets/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/markets/MarketStatusDisplay';
 import UserPositionsTable from '~/components/markets/UserPositionsTable';
+import WagersTable from '~/components/markets/WagersTable';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import WagerFormFactory from '~/components/markets/forms/WagerFormFactory';
+import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,
@@ -170,7 +173,11 @@ const WagerForm = ({
 };
 
 const MarketGroupPageContent = () => {
-  const { address } = useAccount();
+  const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const connectedPrivyWallet = wallets[0];
+  const authenticatedAddress =
+    ready && authenticated ? connectedPrivyWallet?.address : undefined;
   const params = useParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -179,7 +186,15 @@ const MarketGroupPageContent = () => {
 
   // Local trigger that will be bumped whenever the user submits a new wager
   const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
-  const [activeContentTab, setActiveContentTab] = useState<string>('forecasts');
+  const [activeContentTab, setActiveContentTab] =
+    useState<string>('all-positions');
+
+  // Ensure we don't show the positions tab as active when logged out
+  useEffect(() => {
+    if (activeContentTab === 'positions' && !(ready && authenticated)) {
+      setActiveContentTab('all-positions');
+    }
+  }, [activeContentTab, ready, authenticated]);
 
   const handleUserPositionsRefetch = useCallback(() => {
     setUserPositionsTrigger((prev) => prev + 1);
@@ -202,7 +217,7 @@ const MarketGroupPageContent = () => {
   } = useMarketGroupPage();
 
   const { isLoading: _isUserPositionsLoading } = usePositions({
-    address: address || '',
+    address: authenticatedAddress || '',
     marketAddress,
   });
 
@@ -281,6 +296,45 @@ const MarketGroupPageContent = () => {
 
     setShowMarketSelector(true);
   }, [marketGroupData?.markets, router, pathname]);
+
+  // Precompute direct href for orderbook link when exactly one market would be navigated to
+  const orderbookHref = useMemo(() => {
+    const allMarkets = marketGroupData?.markets || [];
+    const currentTimeSeconds = Date.now() / 1000;
+
+    const activeMarketsList = findActiveMarkets({ markets: allMarkets });
+    const upcomingMarketsList = allMarkets.filter((market: MarketType) => {
+      const start = market.startTimestamp;
+      return (
+        typeof start === 'number' &&
+        !Number.isNaN(start) &&
+        currentTimeSeconds < start
+      );
+    });
+    const pastMarketsList = allMarkets.filter((market: MarketType) => {
+      const end = market.endTimestamp;
+      return (
+        typeof end === 'number' &&
+        !Number.isNaN(end) &&
+        currentTimeSeconds >= end
+      );
+    });
+
+    const listedMarkets = [
+      ...activeMarketsList,
+      ...upcomingMarketsList,
+      ...pastMarketsList,
+    ];
+
+    if (listedMarkets.length === 1) {
+      const onlyMarket = listedMarkets[0];
+      if (onlyMarket?.marketId != null) {
+        return `${pathname}/${onlyMarket.marketId}`;
+      }
+    }
+
+    return null;
+  }, [marketGroupData?.markets, pathname]);
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -388,69 +442,126 @@ const MarketGroupPageContent = () => {
                   value={activeContentTab}
                   onValueChange={setActiveContentTab}
                 >
-                  <div className="px-3 py-1 border-b border-border">
+                  <div className="py-0">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="order-2 sm:order-1">
                         <TabsList className="h-auto p-0 bg-transparent">
+                          <TabsTrigger
+                            value="all-positions"
+                            className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                          >
+                            Wagers
+                          </TabsTrigger>
+                          {ready &&
+                            authenticated &&
+                            connectedPrivyWallet?.address && (
+                              <TabsTrigger
+                                value="positions"
+                                className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              >
+                                Your Positions
+                              </TabsTrigger>
+                            )}
                           <TabsTrigger
                             value="forecasts"
                             className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                           >
                             Forecasts
                           </TabsTrigger>
-                          {address && (
-                            <TabsTrigger
-                              value="positions"
-                              className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
-                            >
-                              Your Positions
-                            </TabsTrigger>
-                          )}
                         </TabsList>
                       </div>
                       <div className="order-1 sm:order-2 sm:ml-auto">
-                        <Button size="xs" onClick={handleAdvancedViewClick}>
-                          <CandlestickChart className="h-3 w-3 -mr-0.5" />
-                          View Orderbook
-                        </Button>
+                        {orderbookHref ? (
+                          <Button size="xs" asChild>
+                            <Link href={orderbookHref}>
+                              <CandlestickChart className="h-3 w-3 -mr-0.5" />
+                              View Orderbook
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button size="xs" onClick={handleAdvancedViewClick}>
+                            <CandlestickChart className="h-3 w-3 -mr-0.5" />
+                            View Orderbook
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <TabsContent value="forecasts" className="mt-0">
-                    <div className="px-3 py-4">
-                      <ForecastInfoNotice className="mb-4" />
-                      {/* Prediction Form */}
-                      <div className="mb-6">
-                        <PredictForm
-                          marketGroupData={marketGroupData}
-                          marketClassification={marketClassification!}
-                          onSuccess={handleUserPositionsRefetch}
-                        />
-                      </div>
-
-                      {/* Comments */}
-                      <Comments
-                        selectedCategory={
-                          marketClassification ===
-                          MarketGroupClassification.MULTIPLE_CHOICE
-                            ? CommentFilters.AllMultichoiceQuestions
-                            : CommentFilters.SelectedQuestion
-                        }
-                        question={activeMarket?.question?.toString()}
-                        address={address}
-                        refetchTrigger={userPositionsTrigger}
-                        marketGroupAddress={marketGroupData?.address || null}
-                        fullBleed
+                  <TabsContent value="all-positions" className="mt-0">
+                    <div className="pt-1 pb-4">
+                      <WagersTable
+                        showHeaderText={false}
+                        marketAddress={marketAddress}
+                        chainId={chainId}
+                        marketIds={activeMarkets.map((m) => Number(m.marketId))}
                       />
                     </div>
                   </TabsContent>
-                  {address && (
+                  <TabsContent value="forecasts" className="mt-0">
+                    <div className="pt-1">
+                      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-6">
+                        <div className="space-y-4">
+                          <p className="text-lg leading-relaxed text-muted-foreground">
+                            Submit forecasts on{' '}
+                            <a
+                              href="https://attest.org"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Ethereum
+                            </a>{' '}
+                            or{' '}
+                            <Link
+                              href="/bots"
+                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              deploy an agent
+                            </Link>{' '}
+                            that does. Forecasts can{' '}
+                            <Link
+                              href="/leaderboard#accuracy"
+                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              provide signal
+                            </Link>{' '}
+                            for prediction market participants and trigger
+                            automation.
+                          </p>
+                          <ForecastInfoNotice />
+                          {/* Prediction Form */}
+                          <PredictForm
+                            marketGroupData={marketGroupData}
+                            marketClassification={marketClassification!}
+                            onSuccess={handleUserPositionsRefetch}
+                          />
+                          {/* Comments */}
+                          <Comments
+                            selectedCategory={
+                              marketClassification ===
+                              MarketGroupClassification.MULTIPLE_CHOICE
+                                ? CommentFilters.AllMultichoiceQuestions
+                                : CommentFilters.SelectedQuestion
+                            }
+                            question={activeMarket?.question?.toString()}
+                            address={authenticatedAddress}
+                            refetchTrigger={userPositionsTrigger}
+                            marketGroupAddress={
+                              marketGroupData?.address || null
+                            }
+                            fullBleed
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  {ready && authenticated && connectedPrivyWallet?.address && (
                     <TabsContent value="positions" className="mt-0">
-                      <div className="px-3 py-4">
+                      <div className="pt-1 pb-4">
                         <UserPositionsTable
                           showHeaderText={false}
                           showParlaysTab={false}
-                          account={address}
+                          account={authenticatedAddress as Address}
                           marketAddress={marketAddress}
                           chainId={chainId}
                           marketIds={activeMarkets.map((m) =>
@@ -468,13 +579,15 @@ const MarketGroupPageContent = () => {
             {/* Right Column: Rules */}
             <div className="w-full lg:w-[340px] lg:shrink-0 h-full">
               <div className="flex flex-col h-full">
-                <div className="px-3 py-1 border-b border-border">
+                <div className="py-0">
                   <h2 className="text-lg font-medium py-1.5">Rules</h2>
                 </div>
-                <div className="flex-1 px-3 py-4">
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {marketGroupData?.rules ||
-                      'No additional rules clarification provided.'}
+                <div className="pt-1">
+                  <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-4">
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {marketGroupData?.rules ||
+                        'No additional rules clarification provided.'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -518,115 +631,171 @@ const MarketGroupPageContent = () => {
                 }
               );
 
+              // Build consistent ordering and color index mapping across all markets
+              const allMarketsSorted = allMarkets
+                .slice()
+                .sort((a, b) => Number(a.marketId) - Number(b.marketId));
+              const marketIdToColorIndex = new Map<number, number>();
+              allMarketsSorted.forEach((m, index) => {
+                marketIdToColorIndex.set(Number(m.marketId), index);
+              });
+
+              // Sort each section by marketId to match global order
+              const activeMarketsSorted = activeMarketsList
+                .slice()
+                .sort((a, b) => Number(a.marketId) - Number(b.marketId));
+              const upcomingMarketsSorted = upcomingMarketsList
+                .slice()
+                .sort((a, b) => Number(a.marketId) - Number(b.marketId));
+              const pastMarketsSorted = pastMarketsList
+                .slice()
+                .sort((a, b) => Number(a.marketId) - Number(b.marketId));
+
               return (
                 <>
                   {/* Active Markets Section */}
-                  {activeMarketsList.length > 0 && (
+                  {activeMarketsSorted.length > 0 && (
                     <div>
-                      <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                      <h2 className="text-xl font-medium mb-3">
                         Active Markets
-                      </h3>
-                      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
-                        {activeMarketsList.map((market: MarketType) => (
-                          <Link
-                            key={market.id}
-                            href={`${pathname}/${market.marketId}`}
-                            onClick={() => setShowMarketSelector(false)}
-                          >
-                            <div
-                              className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-r border-t border-b border-border last:border-b-0"
+                      </h2>
+                      <div className="grid grid-cols-1 gap-2">
+                        {activeMarketsSorted.map((market: MarketType) => {
+                          const colorIdx =
+                            marketIdToColorIndex.get(Number(market.marketId)) ||
+                            0;
+                          const seriesColor = getSeriesColorByIndex(colorIdx);
+                          const unselectedBg = withAlpha(seriesColor, 0.08);
+                          const hoverBg = withAlpha(seriesColor, 0.16);
+                          const borderColor = withAlpha(seriesColor, 0.24);
+
+                          return (
+                            <Link
+                              key={market.id}
+                              href={`${pathname}/${market.marketId}`}
+                              onClick={() => setShowMarketSelector(false)}
+                              className="border-muted dark:bg-muted/50 flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2"
                               style={{
-                                borderLeft: '4px solid #3B82F6',
+                                backgroundColor: unselectedBg,
+                                borderColor,
+                              }}
+                              onMouseEnter={(e) => {
+                                (
+                                  e.currentTarget as HTMLAnchorElement
+                                ).style.backgroundColor = hoverBg;
+                              }}
+                              onMouseLeave={(e) => {
+                                (
+                                  e.currentTarget as HTMLAnchorElement
+                                ).style.backgroundColor = unselectedBg;
                               }}
                             >
-                              {/* Content Container */}
-                              <div className="flex-grow flex flex-col lg:flex-row lg:items-center px-5 py-3">
-                                {/* Question Section */}
-                                <div className="pb-3 lg:pb-0 lg:pr-5">
-                                  <h3 className="text-xl font-heading font-normal">
-                                    {market.question
-                                      ? formatQuestion(market.question)
-                                      : `Market ${market.marketId}`}
-                                  </h3>
-                                </div>
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
+                              <h3 className="text-sm font-normal truncate">
+                                {market.question
+                                  ? formatQuestion(market.question)
+                                  : `Market ${market.marketId}`}
+                              </h3>
+                            </Link>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
 
                   {/* Upcoming Markets Section */}
-                  {upcomingMarketsList.length > 0 && (
+                  {upcomingMarketsSorted.length > 0 && (
                     <div>
                       <h3 className="font-medium text-sm text-muted-foreground mb-2">
                         Upcoming Markets
                       </h3>
-                      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
-                        {upcomingMarketsList.map((market: MarketType) => (
-                          <Link
-                            key={market.id}
-                            href={`${pathname}/${market.marketId}`}
-                            onClick={() => setShowMarketSelector(false)}
-                          >
-                            <div
-                              className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-r border-t border-b border-border last:border-b-0"
+                      <div className="grid grid-cols-1 gap-2">
+                        {upcomingMarketsSorted.map((market: MarketType) => {
+                          const colorIdx =
+                            marketIdToColorIndex.get(Number(market.marketId)) ||
+                            0;
+                          const seriesColor = getSeriesColorByIndex(colorIdx);
+                          const unselectedBg = withAlpha(seriesColor, 0.08);
+                          const hoverBg = withAlpha(seriesColor, 0.16);
+                          const borderColor = withAlpha(seriesColor, 0.24);
+
+                          return (
+                            <Link
+                              key={market.id}
+                              href={`${pathname}/${market.marketId}`}
+                              onClick={() => setShowMarketSelector(false)}
+                              className="border-muted dark:bg-muted/50 flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2"
                               style={{
-                                borderLeft: '4px solid #F59E0B',
+                                backgroundColor: unselectedBg,
+                                borderColor,
+                              }}
+                              onMouseEnter={(e) => {
+                                (
+                                  e.currentTarget as HTMLAnchorElement
+                                ).style.backgroundColor = hoverBg;
+                              }}
+                              onMouseLeave={(e) => {
+                                (
+                                  e.currentTarget as HTMLAnchorElement
+                                ).style.backgroundColor = unselectedBg;
                               }}
                             >
-                              {/* Content Container */}
-                              <div className="flex-grow flex flex-col lg:flex-row lg:items-center px-5 py-3">
-                                {/* Question Section */}
-                                <div className="pb-3 lg:pb-0 lg:pr-5">
-                                  <h3 className="text-xl font-heading font-normal">
-                                    {market.question
-                                      ? formatQuestion(market.question)
-                                      : `Market ${market.marketId}`}
-                                  </h3>
-                                </div>
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
+                              <h3 className="text-sm font-normal truncate">
+                                {market.question
+                                  ? formatQuestion(market.question)
+                                  : `Market ${market.marketId}`}
+                              </h3>
+                            </Link>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
 
                   {/* Past Markets Section */}
-                  {pastMarketsList.length > 0 && (
+                  {pastMarketsSorted.length > 0 && (
                     <div>
                       <h3 className="font-medium text-sm text-muted-foreground mb-2">
                         Past Markets
                       </h3>
-                      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
-                        {pastMarketsList.map((market: MarketType) => (
-                          <Link
-                            key={market.id}
-                            href={`${pathname}/${market.marketId}`}
-                            onClick={() => setShowMarketSelector(false)}
-                          >
-                            <div
-                              className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-r border-t border-b border-border last:border-b-0 opacity-75"
+                      <div className="grid grid-cols-1 gap-2">
+                        {pastMarketsSorted.map((market: MarketType) => {
+                          const colorIdx =
+                            marketIdToColorIndex.get(Number(market.marketId)) ||
+                            0;
+                          const seriesColor = getSeriesColorByIndex(colorIdx);
+                          const unselectedBg = withAlpha(seriesColor, 0.08);
+                          const hoverBg = withAlpha(seriesColor, 0.16);
+                          const borderColor = withAlpha(seriesColor, 0.24);
+
+                          return (
+                            <Link
+                              key={market.id}
+                              href={`${pathname}/${market.marketId}`}
+                              onClick={() => setShowMarketSelector(false)}
+                              className="border-muted dark:bg-muted/50 flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2 opacity-75"
                               style={{
-                                borderLeft: '4px solid #71717a',
+                                backgroundColor: unselectedBg,
+                                borderColor,
+                              }}
+                              onMouseEnter={(e) => {
+                                (
+                                  e.currentTarget as HTMLAnchorElement
+                                ).style.backgroundColor = hoverBg;
+                              }}
+                              onMouseLeave={(e) => {
+                                (
+                                  e.currentTarget as HTMLAnchorElement
+                                ).style.backgroundColor = unselectedBg;
                               }}
                             >
-                              {/* Content Container */}
-                              <div className="flex-grow flex flex-col lg:flex-row lg:items-center px-5 py-3">
-                                {/* Question Section */}
-                                <div className="pb-3 lg:pb-0 lg:pr-5">
-                                  <h3 className="text-xl font-heading font-normal">
-                                    {market.question
-                                      ? formatQuestion(market.question)
-                                      : `Market ${market.marketId}`}
-                                  </h3>
-                                </div>
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
+                              <h3 className="text-sm font-normal truncate">
+                                {market.question
+                                  ? formatQuestion(market.question)
+                                  : `Market ${market.marketId}`}
+                              </h3>
+                            </Link>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

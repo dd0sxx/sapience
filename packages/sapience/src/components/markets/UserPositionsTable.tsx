@@ -112,7 +112,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
         <h3 className="text-2xl font-medium">Your Activity</h3>
       )}
       <Tabs defaultValue="trades">
-        <div className="mb-4">
+        <div className="mb-2.5">
           <TabsList
             className={`grid w-full ${showParlaysTab ? 'grid-cols-4' : 'grid-cols-3'}`}
           >
