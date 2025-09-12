@@ -15,7 +15,6 @@ import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18, getChainShortName } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
-import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
 
 // Helper function to check if a market is active
 function isMarketActive(market: any): boolean {
@@ -400,6 +399,7 @@ const Comments = ({
             <>
               {displayComments.map((comment, idx) => {
                 const isLast = idx === displayComments.length - 1;
+                const hasText = (comment.content || '').trim().length > 0;
                 return (
                   <div
                     key={comment.id}
@@ -408,7 +408,7 @@ const Comments = ({
                   >
                     <div className="relative">
                       <div
-                        className={`${fullBleed ? 'px-10' : 'px-6'} py-5 space-y-4`}
+                        className={`${fullBleed ? 'px-10' : 'px-6'} py-5 ${hasText ? 'space-y-4' : 'space-y-3'}`}
                       >
                         {/* Question and Prediction */}
                         <div className="space-y-3">
@@ -426,118 +426,72 @@ const Comments = ({
                               comment.question
                             )}
                           </h2>
-                          {/* Prediction, time, and signature layout */}
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-3">
-                              {/* Prediction badge/text based on market type */}
-                              {comment.prediction &&
-                                (() => {
-                                  // Multiple-choice: color by option index using series colors
-                                  if (
-                                    comment.marketClassification === '1' &&
-                                    typeof comment.optionIndex === 'number'
-                                  ) {
-                                    const color = getSeriesColorByIndex(
-                                      comment.optionIndex
-                                    );
-                                    const bg = withAlpha(color, 0.08);
-                                    const border = withAlpha(color, 0.24);
-                                    return (
-                                      <Badge
-                                        variant={'outline' as any}
-                                        style={{
-                                          backgroundColor: bg,
-                                          borderColor: border,
-                                          color,
-                                        }}
-                                      >
-                                        {comment.prediction}
-                                      </Badge>
-                                    );
-                                  }
-
-                                  // Yes/No: retain red/green based on >/< 50%
-                                  const isNumericMarket =
-                                    comment.marketClassification === '3';
-                                  const percent = comment.predictionPercent;
-                                  const shouldColor =
-                                    !isNumericMarket &&
-                                    typeof percent === 'number' &&
-                                    percent !== 50;
-                                  const isGreen = shouldColor && percent > 50;
-                                  const isRed = shouldColor && percent < 50;
-                                  const variant = shouldColor
-                                    ? 'outline'
-                                    : 'default';
-                                  const className = shouldColor
-                                    ? isGreen
-                                      ? 'border-green-500/40 bg-green-500/10 text-green-600'
-                                      : isRed
-                                        ? 'border-red-500/40 bg-red-500/10 text-red-600'
-                                        : ''
-                                    : '';
-                                  return (
-                                    <Badge
-                                      variant={variant as any}
-                                      className={className}
-                                    >
-                                      {comment.prediction}
-                                    </Badge>
-                                  );
-                                })()}
-                              {/* Time */}
-                              <span className="text-sm text-muted-foreground/70 font-medium">
-                                {formatRelativeTime(
-                                  new Date(comment.timestamp).getTime()
-                                )}
-                              </span>
-                            </div>
-                            {/* Address display - right justified on larger screens, moved below content on mobile */}
-                            <div className="hidden sm:flex items-center gap-2">
-                              <div className="relative">
-                                <Image
-                                  alt={comment.address}
-                                  src={blo(comment.address as `0x${string}`)}
-                                  className="w-5 h-5 rounded-sm ring-1 ring-border/50"
-                                  width={20}
-                                  height={20}
-                                />
-                              </div>
-                              <div className="text-sm text-muted-foreground/80 font-medium">
-                                <AddressDisplay
-                                  address={comment.address}
-                                  disableProfileLink={false}
-                                  className="text-xs"
-                                />
-                              </div>
-                            </div>
-                          </div>
+                          {/* Meta row is rendered below content */}
                         </div>
                         {/* Comment content */}
                         {(comment.content || '').trim().length > 0 && (
-                          <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden p-4">
+                          <div className="border border-muted-foreground/40 rounded shadow-md bg-background/50 dark:bg-muted/50 overflow-hidden p-4">
                             <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
                               {comment.content}
                             </div>
                           </div>
                         )}
-                        {/* Address display below content on mobile */}
-                        <div className="mt-2 flex items-center gap-2 sm:hidden">
-                          <div className="relative">
-                            <Image
-                              alt={comment.address}
-                              src={blo(comment.address as `0x${string}`)}
-                              className="w-5 h-5 rounded-sm ring-1 ring-border/50"
-                              width={20}
-                              height={20}
-                            />
-                          </div>
-                          <div className="text-sm text-muted-foreground/80 font-medium">
-                            <AddressDisplay
-                              address={comment.address}
-                              disableProfileLink={false}
-                              className="text-xs"
-                            />
+                        {/* Unified meta row: chance badge, time, address */}
+                        <div
+                          className={`${hasText ? 'mt-2' : '-mt-1.5'} flex flex-wrap items-center gap-3`}
+                        >
+                          {comment.prediction &&
+                            (() => {
+                              const isNumericMarket =
+                                comment.marketClassification === '3';
+                              const percent = comment.predictionPercent;
+                              const shouldColor =
+                                !isNumericMarket &&
+                                typeof percent === 'number' &&
+                                percent !== 50;
+                              const isGreen = shouldColor && percent > 50;
+                              const isRed = shouldColor && percent < 50;
+                              const variant = shouldColor
+                                ? 'outline'
+                                : 'default';
+                              const className = shouldColor
+                                ? isGreen
+                                  ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                                  : isRed
+                                    ? 'border-red-500/40 bg-red-500/10 text-red-600'
+                                    : ''
+                                : '';
+                              return (
+                                <Badge
+                                  variant={variant as any}
+                                  className={className}
+                                >
+                                  {comment.prediction}
+                                </Badge>
+                              );
+                            })()}
+                          <span className="text-sm text-muted-foreground/70 font-medium">
+                            {formatRelativeTime(
+                              new Date(comment.timestamp).getTime()
+                            )}
+                          </span>
+                          <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+                            <div className="relative">
+                              <Image
+                                alt={comment.address}
+                                src={blo(comment.address as `0x${string}`)}
+                                className="w-5 h-5 rounded-sm ring-1 ring-border/50"
+                                width={20}
+                                height={20}
+                              />
+                            </div>
+                            <div className="text-sm text-muted-foreground/80 font-medium">
+                              <AddressDisplay
+                                address={comment.address}
+                                disableProfileLink={false}
+                                className="text-xs"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

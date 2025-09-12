@@ -2,6 +2,8 @@
 
 import { Button } from '@sapience/ui/components/ui/button';
 import { MessageCircle } from 'lucide-react';
+import { motion, useAnimationControls } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 
 import { useChat } from '~/lib/context/ChatContext';
 
@@ -13,39 +15,79 @@ type ChatButtonProps = {
 
 const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
   const { toggleChat } = useChat();
+  const controls = useAnimationControls();
+  const isHoveredRef = useRef(false);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (isHoveredRef.current) return;
+      controls.start({
+        scale: [1, 1.1, 1],
+        transition: { duration: 0.6, ease: 'easeInOut' },
+      });
+    }, 10000);
+
+    return () => clearInterval(intervalId);
+  }, [controls]);
 
   if (iconOnly) {
     return (
-      <Button
-        variant="outline"
-        size="icon"
-        className="rounded-full h-11 w-11"
-        onClick={() => {
-          if (onAfterClick) onAfterClick();
-          toggleChat();
+      <motion.div
+        className="inline-block"
+        initial={{ scale: 1 }}
+        animate={controls}
+        onHoverStart={() => {
+          isHoveredRef.current = true;
+          controls.stop();
         }}
-        aria-label="Toggle chat"
+        onHoverEnd={() => {
+          isHoveredRef.current = false;
+        }}
       >
-        <MessageCircle className="h-7 w-7" />
-      </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="rounded-full h-14 w-14 shadow-md transition-transform duration-500 hover:scale-[1.1] hover:bg-background"
+          onClick={() => {
+            if (onAfterClick) onAfterClick();
+            toggleChat();
+          }}
+          aria-label="Toggle chat"
+        >
+          <MessageCircle className="h-12 w-12 scale-[1.5]" />
+        </Button>
+      </motion.div>
     );
   }
 
   return (
     <div className="mt-6">
       <div className="flex w-fit mx-3 mt-0">
-        <Button
-          variant="outline"
-          size="xs"
-          className="rounded-full px-3 justify-start gap-2"
-          onClick={() => {
-            if (onAfterClick) onAfterClick();
-            toggleChat();
+        <motion.div
+          className="inline-block"
+          initial={{ scale: 1 }}
+          animate={controls}
+          onHoverStart={() => {
+            isHoveredRef.current = true;
+            controls.stop();
+          }}
+          onHoverEnd={() => {
+            isHoveredRef.current = false;
           }}
         >
-          <MessageCircle className="h-3 w-3 scale-[0.8]" />
-          <span className="relative top-[1px]">Chat</span>
-        </Button>
+          <Button
+            variant="outline"
+            size="xs"
+            className="rounded-full px-3 justify-start gap-2"
+            onClick={() => {
+              if (onAfterClick) onAfterClick();
+              toggleChat();
+            }}
+          >
+            <MessageCircle className="h-3 w-3 scale-[0.8]" />
+            <span className="relative top-[1px]">Chat</span>
+          </Button>
+        </motion.div>
       </div>
     </div>
   );

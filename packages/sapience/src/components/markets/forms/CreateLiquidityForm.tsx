@@ -343,9 +343,11 @@ export function CreateLiquidityForm({
                       {(() => {
                         const base = virtualBaseTokensName || '';
                         const quote = virtualQuoteTokensName || '';
-                        const hideQuote = quote.toUpperCase().includes('USD');
-                        if (base === 'Yes') return '';
-                        return hideQuote ? base : `${base}/${quote}`;
+                        if (!base && !quote) return '';
+                        if (base === 'Yes') return quote;
+                        if (!quote) return base;
+                        if (!base) return quote;
+                        return `${base}/${quote}`;
                       })()}
                     </div>
                   </div>
@@ -386,9 +388,11 @@ export function CreateLiquidityForm({
                       {(() => {
                         const base = virtualBaseTokensName || '';
                         const quote = virtualQuoteTokensName || '';
-                        const hideQuote = quote.toUpperCase().includes('USD');
-                        if (base === 'Yes') return '';
-                        return hideQuote ? base : `${base}/${quote}`;
+                        if (!base && !quote) return '';
+                        if (base === 'Yes') return quote;
+                        if (!quote) return base;
+                        if (!base) return quote;
+                        return `${base}/${quote}`;
                       })()}
                     </div>
                   </div>
