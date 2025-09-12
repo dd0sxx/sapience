@@ -241,19 +241,14 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         require(balanceOf(owner) >= shares, "Insufficient balance");
         require(userWithdrawalIndex[owner] == 0, "Withdrawal already pending");
         
-        // Calculate assets to reserve at current share price (round up to favor vault)
-        uint256 assetsToReserve = _convertToAssets(shares, Math.Rounding.Ceil);
+        // Don't burn shares immediately - keep them until processing
+        // Don't reserve assets - calculate at processing time
         
-        // Burn shares immediately
-        _burn(owner, shares);
-        
-        // Reserve assets to maintain correct share-to-asset ratio
-        reservedAssets += assetsToReserve;
-
-        // Add to withdrawal queue
+        // Add to withdrawal queue without pre-calculating assets
         withdrawalQueue.push(IPassiveLiquidityVault.WithdrawalRequest({
             user: owner,
             shares: shares,
+            assets: 0, // Will be calculated at processing time
             timestamp: block.timestamp,
             processed: false
         }));
@@ -317,7 +312,8 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         processingWithdrawals = true;
         
         uint256 processed = 0;
-        uint256 availableAssetsAmount = _getAvailableAssets();
+        // Include reserved assets in available amount since they can be used for withdrawals
+        uint256 availableAssetsAmount = IERC20(asset()).balanceOf(address(this));
         
         // Start from the last processed index to avoid reprocessing
         uint256 examined = 0;
@@ -325,12 +321,18 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
             IPassiveLiquidityVault.WithdrawalRequest storage request = withdrawalQueue[i];
             examined++;
             
-            if (request.processed || block.timestamp < request.timestamp + withdrawalDelay) {
+            if (request.processed) {
                 continue;
             }
             
+            if (block.timestamp < request.timestamp + withdrawalDelay) {
+                continue;
+            }
+            
+            // Calculate withdrawal amount at processing time
             uint256 withdrawAmount = _convertToAssets(request.shares, Math.Rounding.Floor);
             
+            // Check if we have enough liquidity
             if (withdrawAmount > availableAssetsAmount) {
                 break; // Not enough liquidity
             }
@@ -339,8 +341,8 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
             request.processed = true;
             availableAssetsAmount -= withdrawAmount;
             
-            // Release reserved assets
-            reservedAssets -= withdrawAmount;
+            // Burn shares and transfer assets
+            _burn(request.user, request.shares);
             
             // Reset user withdrawal index
             userWithdrawalIndex[request.user] = 0;
