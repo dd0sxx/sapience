@@ -209,20 +209,7 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         for(uint256 protocolIndex = 0; protocolIndex < activeProtocols.length; protocolIndex++) {
             address protocol = activeProtocols[protocolIndex];
             IPredictionMarket pm = IPredictionMarket(protocol);
-            uint256[] memory nftIds = pm.getOwnedPredictions(address(this));
-            for(uint256 nftIndex = 0; nftIndex < nftIds.length; nftIndex++) {
-                IPredictionStructs.PredictionData memory prediction = pm.getPrediction(nftIds[nftIndex]);
-                bool isTaker;
-                if (prediction.maker == address(this)) {
-                    isTaker = false;
-                } else if (prediction.taker == address(this)) {
-                    isTaker = true;
-                } else {
-                    continue;
-                }
-                uint256 collateral = isTaker ? prediction.takerCollateral : prediction.makerCollateral;
-                totalDeployedAmount += collateral;
-            }
+            totalDeployedAmount += pm.getUserCollateralDeposits(address(this));
         }
         return totalDeployedAmount;
     }

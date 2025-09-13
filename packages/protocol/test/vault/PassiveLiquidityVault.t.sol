@@ -151,6 +151,22 @@ contract MockPredictionMarket {
     function balanceOf(address owner) external view returns (uint256) {
         return ownedTokens[owner].length;
     }
+    
+    // Add the new getUserCollateralDeposits function to match the real PredictionMarket
+    function getUserCollateralDeposits(address user) external view returns (uint256) {
+        uint256 totalCollateral = 0;
+        uint256[] memory tokens = ownedTokens[user];
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IPredictionStructs.PredictionData memory prediction = predictions[tokens[i]];
+            if (prediction.maker == user) {
+                totalCollateral += prediction.makerCollateral;
+            }
+            if (prediction.taker == user) {
+                totalCollateral += prediction.takerCollateral;
+            }
+        }
+        return totalCollateral;
+    }
 }
 
 contract PassiveLiquidityVaultTest is Test {
