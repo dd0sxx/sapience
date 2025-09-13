@@ -60,6 +60,9 @@ contract PredictionMarket is
     mapping(address => EnumerableSet.UintSet) private nftByMakerAddress;
     mapping(address => EnumerableSet.UintSet) private nftByTakerAddress;
 
+    // Mapping to track total collateral deposited by each user
+    mapping(address => uint256) private userCollateralDeposits;
+
     // ============ Constructor ============
 
     constructor(
@@ -156,7 +159,7 @@ contract PredictionMarket is
             makerWon: false
         });
 
-        // 5- Collact collateral
+        // 5- Collect collateral
         IERC20(config.collateralToken).safeTransferFrom(
             mintPredictionRequestData.maker,
             address(this),
@@ -167,6 +170,10 @@ contract PredictionMarket is
             address(this),
             mintPredictionRequestData.takerCollateral
         );
+
+        // 5.1- Update user collateral deposits tracking
+        userCollateralDeposits[mintPredictionRequestData.maker] += mintPredictionRequestData.makerCollateral;
+        userCollateralDeposits[mintPredictionRequestData.taker] += mintPredictionRequestData.takerCollateral;
 
         // 6- Mint NFTs and set prediction
         _safeMint(mintPredictionRequestData.maker, makerNftTokenId);
@@ -236,6 +243,10 @@ contract PredictionMarket is
         address winner = makerWon ? prediction.maker : prediction.taker;
         IERC20(config.collateralToken).safeTransfer(winner, payout);
 
+        // 4.1- Update user collateral deposits tracking
+        userCollateralDeposits[prediction.maker] -= prediction.makerCollateral;
+        userCollateralDeposits[prediction.taker] -= prediction.takerCollateral;
+
         // 5- Set the prediction state (identify who won and set as closed)
         prediction.settled = true;
         prediction.makerWon = makerWon;
@@ -279,6 +290,10 @@ contract PredictionMarket is
         uint256 payout = prediction.makerCollateral +
             prediction.takerCollateral;
         IERC20(config.collateralToken).safeTransfer(prediction.maker, payout);
+
+        // 3.1- Update user collateral deposits tracking
+        userCollateralDeposits[prediction.maker] -= prediction.makerCollateral;
+        userCollateralDeposits[prediction.taker] -= prediction.takerCollateral;
 
         // 4- Burn NFTs
         _burn(prediction.makerNftTokenId);
@@ -347,6 +362,15 @@ contract PredictionMarket is
         return
             nftByMakerAddress[account].length() +
             nftByTakerAddress[account].length();
+    }
+
+    /**
+     * @notice Get the total collateral deposited by a user
+     * @param user The address of the user
+     * @return The total amount of collateral deposited by the user
+     */
+    function getUserCollateralDeposits(address user) external view returns (uint256) {
+        return userCollateralDeposits[user];
     }
 
     // ============ Internal Functions ============
