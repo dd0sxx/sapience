@@ -151,8 +151,8 @@ const MarketDataTables = () => {
   const tabTitles: { [key: string]: string } = {
     leaderboard: 'Leaderboard',
     transactions: 'Transactions',
-    'trader-positions': 'Trader Positions',
-    'lp-positions': 'Liquidity Positions',
+    'trader-positions': 'Trades',
+    'lp-positions': 'Liquidity',
   };
 
   const getExplorerTxUrl = (id: number | undefined, txHash?: string | null) => {
@@ -381,10 +381,8 @@ const MarketDataTables = () => {
           parentMarketAddress={marketAddress || undefined}
           parentChainId={chainId || undefined}
           parentMarketId={numericMarketId || undefined}
-          showHeader={false}
-          showActions={false}
-          showOwnerColumn
-          showPositionColumn
+          context="data_drawer"
+          columns={{ owner: true, actions: false, position: true }}
         />
       );
     }
@@ -394,10 +392,8 @@ const MarketDataTables = () => {
         parentMarketAddress={marketAddress || undefined}
         parentChainId={chainId || undefined}
         parentMarketId={numericMarketId || undefined}
-        showHeader={false}
-        showActions={false}
-        showOwnerColumn
-        showPositionColumn
+        context="data_drawer"
+        columns={{ owner: true, actions: false, position: true }}
       />
     );
   };
@@ -421,11 +417,11 @@ const MarketDataTables = () => {
             </TabsTrigger>
             <TabsTrigger value="trader-positions">
               <ArrowLeftRightIcon className="h-4 w-4 md:hidden" />
-              <span className="hidden md:inline">Trader Positions</span>
+              <span className="hidden md:inline">Trades</span>
             </TabsTrigger>
             <TabsTrigger value="lp-positions">
               <DropletsIcon className="h-4 w-4 md:hidden" />
-              <span className="hidden md:inline">Liquidity Positions</span>
+              <span className="hidden md:inline">Liquidity</span>
             </TabsTrigger>
           </TabsList>
           <DataDrawerFilter

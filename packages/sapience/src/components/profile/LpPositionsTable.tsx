@@ -21,16 +21,24 @@ import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionRange from '~/components/shared/PositionRange';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import { getChainShortName } from '~/lib/utils/util';
+import {
+  resolvePositionsTableVisibility,
+  type TableViewContext,
+  type MarketContext,
+  type ColumnOverrides,
+} from '~/components/shared/tableVisibility';
 
 interface LpPositionsTableProps {
   positions: PositionType[];
   parentMarketAddress?: string;
   parentChainId?: number;
   parentMarketId?: number;
-  showHeader?: boolean;
   showActions?: boolean;
   showOwnerColumn?: boolean;
   showPositionColumn?: boolean;
+  context?: TableViewContext;
+  marketContext?: MarketContext;
+  columns?: ColumnOverrides;
 }
 
 // Helper component for Collateral Cell
@@ -55,15 +63,24 @@ export default function LpPositionsTable({
   parentMarketAddress,
   parentChainId,
   parentMarketId,
-  showHeader = true,
   showActions = true,
   showOwnerColumn = false,
   showPositionColumn,
+  context,
+  marketContext,
+  columns,
 }: LpPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
-  const isMarketPage = parentMarketAddress && parentChainId && parentMarketId; // True for a specific market page (with marketId)
-  const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
+  const inferredMarketContext: MarketContext | undefined =
+    marketContext ||
+    (parentMarketAddress && parentChainId
+      ? {
+          address: parentMarketAddress,
+          chainId: parentChainId,
+          marketId: parentMarketId,
+        }
+      : undefined);
 
   if (!positions || positions.length === 0) {
     return <EmptyTabState message="No liquidity positions found" />;
@@ -86,23 +103,28 @@ export default function LpPositionsTable({
     return <EmptyTabState message="No liquidity positions found" />;
   }
 
-  let displayQuestionColumn;
-  if (showPositionColumn !== undefined) {
-    displayQuestionColumn = Boolean(showPositionColumn);
-  } else if (isProfilePageContext) {
-    displayQuestionColumn = true; // Always show on profile page
-  } else if (isMarketPage) {
-    // Specific market page
-    displayQuestionColumn = false; // Never show on specific market page
-  } else {
-    // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
-    displayQuestionColumn = validPositions.some(
-      (p) =>
-        p.market?.marketGroup &&
-        p.market?.marketGroup?.markets &&
-        p.market?.marketGroup?.markets.length > 1
-    );
-  }
+  const hasMultipleMarkets = validPositions.some(
+    (p) =>
+      p.market?.marketGroup &&
+      p.market?.marketGroup?.markets &&
+      p.market?.marketGroup?.markets.length > 1
+  );
+
+  const overrides: ColumnOverrides = {
+    position:
+      showPositionColumn !== undefined ? Boolean(showPositionColumn) : 'auto',
+    owner: showOwnerColumn,
+    actions: showActions,
+    ...columns,
+  };
+
+  const visibility = resolvePositionsTableVisibility({
+    context,
+    marketContext: inferredMarketContext,
+    hasMultipleMarkets,
+    overrides,
+  });
+  const displayQuestionColumn = visibility.showPosition;
 
   // Sort newest to oldest by createdAt; fallback to latest transaction timestamp
   const getPositionCreatedMs = (p: PositionType) => {
@@ -124,16 +146,15 @@ export default function LpPositionsTable({
 
   return (
     <div>
-      {showHeader && <h3 className="font-medium mb-4">Liquidity Positions</h3>}
       <div className="rounded border bg-background dark:bg-muted/50">
         {/* Header (desktop) to mirror Trader layout */}
         <div
           className={`hidden xl:grid ${
-            showActions
-              ? showOwnerColumn
+            visibility.showActions
+              ? visibility.showOwner
                 ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
                 : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-              : showOwnerColumn
+              : visibility.showOwner
                 ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
                 : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
           } items-center h-12 px-4 text-sm font-medium text-muted-foreground border-b`}
@@ -156,10 +177,10 @@ export default function LpPositionsTable({
           >
             <span>Range</span>
           </div>
-          {showOwnerColumn && <div className="xl:col-span-1">Owner</div>}
-          {showActions && (
+          {visibility.showOwner && <div className="xl:col-span-1">Owner</div>}
+          {visibility.showActions && (
             <div
-              className={`${showOwnerColumn ? 'xl:col-start-13' : 'xl:col-start-12'} xl:col-span-1 xl:justify-self-end`}
+              className={`${visibility.showOwner ? 'xl:col-start-13' : 'xl:col-start-12'} xl:col-span-1 xl:justify-self-end`}
             >
               <div className="invisible flex gap-3" aria-hidden>
                 <Button size="sm" variant="outline">
@@ -208,11 +229,11 @@ export default function LpPositionsTable({
             >
               <div
                 className={`flex flex-col gap-3 xl:grid ${
-                  showActions
-                    ? showOwnerColumn
+                  visibility.showActions
+                    ? visibility.showOwner
                       ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
                       : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-                    : showOwnerColumn
+                    : visibility.showOwner
                       ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
                       : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
                 } xl:items-center`}
@@ -304,7 +325,7 @@ export default function LpPositionsTable({
                       />
                     </div>
 
-                    {showOwnerColumn && (
+                    {visibility.showOwner && (
                       <div className="xl:col-span-1">
                         <div className="text-xs text-muted-foreground xl:hidden">
                           Owner
@@ -326,9 +347,9 @@ export default function LpPositionsTable({
                       </div>
                     )}
 
-                    {showActions && (
+                    {visibility.showActions && (
                       <div
-                        className={`mt-3 xl:mt-0 xl:col-span-1 ${showOwnerColumn ? 'xl:col-start-13' : 'xl:col-start-12'} xl:justify-self-end`}
+                        className={`mt-3 xl:mt-0 xl:col-span-1 ${visibility.showOwner ? 'xl:col-start-13' : 'xl:col-start-12'} xl:justify-self-end`}
                       >
                         <div className="flex gap-3 justify-start xl:justify-end">
                           {isExpired && !isPositionSettled ? (
@@ -371,7 +392,11 @@ export default function LpPositionsTable({
                               </TooltipProvider>
                             )
                           ) : (
-                            !isMarketPage &&
+                            !(
+                              inferredMarketContext?.address &&
+                              inferredMarketContext?.chainId &&
+                              inferredMarketContext?.marketId
+                            ) &&
                             (isOwner && !isClosed ? (
                               <Link href={positionUrl} passHref>
                                 <button

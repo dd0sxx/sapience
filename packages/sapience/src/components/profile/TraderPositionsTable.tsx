@@ -25,16 +25,24 @@ import {
   calculateEffectiveEntryPrice,
   getChainShortName,
 } from '~/lib/utils/util';
+import {
+  resolvePositionsTableVisibility,
+  type TableViewContext,
+  type MarketContext,
+  type ColumnOverrides,
+} from '~/components/shared/tableVisibility';
 
 interface TraderPositionsTableProps {
   positions: PositionType[];
   parentMarketAddress?: string;
   parentChainId?: number;
   parentMarketId?: number;
-  showHeader?: boolean;
   showActions?: boolean;
   showOwnerColumn?: boolean;
   showPositionColumn?: boolean;
+  context?: TableViewContext;
+  marketContext?: MarketContext;
+  columns?: ColumnOverrides;
 }
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
@@ -168,15 +176,31 @@ export default function TraderPositionsTable({
   parentMarketAddress,
   parentChainId,
   parentMarketId,
-  showHeader = true,
   showActions = true,
   showOwnerColumn = false,
   showPositionColumn,
+  context,
+  marketContext,
+  columns,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
-  const isMarketPage = parentMarketAddress && parentChainId && parentMarketId; // True for a specific market page (with marketId)
-  const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
+  // Determine context for action gating (specific market page)
+  const inferredMarketContext: MarketContext | undefined =
+    marketContext ||
+    (parentMarketAddress && parentChainId
+      ? {
+          address: parentMarketAddress,
+          chainId: parentChainId,
+          marketId: parentMarketId,
+        }
+      : undefined);
+  const isSpecificMarketPage = Boolean(
+    (context && context === 'market_page') ||
+      (inferredMarketContext?.address &&
+        inferredMarketContext?.chainId &&
+        inferredMarketContext?.marketId)
+  );
 
   if (!positions || positions.length === 0) {
     return <EmptyTabState message="No trades found" />;
@@ -190,19 +214,28 @@ export default function TraderPositionsTable({
     return <EmptyTabState message="No trades found" />;
   }
 
-  const displayQuestionColumn =
-    showPositionColumn !== undefined
-      ? Boolean(showPositionColumn)
-      : isProfilePageContext
-        ? true
-        : isMarketPage
-          ? false
-          : validPositions.some(
-              (p) =>
-                p.market?.marketGroup &&
-                p.market?.marketGroup?.markets &&
-                p.market?.marketGroup?.markets.length > 1
-            );
+  const hasMultipleMarkets = validPositions.some(
+    (p) =>
+      p.market?.marketGroup &&
+      p.market?.marketGroup?.markets &&
+      p.market?.marketGroup?.markets.length > 1
+  );
+
+  const overrides: ColumnOverrides = {
+    position:
+      showPositionColumn !== undefined ? Boolean(showPositionColumn) : 'auto',
+    owner: showOwnerColumn,
+    actions: showActions,
+    ...columns,
+  };
+
+  const visibility = resolvePositionsTableVisibility({
+    context,
+    marketContext: inferredMarketContext,
+    hasMultipleMarkets,
+    overrides,
+  });
+  const displayQuestionColumn = visibility.showPosition;
 
   // Sort newest to oldest by createdAt; fallback to latest transaction.createdAt
   const getPositionCreatedMs = (p: PositionType) => {
@@ -224,16 +257,15 @@ export default function TraderPositionsTable({
 
   return (
     <div>
-      {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
       <div className="rounded border bg-background dark:bg-muted/50">
         {/* Table Header (desktop) */}
         <div
           className={`hidden xl:grid ${
-            showActions
-              ? showOwnerColumn
+            visibility.showActions
+              ? visibility.showOwner
                 ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
                 : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-              : showOwnerColumn
+              : visibility.showOwner
                 ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
                 : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
           } items-center h-12 px-4 text-sm font-medium text-muted-foreground border-b`}
@@ -268,11 +300,11 @@ export default function TraderPositionsTable({
               </Tooltip>
             </TooltipProvider>
           </div>
-          {showOwnerColumn && <div className="xl:col-span-1">Owner</div>}
+          {visibility.showOwner && <div className="xl:col-span-1">Owner</div>}
           {/* Header actions sizer to align auto-width column with row actions */}
-          {showActions && (
+          {visibility.showActions && (
             <div
-              className={`${showOwnerColumn ? 'xl:col-start-13' : 'xl:col-start-12'} xl:col-span-1 xl:justify-self-end`}
+              className={`${visibility.showOwner ? 'xl:col-start-13' : 'xl:col-start-12'} xl:col-span-1 xl:justify-self-end`}
             >
               <div className="invisible flex gap-3" aria-hidden>
                 <Button size="sm" variant="outline">
@@ -320,12 +352,12 @@ export default function TraderPositionsTable({
               hasWallet={Boolean(connectedAddress)}
               isClosed={isClosed}
               isExpired={isExpired}
-              isMarketPage={Boolean(isMarketPage)}
+              isMarketPage={Boolean(isSpecificMarketPage)}
               isPositionSettled={isPositionSettled}
               marketAddress={marketAddress}
               displayQuestionColumn={Boolean(displayQuestionColumn)}
-              showActions={showActions}
-              showOwnerColumn={Boolean(showOwnerColumn)}
+              showActions={visibility.showActions}
+              showOwnerColumn={Boolean(visibility.showOwner)}
             />
           );
         })}

@@ -208,7 +208,7 @@ export default function PortfolioPage() {
           >
             <TabsList className="grid w-full grid-cols-1 lg:grid-cols-4 h-auto gap-2 mb-5">
               <TabsTrigger className="w-full" value="trades">
-                Prediction Market Trades
+                Trades
               </TabsTrigger>
               <TabsTrigger
                 className="w-full"
@@ -218,7 +218,7 @@ export default function PortfolioPage() {
                 Parlays
               </TabsTrigger>
               <TabsTrigger className="w-full" value="lp">
-                Prediction Market Liquidity
+                Liquidity
               </TabsTrigger>
               <TabsTrigger className="w-full" value="forecasts">
                 Forecasts
@@ -228,7 +228,7 @@ export default function PortfolioPage() {
             <TabsContent value="trades">
               <TraderPositionsTable
                 positions={traderPositions}
-                showHeader={false}
+                context="profile"
               />
             </TabsContent>
 
@@ -237,7 +237,7 @@ export default function PortfolioPage() {
             </TabsContent>
 
             <TabsContent value="lp">
-              <LpPositionsTable positions={lpPositions} showHeader={false} />
+              <LpPositionsTable positions={lpPositions} context="profile" />
             </TabsContent>
 
             <TabsContent value="forecasts">

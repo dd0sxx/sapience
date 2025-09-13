@@ -115,10 +115,10 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             className={`grid w-full h-auto grid-cols-1 gap-2 ${showParlaysTab ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}
           >
             <TabsTrigger className="w-full" value="trades">
-              Prediction Market Trades
+              Trades
             </TabsTrigger>
             <TabsTrigger className="w-full" value="lp">
-              Prediction Market Liquidity
+              Liquidity
             </TabsTrigger>
             {showParlaysTab && (
               <TabsTrigger className="w-full" value="parlays">
@@ -137,7 +137,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             parentMarketAddress={marketAddress}
             parentChainId={chainId}
             parentMarketId={marketId}
-            showHeader={false}
+            context="user_positions"
           />
         </TabsContent>
 
@@ -147,7 +147,8 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             parentMarketAddress={marketAddress}
             parentChainId={chainId}
             parentMarketId={marketId}
-            showHeader={false}
+            context="user_positions"
+            columns={{ actions: false }}
           />
         </TabsContent>
 
