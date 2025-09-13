@@ -257,6 +257,18 @@ const MarketGroupPageContent = () => {
     [chartMarkets]
   );
 
+  // Determine if the currently focused market/group has passed its end time
+  const isPastEnd = useMemo(() => {
+    if (!activeMarket) return false;
+    const currentTimeSeconds = Date.now() / 1000;
+    const endTime = activeMarket.endTimestamp;
+    return (
+      typeof endTime === 'number' &&
+      !Number.isNaN(endTime) &&
+      currentTimeSeconds >= endTime
+    );
+  }, [activeMarket]);
+
   // Define callbacks before any conditional returns to keep hook order stable
   const handleAdvancedViewClick = useCallback(() => {
     const allMarkets = marketGroupData?.markets || [];
@@ -472,17 +484,46 @@ const MarketGroupPageContent = () => {
                       </div>
                       <div className="order-1 sm:order-2 sm:ml-auto">
                         {orderbookHref ? (
-                          <Button size="xs" asChild>
-                            <Link href={orderbookHref}>
+                          <>
+                            {/* Mobile: sm size */}
+                            <Button asChild className="sm:hidden" size="sm">
+                              <Link href={orderbookHref}>
+                                <CandlestickChart className="h-3 w-3 -mr-0.5" />
+                                View Orderbook
+                              </Link>
+                            </Button>
+                            {/* Desktop/tablet: compact */}
+                            <Button
+                              size="xs"
+                              asChild
+                              className="hidden sm:inline-flex"
+                            >
+                              <Link href={orderbookHref}>
+                                <CandlestickChart className="h-3 w-3 -mr-0.5" />
+                                View Orderbook
+                              </Link>
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            {/* Mobile: normal size */}
+                            <Button
+                              className="sm:hidden"
+                              onClick={handleAdvancedViewClick}
+                            >
                               <CandlestickChart className="h-3 w-3 -mr-0.5" />
                               View Orderbook
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button size="xs" onClick={handleAdvancedViewClick}>
-                            <CandlestickChart className="h-3 w-3 -mr-0.5" />
-                            View Orderbook
-                          </Button>
+                            </Button>
+                            {/* Desktop/tablet: compact */}
+                            <Button
+                              size="xs"
+                              className="hidden sm:inline-flex"
+                              onClick={handleAdvancedViewClick}
+                            >
+                              <CandlestickChart className="h-3 w-3 -mr-0.5" />
+                              View Orderbook
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -501,56 +542,76 @@ const MarketGroupPageContent = () => {
                     <div className="pt-1">
                       <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-6">
                         <div className="space-y-4">
-                          <p className="text-lg leading-relaxed text-muted-foreground">
-                            Submit forecasts on{' '}
-                            <a
-                              href="https://attest.org"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              Ethereum
-                            </a>{' '}
-                            or{' '}
-                            <Link
-                              href="/bots"
-                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              deploy an agent
-                            </Link>{' '}
-                            that does. Forecasts can{' '}
-                            <Link
-                              href="/leaderboard#accuracy"
-                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              provide signal
-                            </Link>{' '}
-                            for prediction market participants and trigger
-                            automation.
-                          </p>
-                          <ForecastInfoNotice />
-                          {/* Prediction Form */}
-                          <PredictForm
-                            marketGroupData={marketGroupData}
-                            marketClassification={marketClassification!}
-                            onSuccess={handleUserPositionsRefetch}
-                          />
-                          {/* Comments */}
-                          <Comments
-                            selectedCategory={
-                              marketClassification ===
-                              MarketGroupClassification.MULTIPLE_CHOICE
-                                ? CommentFilters.AllMultichoiceQuestions
-                                : CommentFilters.SelectedQuestion
-                            }
-                            question={activeMarket?.question?.toString()}
-                            address={authenticatedAddress}
-                            refetchTrigger={userPositionsTrigger}
-                            marketGroupAddress={
-                              marketGroupData?.address || null
-                            }
-                            fullBleed
-                          />
+                          {isPastEnd ? (
+                            <Comments
+                              selectedCategory={
+                                marketClassification ===
+                                MarketGroupClassification.MULTIPLE_CHOICE
+                                  ? CommentFilters.AllMultichoiceQuestions
+                                  : CommentFilters.SelectedQuestion
+                              }
+                              question={activeMarket?.question?.toString()}
+                              address={authenticatedAddress}
+                              refetchTrigger={userPositionsTrigger}
+                              marketGroupAddress={
+                                marketGroupData?.address || null
+                              }
+                              fullBleed
+                            />
+                          ) : (
+                            <>
+                              <p className="text-lg leading-relaxed text-muted-foreground">
+                                Submit forecasts on{' '}
+                                <a
+                                  href="https://attest.org"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  Ethereum
+                                </a>{' '}
+                                or{' '}
+                                <Link
+                                  href="/bots"
+                                  className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  deploy an agent
+                                </Link>{' '}
+                                that does. Forecasts can{' '}
+                                <Link
+                                  href="/leaderboard#accuracy"
+                                  className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  provide signal
+                                </Link>{' '}
+                                for prediction market participants and trigger
+                                automation.
+                              </p>
+                              <ForecastInfoNotice />
+                              {/* Prediction Form */}
+                              <PredictForm
+                                marketGroupData={marketGroupData}
+                                marketClassification={marketClassification!}
+                                onSuccess={handleUserPositionsRefetch}
+                              />
+                              {/* Comments */}
+                              <Comments
+                                selectedCategory={
+                                  marketClassification ===
+                                  MarketGroupClassification.MULTIPLE_CHOICE
+                                    ? CommentFilters.AllMultichoiceQuestions
+                                    : CommentFilters.SelectedQuestion
+                                }
+                                question={activeMarket?.question?.toString()}
+                                address={authenticatedAddress}
+                                refetchTrigger={userPositionsTrigger}
+                                marketGroupAddress={
+                                  marketGroupData?.address || null
+                                }
+                                fullBleed
+                              />
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

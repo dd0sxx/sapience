@@ -91,7 +91,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
 
         const isPercentageMarket = yAxisConfig.unit === '%';
         const itemClassName = `flex items-center gap-1.5 ${
-          isMultipleChoice ? '' : 'mb-0.5 text-lg'
+          isMultipleChoice ? '' : 'mb-0.5 sm:text-lg'
         }`;
 
         return (

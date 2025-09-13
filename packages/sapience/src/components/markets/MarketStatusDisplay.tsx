@@ -39,16 +39,13 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
 
   if (isExpired && !isSettled) {
     return (
-      <div className="rounded-lg bg-secondary p-6 text-center h-full">
+      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-5 text-center h-full">
         <div className="flex flex-col items-center justify-center space-y-2 h-full">
-          <div className="py-2">
-            <LottieLoader width={60} height={60} />
-          </div>
-          <h3 className="text-xl font-medium">Market Awaiting Settlement</h3>
+          <LottieLoader width={40} height={40} />
+          <h3 className="text-xl font-medium">Awaiting Settlement</h3>
           <p className="text-muted-foreground text-sm">
-            This market has closed and is currently awaiting settlement by the
-            oracle. Once settled, you will be able to view the results and
-            settle your positions.
+            Decentralized settlement typically takes hours, though it may take
+            longer in certain cases.
           </p>
         </div>
       </div>
@@ -78,7 +75,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
     }
 
     return (
-      <div className="rounded-lg border border-border p-6 text-center">
+      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-5 text-center">
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="rounded-full bg-green-100 dark:bg-green-800 p-2">
             <svg

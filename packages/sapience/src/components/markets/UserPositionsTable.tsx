@@ -104,8 +104,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     return atts;
   }, [attestationsData, marketId, marketIds]);
 
-  // Always render tabs so empty states are visible
-
   return (
     <div className="space-y-6">
       {showHeaderText && (
@@ -114,14 +112,22 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <Tabs defaultValue="trades">
         <div className="mb-2.5">
           <TabsList
-            className={`grid w-full ${showParlaysTab ? 'grid-cols-4' : 'grid-cols-3'}`}
+            className={`grid w-full h-auto grid-cols-1 gap-2 ${showParlaysTab ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}
           >
-            <TabsTrigger value="trades">Prediction Market Trades</TabsTrigger>
-            <TabsTrigger value="lp">Prediction Market Liquidity</TabsTrigger>
+            <TabsTrigger className="w-full" value="trades">
+              Prediction Market Trades
+            </TabsTrigger>
+            <TabsTrigger className="w-full" value="lp">
+              Prediction Market Liquidity
+            </TabsTrigger>
             {showParlaysTab && (
-              <TabsTrigger value="parlays">Parlays</TabsTrigger>
+              <TabsTrigger className="w-full" value="parlays">
+                Parlays
+              </TabsTrigger>
             )}
-            <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
+            <TabsTrigger className="w-full" value="forecasts">
+              Forecasts
+            </TabsTrigger>
           </TabsList>
         </div>
 
