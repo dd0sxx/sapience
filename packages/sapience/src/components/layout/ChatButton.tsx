@@ -45,9 +45,9 @@ const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
         }}
       >
         <Button
-          variant="outline"
+          variant="default"
           size="icon"
-          className="rounded-full h-14 w-14 shadow-md transition-transform duration-500 hover:scale-[1.1] hover:bg-background"
+          className="rounded-full h-14 w-14 shadow-md transition-transform duration-500 hover:scale-[1.1]"
           onClick={() => {
             if (onAfterClick) onAfterClick();
             toggleChat();
@@ -76,7 +76,7 @@ const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
           }}
         >
           <Button
-            variant="outline"
+            variant="default"
             size="xs"
             className="rounded-full px-3 justify-start gap-2"
             onClick={() => {
