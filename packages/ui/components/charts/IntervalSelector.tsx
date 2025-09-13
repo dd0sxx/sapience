@@ -32,19 +32,19 @@ export const IntervalSelector = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className="flex items-center justify-between"
+          className="flex items-center justify-between h-8 px-3 py-1"
         >
-          <span className="mr-1">{intervalLabels[selectedInterval]}</span>
+          <span>{intervalLabels[selectedInterval]}</span>
           <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="min-w-0 max-w-[160px] w-auto overflow-auto">
         {Object.entries(intervalLabels).map(([intervalKey, label]) => (
           <DropdownMenuItem
             key={intervalKey}
             onClick={() => setSelectedInterval(intervalKey as TimeInterval)}
             className={cn(
-              'text-sm px-2 py-1.5',
+              'text-sm p-1.5 whitespace-normal break-words',
               selectedInterval === (intervalKey as TimeInterval)
                 ? 'bg-accent text-accent-foreground'
                 : ''

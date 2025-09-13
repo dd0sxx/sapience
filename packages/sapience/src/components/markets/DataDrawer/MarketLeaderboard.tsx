@@ -31,9 +31,7 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 });
 
 const RankCell = ({ row }: { row: { index: number } }) => (
-  <span className="text-sm font-medium flex justify-center">
-    {row.index + 1}
-  </span>
+  <span className="text-sm font-medium">{row.index + 1}</span>
 );
 
 const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
@@ -138,11 +136,7 @@ const MarketLeaderboard = ({
                 <TableHead
                   key={header.id}
                   className={cn(
-                    'p-3 text-left text-muted-foreground font-medium',
-                    {
-                      'text-center': header.id === 'rank',
-                      'text-right': header.id === 'totalPnL',
-                    }
+                    'p-3 text-left text-muted-foreground font-medium'
                   )}
                 >
                   <>
@@ -164,13 +158,7 @@ const MarketLeaderboard = ({
                 className="hover:bg-muted/50 border-b last:border-b-0"
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    className={cn('p-3 text-sm', {
-                      'text-center': cell.column.id === 'rank',
-                      'text-right': cell.column.id === 'totalPnL',
-                    })}
-                  >
+                  <TableCell key={cell.id} className={cn('p-3 text-sm')}>
                     <>
                       {flexRender(
                         cell.column.columnDef.cell,

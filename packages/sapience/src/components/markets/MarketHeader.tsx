@@ -152,13 +152,13 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
     `${marketData?.marketGroup?.resource?.name} Market ${marketData?.marketId}`;
 
   return (
-    <div className="w-full pt-0 pb-8">
+    <div className="w-full pb-8">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl md:text-4xl font-normal mb-0 leading-tight flex items-center gap-2.5">
             {displayQuestion}
           </h1>
-          <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             {/* End Time Badge - Always on left/top */}
             <div className="flex-shrink-0">
               <EndTimeDisplay endTime={marketData?.endTimestamp} />
