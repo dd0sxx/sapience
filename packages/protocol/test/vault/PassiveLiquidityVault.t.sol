@@ -30,6 +30,7 @@ contract MockPredictionMarket {
     using SafeERC20 for IERC20;
     
     IERC20 public asset;
+    address public vault;
     uint256 public totalDeposited;
     uint256 private nextTokenId = 1;
     
@@ -40,8 +41,9 @@ contract MockPredictionMarket {
     // Mapping from token ID to owner
     mapping(uint256 => address) public tokenOwners;
     
-    constructor(address _asset) {
+    constructor(address _asset, address _vault) {
         asset = IERC20(_asset);
+        vault = _vault;
     }
     
     function deposit(uint256 amount) external {
@@ -99,6 +101,35 @@ contract MockPredictionMarket {
         }
     }
     
+    // Simulate receiving funds when approved (for testing purposes)
+    function simulateApprovalUsage(uint256 amount) external {
+        // Transfer from the vault (which approved the funds) to this protocol
+        asset.safeTransferFrom(vault, address(this), amount);
+        totalDeposited += amount;
+        
+        // Create a mock prediction NFT for the deposited amount
+        uint256 tokenId = nextTokenId++;
+        
+        // Create prediction data where the vault is the maker
+        predictions[tokenId] = IPredictionStructs.PredictionData({
+            predictionId: tokenId,
+            resolver: address(this),
+            maker: vault, // The vault is the maker since it's deploying funds
+            taker: address(0), // No taker for this mock
+            encodedPredictedOutcomes: "",
+            makerNftTokenId: tokenId,
+            takerNftTokenId: 0,
+            makerCollateral: amount,
+            takerCollateral: 0,
+            settled: false,
+            makerWon: false
+        });
+        
+        // Mint NFT to the vault (since the vault is the one deploying funds)
+        tokenOwners[tokenId] = vault;
+        ownedTokens[vault].push(tokenId);
+    }
+    
     function getBalance() external view returns (uint256) {
         return asset.balanceOf(address(this));
     }
@@ -152,8 +183,8 @@ contract PassiveLiquidityVaultTest is Test {
         );
         
         // Deploy mock protocols
-        protocol1 = new MockPredictionMarket(address(asset));
-        protocol2 = new MockPredictionMarket(address(asset));
+        protocol1 = new MockPredictionMarket(address(asset), address(vault));
+        protocol2 = new MockPredictionMarket(address(asset), address(vault));
         
         // Mint tokens to users
         asset.mint(user1, INITIAL_SUPPLY);
@@ -174,7 +205,9 @@ contract PassiveLiquidityVaultTest is Test {
     
     function _deployFunds(address protocol, uint256 amount) internal {
         vm.startPrank(manager);
-        vault.approveFundsUsage(protocol, amount, abi.encodeWithSignature("deposit(uint256)", amount));
+        vault.approveFundsUsage(protocol, amount);
+        // Simulate the protocol using the approved funds
+        MockPredictionMarket(protocol).simulateApprovalUsage(amount);
         vm.stopPrank();
     }
     
@@ -416,7 +449,7 @@ contract PassiveLiquidityVaultTest is Test {
         asset.approve(address(protocol1), deployAmount);
         
         vm.expectRevert("Insufficient available assets");
-        vault.approveFundsUsage(address(protocol1), deployAmount, abi.encodeWithSignature("deposit(uint256)", deployAmount));
+        vault.approveFundsUsage(address(protocol1), deployAmount);
         
         vm.stopPrank();
     }
@@ -437,7 +470,7 @@ contract PassiveLiquidityVaultTest is Test {
         asset.approve(address(protocol1), deployAmount);
         
         vm.expectRevert("Exceeds max utilization");
-        vault.approveFundsUsage(address(protocol1), deployAmount, abi.encodeWithSignature("deposit(uint256)", deployAmount));
+        vault.approveFundsUsage(address(protocol1), deployAmount);
         
         vm.stopPrank();
     }
@@ -561,7 +594,7 @@ contract PassiveLiquidityVaultTest is Test {
         
         vm.startPrank(user1);
         vm.expectRevert("Only manager");
-        vault.approveFundsUsage(address(protocol1), DEPOSIT_AMOUNT / 2, "");
+        vault.approveFundsUsage(address(protocol1), DEPOSIT_AMOUNT / 2);
         vm.stopPrank();
     }
     

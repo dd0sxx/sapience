@@ -218,15 +218,11 @@ bool processingDeposits = vault.isProcessingDeposits();
 
 #### Approving Funds Usage
 ```solidity
-// Approve funds usage to a protocol with optional calldata
-vault.approveFundsUsage(protocolAddress, amount, calldata);
+// Approve funds usage to a protocol
+vault.approveFundsUsage(protocolAddress, amount);
 
-// Example: Deploy to Compound
-vault.approveFundsUsage(
-    compoundTokenAddress,
-    amount,
-    abi.encodeWithSignature("mint(uint256)", amount)
-);
+// Example: Approve to Compound
+vault.approveFundsUsage(compoundTokenAddress, amount);
 ```
 
 #### Checking Deployment Status
@@ -278,7 +274,7 @@ vault.processDeposits(100); // Process up to 100 requests
 - `processDeposits(uint256 maxRequests)`: Process deposit queue
 
 ### Manager Functions
-- `approveFundsUsage(address protocol, uint256 amount, bytes calldata data)`: Approve funds usage to protocol
+- `approveFundsUsage(address protocol, uint256 amount)`: Approve funds usage to protocol
 
 ### Emergency Functions
 - `emergencyWithdraw(uint256 shares)`: Emergency withdrawal (bypasses delay)
@@ -379,34 +375,19 @@ vault.setManager(managerAddress);
 ### With Lending Protocols
 ```solidity
 // Approve funds usage to Compound
-vault.approveFundsUsage(
-    compoundTokenAddress,
-    amount,
-    abi.encodeWithSignature("mint(uint256)", amount)
-);
+vault.approveFundsUsage(compoundTokenAddress, amount);
 ```
 
 ### With DEX Liquidity Pools
 ```solidity
 // Approve funds usage to Uniswap
-vault.approveFundsUsage(
-    uniswapRouter,
-    amount,
-    abi.encodeWithSelector(
-        IUniswapV2Router.addLiquidity.selector,
-        tokenA, tokenB, amountA, amountB, 0, 0, address(vault), deadline
-    )
-);
+vault.approveFundsUsage(uniswapRouter, amount);
 ```
 
 ### With Prediction Markets
 ```solidity
 // Approve funds usage to PredictionMarket
-vault.approveFundsUsage(
-    predictionMarketAddress,
-    amount,
-    abi.encodeWithSignature("deposit(uint256)", amount)
-);
+vault.approveFundsUsage(predictionMarketAddress, amount);
 ```
 
 ## Gas Optimization

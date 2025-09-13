@@ -63,13 +63,12 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
 
     // ============ Manager Functions ============
     
-    // /**
-    //  * @notice Approve funds usage to an external protocol
-    //  * @param protocol Address of the target protocol (PredictionMarket)
-    //  * @param amount Amount of assets to approve
-    //  * @param (optional) data Calldata for the protocol interaction (e.g. mint()). Can be empty if not call
-    //  */
-    function approveFundsUsage(address protocol, uint256 amount, bytes calldata data) external;
+    /**
+     * @notice Approve funds usage to an external protocol
+     * @param protocol Address of the target protocol (PredictionMarket)
+     * @param amount Amount of assets to approve
+     */
+    function approveFundsUsage(address protocol, uint256 amount) external;
 
     // ============ View Functions ============
     

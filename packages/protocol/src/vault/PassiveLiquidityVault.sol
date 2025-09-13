@@ -433,9 +433,8 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @notice Approve funds usage to an external protocol
      * @param protocol Address of the target protocol (PredictionMarket)
      * @param amount Amount of assets to approve
-     * @param data Calldata for the protocol interaction (e.g. mint()). Can be empty if not call
      */
-    function approveFundsUsage(address protocol, uint256 amount, bytes calldata data) external onlyManager nonReentrant {
+    function approveFundsUsage(address protocol, uint256 amount) external onlyManager nonReentrant {
         require(protocol != address(0), "Invalid protocol");
         require(amount > 0, "Invalid amount");
         require(amount <= _getAvailableAssets(), "Insufficient available assets");
@@ -454,12 +453,6 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         // Safe approval: reset to 0 first, then approve (prevents approval race conditions)
         IERC20(asset()).approve(protocol, 0);
         IERC20(asset()).approve(protocol, amount);
-        
-        // Call protocol function if data provided
-        if (data.length > 0) {
-            (bool success, ) = protocol.call(data);
-            require(success, "Protocol call failed");
-        }
         
         emit FundsDeployed(msg.sender, amount, protocol);
         emit UtilizationRateUpdated(currentUtilization, newUtilization);
