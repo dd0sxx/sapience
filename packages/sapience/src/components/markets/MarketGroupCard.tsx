@@ -141,7 +141,7 @@ const MarketGroupCard = ({
       }
       return (
         <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : <span>No trades yet</span>}
+          {isLoadingChartData ? 'Loading...' : <span>No wagers yet</span>}
         </span>
       );
     } else {
@@ -172,7 +172,7 @@ const MarketGroupCard = ({
 
       return (
         <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : 'No trades yet'}
+          {isLoadingChartData ? 'Loading...' : 'No wagers yet'}
         </span>
       );
     }

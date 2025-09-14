@@ -16,7 +16,11 @@ import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql'
 import LottieLoader from '../shared/LottieLoader';
 import ChartLegend from './ChartLegend';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
-import type { MultiMarketChartDataPoint } from '~/lib/utils/chartUtils'; // Added for type safety
+import {
+  transformMarketGroupChartData,
+  type MultiMarketChartDataPoint,
+  getEffectiveMinTimestampFromData,
+} from '~/lib/utils/chartUtils'; // Added for type safety and transformer
 import { getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
 import {
   CHART_INDEX_COLOR,
@@ -53,78 +57,21 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   const [hoveredChartData, setHoveredChartData] =
     useState<MultiMarketChartDataPoint | null>(null); // New state for hovered data
 
-  // Filter and scale chartData
-  const scaledAndFilteredChartData = useMemo(() => {
-    const filteredByTimestamp = minTimestamp
-      ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
-      : chartData;
+  // Compute effective min timestamp via shared helper (starts at first trade and respects provided min)
+  const effectiveMinTimestamp = useMemo(
+    () => getEffectiveMinTimestampFromData(chartData, minTimestamp),
+    [chartData, minTimestamp]
+  );
 
-    const scaledData = filteredByTimestamp.map((point) => {
-      const scaledIndexClose =
-        typeof point.indexClose === 'number'
-          ? point.indexClose / 1e18 // Scale Wei down by 10^18
-          : point.indexClose; // Keep null/undefined as is
-
-      const scaledMarkets: { [marketId: string]: number | undefined } = {};
-      if (point.markets) {
-        Object.entries(point.markets).forEach(([marketId, value]) => {
-          scaledMarkets[marketId] =
-            typeof value === 'number' ? value / 1e18 : value;
-        });
-      }
-
-      return {
-        ...point, // Preserves original timestamp
-        indexClose: scaledIndexClose,
-        markets: scaledMarkets,
-      };
-    });
-
-    // If scaledData is empty after initial filtering and scaling, return it early
-    if (scaledData.length === 0) {
-      return [];
-    }
-
-    // Find the index of the first data point that has at least one non-zero market value
-    let firstNonZeroMarketDataIndex = -1;
-    for (let i = 0; i < scaledData.length; i++) {
-      const point = scaledData[i];
-      if (point.markets && Object.keys(point.markets).length > 0) {
-        const marketValues = Object.values(point.markets);
-        const hasNonZeroMarket = marketValues.some(
-          (value) => typeof value === 'number' && value !== 0
-        );
-        if (hasNonZeroMarket) {
-          firstNonZeroMarketDataIndex = i;
-          break;
-        }
-      }
-    }
-
-    // Map over scaledData to produce the final chart data.
-    // For points in the leading segment (before firstNonZeroMarketDataIndex or all if none found),
-    // convert market values of 0 to undefined.
-    return scaledData.map((point, index) => {
-      const isLeadingSegment =
-        firstNonZeroMarketDataIndex === -1 ||
-        index < firstNonZeroMarketDataIndex;
-
-      if (isLeadingSegment && point.markets) {
-        const updatedMarkets: { [marketId: string]: number | undefined } = {};
-        Object.entries(point.markets).forEach(([marketId, value]) => {
-          // If the value is 0 in the leading segment, set to undefined
-          // Otherwise, keep the original value (could be non-zero, null, or already undefined)
-          updatedMarkets[marketId] = value === 0 ? undefined : value;
-        });
-        return {
-          ...point,
-          markets: updatedMarkets,
-        };
-      }
-      // If not in the leading segment, or if the point has no markets, return as is
-      return point;
-    });
-  }, [chartData, minTimestamp]);
+  // Filter and scale chartData via shared transformer
+  const scaledAndFilteredChartData = useMemo(
+    () =>
+      transformMarketGroupChartData(chartData, {
+        minTimestamp,
+        startAtFirstTrade: true,
+      }),
+    [chartData, minTimestamp]
+  );
 
   // Find the latest data point that has a valid indexClose value
   const latestIndexValue = useMemo(() => {
@@ -291,7 +238,11 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
               tickFormatter={formatTimestampCompact}
               fontSize={12}
               dy={10} // Adjust vertical position of ticks
-              domain={minTimestamp ? [minTimestamp, 'auto'] : ['auto', 'auto']}
+              domain={
+                effectiveMinTimestamp
+                  ? [effectiveMinTimestamp, 'auto']
+                  : ['auto', 'auto']
+              }
             />
             <YAxis
               axisLine={false}
