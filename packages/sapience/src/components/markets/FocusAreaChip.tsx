@@ -116,7 +116,7 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
       >
         <motion.span
           ref={labelRef}
-          className="pl-1 font-medium pr-1 text-foreground/80 inline-block"
+          className="pl-1 font-medium pr-2.5 text-foreground/80 inline-block"
           initial={false}
           animate={{ opacity: selected ? 1 : 0 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}

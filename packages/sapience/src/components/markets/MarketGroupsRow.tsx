@@ -308,7 +308,7 @@ const MarketGroupsRow = ({
           </div>
 
           {/* Right Side: Sparkline + Action Buttons */}
-          <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-8 md:ml-6">
+          <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-6 md:ml-6">
             <div className="hidden md:block w-[80px] h-[40px]">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}`}
@@ -336,8 +336,8 @@ const MarketGroupsRow = ({
                       setIsExpanded(!isExpanded);
                     }}
                   >
-                    <span className="flex items-center gap-1">
-                      {isExpanded ? 'Hide' : 'Show Options'}
+                    <span className="flex items-center gap-1 text-foreground/80">
+                      {isExpanded ? 'Hide Options' : 'Show Options'}
                     </span>
                   </Button>
                 </>
