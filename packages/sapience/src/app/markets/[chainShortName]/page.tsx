@@ -38,6 +38,7 @@ import { findActiveMarkets } from '~/lib/utils/util';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 import { MarketGroupClassification } from '~/lib/types';
 import RulesBox from '~/components/markets/RulesBox';
+import { useAllPositions } from '~/hooks/graphql/usePositions';
 
 // Dynamically import Comments component
 const Comments = dynamic(() => import('../../../components/shared/Comments'), {
@@ -221,6 +222,42 @@ const MarketGroupPageContent = () => {
     address: authenticatedAddress || '',
     marketAddress,
   });
+
+  // Determine if there are any wagers in this market group (non-LP positions)
+  const {
+    data: allGroupPositions = [],
+    isLoading: isLoadingAllGroupPositions,
+  } = useAllPositions({ marketAddress });
+  const hasWagers = useMemo(
+    () => (allGroupPositions || []).some((p) => !p.isLP),
+    [allGroupPositions]
+  );
+
+  // Default to the first visible tab once data/auth is ready
+  const [didSetDefaultTab, setDidSetDefaultTab] = useState(false);
+  useEffect(() => {
+    if (didSetDefaultTab) return;
+    if (isLoadingAllGroupPositions) return;
+    if (!ready) return; // wait for auth readiness
+
+    const positionsVisible =
+      ready && authenticated && Boolean(connectedPrivyWallet?.address);
+    const firstVisible = positionsVisible
+      ? 'positions'
+      : hasWagers
+        ? 'all-positions'
+        : 'forecasts';
+
+    setActiveContentTab(firstVisible);
+    setDidSetDefaultTab(true);
+  }, [
+    didSetDefaultTab,
+    isLoadingAllGroupPositions,
+    hasWagers,
+    ready,
+    authenticated,
+    connectedPrivyWallet?.address,
+  ]);
 
   // Find markets grouped by common end time
   const marketGroupByEndTime = marketGroupData?.markets
@@ -459,12 +496,6 @@ const MarketGroupPageContent = () => {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="order-2 sm:order-1">
                         <TabsList className="h-auto p-0 bg-transparent">
-                          <TabsTrigger
-                            value="all-positions"
-                            className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
-                          >
-                            Wagers
-                          </TabsTrigger>
                           {ready &&
                             authenticated &&
                             connectedPrivyWallet?.address && (
@@ -475,6 +506,14 @@ const MarketGroupPageContent = () => {
                                 Your Positions
                               </TabsTrigger>
                             )}
+                          {hasWagers && (
+                            <TabsTrigger
+                              value="all-positions"
+                              className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                            >
+                              Wagers
+                            </TabsTrigger>
+                          )}
                           <TabsTrigger
                             value="forecasts"
                             className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
@@ -529,16 +568,20 @@ const MarketGroupPageContent = () => {
                       </div>
                     </div>
                   </div>
-                  <TabsContent value="all-positions" className="mt-0">
-                    <div className="pt-1 pb-4">
-                      <WagersTable
-                        showHeaderText={false}
-                        marketAddress={marketAddress}
-                        chainId={chainId}
-                        marketIds={activeMarkets.map((m) => Number(m.marketId))}
-                      />
-                    </div>
-                  </TabsContent>
+                  {hasWagers && (
+                    <TabsContent value="all-positions" className="mt-0">
+                      <div className="pt-1 pb-4">
+                        <WagersTable
+                          showHeaderText={false}
+                          marketAddress={marketAddress}
+                          chainId={chainId}
+                          marketIds={activeMarkets.map((m) =>
+                            Number(m.marketId)
+                          )}
+                        />
+                      </div>
+                    </TabsContent>
+                  )}
                   <TabsContent value="forecasts" className="mt-0">
                     <div className="pt-1">
                       <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-6">

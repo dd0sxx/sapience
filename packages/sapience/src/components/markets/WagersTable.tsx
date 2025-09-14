@@ -380,7 +380,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
       <div className="space-y-6">
         {showHeaderText && <h3 className="text-2xl font-medium">Wagers</h3>}
         <div className="rounded border bg-background dark:bg-muted/50 p-6 text-center text-muted-foreground">
-          No trades found
+          No wagers yet...
         </div>
       </div>
     );
