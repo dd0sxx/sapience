@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
-import type { MarketWithContext } from './MarketGroupsList';
+import type { MarketWithContext } from './MarketsPage';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';

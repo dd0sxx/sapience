@@ -47,14 +47,14 @@ const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
         <Button
           variant="default"
           size="icon"
-          className="rounded-full h-14 w-14 shadow-md transition-transform duration-500 hover:scale-[1.1]"
+          className="rounded-full h-10 w-10 lg:h-14 lg:w-14 shadow-md transition-transform duration-500 hover:scale-[1.1]"
           onClick={() => {
             if (onAfterClick) onAfterClick();
             toggleChat();
           }}
           aria-label="Toggle chat"
         >
-          <MessageCircle className="h-12 w-12 scale-[1.5]" />
+          <MessageCircle className="h-10 w-10 lg:h-12 lg:w-12" />
         </Button>
       </motion.div>
     );

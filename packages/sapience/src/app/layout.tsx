@@ -110,7 +110,7 @@ export const viewport: Viewport = {
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
     <html lang="en">
-      <body>
+      <body className="overflow-x-hidden">
         <Providers>
           <LoadingProvider>
             <ChatProvider>
