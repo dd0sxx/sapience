@@ -21,8 +21,9 @@ import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWit
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
-import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
+import type { AuctionParams, QuoteBid, PredictedOutcomeInput } from '~/lib/auction/useAuctionStart';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import { YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -49,6 +50,7 @@ interface BetslipContentProps {
   auctionId?: string | null;
   bids?: QuoteBid[];
   requestQuotes?: (params: AuctionParams | null) => void;
+  auctionOutcomes?: PredictedOutcomeInput[];
 }
 
 export const BetslipContent = ({
@@ -67,6 +69,7 @@ export const BetslipContent = ({
   parlayCollateralDecimals,
   bids = [],
   requestQuotes,
+  auctionOutcomes = [],
 }: BetslipContentProps) => {
   const isMobile = useIsMobile();
   const {
@@ -74,10 +77,6 @@ export const BetslipContent = ({
     removePosition,
     positionsWithMarketData,
     clearBetSlip,
-    parlaySelections,
-    updateParlaySelection,
-    removeParlaySelection,
-    clearParlaySelections,
   } = useBetSlipContext();
   const hasAtLeastOneLoadedQuestion = positionsWithMarketData.some(
     (p) =>
@@ -104,7 +103,6 @@ export const BetslipContent = ({
     if (!bids || bids.length === 0) return null;
 
     const validBids = bids.filter((bid) => bid.takerDeadline * 1000 > nowMs);
-
     if (validBids.length === 0) return null;
 
     const makerWagerStr = parlayWagerAmount || '0';
@@ -187,7 +185,8 @@ export const BetslipContent = ({
     if (!effectiveParlayMode) return;
     if (!requestQuotes) return;
     if (!makerAddress) return;
-    if (!parlaySelections || parlaySelections.length === 0) return;
+    if (!auctionOutcomes || auctionOutcomes.length === 0) return;
+    
     const wagerStr = parlayWagerAmount || '0';
     try {
       const decimals = Number.isFinite(parlayCollateralDecimals as number)
@@ -195,14 +194,7 @@ export const BetslipContent = ({
         : 18;
       const wagerWei = parseUnits(wagerStr, decimals).toString();
 
-      const outcomes = parlaySelections.map((s) => ({
-        // For RFQ conditions, encode id as marketId and leave address zeroed
-        marketGroup: '0x0000000000000000000000000000000000000000',
-        marketId: Number.parseInt(s.conditionId || '0', 10) || 0,
-        prediction: !!s.prediction,
-      }));
-
-      const payload = buildAuctionStartPayload(outcomes);
+      const payload = buildAuctionStartPayload(auctionOutcomes);
       const params: AuctionParams = {
         wager: wagerWei,
         resolver: payload.resolver,
@@ -211,13 +203,13 @@ export const BetslipContent = ({
       };
       requestQuotes(params);
       setLastQuoteRequestMs(Date.now());
-    } catch {
-      // ignore formatting errors
+    } catch (error) {
+      console.error('[BETSLIP] Error in RFQ request:', error);
     }
   }, [
     effectiveParlayMode,
     requestQuotes,
-    parlaySelections,
+    auctionOutcomes,
     parlayWagerAmount,
     makerAddress,
     parlayCollateralDecimals,
@@ -232,15 +224,11 @@ export const BetslipContent = ({
           <div className="grid grid-cols-[auto_1fr_auto] items-center h-10">
             <span className="text-lg font-medium">Make a Prediction</span>
             <div className="col-start-3 justify-self-end">
-              {(effectiveParlayMode
-                ? parlaySelections.length > 0
-                : betSlipPositions.length > 0) && (
+              {betSlipPositions.length > 0 && (
                 <Button
                   variant="outline"
                   size="xs"
-                  onClick={
-                    effectiveParlayMode ? clearParlaySelections : clearBetSlip
-                  }
+                  onClick={clearBetSlip}
                   title="Reset"
                 >
                   Clear
@@ -255,11 +243,7 @@ export const BetslipContent = ({
             betSlipPositions.length === 0 ? '' : 'overflow-y-auto'
           }`}
         >
-          {(
-            effectiveParlayMode
-              ? parlaySelections.length === 0
-              : betSlipPositions.length === 0
-          ) ? (
+          {betSlipPositions.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center text-center">
               <div className="flex flex-col items-center gap-4">
                 <Image src="/usde.svg" alt="USDe" width={42} height={42} />
@@ -364,51 +348,66 @@ export const BetslipContent = ({
           ) : (
             <FormProvider {...parlayMethods}>
               <form
-                onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)}
+                onSubmit={parlayMethods.handleSubmit((data) => {
+                  console.log('[FORM-SUBMIT] Parlay form submitted with data:', data);
+                  handleParlaySubmit();
+                })}
                 className="space-y-4 p-4"
               >
                 <div className="space-y-4">
-                  {parlaySelections.map((s) => (
+                  {positionsWithMarketData.map((posData) => (
                     <div
-                      key={s.id}
+                      key={posData.position.id}
                       className="pb-4 mb-4 border-b border-border"
                     >
                       <div className="flex items-center gap-3">
                         <h3 className="font-medium text-foreground pr-2 text-sm whitespace-normal break-words flex-1">
-                          {s.question}
+                          {posData.position.question}
                         </h3>
                         <div className="grid grid-cols-2 gap-2 ml-auto">
-                          <Button
-                            size="sm"
-                            type="button"
-                            onClick={() =>
-                              updateParlaySelection(s.id, { prediction: true })
-                            }
-                            className={`${
-                              s.prediction
-                                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                            }`}
-                          >
-                            Yes
-                          </Button>
-                          <Button
-                            size="sm"
-                            type="button"
-                            onClick={() =>
-                              updateParlaySelection(s.id, { prediction: false })
-                            }
-                            className={`${
-                              !s.prediction
-                                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                            }`}
-                          >
-                            No
-                          </Button>
+                          {(() => {
+                            const currentValue = parlayMethods.watch(`positions.${posData.position.id}.predictionValue`);
+                            const isYesSelected = currentValue === YES_SQRT_PRICE_X96;
+                            const isNoSelected = currentValue === NO_SQRT_PRICE_X96;
+                            
+                            return (
+                              <>
+                                <Button
+                                  size="sm"
+                                  type="button"
+                                  onClick={() => {
+                                    const fieldName = `positions.${posData.position.id}.predictionValue`;
+                                    parlayMethods.setValue(fieldName, YES_SQRT_PRICE_X96);
+                                  }}
+                                  className={`${
+                                    isYesSelected
+                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                  }`}
+                                >
+                                  Yes
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  type="button"
+                                  onClick={() => {
+                                    const fieldName = `positions.${posData.position.id}.predictionValue`;
+                                    parlayMethods.setValue(fieldName, NO_SQRT_PRICE_X96);
+                                  }}
+                                  className={`${
+                                    isNoSelected
+                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                  }`}
+                                >
+                                  No
+                                </Button>
+                              </>
+                            );
+                          })()}
                         </div>
                         <button
-                          onClick={() => removeParlaySelection(s.id)}
+                          onClick={() => removePosition(posData.position.id)}
                           className="text-[18px] leading-none text-muted-foreground hover:text-foreground"
                           type="button"
                           aria-label="Remove"
@@ -434,7 +433,12 @@ export const BetslipContent = ({
                       <div className="py-1 flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <LottieLoader width={16} height={16} />
-                          <span>Broadcasting a request for bids...</span>
+                          <span className={!makerAddress ? "text-amber-600" : ""}>
+                            {!makerAddress 
+                              ? "Please connect your wallet for receiving bids"
+                              : "Broadcasting a request for bids..."
+                            }
+                          </span>
                         </span>
                         <TooltipProvider>
                           <Tooltip>

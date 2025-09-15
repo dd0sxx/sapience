@@ -1,4 +1,8 @@
-import { encodeAbiParameters } from 'viem';
+import { encodeAbiParameters, keccak256 } from 'viem';
+import UMAResolver from '@/protocol/deployments/UMAResolver.json';
+
+// Contract addresses
+const UMA_RESOLVER_ADDRESS = UMAResolver.address as `0x${string}`;
 
 export interface PredictedOutcomeInputStub {
   marketGroup: string; // address
@@ -14,12 +18,19 @@ function encodePredictedOutcomes(
   outcomes: PredictedOutcomeInputStub[]
 ): `0x${string}` {
   const normalized = outcomes.map((o) => ({
-    market: {
-      marketGroup: isHexAddress(o.marketGroup)
+    // Generate marketId as bytes32 hash from marketGroup and marketId
+    marketId: (() => {
+      const marketGroup = isHexAddress(o.marketGroup)
         ? o.marketGroup
-        : ('0x0000000000000000000000000000000000000000' as `0x${string}`),
-      marketId: BigInt(o.marketId),
-    },
+        : '0x0000000000000000000000000000000000000000';
+      // Create a bytes32 hash from marketGroup + marketId
+      const combinedData = encodeAbiParameters(
+        [{ type: 'address' }, { type: 'uint256' }],
+        [marketGroup as `0x${string}`, BigInt(o.marketId)]
+      );
+      // Use keccak256 to generate bytes32 marketId
+      return keccak256(combinedData);
+    })(),
     prediction: !!o.prediction,
   }));
 
@@ -28,14 +39,7 @@ function encodePredictedOutcomes(
       {
         type: 'tuple[]',
         components: [
-          {
-            name: 'market',
-            type: 'tuple',
-            components: [
-              { name: 'marketGroup', type: 'address' },
-              { name: 'marketId', type: 'uint256' },
-            ],
-          },
+          { name: 'marketId', type: 'bytes32' },
           { name: 'prediction', type: 'bool' },
         ],
       },
@@ -50,7 +54,7 @@ export function buildAuctionStartPayload(
 ): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
   const resolver: `0x${string}` = isHexAddress(resolverOverride)
     ? resolverOverride
-    : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
+    : UMA_RESOLVER_ADDRESS;
 
   // Resolver expects a single bytes blob with abi.encode(PredictedOutcome[])
   const encoded = encodePredictedOutcomes(outcomes);

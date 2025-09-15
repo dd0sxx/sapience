@@ -7,51 +7,44 @@ import {
   stringToHex,
   parseUnits,
 } from 'viem';
+import { useReadContract } from 'wagmi';
 
-import ParlayPool from '@/protocol/deployments/ParlayPool.json';
+import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
 import type { Abi } from 'abitype';
+import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useRouter } from 'next/navigation';
-import { useAccount, usePublicClient } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 
-interface ParlayPosition {
-  marketAddress: string;
-  marketId: number;
-  prediction: boolean;
-  limit: string; // Amount in string format
-}
+// Contract addresses
+const PREDICTION_MARKET_ADDRESS = PredictionMarket.address as `0x${string}`;
 
 interface UseSubmitParlayProps {
   chainId: number;
-  parlayContractAddress: `0x${string}`;
   collateralTokenAddress: `0x${string}`;
   collateralTokenDecimals: number;
-  positions: ParlayPosition[];
-  wagerAmount: string; // Total wager amount for the parlay (collateral)
-  payoutAmount: string; // Expected payout amount
-  orderExpirationHours?: number; // Hours from now when order expires (default: 24)
+  _wagerAmount: string; // Total wager amount for the parlay (collateral) - unused, kept for interface compatibility
+  selectedBid: QuoteBid | null; // Selected bid from auction - contains all prediction data
   onSuccess?: () => void;
   enabled?: boolean;
   refCode?: string; // Optional referral code; empty/undefined allowed
-  onOrderCreated?: (requestId: bigint, txHash?: string) => void;
+  onOrderCreated?: (makerTokenId: bigint, takerTokenId: bigint) => void;
 }
 
 export function useSubmitParlay({
   chainId,
-  parlayContractAddress,
   collateralTokenAddress,
   collateralTokenDecimals,
-  positions,
-  wagerAmount,
-  payoutAmount,
-  orderExpirationHours = 24,
+  _wagerAmount,
+  selectedBid,
   onSuccess,
   enabled = true,
   refCode,
   onOrderCreated,
 }: UseSubmitParlayProps) {
   const { address } = useAccount();
-  const publicClient = usePublicClient({ chainId });
+  const { toast } = useToast();
   const router = useRouter();
 
   const [error, setError] = useState<string | null>(null);
@@ -60,27 +53,16 @@ export function useSubmitParlay({
   // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
   const { sendCalls, isPending: isSubmitting } = useSapienceWriteContract({
     onSuccess: () => {
-      setSuccess('Parlay order submitted successfully');
+      setSuccess('Prediction minted successfully');
       setError(null);
-      // Attempt to read latest maker order id and notify
-      (async () => {
-        try {
-          if (!publicClient || !address) return;
-          const ids = (await publicClient.readContract({
-            address: parlayContractAddress,
-            abi: ParlayPool.abi as Abi,
-            functionName: 'getOrderIdsByAddress',
-            args: [address],
-          })) as bigint[];
-          const requestId =
-            ids && ids.length > 0 ? ids[ids.length - 1] : undefined;
-          if (requestId != null) {
-            onOrderCreated?.(requestId);
-          }
-        } catch {
-          // ignore
-        }
-      })();
+      toast({
+        title: 'Prediction Minted',
+        description: 'Your prediction has been minted as an NFT.',
+        duration: 5000,
+      });
+      
+      // Call with placeholder token IDs - actual IDs will be indexed by API
+      onOrderCreated?.(BigInt(0), BigInt(0));
 
       onSuccess?.();
       if (address) {
@@ -91,33 +73,12 @@ export function useSubmitParlay({
       const message = err?.message || 'Transaction failed';
       setError(message);
     },
-    successMessage: 'Parlay submission was successful',
-    fallbackErrorMessage: 'Failed to submit parlay',
+    successMessage: 'Prediction minted',
+    fallbackErrorMessage: 'Failed to mint prediction',
   });
 
-  // Parse human-readable amounts to base units using token decimals
-  const parsedWagerAmount = useMemo(() => {
-    try {
-      return parseUnits(wagerAmount || '0', collateralTokenDecimals);
-    } catch {
-      return BigInt(0);
-    }
-  }, [wagerAmount, collateralTokenDecimals]);
+  // Remove unused parsedWagerAmount - we use requiredApprovalAmount from bid instead
 
-  const parsedPayoutAmount = useMemo(() => {
-    try {
-      return parseUnits(payoutAmount || '0', collateralTokenDecimals);
-    } catch {
-      return BigInt(0);
-    }
-  }, [payoutAmount, collateralTokenDecimals]);
-
-  // Calculate order expiration time (current time + hours in seconds)
-  const orderExpirationTime = useMemo(() => {
-    return BigInt(
-      Math.floor(Date.now() / 1000) + orderExpirationHours * 60 * 60
-    );
-  }, [orderExpirationHours]);
 
   // Encode optional refCode to bytes32 (empty -> 0x00..00)
   const encodedRefCode = useMemo(() => {
@@ -146,74 +107,131 @@ export function useSubmitParlay({
     }
   }, [refCode]);
 
+  // The actual amount needed for approval (makerCollateral from bid)
+  const requiredApprovalAmount = useMemo(() => {
+    if (!selectedBid?.makerCollateral) return BigInt(0);
+    try {
+      return BigInt(selectedBid.makerCollateral);
+    } catch {
+      return BigInt(0);
+    }
+  }, [selectedBid]);
+
+  // Check current allowance
+  const { data: currentAllowance = BigInt(0) } = useReadContract({
+    address: collateralTokenAddress,
+    abi: erc20Abi,
+    functionName: 'allowance',
+    args: address && PREDICTION_MARKET_ADDRESS 
+      ? [address, PREDICTION_MARKET_ADDRESS] 
+      : undefined,
+    query: {
+      enabled: !!address && !!collateralTokenAddress && requiredApprovalAmount > 0,
+    },
+  });
+
+  // Check if approval is needed
+  const needsApproval = useMemo(() => {
+    return requiredApprovalAmount > 0 && currentAllowance < requiredApprovalAmount;
+  }, [requiredApprovalAmount, currentAllowance]);
+
   // Prepare calls for sendCalls
   const calls = useMemo(() => {
     const callsArray: { to: `0x${string}`; data: `0x${string}` }[] = [];
 
-    // Validate inputs
+    // Validate inputs - need selectedBid for mint
     if (
-      positions.length === 0 ||
-      parsedWagerAmount <= 0 ||
-      parsedPayoutAmount <= 0
+      requiredApprovalAmount <= 0 ||
+      !selectedBid ||
+      !address
     ) {
       return callsArray;
     }
 
-    // Add ERC20 approval call for collateral token
-    const approveCalldata = encodeFunctionData({
-      abi: erc20Abi,
-      functionName: 'approve',
-      args: [parlayContractAddress, parsedWagerAmount],
+    // Add ERC20 approval call only if needed
+    if (needsApproval) {
+      const approveCalldata = encodeFunctionData({
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [PREDICTION_MARKET_ADDRESS, requiredApprovalAmount],
+      });
+
+      callsArray.push({
+        to: collateralTokenAddress,
+        data: approveCalldata,
+      });
+    }
+
+    // Validate critical bid data
+    if (!selectedBid.encodedPredictedOutcomes || selectedBid.encodedPredictedOutcomes === '0x' || 
+        selectedBid.encodedPredictedOutcomes.replace(/0x0+/, '0x') === '0x') {
+      console.error('[MINT-VALIDATION] encodedPredictedOutcomes is empty or invalid:', selectedBid.encodedPredictedOutcomes);
+      return callsArray;
+    }
+    
+    if (!selectedBid.resolver || selectedBid.resolver === '0x0000000000000000000000000000000000000000') {
+      console.error('[MINT-VALIDATION] resolver address is invalid:', selectedBid.resolver);
+      return callsArray;
+    }
+
+    // Build MintPredictionRequestData from selectedBid
+    const mintRequestData = {
+      encodedPredictedOutcomes: selectedBid.encodedPredictedOutcomes as `0x${string}`,
+      resolver: selectedBid.resolver as `0x${string}`,
+      makerCollateral: BigInt(selectedBid.makerCollateral || '0'),
+      takerCollateral: BigInt(selectedBid.takerWager),
+      maker: address,
+      taker: selectedBid.taker as `0x${string}`,
+      takerSignature: selectedBid.takerSignature as `0x${string}`,
+      takerDeadline: BigInt(selectedBid.takerDeadline),
+      refCode: encodedRefCode,
+    };
+
+    // Log the exact struct being passed to PredictionMarket.mint()
+    console.log('=== MINT STRUCT DATA ===');
+    console.log('MintPredictionRequestData struct:', JSON.stringify({
+      encodedPredictedOutcomes: mintRequestData.encodedPredictedOutcomes,
+      resolver: mintRequestData.resolver,
+      makerCollateral: mintRequestData.makerCollateral.toString(),
+      takerCollateral: mintRequestData.takerCollateral.toString(),
+      maker: mintRequestData.maker,
+      taker: mintRequestData.taker,
+      takerSignature: mintRequestData.takerSignature,
+      takerDeadline: mintRequestData.takerDeadline.toString(),
+      refCode: mintRequestData.refCode
+    }, null, 2));
+    
+    // TENDERLY COPY-PASTE FORMAT
+    console.log('🔥 TENDERLY TUPLE FORMAT (copy this for mint function):');
+    console.log(`["${mintRequestData.encodedPredictedOutcomes}","${mintRequestData.resolver}","${mintRequestData.makerCollateral}","${mintRequestData.takerCollateral}","${mintRequestData.maker}","${mintRequestData.taker}","${mintRequestData.takerSignature}","${mintRequestData.takerDeadline}","${mintRequestData.refCode}"]`);
+    console.log('========================');
+
+    // Add PredictionMarket.mint call
+    const mintCalldata = encodeFunctionData({
+      abi: PredictionMarket.abi as Abi,
+      functionName: 'mint',
+      args: [mintRequestData],
     });
 
     callsArray.push({
-      to: collateralTokenAddress,
-      data: approveCalldata,
-    });
-
-    // Transform positions to match contract structure
-    const predictedOutcomes = positions.map((position) => ({
-      market: {
-        marketGroup: position.marketAddress as `0x${string}`,
-        marketId: BigInt(position.marketId),
-      },
-      prediction: position.prediction,
-    }));
-
-    // Add submitParlayOrder call
-    const submitParlayCalldata = encodeFunctionData({
-      abi: ParlayPool.abi as Abi,
-      functionName: 'submitParlayOrder',
-      args: [
-        predictedOutcomes,
-        parsedWagerAmount,
-        parsedPayoutAmount,
-        orderExpirationTime,
-        encodedRefCode,
-      ],
-    });
-
-    callsArray.push({
-      to: parlayContractAddress,
-      data: submitParlayCalldata,
+      to: PREDICTION_MARKET_ADDRESS,
+      data: mintCalldata,
     });
 
     return callsArray;
   }, [
-    positions,
-    parsedWagerAmount,
-    parsedPayoutAmount,
-    orderExpirationTime,
+    requiredApprovalAmount,
+    needsApproval,
+    selectedBid,
+    address,
     encodedRefCode,
-    parlayContractAddress,
     collateralTokenAddress,
   ]);
 
   const submitParlay = useCallback(async () => {
-    if (!enabled || !address || positions.length === 0) {
+    if (!enabled || !address || !selectedBid) {
       return;
     }
-
     setError(null);
     setSuccess(null);
 
@@ -223,6 +241,12 @@ export function useSubmitParlay({
         throw new Error('No valid calls to execute');
       }
 
+      toast({
+        title: 'Minting Prediction',
+        description:
+          'Please confirm the transaction batch in your wallet. This will approve collateral and mint your prediction NFT.',
+      });
+
       // Submit the batch of calls using the unified wrapper
       await sendCalls({
         calls,
@@ -230,10 +254,16 @@ export function useSubmitParlay({
       });
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Failed to submit parlay';
+        err instanceof Error ? err.message : 'Failed to mint prediction';
       setError(errorMessage);
+
+      toast({
+        title: 'Prediction Mint Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     }
-  }, [enabled, address, positions.length, chainId, calls, sendCalls]);
+  }, [enabled, address, chainId, calls, sendCalls, toast, selectedBid]);
 
   const reset = useCallback(() => {
     setError(null);

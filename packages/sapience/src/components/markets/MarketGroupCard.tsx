@@ -100,20 +100,6 @@ const MarketGroupCard = ({
     addPosition(position);
   };
 
-  // Handler for Yes button
-  const handleYesClick = () => {
-    const yesMarket = market.find((m) => m.optionName === 'Yes') || market[0];
-    handleAddToBetSlip(yesMarket, true);
-    router.push('/markets');
-  };
-
-  // Handler for No button
-  const handleNoClick = () => {
-    const noMarket = market.find((m) => m.optionName === 'No') || market[0];
-    handleAddToBetSlip(noMarket, false);
-    router.push('/markets');
-  };
-
   const MarketPrediction = () => {
     if (!isActive || market.length === 0) return null;
 
@@ -271,15 +257,6 @@ const MarketGroupCard = ({
                     );
                     router.push('/markets');
                   }}
-                  className="w-full"
-                  size="md"
-                />
-              )}
-            {isActive &&
-              marketClassification === MarketGroupClassificationEnum.YES_NO && (
-                <YesNoSplitButton
-                  onYes={handleYesClick}
-                  onNo={handleNoClick}
                   className="w-full"
                   size="md"
                 />

@@ -22,6 +22,11 @@ export interface QuoteBid {
   takerWager: string; // wei
   takerDeadline: number; // unix seconds
   takerSignature: string; // Taker's bid signature
+  // Additional fields from taker bot for PredictionMarket.mint
+  maker?: string;
+  makerCollateral?: string;
+  resolver?: string;
+  encodedPredictedOutcomes?: string;
 }
 
 // Struct shape expected by PredictionMarket.mint()
@@ -99,17 +104,24 @@ export function useAuctionStart() {
 
   // Open connection lazily when first request is sent
   const ensureConnection = useCallback(() => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN)
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      console.log('[OTC-WS] Using existing connection');
       return wsRef.current;
-    if (!wsUrl) return null;
+    }
+    if (!wsUrl) {
+      console.error('[OTC-WS] No WebSocket URL available');
+      return null;
+    }
+    console.log('[OTC-WS] Creating new WebSocket connection to:', wsUrl);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     ws.addEventListener('open', () => {
-      console.log('[OTC-WS] open');
+      console.log('[OTC-WS] Connection opened successfully');
     });
     ws.onmessage = (evt) => {
       try {
         const msg = JSON.parse(evt.data as string);
+        
         if (msg?.type === 'auction.ack') {
           const newId = msg.payload?.auctionId || null;
           latestAuctionIdRef.current = newId;
@@ -119,16 +131,20 @@ export function useAuctionStart() {
           const rawBids = Array.isArray(msg.payload?.bids)
             ? (msg.payload.bids as any[])
             : [];
+          
           // If awaiting ack for a newer auction, ignore any bids
           if (isAwaitingAckRef.current) return;
+          
           // Only accept bids for the latest auction id
           const targetAuctionId: string | null =
             rawBids.length > 0 ? rawBids[0]?.auctionId || null : null;
+          
           if (
             !targetAuctionId ||
             targetAuctionId !== latestAuctionIdRef.current
           )
             return;
+          
           const normalized: QuoteBid[] = rawBids
             .map((b) => {
               try {
@@ -145,12 +161,18 @@ export function useAuctionStart() {
                   takerWager,
                   takerDeadline,
                   takerSignature: b.takerSignature || '0x',
+                  // Additional fields from taker bot
+                  maker: b.maker,
+                  makerCollateral: b.makerCollateral,
+                  resolver: b.resolver,
+                  encodedPredictedOutcomes: b.encodedPredictedOutcomes,
                 } as QuoteBid;
               } catch {
                 return null;
               }
             })
             .filter(Boolean) as QuoteBid[];
+            
           setBids(normalized);
         } else if (msg?.type === 'auction.started') {
           // noop for client for now
@@ -199,13 +221,12 @@ export function useAuctionStart() {
             isAwaitingAckRef.current = true;
             inflightRef.current = key;
             ws.send(JSON.stringify(payload));
-            console.log('[OTC-WS] sent auction.start');
             setAuctionId(null); // Will be set when we receive auction.ack
             setBids([]);
             lastAuctionRef.current = params;
             setCurrentAuctionParams(params);
-          } catch {
-            // ignore
+          } catch (error) {
+            console.error('[OTC-WS] Error sending auction.start:', error);
           }
         };
 
@@ -269,23 +290,24 @@ export function useAuctionStart() {
       selectedBid: QuoteBid;
       refCode?: `0x${string}`;
     }): MintPredictionRequestData | null => {
-      const auction = lastAuctionRef.current;
-      if (!auction) return null;
       try {
         const zeroBytes32 = `0x${'0'.repeat(64)}`;
-        const resolver = auction.resolver as `0x${string}`;
-        const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
-        if (!resolver || predictedOutcomes.length === 0) return null;
+        const { selectedBid } = args;
+        
+        // Use bid data directly instead of auction data
+        if (!selectedBid.resolver || !selectedBid.encodedPredictedOutcomes || !selectedBid.makerCollateral) {
+          return null;
+        }
 
         return {
-          encodedPredictedOutcomes: predictedOutcomes[0],
-          resolver,
-          makerCollateral: auction.wager,
-          takerCollateral: args.selectedBid.takerWager,
+          encodedPredictedOutcomes: selectedBid.encodedPredictedOutcomes as `0x${string}`,
+          resolver: selectedBid.resolver as `0x${string}`,
+          makerCollateral: selectedBid.makerCollateral,
+          takerCollateral: selectedBid.takerWager,
           maker: args.maker,
-          taker: args.selectedBid.taker as `0x${string}`,
-          takerSignature: args.selectedBid.takerSignature as `0x${string}`,
-          takerDeadline: String(args.selectedBid.takerDeadline),
+          taker: selectedBid.taker as `0x${string}`,
+          takerSignature: selectedBid.takerSignature as `0x${string}`,
+          takerDeadline: String(selectedBid.takerDeadline),
           refCode: args.refCode || (zeroBytes32 as `0x${string}`),
         };
       } catch {

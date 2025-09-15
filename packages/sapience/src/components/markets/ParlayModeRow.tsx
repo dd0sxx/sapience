@@ -11,6 +11,8 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
+import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
+import { MarketGroupClassification } from '~/lib/types';
 
 export interface ParlayModeRowProps {
   condition: {
@@ -27,7 +29,7 @@ export interface ParlayModeRowProps {
 
 const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
   const { id, question, endTime, description, similarMarkets } = condition;
-  const { addParlaySelection } = useBetSlipContext();
+  const { addPosition } = useBetSlipContext();
 
   // Removed condition id display in dialog; keep id for keys only
 
@@ -50,12 +52,29 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
 
   const handleYes = React.useCallback(() => {
     if (!id) return;
-    addParlaySelection({ conditionId: id, question, prediction: true });
-  }, [id, question, addParlaySelection]);
+    addPosition({
+      prediction: true,
+      marketAddress: id, // Use condition ID as marketAddress for RFQ conditions
+      marketId: 0, // Default marketId for conditions
+      question: question,
+      chainId: 42161, // Default to Arbitrum for parlay mode
+      marketClassification: MarketGroupClassification.YES_NO,
+      wagerAmount: DEFAULT_WAGER_AMOUNT,
+    });
+  }, [id, question, addPosition]);
+  
   const handleNo = React.useCallback(() => {
     if (!id) return;
-    addParlaySelection({ conditionId: id, question, prediction: false });
-  }, [id, question, addParlaySelection]);
+    addPosition({
+      prediction: false,
+      marketAddress: id, // Use condition ID as marketAddress for RFQ conditions  
+      marketId: 0, // Default marketId for conditions
+      question: question,
+      chainId: 42161, // Default to Arbitrum for parlay mode
+      marketClassification: MarketGroupClassification.YES_NO,
+      wagerAmount: DEFAULT_WAGER_AMOUNT,
+    });
+  }, [id, question, addPosition]);
 
   return (
     <div className="border-b last:border-b-0 border-border">

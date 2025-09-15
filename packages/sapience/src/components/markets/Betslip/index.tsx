@@ -47,6 +47,7 @@ import type { useQuoter } from '~/hooks/forms/useQuoter';
 import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
 import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
 import { PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
+import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
@@ -86,7 +87,7 @@ const Betslip = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   // Parlay config: read minCollateral and collateral token decimals
-  const parlayChainId = betSlipPositions[0]?.chainId || 8453;
+  const parlayChainId = betSlipPositions[0]?.chainId || 42161;
   const {
     auctionId,
     bids,
@@ -95,9 +96,8 @@ const Betslip = ({
     buildMintRequestDataFromBid,
   } = useAuctionStart();
 
-  // PredictionMarket address (constant)
-  const PREDICTION_MARKET_ADDRESS =
-    '0x85b38C1e35F42163C5b9DbDe357b191E1042F5f0' as Address;
+  // PredictionMarket address from deployments
+  const PREDICTION_MARKET_ADDRESS = PredictionMarket.address as Address;
 
   // Minimal ABI for PredictionMarket.getConfig()
   const PREDICTION_MARKET_ABI: Abi = [
@@ -122,7 +122,7 @@ const Betslip = ({
   // Prefer reading config from PredictionMarket for OTC symbol if address is provided
   const predictionMarketConfigRead = useReadContracts({
     contracts:
-      PREDICTION_MARKET_ADDRESS && betSlipPositions.length > 0
+      PREDICTION_MARKET_ADDRESS && (betSlipPositions.length > 0 || isParlayMode)
         ? [
             {
               address: PREDICTION_MARKET_ADDRESS,
@@ -133,7 +133,7 @@ const Betslip = ({
           ]
         : [],
     query: {
-      enabled: !!PREDICTION_MARKET_ADDRESS && betSlipPositions.length > 0,
+      enabled: !!PREDICTION_MARKET_ADDRESS && (betSlipPositions.length > 0 || isParlayMode),
     },
   });
 
@@ -145,6 +145,7 @@ const Betslip = ({
         ({} as { collateralToken: Address });
       return cfg.collateralToken;
     }
+    
     return undefined;
   })();
 
@@ -433,48 +434,63 @@ const Betslip = ({
     }
   }, [parlayWagerAmount, positionsWithMarketData, formMethods]);
 
-  // Prepare parlay positions for the hook
-  const parlayPositions = useMemo(() => {
-    const limitAmount = (parlayLimitAmount ?? '10').toString();
-    const positionsForm =
-      (parlayPositionsForm as Record<string, { predictionValue?: string }>) ||
-      {};
-
+  // Convert betSlipPositions to auction outcomes for RFQ
+  const auctionOutcomes = useMemo(() => {
     return positionsWithMarketData
-      .filter(
-        (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-      )
+      .filter((p) => p.marketClassification !== MarketGroupClassification.NUMERIC)
       .map(({ position, marketClassification }) => {
-        const predValue = positionsForm?.[position.id]?.predictionValue;
-        if (
-          marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
-        ) {
-          const selectedMarketId = Number(predValue ?? position.marketId);
-          return {
-            marketAddress: position.marketAddress,
-            marketId: selectedMarketId,
-            prediction: true,
-            limit: limitAmount,
-          };
+        const predValue = parlayPositionsForm?.[position.id]?.predictionValue;
+        
+        let prediction: boolean;
+        if (marketClassification === MarketGroupClassification.YES_NO) {
+          prediction = predValue === YES_SQRT_PRICE_X96;
+        } else {
+          // For multiple choice and other types, default to true
+          prediction = true;
         }
-        // YES/NO path (default)
-        const isYes = predValue === YES_SQRT_PRICE_X96;
+        
         return {
-          marketAddress: position.marketAddress,
+          marketGroup: '0x0000000000000000000000000000000000000000' as const,
           marketId: position.marketId,
-          prediction: isYes,
-          limit: limitAmount,
+          prediction,
         };
       });
-  }, [positionsWithMarketData, parlayLimitAmount, parlayPositionsForm]);
+  }, [positionsWithMarketData, parlayPositionsForm]);
 
   // Calculate payout amount = wager × 2^(number of positions)
   const payoutAmount = useMemo(() => {
     const wager = parlayWagerAmount || minParlayWager || DEFAULT_WAGER_AMOUNT;
-    const listLength = parlayPositions.length;
+    const listLength = auctionOutcomes.length;
     const payout = parseFloat(wager) * Math.pow(2, listLength);
     return Number.isFinite(payout) ? payout.toFixed(2) : '0';
-  }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
+  }, [parlayWagerAmount, auctionOutcomes.length, minParlayWager]);
+
+  // Select best bid for PredictionMarket.mint
+  const selectedBid = useMemo(() => {
+    console.log('[SELECTED-BID] Calculating selectedBid with bids:', bids);
+    if (bids.length === 0) {
+      console.log('[SELECTED-BID] No bids available');
+      return null;
+    }
+    const nowSec = Math.floor(Date.now() / 1000);
+    const validBids = bids.filter((b) => b.takerDeadline > nowSec);
+    console.log('[SELECTED-BID] Valid bids after deadline filter:', validBids.length);
+    if (validBids.length === 0) {
+      console.log('[SELECTED-BID] No valid bids after deadline filter');
+      return null;
+    }
+    
+    // Pick highest takerWager
+    const selected = validBids.reduce((best, cur) => {
+      try {
+        return BigInt(cur.takerWager) > BigInt(best.takerWager) ? cur : best;
+      } catch {
+        return best;
+      }
+    }, validBids[0]);
+    console.log('[SELECTED-BID] Selected bid:', selected);
+    return selected;
+  }, [bids]);
 
   // Use the parlay submission hook
   const {
@@ -482,28 +498,27 @@ const Betslip = ({
     isSubmitting: isParlaySubmitting,
     error: parlayError,
   } = useSubmitParlay({
-    chainId: betSlipPositions[0]?.chainId || 8453, // Use first position's chainId or default to Base
-    parlayContractAddress: PARLAY_CONTRACT_ADDRESS,
+    chainId: betSlipPositions[0]?.chainId || 42161, // Use first position's chainId or default to Arbitrum
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',
     collateralTokenDecimals: collateralDecimals ?? 18,
-    positions: parlayPositions,
     wagerAmount:
       formMethods.watch('wagerAmount') ||
       (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
-    payoutAmount,
+    selectedBid,
     enabled:
-      parlayPositions.length > 0 &&
       !!collateralToken &&
-      collateralDecimals != null,
+      collateralDecimals != null &&
+      !!selectedBid, // Only need selectedBid for mint - it contains all prediction data
     onSuccess: () => {
       // Clear betslip and close popover; hook handles redirect to profile
       clearBetSlip();
       setIsPopoverOpen(false);
     },
-    onOrderCreated: (requestId) => {
+    onOrderCreated: (makerTokenId) => {
       try {
-        notifyOrderCreated(requestId.toString());
+        // Use makerTokenId as requestId for notification
+        notifyOrderCreated(makerTokenId.toString());
       } catch {
         console.error('Failed to notify order created');
       }
@@ -678,40 +693,23 @@ const Betslip = ({
   };
 
   const handleParlaySubmit = () => {
+    console.log('[HANDLE-PARLAY-SUBMIT] Called with:', { authenticated });
     if (!authenticated) {
+      console.log('[HANDLE-PARLAY-SUBMIT] Not authenticated, calling login');
       login();
       return;
     }
 
-    // If Auction flow is enabled, and we have a bid, build the mint request for PredictionMarket
-    try {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const validBids = bids.filter((b) => b.takerDeadline > nowSec);
-      // Pick highest takerWager
-      const best = validBids.reduce((best, cur) => {
-        try {
-          return BigInt(cur.takerWager) > BigInt(best.takerWager) ? cur : best;
-        } catch {
-          return best;
-        }
-      }, validBids[0]);
-
-      if (best && address && buildMintRequestDataFromBid) {
-        const mintReq = buildMintRequestDataFromBid({
-          maker: address,
-          selectedBid: best,
-          // Optional refCode left empty (0x00..00)
-        });
-        // For now, just log; wiring actual write depends on contract address/ABI exposure
-        if (mintReq && process.env.NODE_ENV !== 'production') {
-          console.log('[OTC] Prepared MintPredictionRequestData', mintReq);
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    // Fallback to legacy parlay submit (will be removed once OTC is fully enabled)
+    console.log('[HANDLE-PARLAY-SUBMIT] Debug arrays:', {
+      betSlipPositionsLength: betSlipPositions.length,
+      positionsWithMarketDataLength: positionsWithMarketData.length,
+      selectedBid: !!selectedBid,
+      selectedBidData: selectedBid,
+      bidsLength: bids.length,
+      collateralToken,
+      collateralDecimals
+    });
+    console.log('[HANDLE-PARLAY-SUBMIT] Calling submitParlay()');
     submitParlay();
   };
 
@@ -744,6 +742,7 @@ const Betslip = ({
     auctionId,
     bids,
     requestQuotes,
+    auctionOutcomes,
   };
 
   if (isCompact) {

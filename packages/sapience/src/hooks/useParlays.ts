@@ -2,16 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits } from 'viem';
 import type { Abi } from 'abitype';
-import ParlayPool from '@/protocol/deployments/ParlayPool.json';
+import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
 import { usePublicClient, useReadContracts } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 
 // TODO: centralize these in a shared constants module if needed
-export const PARLAY_CONTRACT_ADDRESS =
-  '0x918e72DAB2aF7672AbF534F744770D7F8859C55e' as Address;
+export const PARLAY_CONTRACT_ADDRESS = PredictionMarket.address as Address;
 
 // Use ABI from deployments directly (now includes all required functions)
-const PARLAY_ABI: Abi = (ParlayPool as { abi: Abi }).abi;
+const PARLAY_ABI: Abi = (PredictionMarket as { abi: Abi }).abi;
 
 // Fallback ABI variant: handles case where `prediction` is encoded as uint8 on-chain
 const PARLAY_ABI_ALT: Abi = [
