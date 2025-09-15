@@ -14,6 +14,7 @@ import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { ChatProvider } from '~/lib/context/ChatContext';
 import ChatWidget from '~/components/shared/ChatWidget';
 import FloatingChatButton from '~/components/shared/FloatingChatButton';
+import ConsoleMessage from '~/components/shared/ConsoleMessage';
 import '~/styles/globals.css';
 
 type RootLayoutProps = {
@@ -124,6 +125,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
                 </Suspense>
               </div>
               <ChatWidget />
+              <ConsoleMessage />
             </ChatProvider>
           </LoadingProvider>
         </Providers>
