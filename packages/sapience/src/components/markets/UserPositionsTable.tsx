@@ -15,6 +15,7 @@ import UserParlaysTable from '../parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
+import { useMarketGroupPage } from '~/lib/context/MarketGroupPageProvider';
 
 interface UserPositionsTableProps {
   account: Address;
@@ -104,7 +105,16 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     return atts;
   }, [attestationsData, marketId, marketIds]);
 
-  // Always render tabs so empty states are visible
+  // Provide a stable, globally consistent order for option color mapping
+  const { marketGroupData } = useMarketGroupPage?.() || ({} as any);
+  const summaryMarketsForColors = useMemo(() => {
+    const list = marketGroupData?.markets || [];
+    return list
+      .slice()
+      .sort(
+        (a: any, b: any) => Number(a?.marketId ?? 0) - Number(b?.marketId ?? 0)
+      );
+  }, [marketGroupData]);
 
   return (
     <div className="space-y-6">
@@ -114,14 +124,22 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <Tabs defaultValue="trades">
         <div className="mb-2.5">
           <TabsList
-            className={`grid w-full ${showParlaysTab ? 'grid-cols-4' : 'grid-cols-3'}`}
+            className={`grid w-full h-auto grid-cols-1 gap-2 ${showParlaysTab ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}
           >
-            <TabsTrigger value="trades">Prediction Market Trades</TabsTrigger>
-            <TabsTrigger value="lp">Prediction Market Liquidity</TabsTrigger>
+            <TabsTrigger className="w-full" value="trades">
+              Trades
+            </TabsTrigger>
+            <TabsTrigger className="w-full" value="lp">
+              Liquidity
+            </TabsTrigger>
             {showParlaysTab && (
-              <TabsTrigger value="parlays">Parlays</TabsTrigger>
+              <TabsTrigger className="w-full" value="parlays">
+                Parlays
+              </TabsTrigger>
             )}
-            <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
+            <TabsTrigger className="w-full" value="forecasts">
+              Forecasts
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -131,7 +149,10 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             parentMarketAddress={marketAddress}
             parentChainId={chainId}
             parentMarketId={marketId}
-            showHeader={false}
+            context="user_positions"
+            showPositionColumn
+            columns={{ actions: false }}
+            summaryMarketsForColors={summaryMarketsForColors}
           />
         </TabsContent>
 
@@ -141,7 +162,10 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             parentMarketAddress={marketAddress}
             parentChainId={chainId}
             parentMarketId={marketId}
-            showHeader={false}
+            context="user_positions"
+            showPositionColumn
+            columns={{ actions: false }}
+            summaryMarketsForColors={summaryMarketsForColors}
           />
         </TabsContent>
 

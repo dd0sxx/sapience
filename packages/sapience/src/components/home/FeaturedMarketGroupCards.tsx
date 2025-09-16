@@ -10,10 +10,9 @@ import {
 } from '@sapience/ui/components/ui/carousel';
 import { useSidebar } from '@sapience/ui/components/ui/sidebar';
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
-import MarketGroupCard from '../markets/MarketGroupCard';
+import MarketCard from '../markets/MarketCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
-import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 
 // Removed LottieLoader in favor of simple fade-in cards and fixed-height placeholder
@@ -45,14 +44,31 @@ interface GroupedMarketGroup {
   displayUnit?: string;
 }
 
-export default function FeaturedMarketGroup() {
+export default function FeaturedMarketGroupCards() {
   // Use the same hook as MarketGroupsList
   const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
     useEnrichedMarketGroups();
 
+  // Per-mount random seed to vary picks between mounts but keep them stable within a session
+  const [randomSeed] = React.useState<number>(() => Math.random());
+
+  // Simple seeded RNG (Mulberry32)
+  const createRng = React.useCallback((seed: number) => {
+    let t = Math.floor(seed * 0x7fffffff) >>> 0;
+    return function rng() {
+      t += 0x6d2b79f5;
+      let x = t;
+      x = Math.imul(x ^ (x >>> 15), x | 1);
+      x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+  }, []);
+
   // Process market groups with same logic as MarketGroupsList but only take first 8
   const groupedMarketGroups: GroupedMarketGroup[] = React.useMemo(() => {
     if (!enrichedMarketGroups) return [];
+
+    const rng = createRng(randomSeed);
 
     // 1. Only consider deployed market groups and deployed markets
     const deployedGroups = enrichedMarketGroups.filter((group) => {
@@ -184,17 +200,7 @@ export default function FeaturedMarketGroup() {
     );
 
     // 5. Randomize selection prioritizing category variety and avoiding repeats
-    // Helper: Fisher-Yates shuffle
-    function shuffle<T>(arr: T[]): T[] {
-      const copy = arr.slice();
-      for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-      }
-      return copy;
-    }
-
-    // Group by category
+    // Group by category and pick exactly one group per category that has at least one active market
     const byCategory = result.reduce<Record<string, GroupedMarketGroup[]>>(
       (acc, group) => {
         const key = group.categoryId || 'unknown';
@@ -205,78 +211,29 @@ export default function FeaturedMarketGroup() {
       {}
     );
 
-    // Shuffle groups within each category
-    Object.keys(byCategory).forEach((cat) => {
-      byCategory[cat] = shuffle(byCategory[cat]);
-    });
+    // For each category, choose one representative active group at random (seeded)
+    const onePerCategory: GroupedMarketGroup[] = Object.values(byCategory)
+      .map((groups) => {
+        const activeGroups = groups.filter((g) => g.isActive);
+        if (activeGroups.length === 0) return null;
+        const randomIndex = Math.floor(rng() * activeGroups.length);
+        return activeGroups[randomIndex];
+      })
+      .filter((g): g is GroupedMarketGroup => g !== null);
 
-    // Create a shuffled list of categories
-    let categoryEntries = shuffle(Object.entries(byCategory));
-
-    const selected: GroupedMarketGroup[] = [];
-    let lastCategoryId: string | null = null;
-    let safety = 0;
-
-    // Total available items
-    const totalAvailable = Object.values(byCategory).reduce(
-      (sum, arr) => sum + arr.length,
-      0
-    );
-
-    while (
-      selected.length < 8 &&
-      selected.length < totalAvailable &&
-      categoryEntries.length > 0 &&
-      safety < 1000
-    ) {
-      safety++;
-      // Try a round-robin pass across categories
-      let addedThisPass = false;
-
-      for (let idx = 0; idx < categoryEntries.length; idx++) {
-        const [catId, groups] = categoryEntries[idx];
-        if (groups.length === 0) continue;
-
-        // Avoid picking same category consecutively when possible
-        if (lastCategoryId !== null && catId === lastCategoryId) {
-          // Look ahead for a different category with available items
-          const altIdx = categoryEntries.findIndex(
-            ([altCatId, altGroups]) =>
-              altCatId !== lastCategoryId && altGroups.length > 0
-          );
-          if (altIdx !== -1) {
-            const [altCatId, altGroups] = categoryEntries[altIdx];
-            const next = altGroups.shift()!;
-            selected.push(next);
-            lastCategoryId = altCatId;
-            addedThisPass = true;
-          } else {
-            // Only this category remains; allow consecutive pick
-            const next = groups.shift()!;
-            selected.push(next);
-            lastCategoryId = catId;
-            addedThisPass = true;
-          }
-        } else {
-          const next = groups.shift()!;
-          selected.push(next);
-          lastCategoryId = catId;
-          addedThisPass = true;
-        }
-
-        if (selected.length >= 8) break;
+    // Shuffle to randomize display order across categories
+    function shuffle<T>(arr: T[]): T[] {
+      const copy = arr.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
       }
-
-      // Remove empty categories and reshuffle order to keep randomness
-      categoryEntries = shuffle(
-        categoryEntries.filter(([, groups]) => groups.length > 0)
-      );
-
-      if (!addedThisPass) break;
+      return copy;
     }
 
-    return selected;
-  }, [enrichedMarketGroups]);
+    const randomized = shuffle(onePerCategory);
+    return randomized;
+  }, [enrichedMarketGroups, createRng, randomSeed]);
 
   if (isLoadingMarketGroups) {
     return (
@@ -284,7 +241,7 @@ export default function FeaturedMarketGroup() {
         <div className="w-full px-0">
           {/* Maintain space to prevent layout jump while data loads */}
           <div className="mt-0 mb-1 md:mb-4">
-            <div className="md:min-h-[150px] w-full" />
+            <div className="h-[140px] md:h-[150px] w-full" />
           </div>
         </div>
       </section>
@@ -294,7 +251,10 @@ export default function FeaturedMarketGroup() {
   return (
     <section className="pt-0 px-0 w-full relative z-10">
       <div className="w-full px-0">
-        {groupedMarketGroups.length === 0 ? null : (
+        {groupedMarketGroups.length === 0 ? (
+          // Always reserve space, even when no items yet
+          <div className="relative mt-0 md:mt-0 mb-1 md:mb-4 h-[140px] md:h-[150px]" />
+        ) : (
           <MobileAndDesktopLists groupedMarketGroups={groupedMarketGroups} />
         )}
       </div>
@@ -310,17 +270,9 @@ function MobileAndDesktopLists({
   const { state, openMobile } = useSidebar();
   const [mobileApi, setMobileApi] = React.useState<CarouselApi | null>(null);
   const [desktopApi, setDesktopApi] = React.useState<CarouselApi | null>(null);
-  const items = React.useMemo(
-    () =>
-      groupedMarketGroups
-        .filter(
-          (g) =>
-            g.marketClassification !==
-            MarketGroupClassificationEnum.MULTIPLE_CHOICE
-        )
-        .slice(0, 8),
-    [groupedMarketGroups]
-  );
+  const hasRandomizedMobileStart = React.useRef(false);
+  const hasRandomizedDesktopStart = React.useRef(false);
+  const items = React.useMemo(() => groupedMarketGroups, [groupedMarketGroups]);
 
   const autoScrollPluginMobile = React.useMemo(
     () =>
@@ -351,15 +303,41 @@ function MobileAndDesktopLists({
     desktopApi?.reInit();
   }, [state, openMobile, mobileApi, desktopApi]);
 
+  // Randomize starting slide (mobile) once on init
+  React.useEffect(() => {
+    if (!mobileApi || hasRandomizedMobileStart.current) return;
+    if (items.length === 0) return;
+    const startIndex = Math.floor(Math.random() * items.length);
+    try {
+      mobileApi.scrollTo(startIndex, true);
+    } catch {
+      console.error('Error scrolling to random index', startIndex);
+    }
+    hasRandomizedMobileStart.current = true;
+  }, [mobileApi, items.length]);
+
+  // Randomize starting slide (desktop) once on init
+  React.useEffect(() => {
+    if (!desktopApi || hasRandomizedDesktopStart.current) return;
+    if (items.length === 0) return;
+    const startIndex = Math.floor(Math.random() * items.length);
+    try {
+      desktopApi.scrollTo(startIndex, true);
+    } catch {
+      console.error('Error scrolling to random index', startIndex);
+    }
+    hasRandomizedDesktopStart.current = true;
+  }, [desktopApi, items.length]);
+
   const desktopItemClass = React.useMemo(() => {
-    if (items.length >= 4) return 'pl-8 basis-1/2 lg:basis-1/4';
-    if (items.length === 3) return 'pl-8 basis-1/2 lg:basis-2/5';
-    if (items.length === 2) return 'pl-8 basis-[60%] lg:basis-1/2';
-    return 'pl-8 basis-[80%] lg:basis-3/4';
+    if (items.length >= 4) return 'pl-8 basis-1/2 lg:basis-1/4 h-full';
+    if (items.length === 3) return 'pl-8 basis-1/2 lg:basis-2/5 h-full';
+    if (items.length === 2) return 'pl-8 basis-[60%] lg:basis-1/2 h-full';
+    return 'pl-8 basis-[80%] lg:basis-3/4 h-full';
   }, [items.length]);
 
   return (
-    <div className="relative mt-0 mb-1 md:mb-4 md:min-h-[150px]">
+    <div className="relative mt-0 md:mt-0 mb-1 md:mb-4 min-h-[140px] md:h-[150px]">
       {/* Fade overlays */}
       <div
         className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 md:w-16 bg-gradient-to-r from-background to-transparent"
@@ -379,8 +357,11 @@ function MobileAndDesktopLists({
         >
           <CarouselContent className="-ml-8">
             {items.map((marketGroup) => (
-              <CarouselItem key={marketGroup.key} className="pl-8 basis-[80%]">
-                <MarketGroupCard
+              <CarouselItem
+                key={marketGroup.key}
+                className="pl-8 basis-[80%] h-full"
+              >
+                <MarketCard
                   chainId={marketGroup.chainId}
                   marketAddress={marketGroup.marketAddress}
                   market={marketGroup.markets}
@@ -404,12 +385,12 @@ function MobileAndDesktopLists({
           opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
           plugins={[autoScrollPluginDesktop]}
           setApi={setDesktopApi}
-          className="w-full"
+          className="w-full h-full"
         >
-          <CarouselContent className="-ml-8">
+          <CarouselContent className="-ml-8 h-full">
             {items.map((marketGroup) => (
               <CarouselItem key={marketGroup.key} className={desktopItemClass}>
-                <MarketGroupCard
+                <MarketCard
                   chainId={marketGroup.chainId}
                   marketAddress={marketGroup.marketAddress}
                   market={marketGroup.markets}

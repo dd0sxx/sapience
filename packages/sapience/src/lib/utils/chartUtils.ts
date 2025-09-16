@@ -129,3 +129,107 @@ export const processCandleData = (
 
 // Remove old ChartDataPoint export if no longer needed elsewhere
 // export interface ChartDataPoint { ... }
+
+// Helper: find the first timestamp that has any non-zero market value
+export function getFirstTradeTimestamp(
+  rawData: MultiMarketChartDataPoint[]
+): number | undefined {
+  for (let i = 0; i < rawData.length; i++) {
+    const point = rawData[i];
+    if (
+      point?.markets &&
+      Object.values(point.markets).some((v) => typeof v === 'number' && v !== 0)
+    ) {
+      return point.timestamp;
+    }
+  }
+  return undefined;
+}
+
+// Helper: compute effective min timestamp given data and an optional provided min
+export function getEffectiveMinTimestampFromData(
+  rawData: MultiMarketChartDataPoint[],
+  providedMinTimestamp?: number
+): number | undefined {
+  const firstTrade = getFirstTradeTimestamp(rawData);
+  if (firstTrade != null && providedMinTimestamp != null) {
+    return Math.max(firstTrade, providedMinTimestamp);
+  }
+  return firstTrade ?? providedMinTimestamp;
+}
+
+// Transform raw multi-market chart data into scaled and filtered data used by charts
+// - Divides Wei values by 1e18
+// - Optionally filters by minTimestamp
+// - Converts leading zero market values to undefined to avoid flat lines before first trade
+export function transformMarketGroupChartData(
+  rawData: MultiMarketChartDataPoint[],
+  opts?: { minTimestamp?: number; startAtFirstTrade?: boolean }
+): MultiMarketChartDataPoint[] {
+  const { minTimestamp, startAtFirstTrade } = opts || {};
+
+  // Derive the effective min timestamp (optionally start at first trade)
+  const effectiveMinTimestamp = startAtFirstTrade
+    ? getEffectiveMinTimestampFromData(rawData, minTimestamp)
+    : minTimestamp;
+
+  const filteredByTimestamp = effectiveMinTimestamp
+    ? rawData.filter(
+        (dataPoint) => dataPoint.timestamp >= effectiveMinTimestamp
+      )
+    : rawData;
+
+  const scaledData = filteredByTimestamp.map((point) => {
+    const scaledIndexClose =
+      typeof point.indexClose === 'number'
+        ? point.indexClose / 1e18
+        : point.indexClose;
+
+    const scaledMarkets: { [marketId: string]: number | undefined } = {};
+    if (point.markets) {
+      Object.entries(point.markets).forEach(([marketId, value]) => {
+        scaledMarkets[marketId] =
+          typeof value === 'number' ? value / 1e18 : value;
+      });
+    }
+
+    return {
+      ...point,
+      indexClose: scaledIndexClose,
+      markets: scaledMarkets,
+    };
+  });
+
+  if (scaledData.length === 0) return [];
+
+  // Find first datapoint with any non-zero market value
+  let firstNonZeroMarketDataIndex = -1;
+  for (let i = 0; i < scaledData.length; i++) {
+    const point = scaledData[i];
+    if (point.markets && Object.keys(point.markets).length > 0) {
+      const hasNonZero = Object.values(point.markets).some(
+        (value) => typeof value === 'number' && value !== 0
+      );
+      if (hasNonZero) {
+        firstNonZeroMarketDataIndex = i;
+        break;
+      }
+    }
+  }
+
+  return scaledData.map((point, index) => {
+    const isLeadingSegment =
+      firstNonZeroMarketDataIndex === -1 || index < firstNonZeroMarketDataIndex;
+    if (isLeadingSegment && point.markets) {
+      const updatedMarkets: { [marketId: string]: number | undefined } = {};
+      Object.entries(point.markets).forEach(([marketId, value]) => {
+        updatedMarkets[marketId] = value === 0 ? undefined : value;
+      });
+      return {
+        ...point,
+        markets: updatedMarkets,
+      };
+    }
+    return point;
+  });
+}

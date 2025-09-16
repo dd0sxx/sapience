@@ -68,13 +68,13 @@ export default function Hero() {
         <div className="w-full z-10">
           <div className="container px-0 pb-0">
             <div className="text-left px-4 md:px-8 pt-2 pb-2 md:pt-24">
-              <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
+              <h1 className="font-sans text-3xl md:text-5xl font-normal mb-2 md:mb-4">
                 The World&apos;s Frontier
                 <br />
                 Forecasting Community
               </h1>
 
-              <p className="text-xl md:text-2xl mb-3 text-muted-foreground">
+              <p className="text-xl md:text-2xl mb-3 text-muted-foreground max-w-[570px]">
                 Join experts and enthusiasts forecasting the future of the
                 economy, climate change, culture, and more.
               </p>

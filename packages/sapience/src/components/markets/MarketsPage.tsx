@@ -1,26 +1,18 @@
 'use client';
 
 import { Input } from '@sapience/ui/components/ui/input';
-import { Switch } from '@sapience/ui/components/ui/switch';
-import {} from '@sapience/ui/components/ui/sheet';
-import { Skeleton } from '@sapience/ui/components/ui/skeleton';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FrownIcon, LayoutGridIcon, TagIcon, SearchIcon } from 'lucide-react';
+import { FrownIcon, SearchIcon } from 'lucide-react';
 import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
+import FocusAreaFilter from './FocusAreaFilter';
 import {
   useEnrichedMarketGroups,
   useCategories,
@@ -33,14 +25,6 @@ import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 import Betslip from '~/components/markets/Betslip';
-
-// Define Category type based on assumed hook return
-interface Category {
-  id: number;
-  slug: string;
-  name: string;
-  // Add other fields if known
-}
 
 // Custom hook for debouncing values
 function useDebounce<T>(value: T, delay: number): T {
@@ -66,9 +50,6 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   loading: () => <div className="w-8 h-8" />,
 });
 
-// Constants for button classes
-const selectedStatusClass = 'bg-secondary';
-const hoverStatusClass = '';
 const DEFAULT_CATEGORY_COLOR = '#71717a';
 
 // Define local interfaces based on expected data shape
@@ -99,223 +80,7 @@ interface GroupedMarketGroup {
   displayUnit?: string;
 }
 
-// Define FocusAreaFilter component outside ForecastingTable
-const FocusAreaFilter = ({
-  selectedCategorySlug,
-  handleCategoryClick,
-  statusFilter,
-  handleStatusFilterClick,
-  parlayMode,
-  onParlayModeChange,
-  isLoadingCategories,
-  categories,
-  getCategoryStyle,
-  containerClassName,
-  parlayFeatureEnabled,
-}: {
-  selectedCategorySlug: string | null;
-  handleCategoryClick: (categorySlug: string | null) => void;
-  statusFilter: 'all' | 'active';
-  handleStatusFilterClick: (filter: 'all' | 'active') => void;
-  parlayMode: boolean;
-  onParlayModeChange: (enabled: boolean) => void;
-  isLoadingCategories: boolean;
-  categories: Category[] | null | undefined; // Use defined Category type
-  getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
-  containerClassName?: string;
-  parlayFeatureEnabled: boolean;
-}) => (
-  <div className={containerClassName || 'px-0 py-0 w-full'}>
-    <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
-      {/* Categories Row */}
-      <div
-        className="flex-1 min-w-0 overflow-x-auto touch-pan-x overscroll-x-contain max-w-[calc(100dvw-2rem)] md:max-w-[calc(100dvw-4rem)]"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        <div className="w-max flex items-center gap-0.5">
-          {selectedCategorySlug === null ? (
-            <button
-              type="button"
-              onClick={() => handleCategoryClick(null)}
-              className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2.5 ${selectedStatusClass} px-2.5`}
-            >
-              <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
-                <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
-              </div>
-              <div
-                className="ml-1 md:ml-1 md:w-auto md:opacity-100"
-                aria-expanded
-              >
-                <span className="font-medium pr-1">All Focus Areas</span>
-              </div>
-            </button>
-          ) : (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => handleCategoryClick(null)}
-                    className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2 px-2.5`}
-                  >
-                    <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
-                      <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
-                    </div>
-                    <span className="sr-only">All Focus Areas</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>All Focus Areas</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
-          {isLoadingCategories &&
-            [...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-8 w-24 rounded-full" />
-            ))}
-
-          {!isLoadingCategories &&
-            categories &&
-            FOCUS_AREAS.map((focusArea) => {
-              const category = categories.find((c) => c.slug === focusArea.id);
-              if (!category) return null;
-
-              const styleInfo = getCategoryStyle(category.slug);
-              const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
-              const displayName = styleInfo?.name || category.name;
-
-              return selectedCategorySlug === category.slug ? (
-                <button
-                  type="button"
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.slug)}
-                  className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2.5 ${selectedStatusClass} px-2.5`}
-                >
-                  <div
-                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-[var(--chip-bg)]"
-                    style={
-                      {
-                        '--chip-bg': `${categoryColor}1A`,
-                      } as React.CSSProperties
-                    }
-                  >
-                    {styleInfo?.iconSvg ? (
-                      <div style={{ transform: 'scale(0.65)' }}>
-                        <div
-                          style={{ color: categoryColor }}
-                          dangerouslySetInnerHTML={{
-                            __html: styleInfo.iconSvg,
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <TagIcon
-                        className="w-3 h-3"
-                        style={{ color: categoryColor }}
-                      />
-                    )}
-                  </div>
-                  <div
-                    className="ml-1 md:ml-1 md:w-auto md:opacity-100"
-                    aria-expanded
-                  >
-                    <span className="font-medium pr-1">{displayName}</span>
-                  </div>
-                </button>
-              ) : (
-                <TooltipProvider key={category.id}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => handleCategoryClick(category.slug)}
-                        className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2 px-2.5`}
-                      >
-                        <div
-                          className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-[var(--chip-bg)]"
-                          style={
-                            {
-                              '--chip-bg': `${categoryColor}1A`,
-                            } as React.CSSProperties
-                          }
-                        >
-                          {styleInfo?.iconSvg ? (
-                            <div style={{ transform: 'scale(0.65)' }}>
-                              <div
-                                style={{ color: categoryColor }}
-                                dangerouslySetInnerHTML={{
-                                  __html: styleInfo.iconSvg,
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <TagIcon
-                              className="w-3 h-3"
-                              style={{ color: categoryColor }}
-                            />
-                          )}
-                        </div>
-                        <span className="sr-only">{displayName}</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      <p>{displayName}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              );
-            })}
-        </div>
-      </div>
-
-      {/* Status on the right (stacks below on small screens) */}
-      <div className="w-full md:w-auto flex-shrink-0 mt-2 md:mt-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground mr-1.5">
-            Status
-          </span>
-          <button
-            type="button"
-            className={`px-2.5 py-1 text-xs rounded-full ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
-            onClick={() => handleStatusFilterClick('active')}
-          >
-            Active
-          </button>
-          <button
-            type="button"
-            className={`px-2.5 py-1 text-xs rounded-full ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
-            onClick={() => handleStatusFilterClick('all')}
-          >
-            All
-          </button>
-
-          <div className="h-4 w-px bg-border mx-1" />
-          <span className="text-xs font-medium text-muted-foreground ml-2">
-            Parlay Mode
-          </span>
-          {parlayFeatureEnabled ? (
-            <Switch checked={parlayMode} onCheckedChange={onParlayModeChange} />
-          ) : (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Switch checked={false} disabled />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Coming Soon</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
-);
+// FocusAreaFilter extracted to its own file
 
 // Helper function to determine the day for a given timestamp
 const getDayKey = (timestamp: number): string => {
@@ -329,7 +94,7 @@ const formatEndDate = (timestamp: number): string => {
   return format(date, 'MMMM d, yyyy');
 };
 
-const ForecastingTable = () => {
+const MarketsPage = () => {
   // Use the new hook and update variable names
   const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
     useEnrichedMarketGroups();
@@ -850,7 +615,7 @@ const ForecastingTable = () => {
       ) : null}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-6 md:gap-10 pr-0 md:pr-12">
+      <div className="flex-1 flex flex-col gap-6 pr-0 md:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
         <div className="bg-background/90 pt-2">
           {/* Wrap Input and Icon */}
@@ -1058,4 +823,4 @@ const ForecastingTable = () => {
   );
 };
 
-export default ForecastingTable;
+export default MarketsPage;

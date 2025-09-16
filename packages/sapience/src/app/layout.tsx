@@ -14,6 +14,7 @@ import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { ChatProvider } from '~/lib/context/ChatContext';
 import ChatWidget from '~/components/shared/ChatWidget';
 import FloatingChatButton from '~/components/shared/FloatingChatButton';
+import ConsoleMessage from '~/components/shared/ConsoleMessage';
 import '~/styles/globals.css';
 
 type RootLayoutProps = {
@@ -110,7 +111,7 @@ export const viewport: Viewport = {
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
     <html lang="en">
-      <body>
+      <body className="overflow-x-hidden">
         <Providers>
           <LoadingProvider>
             <ChatProvider>
@@ -124,6 +125,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
                 </Suspense>
               </div>
               <ChatWidget />
+              <ConsoleMessage />
             </ChatProvider>
           </LoadingProvider>
         </Providers>

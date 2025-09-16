@@ -79,7 +79,7 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
   const priceUnitDisplay = baseTokenName || 'USD';
 
   const links = (
-    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 items-start sm:gap-y-4 sm:gap-x-4">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1.5 items-start leading-6 sm:leading-5 sm:gap-y-5 sm:gap-x-4">
       {totalVolume !== null && totalVolume !== undefined && (
         <div className="inline-flex items-center">
           <span className="inline-block mr-1.5">
@@ -102,35 +102,36 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
         </div>
       )}
 
-      <a
-        className="hover:no-underline inline-flex items-center"
-        target="_blank"
-        rel="noopener noreferrer"
-        href={`${chain?.blockExplorers?.default.url}/address/${marketAddress}`}
-      >
-        <span className="inline-block mr-1.5">
-          <IoDocumentTextOutline />
-        </span>
-        <span className="border-b border-dotted border-current font-medium">
-          Smart Contract
-        </span>
-      </a>
-
-      {collateralAssetAddress && (
+      <div className="inline-flex items-center gap-3">
         <a
           className="hover:no-underline inline-flex items-center"
           target="_blank"
           rel="noopener noreferrer"
-          href={`${chain?.blockExplorers?.default.url}/address/${collateralAssetAddress}`}
+          href={`${chain?.blockExplorers?.default.url}/address/${marketAddress}`}
         >
           <span className="inline-block mr-1.5">
-            <FaCubes />
+            <IoDocumentTextOutline />
           </span>
           <span className="border-b border-dotted border-current font-medium">
-            Collateral Token
+            Smart Contract
           </span>
         </a>
-      )}
+        {collateralAssetAddress && (
+          <a
+            className="hover:no-underline inline-flex items-center"
+            target="_blank"
+            rel="noopener noreferrer"
+            href={`${chain?.blockExplorers?.default.url}/address/${collateralAssetAddress}`}
+          >
+            <span className="inline-block mr-1.5">
+              <FaCubes />
+            </span>
+            <span className="border-b border-dotted border-current font-medium">
+              Collateral Token
+            </span>
+          </a>
+        )}
+      </div>
 
       {minPrice && maxPrice && (
         <div className="inline-flex items-center">
@@ -152,13 +153,13 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
     `${marketData?.marketGroup?.resource?.name} Market ${marketData?.marketId}`;
 
   return (
-    <div className="w-full pt-0 pb-8">
+    <div className="w-full pb-8">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 lg:gap-3">
           <h1 className="text-2xl md:text-4xl font-normal mb-0 leading-tight flex items-center gap-2.5">
             {displayQuestion}
           </h1>
-          <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
             {/* End Time Badge - Always on left/top */}
             <div className="flex-shrink-0">
               <EndTimeDisplay endTime={marketData?.endTimestamp} />

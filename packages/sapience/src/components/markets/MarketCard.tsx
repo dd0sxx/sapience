@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import * as React from 'react';
-import type { MarketWithContext } from './MarketGroupsList';
+import type { MarketWithContext } from './MarketsPage';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
@@ -12,7 +12,7 @@ import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
 
-export interface MarketGroupCardProps {
+export interface MarketCardProps {
   chainId: number;
   marketAddress: string;
   market: MarketWithContext[];
@@ -23,7 +23,7 @@ export interface MarketGroupCardProps {
   displayUnit?: string;
 }
 
-const MarketGroupCard = ({
+const MarketCard = ({
   chainId,
   marketAddress,
   market,
@@ -32,7 +32,7 @@ const MarketGroupCard = ({
   isActive,
   marketClassification,
   displayUnit,
-}: MarketGroupCardProps) => {
+}: MarketCardProps) => {
   const { addPosition } = useBetSlipContext();
   const router = useRouter();
 
@@ -141,7 +141,7 @@ const MarketGroupCard = ({
       }
       return (
         <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : <span>No trades yet</span>}
+          {isLoadingChartData ? 'Loading...' : <span>No wagers yet</span>}
         </span>
       );
     } else {
@@ -172,7 +172,7 @@ const MarketGroupCard = ({
 
       return (
         <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : 'No trades yet'}
+          {isLoadingChartData ? 'Loading...' : 'No wagers yet'}
         </span>
       );
     }
@@ -197,7 +197,7 @@ const MarketGroupCard = ({
           <div className="block group flex-1">
             <div className="transition-colors h-full">
               <div className="flex flex-col px-4 py-3 gap-3 h-full">
-                <div className="flex flex-col h-full">
+                <div className="flex flex-col h-full min-w-0">
                   <h3 className="text-sm md:text-base leading-snug mb-1">
                     <span
                       className="transition-colors block overflow-hidden"
@@ -212,11 +212,13 @@ const MarketGroupCard = ({
                     </span>
                   </h3>
                   {canShowPredictionElement && (
-                    <div className="text-xs md:text-sm text-muted-foreground mt-auto">
-                      <span className="text-muted-foreground">
-                        Market Prediction:{' '}
-                      </span>
-                      <MarketPrediction />
+                    <div className="text-xs md:text-sm text-muted-foreground mt-auto w-full">
+                      <div className="truncate whitespace-nowrap min-w-0">
+                        <span className="text-muted-foreground">
+                          Market Prediction{' '}
+                        </span>
+                        <MarketPrediction />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -291,4 +293,4 @@ const MarketGroupCard = ({
   );
 };
 
-export default MarketGroupCard;
+export default MarketCard;

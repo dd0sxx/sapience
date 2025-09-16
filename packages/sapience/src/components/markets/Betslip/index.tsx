@@ -784,7 +784,7 @@ const Betslip = ({
         <Drawer open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <DrawerTrigger asChild>
             <Button
-              className="fixed shadow-sm left-1/2 -translate-x-1/2 bottom-6 z-40 lg:hidden rounded-full overflow-hidden flex items-center justify-center border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors pointer-events-auto"
+              className="fixed shadow-sm left-1/2 -translate-x-1/2 bottom-5 z-40 lg:hidden rounded-full overflow-hidden flex items-center justify-center border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors pointer-events-auto"
               size="icon"
               variant="secondary"
             >

@@ -285,6 +285,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
                 </span>
                 {isYesNo ? (
                   <>
+                    <span>on</span>
                     <Badge
                       variant="outline"
                       className={
@@ -379,7 +380,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
       <div className="space-y-6">
         {showHeaderText && <h3 className="text-2xl font-medium">Wagers</h3>}
         <div className="rounded border bg-background dark:bg-muted/50 p-6 text-center text-muted-foreground">
-          No trades found
+          No wagers yet...
         </div>
       </div>
     );
@@ -419,11 +420,9 @@ const WagersTable: React.FC<WagersTableProps> = ({
                   const mobileLabel =
                     colId === 'wager'
                       ? 'Wager'
-                      : colId === 'position'
-                        ? 'Position'
-                        : colId === 'owner'
-                          ? 'Owner'
-                          : undefined;
+                      : colId === 'owner'
+                        ? 'Owner'
+                        : undefined;
                   return (
                     <TableCell
                       key={cell.id}

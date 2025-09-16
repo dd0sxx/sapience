@@ -4,10 +4,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
-import type { MarketWithContext } from './MarketGroupsList';
+import type { MarketWithContext } from './MarketsPage';
+import MarketGroupSparkline from './MarketGroupSparkline';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
@@ -15,6 +15,7 @@ import { getChainShortName } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
+import type { MultiMarketChartDataPoint } from '~/lib/utils/chartUtils';
 
 export interface MarketGroupsRowProps {
   chainId: number;
@@ -57,12 +58,29 @@ const MarketGroupsRow = ({
     [sortedMarkets]
   );
 
+  // Compute a consistent minTimestamp (earliest start) to align sparkline X-axis with main chart
+  const minSparklineTimestamp = React.useMemo(() => {
+    const starts = sortedMarkets
+      .map((m) =>
+        typeof m.startTimestamp === 'number' ? m.startTimestamp : null
+      )
+      .filter((v): v is number => typeof v === 'number');
+    return starts.length > 0 ? Math.min(...starts) : undefined;
+  }, [sortedMarkets]);
+
   // Use the chart data hook to get latest prices
   const { chartData, isLoading: isLoadingChartData } = useMarketGroupChartData({
     chainShortName,
     marketAddress,
     activeMarketIds: marketIds,
   });
+
+  // Determine if there is any sparkline data to render
+  const hasSparklineData = React.useMemo(() => {
+    return chartData.some((d: MultiMarketChartDataPoint) => {
+      return !!d?.markets && Object.values(d.markets).some((v) => v != null);
+    });
+  }, [chartData]);
 
   // Get the latest price data from chart data
   const latestPrices = React.useMemo(() => {
@@ -146,7 +164,7 @@ const MarketGroupsRow = ({
       }
       return (
         <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : <span>No trades yet</span>}
+          {isLoadingChartData ? 'Loading...' : <span>No wagers yet</span>}
         </span>
       );
     } else {
@@ -180,7 +198,7 @@ const MarketGroupsRow = ({
 
       return (
         <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : 'No trades yet'}
+          {isLoadingChartData ? 'Loading...' : 'No wagers yet'}
         </span>
       );
     }
@@ -207,7 +225,7 @@ const MarketGroupsRow = ({
         {isLoadingChartData ? (
           <span>Loading...</span>
         ) : (
-          <span>No trades yet</span>
+          <span>No wagers yet</span>
         )}
       </span>
     );
@@ -242,7 +260,7 @@ const MarketGroupsRow = ({
         <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-5 py-4 md:py-3 gap-3">
           {/* Left Side: Question + Prediction */}
           <div className="flex-grow">
-            <h3 className="text-xl mb-1.5">
+            <h3 className="text-lg mb-1">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}`}
                 className="group"
@@ -252,6 +270,24 @@ const MarketGroupsRow = ({
                 </span>
               </Link>
             </h3>
+            {/* Mobile-only: Sparkline above Market Prediction */}
+            {hasSparklineData && (
+              <div className="block md:hidden w-full h-[40px] my-2">
+                <Link
+                  href={`/markets/${chainShortName}:${marketAddress}`}
+                  className="block w-full h-full"
+                  aria-label="View market group"
+                >
+                  <MarketGroupSparkline
+                    marketIds={marketIds}
+                    rawChartData={chartData}
+                    marketClassification={marketClassification}
+                    minTimestamp={minSparklineTimestamp}
+                    width="100%"
+                  />
+                </Link>
+              </div>
+            )}
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
               <div className="text-sm text-muted-foreground">
@@ -266,7 +302,7 @@ const MarketGroupsRow = ({
                       variant="link"
                       size="xs"
                       asChild
-                      className="h-6 px-0 ml-6 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
+                      className="h-6 px-0 ml-5 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
                     >
                       <Link
                         href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
@@ -282,74 +318,86 @@ const MarketGroupsRow = ({
             )}
           </div>
 
-          {/* Right Side: Action Buttons */}
-          <div className="flex flex-row-reverse items-center gap-3 self-start md:flex-row md:ml-6 md:self-auto">
-            {marketClassification ===
-            MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (
-              // For multichoice markets, show only the dropdown toggle
-              <>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-28 text-base"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
+          {/* Right Side: Sparkline + Action Buttons */}
+          <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-6 md:ml-6 w-full md:w-auto">
+            {hasSparklineData && (
+              <div className="hidden md:block w-[80px] h-[40px]">
+                <Link
+                  href={`/markets/${chainShortName}:${marketAddress}`}
+                  className="block w-full h-full"
+                  aria-label="View market group"
                 >
-                  <span className="flex items-center gap-1">
-                    {isExpanded ? 'Hide' : 'Show'}
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform duration-200 ${
-                        isExpanded ? 'rotate-180' : 'rotate-0'
-                      }`}
-                    />
-                  </span>
-                </Button>
-              </>
-            ) : (
-              // For non-multichoice markets
-              activeMarket && (
-                <>
-                  {marketClassification ===
-                  MarketGroupClassificationEnum.NUMERIC ? (
-                    // Numeric markets keep single action
-                    <Button
-                      variant="default"
-                      size="lg"
-                      onClick={() => handleAddToBetSlip(activeMarket)}
-                      className="w-28 text-base"
-                    >
-                      <Image
-                        src="/susde-icon.svg"
-                        alt="sUSDe"
-                        width={20}
-                        height={20}
-                      />
-                      Predict
-                    </Button>
-                  ) : (
-                    // YES/NO markets: combined split button
-                    (() => {
-                      const yesMarket =
-                        market.find((m) => m.optionName === 'Yes') ||
-                        activeMarket;
-                      const noMarket =
-                        market.find((m) => m.optionName === 'No') ||
-                        activeMarket;
-                      return (
-                        <YesNoSplitButton
-                          onYes={() => handleAddToBetSlip(yesMarket, true)}
-                          onNo={() => handleAddToBetSlip(noMarket, false)}
-                          className="min-w-[10rem]"
-                          size="lg"
-                        />
-                      );
-                    })()
-                  )}
-                </>
-              )
+                  <MarketGroupSparkline
+                    marketIds={marketIds}
+                    rawChartData={chartData}
+                    marketClassification={marketClassification}
+                    minTimestamp={minSparklineTimestamp}
+                  />
+                </Link>
+              </div>
             )}
+            <div className="flex flex-row-reverse items-center gap-3 md:flex-row w-full md:w-auto">
+              {marketClassification ===
+              MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (
+                // For multichoice markets, show only the dropdown toggle
+                <>
+                  <Button
+                    variant="outline"
+                    className="w-full md:w-28 md:min-w-[160px] text-base"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                  >
+                    <span className="flex items-center gap-1 text-foreground/80">
+                      {isExpanded ? 'Hide Options' : 'Show Options'}
+                    </span>
+                  </Button>
+                </>
+              ) : (
+                // For non-multichoice markets
+                activeMarket && (
+                  <>
+                    {marketClassification ===
+                    MarketGroupClassificationEnum.NUMERIC ? (
+                      // Numeric markets keep single action
+                      <Button
+                        variant="default"
+                        size="lg"
+                        onClick={() => handleAddToBetSlip(activeMarket)}
+                        className="w-28 text-base"
+                      >
+                        <Image
+                          src="/susde-icon.svg"
+                          alt="sUSDe"
+                          width={20}
+                          height={20}
+                        />
+                        Predict
+                      </Button>
+                    ) : (
+                      // YES/NO markets: combined split button
+                      (() => {
+                        const yesMarket =
+                          market.find((m) => m.optionName === 'Yes') ||
+                          activeMarket;
+                        const noMarket =
+                          market.find((m) => m.optionName === 'No') ||
+                          activeMarket;
+                        return (
+                          <YesNoSplitButton
+                            onYes={() => handleAddToBetSlip(yesMarket, true)}
+                            onNo={() => handleAddToBetSlip(noMarket, false)}
+                            className="w-full md:min-w-[10rem]"
+                            size="lg"
+                          />
+                        );
+                      })()
+                    )}
+                  </>
+                )
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -369,7 +417,7 @@ const MarketGroupsRow = ({
             >
               <div className="px-6  dark:bg-muted/50">
                 {/* Panel Content */}
-                <div className="max-h-96 overflow-y-auto">
+                <div className="overflow-visible">
                   {sortedMarkets.length > 0 ? (
                     <div>
                       {sortedMarkets.map((marketItem) => (
@@ -396,7 +444,7 @@ const MarketGroupsRow = ({
                                 variant="link"
                                 size="xs"
                                 asChild
-                                className="h-6 px-0 ml-4 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
+                                className="h-6 px-0 ml-2 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
                               >
                                 <Link
                                   href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
@@ -411,7 +459,7 @@ const MarketGroupsRow = ({
                           </div>
 
                           {/* Right Side: Actions */}
-                          <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
+                          <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto w-full md:w-auto">
                             {/* For multichoice rows, add as MULTIPLE_CHOICE and set long/short via prediction */}
                             <YesNoSplitButton
                               onYes={() =>
@@ -428,7 +476,7 @@ const MarketGroupsRow = ({
                                   MarketGroupClassificationEnum.MULTIPLE_CHOICE
                                 )
                               }
-                              className="min-w-[10rem]"
+                              className="w-full md:min-w-[10rem]"
                               size="lg"
                             />
                           </div>
