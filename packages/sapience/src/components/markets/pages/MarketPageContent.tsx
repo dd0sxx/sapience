@@ -340,7 +340,7 @@ const MarketPageContent = () => {
           <div className="flex flex-col gap-2">
             {/* Top Row: Chart, and either OrderBook+Forms or MarketStatusDisplay */}
             {isExpired ? (
-              <div className="flex flex-col lg:flex-row lg:gap-8 xl:gap-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:gap-8 xl:gap-6">
                 {/* Chart Column */}
                 <div className="flex flex-col w-full relative flex-1 min-w-0 h-[320px] md:h-[460px]">
                   <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
@@ -390,7 +390,7 @@ const MarketPageContent = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
+              <div className="flex flex-col gap-4 lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
                 {/* Chart Column */}
                 <div className="flex flex-col w-full relative xl:col-span-6 h-[320px] md:h-[460px]">
                   <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">

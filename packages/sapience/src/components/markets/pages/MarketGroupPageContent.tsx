@@ -36,6 +36,7 @@ import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 import { MarketGroupClassification } from '~/lib/types';
 import RulesBox from '~/components/markets/RulesBox';
 import { useAllPositions } from '~/hooks/graphql/usePositions';
+import SubmitForecastsBlurb from '~/components/shared/SubmitForecastsBlurb';
 
 // Dynamically import Comments component
 const Comments = dynamic(() => import('~/components/shared/Comments'), {
@@ -605,33 +606,7 @@ const MarketGroupPageContent = () => {
                             />
                           ) : (
                             <>
-                              <p className="text-lg leading-relaxed text-muted-foreground">
-                                Submit forecasts on{' '}
-                                <a
-                                  href="https://attest.org"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  Ethereum
-                                </a>{' '}
-                                or{' '}
-                                <Link
-                                  href="/bots"
-                                  className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  deploy an agent
-                                </Link>{' '}
-                                that does. Forecasts can{' '}
-                                <Link
-                                  href="/leaderboard#accuracy"
-                                  className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  provide signal
-                                </Link>{' '}
-                                for prediction market participants and trigger
-                                automation.
-                              </p>
+                              <SubmitForecastsBlurb />
                               <ForecastInfoNotice />
                               {/* Prediction Form */}
                               <PredictForm
