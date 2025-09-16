@@ -18,21 +18,23 @@ import "./interfaces/IPassiveLiquidityVault.sol";
  * @notice An ERC-4626 compliant passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
  * 
  * HOW IT WORKS:
- * 1. Users deposit ERC-20 tokens and receive vault shares (1:1 initially)
+ * 1. Users deposit ERC-20 tokens into a queue system and receive vault shares after processing (1:1 initially)
  * 2. A designated EOA manager deploys vault funds to external protocols (lending, DEXs, etc.) to generate yield
  * 3. Users can request withdrawals, which are queued with a configurable delay to prevent bank runs
- * 4. Withdrawals are processed when liquidity is available, maintaining fair first-come-first-served order
+ * 4. Both deposits and withdrawals are processed when liquidity is available, maintaining fair first-come-first-served order
  * 5. The vault tracks utilization rate to prevent over-leverage and includes emergency mechanisms
  * 
  * KEY FEATURES:
  * - ERC-4626 standard compliance for maximum DeFi interoperability
+ * - Queued deposit and withdrawal system for better liquidity management
  * - Utilization rate limits (default 80%) to control risk exposure
- * - Withdrawal queue with delay (default 1 day) to manage liquidity
+ * - Withdrawal delay (default 1 day) to prevent bank runs
  * - Emergency mode for immediate withdrawals during crises
  * - EOA manager can deploy/recall funds to any protocol with custom calldata
  * - Comprehensive access controls and safety mechanisms
+ * - Custom errors for gas-efficient error handling
  * 
- * @dev Implements utilization rate management, withdrawal queue, and EOA-controlled fund deployment
+ * @dev Implements utilization rate management, queued deposit/withdrawal system, and EOA-controlled fund deployment with custom errors
  */
 contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step, ReentrancyGuard, Pausable, SignatureProcessor {
     using SafeERC20 for IERC20;
@@ -168,10 +170,10 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     // ============ ERC-4626 Overrides ============
     
     /**
-     * @notice Override deposit to add custom logic
+     * @notice Override deposit to queue deposit request
      * @param assets Amount of assets to deposit
      * @param receiver Address to receive shares // unused, receiver is going to be the msg.sender
-     * @return shares Number of shares minted
+     * @return shares Theoretical number of shares that will be minted (after processing)
      */
     function deposit(uint256 assets, address receiver) public override(ERC4626, IERC4626) nonReentrant whenNotPaused notEmergency returns (uint256 shares) {
         shares = previewDeposit(assets);
@@ -180,10 +182,10 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     }
 
     /**
-     * @notice Override mint to add custom logic
+     * @notice Override mint to queue deposit request
      * @param shares Number of shares to mint
      * @param receiver Address to receive shares // unused, receiver is going to be the msg.sender
-     * @return assets Amount of assets deposited
+     * @return assets Theoretical amount of assets that will be deposited (after processing)
      */
     function mint(uint256 shares, address receiver) public override(ERC4626, IERC4626) nonReentrant whenNotPaused notEmergency returns (uint256 assets) {
         assets = previewMint(shares);
@@ -192,10 +194,10 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     }
 
     /**
-     * @notice Override withdraw to use withdrawal queue instead of immediate withdrawal
+     * @notice Override withdraw to queue withdrawal request instead of immediate withdrawal
      * @param assets Amount of assets to withdraw
      * @param owner Address that owns the shares
-     * @return shares Number of shares burned
+     * @return shares Theoretical number of shares that will be burned (after processing)
      */
     function withdraw(uint256 assets, address /* receiver */, address owner) public override(ERC4626, IERC4626) nonReentrant whenNotPaused returns (uint256 shares) {
         shares = previewWithdraw(assets);
@@ -204,10 +206,10 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     }
 
     /**
-     * @notice Override redeem to use withdrawal queue instead of immediate withdrawal
+     * @notice Override redeem to queue withdrawal request instead of immediate withdrawal
      * @param shares Number of shares to redeem
      * @param owner Address that owns the shares
-     * @return assets Amount of assets withdrawn
+     * @return assets Theoretical amount of assets that will be withdrawn (after processing)
      */
     function redeem(uint256 shares, address /* receiver */, address owner) public override(ERC4626, IERC4626) nonReentrant whenNotPaused returns (uint256 assets) {
         assets = previewRedeem(shares);

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 /**
  * @title IPassiveLiquidityVault
- * @notice Interface for the ERC-4626 compliant PassiveLiquidityVault contract
+ * @notice Interface for the ERC-4626 compliant PassiveLiquidityVault contract with queued deposits and withdrawals
  */
 interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     // ============ Structs ============
@@ -52,7 +52,7 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     function isProcessingWithdrawals() external view returns (bool);
     function isProcessingDeposits() external view returns (bool);
 
-    // ============ Custom Deposit/Withdrawal Functions ============
+    // ============ Queued Deposit/Withdrawal Functions ============
     
     function requestDeposit(uint256 amount) external returns (uint256 queuePosition);
     function processDeposits(uint256 maxRequests) external;
@@ -92,7 +92,7 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     // ============ Additional Functions Available in Contract ============
     // Note: The following functions are implemented in the contract but not declared in this interface
     
-    // ERC-4626 Standard Functions (inherited from IERC4626)
+    // ERC-4626 Standard Functions (inherited from IERC4626) - Note: These now queue requests instead of immediate execution
     // function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     // function mint(uint256 shares, address receiver) external returns (uint256 assets);
     // function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
@@ -101,4 +101,7 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     
     // IERC1271 Signature Validation Function
     // function isValidSignature(bytes32 messageHash, bytes memory signature) external view returns (bytes4);
+    
+    // Custom Errors (defined in contract, not in interface)
+    // The contract uses custom errors for gas-efficient error handling instead of string-based require statements
 }
