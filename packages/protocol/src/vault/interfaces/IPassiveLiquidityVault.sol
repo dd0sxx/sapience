@@ -13,7 +13,6 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     struct WithdrawalRequest {
         address user;
         uint256 shares;
-        uint256 assets;  // Store the asset amount calculated at request time
         uint256 timestamp;
         bool processed;
     }

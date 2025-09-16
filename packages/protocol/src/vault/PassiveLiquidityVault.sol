@@ -38,6 +38,39 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     using SafeERC20 for IERC20;
     using Math for uint256;
 
+    // ============ Custom Errors ============
+    
+    // Access control errors
+    error OnlyManager(address caller, address expectedManager);
+    error OnlyOwner(address caller, address owner);
+    
+    // Validation errors
+    error InvalidAsset(address asset);
+    error InvalidManager(address manager);
+    error InvalidProtocol(address protocol);
+    error InvalidAmount(uint256 amount);
+    error InvalidShares(uint256 shares);
+    error InvalidRate(uint256 rate, uint256 maxRate);
+    error InvalidIndex(uint256 index, uint256 length);
+    
+    // State errors
+    error EmergencyModeActive();
+    error ProcessingInProgress(bool withdrawals, bool deposits);
+    error InsufficientBalance(address user, uint256 requested, uint256 available);
+    error InsufficientAvailableAssets(uint256 requested, uint256 available);
+    error ExceedsMaxUtilization(uint256 current, uint256 max);
+    error AmountTooSmall(uint256 amount, uint256 minimum);
+    
+    // Queue errors
+    error WithdrawalAlreadyPending(address user);
+    error DepositAlreadyPending(address user);
+    error TooManyRequests(uint256 requested, uint256 maxAllowed);
+    error WithdrawalProcessingInProgress();
+    error DepositProcessingInProgress();
+    
+    // Emergency errors
+    error EmergencyModeNotActive();
+    
     // ============ Events ============
     // Events are defined in the IPassiveLiquidityVault interface
 
@@ -104,17 +137,17 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     // ============ Modifiers ============
     
     modifier onlyManager() {
-        require(msg.sender == manager, "Only manager");
+        if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
         _;
     }
     
     modifier notEmergency() {
-        require(!emergencyMode, "Emergency mode active");
+        if (emergencyMode) revert EmergencyModeActive();
         _;
     }
     
     modifier notProcessing() {
-        require(!processingWithdrawals && !processingDeposits, "Processing in progress");
+        if (processingWithdrawals || processingDeposits) revert ProcessingInProgress(processingWithdrawals, processingDeposits);
         _;
     }
 
@@ -126,8 +159,8 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         string memory _name,
         string memory _symbol
     ) ERC4626(IERC20(_asset)) ERC20(_name, _symbol) Ownable(msg.sender) SignatureProcessor() {
-        require(_asset != address(0), "Invalid asset");
-        require(_manager != address(0), "Invalid manager");
+        if (_asset == address(0)) revert InvalidAsset(_asset);
+        if (_manager == address(0)) revert InvalidManager(_manager);
         
         manager = _manager;
     }
@@ -137,24 +170,25 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     /**
      * @notice Override deposit to add custom logic
      * @param assets Amount of assets to deposit
-     * @param receiver Address to receive shares
+     * @param receiver Address to receive shares // unused, receiver is going to be the msg.sender
      * @return shares Number of shares minted
      */
     function deposit(uint256 assets, address receiver) public override(ERC4626, IERC4626) nonReentrant whenNotPaused notEmergency returns (uint256 shares) {
-        require(assets >= MIN_DEPOSIT, "Amount too small");
-        return super.deposit(assets, receiver);
+        shares = previewDeposit(assets);
+        _requestDeposit(assets);
+        return shares;
     }
 
     /**
      * @notice Override mint to add custom logic
      * @param shares Number of shares to mint
-     * @param receiver Address to receive shares
+     * @param receiver Address to receive shares // unused, receiver is going to be the msg.sender
      * @return assets Amount of assets deposited
      */
     function mint(uint256 shares, address receiver) public override(ERC4626, IERC4626) nonReentrant whenNotPaused notEmergency returns (uint256 assets) {
         assets = previewMint(shares);
-        require(assets >= MIN_DEPOSIT, "Amount too small");
-        return super.mint(shares, receiver);
+        _requestDeposit(assets);
+        return assets;
     }
 
     /**
@@ -189,6 +223,36 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         return IERC20(asset()).balanceOf(address(this)) + _deployedLiquidity();
     }
 
+    /**
+     * @notice Override previewDeposit to handle initial deposit case
+     * @param assets Amount of assets to deposit
+     * @return shares Number of shares that would be minted
+     */
+    function previewDeposit(uint256 assets) public view override(ERC4626, IERC4626) returns (uint256 shares) {
+        uint256 supply = totalSupply();
+        if (supply == 0) {
+            // Initial deposit: 1:1 ratio
+            return assets;
+        }
+        return _convertToShares(assets, Math.Rounding.Floor);
+    }
+
+    /**
+     * @notice Override previewMint to handle initial deposit case
+     * @param shares Number of shares to mint
+     * @return assets Amount of assets required
+     */
+    function previewMint(uint256 shares) public view override(ERC4626, IERC4626) returns (uint256 assets) {
+        uint256 supply = totalSupply();
+        if (supply == 0) {
+            // Initial mint: 1:1 ratio
+            return shares;
+        }
+        return _convertToAssets(shares, Math.Rounding.Ceil);
+    }
+
+    // ============ Custom totals, Withdrawal and Deposit Functions ============
+
     function availableAssets() public view returns (uint256) {
         return IERC20(asset()).balanceOf(address(this));
     }
@@ -213,9 +277,6 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         }
         return totalDeployedAmount;
     }
-
-
-    // ============ Custom Withdrawal Functions ============
     
     /**
      * @notice Request withdrawal of shares (internal function used by withdraw/redeem)
@@ -224,9 +285,9 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @return queuePosition Position in withdrawal queue
      */
     function _requestWithdrawal(uint256 shares, address owner) internal returns (uint256 queuePosition) {
-        require(shares > 0, "Invalid shares");
-        require(balanceOf(owner) >= shares, "Insufficient balance");
-        require(userWithdrawalIndex[owner] == 0, "Withdrawal already pending");
+        if (shares == 0) revert InvalidShares(shares);
+        if (balanceOf(owner) < shares) revert InsufficientBalance(owner, shares, balanceOf(owner));
+        if (userWithdrawalIndex[owner] != 0) revert WithdrawalAlreadyPending(owner);
         
         // Don't burn shares immediately - keep them until processing
         // Don't reserve assets - calculate at processing time
@@ -235,7 +296,6 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         withdrawalQueue.push(IPassiveLiquidityVault.WithdrawalRequest({
             user: owner,
             shares: shares,
-            assets: 0, // Will be calculated at processing time
             timestamp: block.timestamp,
             processed: false
         }));
@@ -247,28 +307,35 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     }
 
     /**
-     * @notice Request withdrawal of shares (public function for direct calls)
+     * @notice Request withdrawal of shares (function for direct calls)
      * @param shares Number of shares to withdraw
      * @return queuePosition Position in withdrawal queue
      */
-    function requestWithdrawal(uint256 shares) public returns (uint256 queuePosition) {
+    function requestWithdrawal(uint256 shares) external nonReentrant whenNotPaused returns (uint256 queuePosition) {
         return _requestWithdrawal(shares, msg.sender);
     }
 
     /**
      * @notice Request deposit of assets (queued for processing)
-     * @param amount Amount of assets to deposit
+     * @param assetsAmount Amount of assets to deposit
      * @return queuePosition Position in deposit queue
      */
-    function requestDeposit(uint256 amount) external nonReentrant whenNotPaused notEmergency returns (uint256 queuePosition) {
-        require(amount >= MIN_DEPOSIT, "Amount too small");
-        require(userDepositIndex[msg.sender] == 0, "Deposit already pending");
+    function _requestDeposit(uint256 assetsAmount) internal returns (uint256 queuePosition) {
+        if (assetsAmount < MIN_DEPOSIT) revert AmountTooSmall(assetsAmount, MIN_DEPOSIT);
+        if (userDepositIndex[msg.sender] != 0) revert DepositAlreadyPending(msg.sender);
         
         // Transfer assets from user to vault
-        IERC20(asset()).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(asset()).safeTransferFrom(msg.sender, address(this), assetsAmount);
         
         // Calculate shares to reserve at current share price (round down to favor vault)
-        uint256 sharesToReserve = _convertToShares(amount, Math.Rounding.Floor);
+        uint256 sharesToReserve;
+        uint256 supply = totalSupply();
+        if (supply == 0) {
+            // Initial deposit: 1:1 ratio
+            sharesToReserve = assetsAmount;
+        } else {
+            sharesToReserve = _convertToShares(assetsAmount, Math.Rounding.Floor);
+        }
         
         // Reserve shares to maintain correct share-to-asset ratio
         reservedShares += sharesToReserve;
@@ -276,7 +343,7 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         // Add to deposit queue
         depositQueue.push(IPassiveLiquidityVault.DepositRequest({
             user: msg.sender,
-            amount: amount,
+            amount: assetsAmount,
             timestamp: block.timestamp,
             processed: false
         }));
@@ -284,8 +351,12 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         queuePosition = depositQueue.length - 1;
         userDepositIndex[msg.sender] = queuePosition + 1; // 1-indexed
         
-        emit DepositRequested(msg.sender, amount, queuePosition);
+        emit DepositRequested(msg.sender, assetsAmount, queuePosition);
         return queuePosition;
+    }
+
+    function requestDeposit(uint256 amount) external nonReentrant whenNotPaused notEmergency returns (uint256 queuePosition) {
+        return _requestDeposit(amount);   
     }
 
     /**
@@ -293,8 +364,8 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @param maxRequests Maximum number of requests to process in this call
      */
     function processWithdrawals(uint256 maxRequests) external nonReentrant notProcessing {
-        require(maxRequests <= MAX_PROCESS_QUEUE_LENGTH, "Too many requests");
-        require(!processingWithdrawals, "Withdrawal processing in progress");
+        if (maxRequests > MAX_PROCESS_QUEUE_LENGTH) revert TooManyRequests(maxRequests, MAX_PROCESS_QUEUE_LENGTH);
+        if (processingWithdrawals) revert WithdrawalProcessingInProgress();
         
         processingWithdrawals = true;
         
@@ -353,8 +424,8 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @param maxRequests Maximum number of requests to process in this call
      */
     function processDeposits(uint256 maxRequests) external nonReentrant notProcessing {
-        require(maxRequests <= MAX_PROCESS_QUEUE_LENGTH, "Too many requests");
-        require(!processingDeposits, "Deposit processing in progress");
+        if (maxRequests > MAX_PROCESS_QUEUE_LENGTH) revert TooManyRequests(maxRequests, MAX_PROCESS_QUEUE_LENGTH);
+        if (processingDeposits) revert DepositProcessingInProgress();
         
         processingDeposits = true;
         
@@ -371,7 +442,14 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
             }
             
             // Calculate shares to mint (round down to favor vault - user gets fewer shares)
-            uint256 shares = _convertToShares(request.amount, Math.Rounding.Floor);
+            uint256 shares;
+            uint256 supply = totalSupply();
+            if (supply == 0) {
+                // Initial deposit: 1:1 ratio
+                shares = request.amount;
+            } else {
+                shares = _convertToShares(request.amount, Math.Rounding.Floor);
+            }
             
             // Release reserved shares
             reservedShares -= shares;
@@ -401,12 +479,12 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @param shares Number of shares to withdraw
      */
     function emergencyWithdraw(uint256 shares) external nonReentrant {
-        require(emergencyMode, "Emergency mode not active");
-        require(shares > 0, "Invalid shares");
-        require(balanceOf(msg.sender) >= shares, "Insufficient balance");
+        if (!emergencyMode) revert EmergencyModeNotActive();
+        if (shares == 0) revert InvalidShares(shares);
+        if (balanceOf(msg.sender) < shares) revert InsufficientBalance(msg.sender, shares, balanceOf(msg.sender));
         
         uint256 withdrawAmount = _convertToAssets(shares, Math.Rounding.Floor);
-        require(withdrawAmount <= _getAvailableAssets(), "Insufficient liquidity");
+        if (withdrawAmount > _getAvailableAssets()) revert InsufficientAvailableAssets(withdrawAmount, _getAvailableAssets());
         
         _burn(msg.sender, shares);
         IERC20(asset()).safeTransfer(msg.sender, withdrawAmount);
@@ -422,14 +500,14 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @param amount Amount of assets to approve
      */
     function approveFundsUsage(address protocol, uint256 amount) external onlyManager nonReentrant {
-        require(protocol != address(0), "Invalid protocol");
-        require(amount > 0, "Invalid amount");
-        require(amount <= _getAvailableAssets(), "Insufficient available assets");
+        if (protocol == address(0)) revert InvalidProtocol(protocol);
+        if (amount == 0) revert InvalidAmount(amount);
+        if (amount > _getAvailableAssets()) revert InsufficientAvailableAssets(amount, _getAvailableAssets());
         
         // Check utilization rate limits
         uint256 currentUtilization = utilizationRate();
         uint256 newUtilization = ((_deployedLiquidity() + amount) * BASIS_POINTS) / totalAssets();
-        require(newUtilization <= maxUtilizationRate, "Exceeds max utilization");
+        if (newUtilization > maxUtilizationRate) revert ExceedsMaxUtilization(newUtilization, maxUtilizationRate);
         
         // Update deployment info
         if (!isActiveProtocol[protocol]) {
@@ -494,7 +572,7 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @return request Withdrawal request data
      */
     function getWithdrawalRequest(uint256 index) external view returns (IPassiveLiquidityVault.WithdrawalRequest memory) {
-        require(index < withdrawalQueue.length, "Invalid index");
+        if (index >= withdrawalQueue.length) revert InvalidIndex(index, withdrawalQueue.length);
         return withdrawalQueue[index];
     }
 
@@ -512,7 +590,7 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @return protocol Protocol address
      */
     function getActiveProtocol(uint256 index) external view returns (address) {
-        require(index < activeProtocols.length, "Invalid index");
+        if (index >= activeProtocols.length) revert InvalidIndex(index, activeProtocols.length);
         return activeProtocols[index];
     }
 
@@ -545,7 +623,7 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @return request Deposit request data
      */
     function getDepositRequest(uint256 index) external view returns (IPassiveLiquidityVault.DepositRequest memory) {
-        require(index < depositQueue.length, "Invalid index");
+        if (index >= depositQueue.length) revert InvalidIndex(index, depositQueue.length);
         return depositQueue[index];
     }
 
@@ -572,7 +650,7 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @param newManager Address of new manager
      */
     function setManager(address newManager) external onlyOwner {
-        require(newManager != address(0), "Invalid manager");
+        if (newManager == address(0)) revert InvalidManager(newManager);
         address oldManager = manager;
         manager = newManager;
         emit ManagerUpdated(oldManager, newManager);
@@ -583,7 +661,7 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * @param newMaxRate New maximum utilization rate (in basis points)
      */
     function setMaxUtilizationRate(uint256 newMaxRate) external onlyOwner {
-        require(newMaxRate <= BASIS_POINTS, "Invalid rate");
+        if (newMaxRate > BASIS_POINTS) revert InvalidRate(newMaxRate, BASIS_POINTS);
         uint256 oldRate = maxUtilizationRate;
         maxUtilizationRate = newMaxRate;
         emit MaxUtilizationRateUpdated(oldRate, newMaxRate);
