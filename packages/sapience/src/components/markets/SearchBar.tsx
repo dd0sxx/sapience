@@ -17,7 +17,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ isMobile, value, onChange }) => {
         className="absolute left-1 md:left-0 top-1/2 md:top-0 md:bottom-0 -translate-y-1/2 md:translate-y-0 h-5 w-5 md:h-full md:w-auto md:p-3 text-muted-foreground opacity-40 z-10 pointer-events-none"
         strokeWidth={1}
       />
-      <div className="flex-1 relative border-b border-muted-foreground/40">
+      <div className="flex-1 relative border-b border-border/80">
         <Input
           type="text"
           placeholder={isMobile ? 'Search' : 'Search questions...'}
