@@ -228,6 +228,7 @@ export const initializeApolloServer = async () => {
       return error;
     },
     introspection: true,
+    validationRules: [depthLimit(5)],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,
@@ -235,7 +236,6 @@ export const initializeApolloServer = async () => {
       }),
       responseCachePlugin(),
     ],
-    validationRules: [depthLimit(5)],
   });
 
   await apolloServer.start();
