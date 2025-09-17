@@ -93,15 +93,10 @@ const ResearchAgent: React.FC = () => {
   } = useSettings();
   const params = useParams();
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: `${Date.now()}-asst-welcome`,
-      author: 'server',
-      text: 'Hi!',
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => []);
   const [pendingText, setPendingText] = useState<string>('');
   const [isRequestInFlight, setIsRequestInFlight] = useState<boolean>(false);
+  const addedWelcomeRef = useRef(false);
 
   const modelToUse = useMemo(
     () => researchAgentModel || defaults.researchAgentModel,
@@ -109,7 +104,24 @@ const ResearchAgent: React.FC = () => {
   );
 
   const canChat = Boolean(openrouterApiKey);
-  const canType = canChat && !isRequestInFlight;
+  // Allow typing even if API key is missing; we'll disable sending instead
+  const canType = !isRequestInFlight;
+
+  // Add a welcome message once when chat becomes available
+  useEffect(() => {
+    if (!canChat) return;
+    if (addedWelcomeRef.current) return;
+    if (messages.length === 0) {
+      setMessages([
+        {
+          id: `${Date.now()}-asst-welcome`,
+          author: 'server',
+          text: 'Hi!',
+        },
+      ]);
+      addedWelcomeRef.current = true;
+    }
+  }, [canChat, messages, setMessages]);
 
   // Prefill the input with the market group's question (one-time)
   const derivedQuestion: string | null = useMemo(() => {
@@ -278,34 +290,7 @@ const ResearchAgent: React.FC = () => {
     latestIndexValue,
   ]);
 
-  if (!canChat) {
-    return (
-      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-8">
-        <div className="text-center text-muted-foreground py-8">
-          <Bot className="h-9 w-9 mx-auto mb-2 opacity-20" />
-          <div className="mb-0">
-            Add an{' '}
-            <a
-              href="https://openrouter.ai"
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
-            >
-              OpenRouter
-            </a>{' '}
-            API key in your{' '}
-            <Link
-              href="/settings#agent"
-              className="transition-colors underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
-            >
-              settings
-            </Link>{' '}
-            to enable the agent.
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Always render the chat UI; if no API key, show a notice and disable sending
 
   const handleSend = async () => {
     const text = pendingText.trim();
@@ -416,19 +401,47 @@ const ResearchAgent: React.FC = () => {
 
   return (
     <Card className="shadow-sm border bg-background/95">
-      <ChatMessages
-        messages={messages}
-        showLoader={messages.length === 0}
-        showTyping={isRequestInFlight}
-        className="h-64"
-        labels={{ me: 'You', server: 'Agent' }}
-      />
+      {canChat ? (
+        <ChatMessages
+          messages={messages}
+          showLoader={false}
+          showTyping={isRequestInFlight}
+          className="h-64"
+          labels={{ me: 'You', server: 'Agent' }}
+        />
+      ) : (
+        <div className="h-64 flex items-center justify-center">
+          <div className="text-center text-muted-foreground py-8 px-6">
+            <Bot className="h-9 w-9 mx-auto mb-2 opacity-20" />
+            <div className="mb-0">
+              Add an{' '}
+              <a
+                href="https://openrouter.ai"
+                target="_blank"
+                rel="noreferrer"
+                className="transition-colors underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
+              >
+                OpenRouter
+              </a>{' '}
+              API key in your{' '}
+              <Link
+                href="/settings#agent"
+                className="transition-colors underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
+              >
+                settings
+              </Link>{' '}
+              to enable the agent.
+            </div>
+          </div>
+        </div>
+      )}
       <ChatInput
         value={pendingText}
         onChange={setPendingText}
         onSend={handleSend}
         canChat={true}
         canType={canType}
+        sendDisabled={!canChat || !pendingText.trim() || isRequestInFlight}
         onLogin={() => {}}
       />
       <div className="px-3 pb-3">

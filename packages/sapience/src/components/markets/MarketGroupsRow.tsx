@@ -341,61 +341,90 @@ const MarketGroupsRow = ({
               MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (
                 // For multichoice markets, show only the dropdown toggle
                 <>
-                  <Button
-                    variant="outline"
-                    className="w-full md:w-28 md:min-w-[160px] text-base"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsExpanded(!isExpanded);
-                    }}
-                  >
-                    <span className="flex items-center gap-1 text-foreground/80">
-                      {isExpanded ? 'Hide Options' : 'Show Options'}
-                    </span>
-                  </Button>
+                  {isActive ? (
+                    <Button
+                      variant="outline"
+                      className="w-full md:w-28 md:min-w-[160px] text-base"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsExpanded(!isExpanded);
+                      }}
+                    >
+                      <span className="flex items-center gap-1 text-foreground/80">
+                        {isExpanded ? 'Hide Options' : 'Show Options'}
+                      </span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      className="w-full md:w-28 md:min-w-[160px] text-base"
+                      asChild
+                    >
+                      <Link
+                        href={`/markets/${chainShortName}:${marketAddress}`}
+                        className="group inline-flex items-center"
+                      >
+                        <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+                          Closed
+                        </span>
+                      </Link>
+                    </Button>
+                  )}
+                </>
+              ) : // For non-multichoice markets
+              activeMarket ? (
+                <>
+                  {marketClassification ===
+                  MarketGroupClassificationEnum.NUMERIC ? (
+                    // Numeric markets keep single action
+                    <Button
+                      variant="default"
+                      size="lg"
+                      onClick={() => handleAddToBetSlip(activeMarket)}
+                      className="w-28 text-base"
+                    >
+                      <Image
+                        src="/susde-icon.svg"
+                        alt="sUSDe"
+                        width={20}
+                        height={20}
+                      />
+                      Predict
+                    </Button>
+                  ) : (
+                    // YES/NO markets: combined split button
+                    (() => {
+                      const yesMarket =
+                        market.find((m) => m.optionName === 'Yes') ||
+                        activeMarket;
+                      const noMarket =
+                        market.find((m) => m.optionName === 'No') ||
+                        activeMarket;
+                      return (
+                        <YesNoSplitButton
+                          onYes={() => handleAddToBetSlip(yesMarket, true)}
+                          onNo={() => handleAddToBetSlip(noMarket, false)}
+                          className="w-full md:min-w-[10rem]"
+                          size="lg"
+                        />
+                      );
+                    })()
+                  )}
                 </>
               ) : (
-                // For non-multichoice markets
-                activeMarket && (
-                  <>
-                    {marketClassification ===
-                    MarketGroupClassificationEnum.NUMERIC ? (
-                      // Numeric markets keep single action
-                      <Button
-                        variant="default"
-                        size="lg"
-                        onClick={() => handleAddToBetSlip(activeMarket)}
-                        className="w-28 text-base"
-                      >
-                        <Image
-                          src="/susde-icon.svg"
-                          alt="sUSDe"
-                          width={20}
-                          height={20}
-                        />
-                        Predict
-                      </Button>
-                    ) : (
-                      // YES/NO markets: combined split button
-                      (() => {
-                        const yesMarket =
-                          market.find((m) => m.optionName === 'Yes') ||
-                          activeMarket;
-                        const noMarket =
-                          market.find((m) => m.optionName === 'No') ||
-                          activeMarket;
-                        return (
-                          <YesNoSplitButton
-                            onYes={() => handleAddToBetSlip(yesMarket, true)}
-                            onNo={() => handleAddToBetSlip(noMarket, false)}
-                            className="w-full md:min-w-[10rem]"
-                            size="lg"
-                          />
-                        );
-                      })()
-                    )}
-                  </>
-                )
+                <Button
+                  variant="secondary"
+                  className="w-full md:min-w-[10rem]"
+                  size="lg"
+                  asChild
+                >
+                  <Link
+                    href={`/markets/${chainShortName}:${marketAddress}`}
+                    className="group inline-flex items-center"
+                  >
+                    Closed
+                  </Link>
+                </Button>
               )}
             </div>
           </div>
