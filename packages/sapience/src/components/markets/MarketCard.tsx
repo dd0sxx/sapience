@@ -225,7 +225,7 @@ const MarketCard = ({
 
           <div className="mt-auto px-4 pb-4 pt-0">
             {canShowPredictionElement && (
-              <div className="text-xs md:text-sm text-muted-foreground w-full mb-2">
+              <div className="text-xs md:text-sm text-muted-foreground w-full mb-3">
                 <div className="truncate whitespace-nowrap min-w-0">
                   <span className="text-muted-foreground">
                     Market Prediction{' '}
