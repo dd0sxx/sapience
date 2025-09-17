@@ -569,6 +569,13 @@ export default function TraderPositionsTable({
                       marketAddress={marketAddress}
                       chainId={position.market?.marketGroup?.chainId || 0}
                       isMarketSettled={position.market?.settled || false}
+                      collateralSymbol={
+                        position.market?.marketGroup?.collateralSymbol ??
+                        undefined
+                      }
+                      collateralDecimals={
+                        position.market?.marketGroup?.collateralDecimals || 18
+                      }
                       onSuccess={() => {
                         console.log(
                           `Settle action for position ${position.positionId} initiated.`
@@ -581,7 +588,7 @@ export default function TraderPositionsTable({
                         <TooltipTrigger asChild>
                           <span>
                             <Button size="sm" variant="outline" disabled>
-                              Settle
+                              Claim
                             </Button>
                           </span>
                         </TooltipTrigger>
