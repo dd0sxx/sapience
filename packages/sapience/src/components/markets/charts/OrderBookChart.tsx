@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic';
 import type React from 'react';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 import NumberDisplay from '../../shared/NumberDisplay';
 import type { OrderBookLevel } from '~/hooks/charts/useOrderBookData';
@@ -70,6 +70,7 @@ interface OrderBookChartProps {
 
 const OrderBookChart: React.FC<OrderBookChartProps> = ({
   className,
+  quoteTokenName,
   asks,
   bids,
   lastPrice,
@@ -81,6 +82,9 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isLoading = isLoadingPool || isLoadingBook;
   const isError = isErrorPool || isErrorBook;
+  const [displayMode, setDisplayMode] = useState<'shares' | 'collateral'>(
+    'shares'
+  );
 
   // Add effect to scroll spread to middle
   useEffect(() => {
@@ -150,16 +154,30 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 
   // Calculate cumulative sizes for visualization
   let cumulativeAskSize = 0;
+  let cumulativeAskCollateral = 0;
   const cumulativeAsks = asks.map((ask) => {
     cumulativeAskSize += ask.rawSize;
-    return { ...ask, cumulativeSize: cumulativeAskSize };
+    const levelCollateral = ask.rawSize * ask.rawPrice;
+    cumulativeAskCollateral += levelCollateral;
+    return {
+      ...ask,
+      cumulativeSize: cumulativeAskSize,
+      cumulativeCollateral: cumulativeAskCollateral,
+    } as typeof ask & { cumulativeSize: number; cumulativeCollateral: number };
   });
   const maxCumulativeAskSize = cumulativeAskSize;
 
   let cumulativeBidSize = 0;
+  let cumulativeBidCollateral = 0;
   const cumulativeBids = bids.map((bid) => {
     cumulativeBidSize += bid.rawSize;
-    return { ...bid, cumulativeSize: cumulativeBidSize };
+    const levelCollateral = bid.rawSize * bid.rawPrice;
+    cumulativeBidCollateral += levelCollateral;
+    return {
+      ...bid,
+      cumulativeSize: cumulativeBidSize,
+      cumulativeCollateral: cumulativeBidCollateral,
+    } as typeof bid & { cumulativeSize: number; cumulativeCollateral: number };
   });
   const maxCumulativeBidSize = cumulativeBidSize;
 
@@ -184,12 +202,20 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
               maxCumulativeAskSize > 0
                 ? (ask.cumulativeSize / maxCumulativeAskSize) * 100
                 : 0;
+            const sizeDisplay =
+              displayMode === 'shares'
+                ? ask.rawSize
+                : ask.rawSize * ask.rawPrice;
+            const totalDisplay =
+              displayMode === 'shares'
+                ? ask.cumulativeSize
+                : ask.cumulativeCollateral;
             return (
               <OrderBookRow
                 key={`ask-${ask.rawPrice}-${index}`}
                 price={ask.rawPrice}
-                size={ask.rawSize}
-                total={ask.cumulativeSize}
+                size={sizeDisplay}
+                total={totalDisplay}
                 type="ask"
                 percentage={percentage}
               />
@@ -198,8 +224,28 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
         </div>
 
         {/* Last Price */}
-        <div className="flex font-medium py-1.5 px-2 border-y bg-muted/30 flex-shrink-0 last-price-row">
-          <span className="text-xs">Last Price: {lastPrice ?? '-'}</span>
+        <div className="flex items-center justify-between font-medium py-1.5 px-2 border-y bg-muted/30 flex-shrink-0 last-price-row">
+          <span className="text-xs">
+            Last Price: {lastPrice ?? '-'}
+            {lastPrice &&
+            quoteTokenName &&
+            !lastPrice
+              .toLowerCase()
+              .includes((quoteTokenName || '').toLowerCase()) ? (
+              <span className="ml-1">{quoteTokenName}</span>
+            ) : null}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setDisplayMode((m) => (m === 'shares' ? 'collateral' : 'shares'))
+            }
+            aria-pressed={displayMode === 'collateral'}
+            className="ml-2 rounded border px-1.5 py-0.5 text-[10px] leading-none hover:bg-muted/50"
+            title="Toggle size units"
+          >
+            {displayMode === 'shares' ? 'Shares' : quoteTokenName || 'tokens'}
+          </button>
         </div>
 
         {/* Bids (Buy Orders) - Rendered top-down */}
@@ -210,12 +256,20 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
               maxCumulativeBidSize > 0
                 ? (bid.cumulativeSize / maxCumulativeBidSize) * 100
                 : 0;
+            const sizeDisplay =
+              displayMode === 'shares'
+                ? bid.rawSize
+                : bid.rawSize * bid.rawPrice;
+            const totalDisplay =
+              displayMode === 'shares'
+                ? bid.cumulativeSize
+                : bid.cumulativeCollateral;
             return (
               <OrderBookRow
                 key={`bid-${bid.rawPrice}-${index}`}
                 price={bid.rawPrice}
-                size={bid.rawSize}
-                total={bid.cumulativeSize}
+                size={sizeDisplay}
+                total={totalDisplay}
                 type="bid"
                 percentage={percentage}
               />

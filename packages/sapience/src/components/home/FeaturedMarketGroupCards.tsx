@@ -266,7 +266,7 @@ export default function FeaturedMarketGroupCards() {
         <div className="w-full px-0">
           {/* Maintain space to prevent layout jump while data loads */}
           <div className="mt-0 mb-6 md:mb-4">
-            <div className="h-[140px] md:h-[180px] w-full" />
+            <div className="h-[140px] md:h-[160px] w-full" />
           </div>
         </div>
       </section>
@@ -278,7 +278,7 @@ export default function FeaturedMarketGroupCards() {
       <div className="w-full px-0">
         {groupedMarketGroups.length === 0 ? (
           // Always reserve space, even when no items yet
-          <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 h-[140px] md:h-[180px]" />
+          <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 h-[140px] md:h-[160px]" />
         ) : (
           <MobileAndDesktopLists groupedMarketGroups={groupedMarketGroups} />
         )}
@@ -362,7 +362,7 @@ function MobileAndDesktopLists({
   }, [items.length]);
 
   return (
-    <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 min-h-[140px] md:min-h-[180px]">
+    <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 min-h-[140px] md:min-h-[160px]">
       {/* Fade overlays */}
       <div
         className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 md:w-16 bg-gradient-to-r from-background to-transparent"
@@ -405,16 +405,19 @@ function MobileAndDesktopLists({
       </div>
 
       {/* Dewtop: Embla carousel with auto-scroll */}
-      <div className="hidden md:block w-full px-0">
+      <div className="hidden md:block w-full px-0 h-[160px]">
         <Carousel
           opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
           plugins={[autoScrollPluginDesktop]}
           setApi={setDesktopApi}
-          className="w-full"
+          className="w-full h-full"
         >
-          <CarouselContent className="-ml-8 items-stretch">
+          <CarouselContent className="-ml-8 items-stretch h-full">
             {items.map((marketGroup) => (
-              <CarouselItem key={marketGroup.key} className={desktopItemClass}>
+              <CarouselItem
+                key={marketGroup.key}
+                className={`${desktopItemClass} h-full`}
+              >
                 <MarketCard
                   chainId={marketGroup.chainId}
                   marketAddress={marketGroup.marketAddress}

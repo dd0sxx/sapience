@@ -195,10 +195,10 @@ const MarketCard = ({
         />
 
         <div className="flex-1 flex flex-col h-full">
-          <div className="block group flex-1">
-            <div className="transition-colors h-full">
-              <div className="flex flex-col px-4 py-3 gap-3 h-full">
-                <div className="flex flex-col h-full min-w-0 flex-1">
+          <div className="block group">
+            <div className="transition-colors">
+              <div className="flex flex-col px-4 py-3 gap-3">
+                <div className="flex flex-col min-w-0 flex-1">
                   <h3 className="text-sm md:text-base leading-snug mb-1">
                     <Link
                       href={`/markets/${chainShortName}:${marketAddress}`}
