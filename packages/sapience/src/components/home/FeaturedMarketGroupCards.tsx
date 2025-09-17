@@ -266,7 +266,7 @@ export default function FeaturedMarketGroupCards() {
         <div className="w-full px-0">
           {/* Maintain space to prevent layout jump while data loads */}
           <div className="mt-0 mb-6 md:mb-4">
-            <div className="h-[140px] md:h-[160px] w-full" />
+            <div className="h-[150px] md:h-[160px] w-full" />
           </div>
         </div>
       </section>
@@ -278,7 +278,7 @@ export default function FeaturedMarketGroupCards() {
       <div className="w-full px-0">
         {groupedMarketGroups.length === 0 ? (
           // Always reserve space, even when no items yet
-          <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 h-[140px] md:h-[160px]" />
+          <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 h-[150px] md:h-[160px]" />
         ) : (
           <MobileAndDesktopLists groupedMarketGroups={groupedMarketGroups} />
         )}
@@ -362,7 +362,7 @@ function MobileAndDesktopLists({
   }, [items.length]);
 
   return (
-    <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 min-h-[140px] md:min-h-[160px]">
+    <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 min-h-[150px] md:min-h-[160px]">
       {/* Fade overlays */}
       <div
         className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 md:w-16 bg-gradient-to-r from-background to-transparent"
@@ -373,7 +373,7 @@ function MobileAndDesktopLists({
         aria-hidden
       />
       {/* Mobile: Embla carousel with auto-scroll */}
-      <div className="md:hidden w-full px-0 h-[140px]">
+      <div className="md:hidden w-full px-0 h-[150px]">
         <Carousel
           opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
           plugins={[autoScrollPluginMobile]}
