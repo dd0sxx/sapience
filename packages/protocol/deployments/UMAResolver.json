@@ -1,5 +1,5 @@
 {
-  "address": "0x7B83c7294692bbB08e54bF6650c8cB5Cbf721910",
+  "address": "0xFDfE039cA45C734192b45F2b0afac8C09DB2b865",
   "abi": [
     {
       "type": "constructor",
@@ -627,13 +627,13 @@
     ]
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x7d0dc57e97b721b6661ad29e3935b47a8e383ba32a23dc88c2684432ca07ed7b",
-  "deployTxnBlockNumber": "379504821",
-  "deployTimestamp": "1757964302",
+  "deployTxnHash": "0x4e3f9e556eff0469bcb382ed84766761923eca2db223604482583932f4f53eb0",
+  "deployTxnBlockNumber": "380218885",
+  "deployTimestamp": "1758142859",
   "sourceName": "src/predictionMarket/resolvers/PredictionMarketUmaResolver.sol",
   "contractName": "PredictionMarketUmaResolver",
   "deployedOn": "deploy.UMAResolver",
   "highlight": true,
-  "gasUsed": 1528677,
-  "gasCost": "10000000"
+  "gasUsed": 1464949,
+  "gasCost": "11109000"
 }

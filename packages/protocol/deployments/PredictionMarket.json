@@ -1,5 +1,5 @@
 {
-  "address": "0x9D18f97c191D397338709CDCe8F0915F8fF9BD82",
+  "address": "0xe69b281c9Fee55c2a30F587Ed6eE9D46A6449fea",
   "abi": [
     {
       "type": "constructor",
@@ -352,6 +352,25 @@
               "internalType": "bool"
             }
           ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getUserCollateralDeposits",
+      "inputs": [
+        {
+          "name": "user",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
         }
       ],
       "stateMutability": "view"
@@ -1104,13 +1123,13 @@
     "1000000000000000000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x87fe3eecf4045bf0b145db24b449188f5a3aeaa70ea1c1a9c48528c56c0a7d3d",
-  "deployTxnBlockNumber": "379504813",
-  "deployTimestamp": "1757964300",
+  "deployTxnHash": "0xb77a0b34188f8ee82db89133576e2fb89bc029cbbab7713a76f59bf00470f7d9",
+  "deployTxnBlockNumber": "380218865",
+  "deployTimestamp": "1758142854",
   "sourceName": "src/predictionMarket/PredictionMarket.sol",
   "contractName": "PredictionMarket",
   "deployedOn": "deploy.PredictionMarket",
   "highlight": true,
-  "gasUsed": 3126722,
-  "gasCost": "10000000"
+  "gasUsed": 3153307,
+  "gasCost": "11163000"
 }
