@@ -46,7 +46,7 @@ export default function QuoteDisplay({
   if (quoteError) {
     return (
       <div className="mt-3">
-        <div className="flex items-center rounded-md border border-destructive/80 bg-destructive/10 px-3 py-2.5 w-full h-12 text-xs">
+        <div className="flex items-center rounded-md border border-destructive/80 bg-destructive/10 px-3 py-2.5 w-full h-12">
           <AlertTriangle
             className="w-8 h-8 mr-2.5 text-destructive"
             strokeWidth={1.5}

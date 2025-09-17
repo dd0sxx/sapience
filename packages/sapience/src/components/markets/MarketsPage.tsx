@@ -1,10 +1,9 @@
 'use client';
 
-import { Input } from '@sapience/ui/components/ui/input';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FrownIcon, SearchIcon } from 'lucide-react';
+import { FrownIcon } from 'lucide-react';
 import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -13,6 +12,7 @@ import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
 import FocusAreaFilter from './FocusAreaFilter';
+import SearchBar from './SearchBar';
 import {
   useEnrichedMarketGroups,
   useCategories,
@@ -618,24 +618,11 @@ const MarketsPage = () => {
       <div className="flex-1 flex flex-col gap-6 pr-0 md:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
         <div className="bg-background/90 pt-2">
-          {/* Wrap Input and Icon */}
-          <div className="relative flex items-center">
-            <SearchIcon
-              className="absolute left-0 h-full w-auto p-3 pl-2 text-muted-foreground opacity-40"
-              strokeWidth={1}
-            />
-            <div className="flex-1 relative border-b border-muted-foreground/40">
-              <Input
-                type="text"
-                placeholder={isMobile ? 'Search' : 'Search questions...'}
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="w-full text-3xl font-heading font-normal bg-transparent rounded-none border-0 placeholder:text-foreground placeholder:opacity-20 focus-visible:ring-0 focus-visible:ring-offset-0 h-auto py-3 pl-14"
-              />
-            </div>
-
-            {/* Filters moved to top (visible on all screen sizes) */}
-          </div>
+          <SearchBar
+            isMobile={isMobile}
+            value={searchTerm}
+            onChange={handleSearchChange}
+          />
           <div className="pt-5">
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
