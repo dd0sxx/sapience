@@ -45,7 +45,7 @@ export default function BetslipSinglesForm({
               {positionData.error && (
                 <>
                   <div className="mb-2">
-                    <h3 className="font-medium text-foreground pr-2">
+                    <h3 className="text-md text-foreground pr-2">
                       {positionData.position.question}
                     </h3>
                   </div>

@@ -120,7 +120,7 @@ export default function IndividualPositionRow({
     <div className="border-b border-border last:border-b-0">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex-1">
-          <h3 className="font-medium text-foreground pr-2 text-sm md:text-base whitespace-normal break-words">
+          <h3 className="text-md text-foreground pr-2 whitespace-normal break-words">
             {question}&nbsp;&nbsp;
             <span className="relative -top-0.5">
               <ReadOnlyPredictionBadge
@@ -211,14 +211,15 @@ export function ReadOnlyPredictionBadge({
     return { isYes: yesSelected, label: yesSelected ? 'Yes' : 'No' };
   })();
 
-  return (
+  return marketClassification === MarketGroupClassificationEnum.NUMERIC ? (
+    <Badge className="bg-secondary text-secondary-foreground">{label}</Badge>
+  ) : (
     <Badge
+      variant="outline"
       className={
-        marketClassification === MarketGroupClassificationEnum.NUMERIC
-          ? 'bg-secondary text-secondary-foreground'
-          : isYes
-            ? 'bg-green-600 text-white'
-            : 'bg-red-600 text-white'
+        isYes
+          ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0'
+          : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'
       }
     >
       {label}
