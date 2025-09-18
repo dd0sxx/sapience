@@ -133,6 +133,7 @@ model Market {
   marketParamsOptimisticoraclev3     String?       @db.VarChar
   public                             Boolean       @default(true)
   question                           String?
+  shortName                          String?       @db.VarChar
   poolAddress                        String?
   optionName                         String?
   similarMarkets                     String[]      @default([])
@@ -416,6 +417,8 @@ enum transaction_type_enum {
   long
   short
   settledPosition
+  mintParlayNFTs
+  burnParlayNFTs
 }
 
 /// Chat message history for ephemeral chat websocket
@@ -435,6 +438,7 @@ model Condition {
   id             String    @id @db.VarChar
   createdAt      DateTime  @default(now()) @db.Timestamp(6)
   question       String    @db.VarChar
+  shortName      String?   @db.VarChar
   categoryId     Int?
   category       Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   endTime        Int
@@ -446,4 +450,44 @@ model Condition {
   @@index([categoryId])
   @@index([endTime])
   @@map("condition")
+}
+
+/// Parlay model to store on-chain prediction parlays
+model Parlay {
+  id               Int       @id @default(autoincrement())
+  createdAt        DateTime  @default(now()) @db.Timestamp(6)
+
+  // On-chain identifiers
+  chainId          Int
+  marketAddress    String    @db.VarChar
+  maker            String    @db.VarChar
+  taker            String    @db.VarChar
+  makerNftTokenId  String    @db.VarChar
+  takerNftTokenId  String    @db.VarChar
+  totalCollateral  String    @db.VarChar
+  refCode          String?   @db.VarChar
+
+  // Status
+  status           ParlayStatus @default(active)
+  makerWon         Boolean?
+  mintedAt         Int
+  settledAt        Int?
+
+  // Derived for UI convenience
+  endsAt           Int?
+
+  // Raw predicted outcomes as emitted/encoded on-chain
+  // Example JSON: [{ conditionId: "0x...", prediction: true }]
+  predictedOutcomes Json      @db.Json
+
+  @@index([maker], map: "IDX_parlay_maker")
+  @@index([taker], map: "IDX_parlay_taker")
+  @@index([chainId, marketAddress], map: "IDX_parlay_chain_market")
+  @@map("parlay")
+}
+
+enum ParlayStatus {
+  active
+  settled
+  consolidated
 }
