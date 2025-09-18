@@ -43,7 +43,6 @@ interface BetslipParlayFormProps {
   minWager?: string;
 }
 
-
 export default function BetslipParlayForm({
   methods,
   onSubmit,
