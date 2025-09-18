@@ -627,8 +627,6 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
               return;
             }
 
-            console.log(`[PredictionMarketIndexer] New block: ${block.number}`);
-
             // Get logs for the PredictionMarket contract in this block
             const logs = await this.client.getLogs({
               address: PREDICTION_MARKET_CONTRACT_ADDRESS as `0x${string}`,
