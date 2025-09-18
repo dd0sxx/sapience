@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 const manifest = (): MetadataRoute.Manifest => ({
-  short_name: 'sapience',
+  short_name: 'Sapience',
   name: 'Sapience',
   lang: 'en',
   start_url: '/',
