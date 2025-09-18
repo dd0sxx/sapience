@@ -53,7 +53,6 @@ const VaultsPageContent = () => {
     formatAssetAmount,
     formatSharesAmount,
     formatUtilizationRate,
-    formatWithdrawalDelay: _formatWithdrawalDelay,
     minDeposit,
     allowance,
     pricePerShareRay,
@@ -219,27 +218,29 @@ const VaultsPageContent = () => {
 
   const renderVaultForm = () => (
     <Tabs defaultValue="deposit" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 mb-8">
+      <TabsList className="grid w-full grid-cols-2 mb-4">
         <TabsTrigger value="deposit">Deposit</TabsTrigger>
         <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="deposit" className="space-y-5 mt-3">
+      <TabsContent value="deposit" className="space-y-4 mt-1">
         {/* Amount Input */}
-        <div className="space-y-2">
-          <div className="border border-input bg-background rounded-md p-3">
-            <div className="flex items-center justify-between mb-1">
+        <div className="space-y-1.5">
+          <div className="border border-input bg-background rounded-md px-3 py-3">
+            <div className="flex items-center justify-between mb-0">
               <Input
                 placeholder="0.0"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
-                className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="text-lg bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">testUSDe</span>
+                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border border-border rounded px-2 py-0.5 leading-none">
+                  testUSDe
+                </span>
               </div>
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground mt-0">
               {depositAmount && (
                 <div className="text-right">
                   Min Shares: {formatSharesAmount(minDepositShares)}
@@ -250,7 +251,7 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Balance and Requested row (outside input box) */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between text-sm text-muted-foreground py-2">
           <div className="flex items-center gap-2">
             <span>
               Balance: <NumberDisplay value={Number(shortWalletBalance)} />{' '}
@@ -272,7 +273,8 @@ const VaultsPageContent = () => {
 
         {/* Deposit Button */}
         <Button
-          className="w-full py-4 px-5 rounded text-lg font-normal"
+          size="lg"
+          className="w-full text-base"
           disabled={
             !isConnected ||
             !depositAmount ||
@@ -334,22 +336,24 @@ const VaultsPageContent = () => {
           )}
       </TabsContent>
 
-      <TabsContent value="withdraw" className="space-y-5 mt-3">
+      <TabsContent value="withdraw" className="space-y-4 mt-1">
         {/* Amount Input */}
-        <div className="space-y-2">
-          <div className="border border-input bg-background rounded-md p-3">
-            <div className="flex items-center justify-between mb-1">
+        <div className="space-y-1.5">
+          <div className="border border-input bg-background rounded-md px-3 py-3">
+            <div className="flex items-center justify-between mb-0">
               <Input
                 placeholder="0.0"
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
-                className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="text-lg bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">testUSDe</span>
+                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border border-border rounded px-2 py-0.5 leading-none">
+                  testUSDe
+                </span>
               </div>
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground mt-0">
               {withdrawAmount && (
                 <div className="text-right">
                   Min Assets: {formatAssetAmount(minWithdrawAssets)}
@@ -360,7 +364,7 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Balance and Requested row (outside input box) */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between text-sm text-muted-foreground py-2">
           <div className="flex items-center gap-2">
             <span>
               Balance:{' '}
@@ -388,7 +392,8 @@ const VaultsPageContent = () => {
 
         {/* Withdraw Button */}
         <Button
-          className="w-full py-4 px-5 rounded text-lg font-normal"
+          size="lg"
+          className="w-full text-base"
           disabled={
             !isConnected ||
             !withdrawAmount ||
@@ -459,7 +464,7 @@ const VaultsPageContent = () => {
           Vaults
         </h1>
 
-        <div className="grid grid-cols-1 gap-16">
+        <div className="grid grid-cols-1 gap-8">
           {/* Vault */}
           <div>
             {/* TEMP: Gate Active UI behind env. Set NEXT_PUBLIC_ENABLE_VAULTS="1" to enable. */}
