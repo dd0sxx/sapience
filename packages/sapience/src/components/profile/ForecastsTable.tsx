@@ -128,8 +128,7 @@ const renderPredictionCell = ({
 }) => {
   const marketAddress = getMarketAddressForAttestation(
     row.original,
-    parentMarketAddress,
-    marketGroups
+    parentMarketAddress
   );
 
   let marketGroup = undefined as
@@ -219,8 +218,7 @@ const renderQuestionCell = ({
 }) => {
   const marketAddress = getMarketAddressForAttestation(
     row.original,
-    parentMarketAddress,
-    marketGroups
+    parentMarketAddress
   );
   const marketIdHex = extractMarketIdHex(row.original);
 
@@ -329,8 +327,7 @@ const ForecastsTable = ({
     return attestations.some((attestation) => {
       const marketAddress = getMarketAddressForAttestation(
         attestation,
-        parentMarketAddress,
-        marketGroups
+        parentMarketAddress
       );
 
       if (!marketAddress) return false;
