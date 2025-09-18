@@ -53,13 +53,16 @@ const VaultsPageContent = () => {
     formatAssetAmount,
     formatSharesAmount,
     formatUtilizationRate,
-    formatWithdrawalDelay,
+    formatWithdrawalDelay: _formatWithdrawalDelay,
     minDeposit,
     allowance,
     pricePerShareRay,
-    vaultManager,
+    vaultManager: _vaultManager,
     quoteSignatureValid,
-  } = usePassiveLiquidityVault({ vaultAddress: VAULT_ADDRESS, chainId: VAULT_CHAIN_ID });
+  } = usePassiveLiquidityVault({
+    vaultAddress: VAULT_ADDRESS,
+    chainId: VAULT_CHAIN_ID,
+  });
 
   // Form state
   const [depositAmount, setDepositAmount] = useState('');
@@ -78,13 +81,16 @@ const VaultsPageContent = () => {
         })()
       : 0n;
   const belowMinDeposit =
-    (minDeposit ?? 0n) > 0n && (depositWei === 0n || depositWei < (minDeposit ?? 0n));
+    (minDeposit ?? 0n) > 0n &&
+    (depositWei === 0n || depositWei < (minDeposit ?? 0n));
   const requiresApproval = depositWei > 0n && (allowance ?? 0n) < depositWei;
 
   // UI helpers
   const shortWalletBalance = (() => {
     try {
-      const num = Number(userAssetBalance ? formatAssetAmount(userAssetBalance) : '0');
+      const num = Number(
+        userAssetBalance ? formatAssetAmount(userAssetBalance) : '0'
+      );
       if (Number.isFinite(num)) return num.toFixed(2);
       return '0.00';
     } catch {
@@ -92,7 +98,7 @@ const VaultsPageContent = () => {
     }
   })();
 
-  const pendingWithdrawalDisplay = (() => {
+  const _pendingWithdrawalDisplay = (() => {
     const pending = userData?.pendingWithdrawal ?? 0n;
     if (pending <= 0n) return null;
     try {
@@ -104,7 +110,7 @@ const VaultsPageContent = () => {
     }
   })();
 
-  const pendingDepositDisplay = (() => {
+  const _pendingDepositDisplay = (() => {
     const pending = userData?.pendingDeposit ?? 0n;
     if (pending <= 0n) return null;
     try {
@@ -154,8 +160,11 @@ const VaultsPageContent = () => {
     if (!depositAmount || !assetDecimals) return 0n;
     try {
       const amountWei = parseUnits(depositAmount, assetDecimals);
-      const pps = pricePerShareRay && pricePerShareRay > 0n ? pricePerShareRay : 10n ** 18n;
-      return (amountWei * (10n ** 18n)) / pps;
+      const pps =
+        pricePerShareRay && pricePerShareRay > 0n
+          ? pricePerShareRay
+          : 10n ** 18n;
+      return (amountWei * 10n ** 18n) / pps;
     } catch {
       return 0n;
     }
@@ -167,8 +176,11 @@ const VaultsPageContent = () => {
     if (!withdrawAmount || !assetDecimals) return 0n;
     try {
       const sharesWei = parseUnits(withdrawAmount, assetDecimals);
-      const pps = pricePerShareRay && pricePerShareRay > 0n ? pricePerShareRay : 10n ** 18n;
-      return (sharesWei * pps) / (10n ** 18n);
+      const pps =
+        pricePerShareRay && pricePerShareRay > 0n
+          ? pricePerShareRay
+          : 10n ** 18n;
+      return (sharesWei * pps) / 10n ** 18n;
     } catch {
       return 0n;
     }
@@ -241,7 +253,8 @@ const VaultsPageContent = () => {
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <span>
-              Balance: <NumberDisplay value={Number(shortWalletBalance)} /> testUSDe
+              Balance: <NumberDisplay value={Number(shortWalletBalance)} />{' '}
+              testUSDe
             </span>
             <Button
               variant="outline"
@@ -266,7 +279,7 @@ const VaultsPageContent = () => {
             isVaultPending ||
             vaultData?.paused ||
             belowMinDeposit ||
-            (quoteSignatureValid === false)
+            quoteSignatureValid === false
           }
           onClick={async () => {
             await deposit(depositAmount, VAULT_CHAIN_ID);
@@ -287,29 +300,38 @@ const VaultsPageContent = () => {
         </Button>
 
         {/* Pending Deposits list (boxes) below */}
-        {depositRequest && (userData?.depositIndex ?? 0n) > 0n && !depositRequest.processed && (
-          <div className="mt-4 space-y-2">
-            <div className="p-3 bg-muted/30 border border-border rounded-md">
-              <div className="flex items-start justify-between gap-3">
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium">Pending Deposit</p>
-                  <p className="text-xs">
-                    {formatAssetAmount(depositRequest.amount)} testUSDe
-                    {depositQueuePosition ? ` · Queue #${depositQueuePosition}` : ''}
-                  </p>
+        {depositRequest &&
+          (userData?.depositIndex ?? 0n) > 0n &&
+          !depositRequest.processed && (
+            <div className="mt-4 space-y-2">
+              <div className="p-3 bg-muted/30 border border-border rounded-md">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-medium">Pending Deposit</p>
+                    <p className="text-xs">
+                      {formatAssetAmount(depositRequest.amount)} testUSDe
+                      {depositQueuePosition
+                        ? ` · Queue #${depositQueuePosition}`
+                        : ''}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      Date.now() <
+                      (Number(depositRequest.timestamp) +
+                        Number(vaultData?.withdrawalDelay ?? 0n)) *
+                        1000
+                    }
+                    onClick={() => cancelDeposit(VAULT_CHAIN_ID)}
+                  >
+                    Cancel
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={Date.now() < (Number(depositRequest.timestamp) + Number(vaultData?.withdrawalDelay ?? 0n)) * 1000}
-                  onClick={() => cancelDeposit(VAULT_CHAIN_ID)}
-                >
-                  Cancel
-                </Button>
               </div>
             </div>
-          </div>
-        )}
+          )}
       </TabsContent>
 
       <TabsContent value="withdraw" className="space-y-5 mt-3">
@@ -341,7 +363,9 @@ const VaultsPageContent = () => {
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <span>
-              Balance: {userData ? formatSharesAmount(userData?.balance ?? 0n) : '0'} sapLP
+              Balance:{' '}
+              {userData ? formatSharesAmount(userData?.balance ?? 0n) : '0'}{' '}
+              sapLP
             </span>
             <Button
               variant="outline"
@@ -357,7 +381,8 @@ const VaultsPageContent = () => {
             </Button>
           </div>
           <div className="text-right">
-            Requested Collateral: {formatAssetAmount(estWithdrawAssets)} testUSDe
+            Requested Collateral: {formatAssetAmount(estWithdrawAssets)}{' '}
+            testUSDe
           </div>
         </div>
 
@@ -369,7 +394,7 @@ const VaultsPageContent = () => {
             !withdrawAmount ||
             isVaultPending ||
             vaultData?.paused ||
-            (quoteSignatureValid === false)
+            quoteSignatureValid === false
           }
           onClick={() => requestWithdrawal(withdrawAmount, VAULT_CHAIN_ID)}
         >
@@ -385,16 +410,24 @@ const VaultsPageContent = () => {
         </Button>
 
         {/* Pending Withdrawal as cancel button below */}
-        {withdrawalRequest && (userData?.withdrawalIndex ?? 0n) > 0n && !withdrawalRequest.processed && (
-          <Button
-            variant="outline"
-            className="w-full mt-4"
-            disabled={Date.now() < (Number(withdrawalRequest.timestamp) + Number(vaultData?.withdrawalDelay ?? 0n)) * 1000}
-            onClick={() => cancelWithdrawal(VAULT_CHAIN_ID)}
-          >
-            Pending withdrawal: {formatSharesAmount(withdrawalRequest.shares)} · Cancel
-          </Button>
-        )}
+        {withdrawalRequest &&
+          (userData?.withdrawalIndex ?? 0n) > 0n &&
+          !withdrawalRequest.processed && (
+            <Button
+              variant="outline"
+              className="w-full mt-4"
+              disabled={
+                Date.now() <
+                (Number(withdrawalRequest.timestamp) +
+                  Number(vaultData?.withdrawalDelay ?? 0n)) *
+                  1000
+              }
+              onClick={() => cancelWithdrawal(VAULT_CHAIN_ID)}
+            >
+              Pending withdrawal: {formatSharesAmount(withdrawalRequest.shares)}{' '}
+              · Cancel
+            </Button>
+          )}
       </TabsContent>
     </Tabs>
   );
@@ -477,14 +510,20 @@ const VaultsPageContent = () => {
                     {/* Vault Header */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-2xl font-medium">Parlay Liquidity Vault</h3>
+                        <h3 className="text-2xl font-medium">
+                          Parlay Liquidity Vault
+                        </h3>
                         {vaultData && (
                           <div className="mt-2 text-base text-muted-foreground">
                             Utilization:{' '}
                             {formatUtilizationRate(
                               vaultData?.utilizationRate ?? 0n
                             )}
-                            % (Max. {Math.round(Number(vaultData?.maxUtilizationRate ?? 0n) / 100)}%)
+                            % (Max.{' '}
+                            {Math.round(
+                              Number(vaultData?.maxUtilizationRate ?? 0n) / 100
+                            )}
+                            %)
                           </div>
                         )}
                       </div>

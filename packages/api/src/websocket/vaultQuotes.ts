@@ -75,7 +75,11 @@ async function fetchAuthorizedSigners(
   const client = getProviderForChain(chainId);
   const addr = vaultAddress.toLowerCase() as `0x${string}`;
   const manager = (await client
-    .readContract({ address: addr, abi: PASSIVE_VAULT_ABI, functionName: 'manager' })
+    .readContract({
+      address: addr,
+      abi: PASSIVE_VAULT_ABI,
+      functionName: 'manager',
+    })
     .catch(() => undefined)) as string | undefined;
   const set = new Set<string>();
   if (manager) set.add(manager.toLowerCase());
@@ -91,7 +95,10 @@ export function createVaultQuotesWebSocketServer() {
   // Subscriptions per vault key
   const subs = new Map<VaultKey, Set<WebSocket>>();
   const latestQuoteByKey = new Map<VaultKey, PublishVaultQuotePayload>();
-  const signerCache = new Map<VaultKey, { signers: Set<string>; fetchedAt: number }>();
+  const signerCache = new Map<
+    VaultKey,
+    { signers: Set<string>; fetchedAt: number }
+  >();
 
   function subscribe(key: VaultKey, ws: WebSocket) {
     if (!subs.has(key)) subs.set(key, new Set());
@@ -150,12 +157,23 @@ export function createVaultQuotesWebSocketServer() {
         rateResetAt = now + RATE_LIMIT_WINDOW_MS;
       }
       if (++rateCount > RATE_LIMIT_MAX_MESSAGES) {
-        try { ws.close(1008, 'rate_limited'); } catch { /* ignore */ }
+        try {
+          ws.close(1008, 'rate_limited');
+        } catch {
+          /* ignore */
+        }
         return;
       }
-      const dataSize = typeof data === 'string' ? (data as string).length : (data as Buffer).byteLength;
+      const dataSize =
+        typeof data === 'string'
+          ? (data as string).length
+          : (data as Buffer).byteLength;
       if (dataSize > 64_000) {
-        try { ws.close(1009, 'message_too_large'); } catch { /* ignore */ }
+        try {
+          ws.close(1009, 'message_too_large');
+        } catch {
+          /* ignore */
+        }
         return;
       }
 
@@ -163,9 +181,19 @@ export function createVaultQuotesWebSocketServer() {
       if (!msg || typeof msg !== 'object' || !('type' in msg)) return;
 
       if (msg.type === 'vault_quote.subscribe') {
-        const { chainId, vaultAddress } = msg.payload || ({} as SubscribePayload);
+        const { chainId, vaultAddress } =
+          msg.payload || ({} as SubscribePayload);
         if (!chainId || !vaultAddress) {
-          try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'invalid_subscribe' } })); } catch {}
+          try {
+            ws.send(
+              JSON.stringify({
+                type: 'vault_quote.ack',
+                payload: { error: 'invalid_subscribe' },
+              })
+            );
+          } catch {
+            void 0;
+          }
           return;
         }
         const key = makeKey(chainId, vaultAddress);
@@ -173,18 +201,37 @@ export function createVaultQuotesWebSocketServer() {
         // send latest if present
         const latest = latestQuoteByKey.get(key);
         if (latest) {
-          try { ws.send(JSON.stringify({ type: 'vault_quote.update', payload: latest })); } catch {}
+          try {
+            ws.send(
+              JSON.stringify({ type: 'vault_quote.update', payload: latest })
+            );
+          } catch {
+            void 0;
+          }
         }
-        try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })); } catch {}
+        try {
+          ws.send(
+            JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
+          );
+        } catch {
+          void 0;
+        }
         return;
       }
 
       if (msg.type === 'vault_quote.unsubscribe') {
-        const { chainId, vaultAddress } = msg.payload || ({} as SubscribePayload);
+        const { chainId, vaultAddress } =
+          msg.payload || ({} as SubscribePayload);
         if (!chainId || !vaultAddress) return;
         const key = makeKey(chainId, vaultAddress);
         unsubscribe(key, ws);
-        try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })); } catch {}
+        try {
+          ws.send(
+            JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
+          );
+        } catch {
+          void 0;
+        }
         return;
       }
 
@@ -192,13 +239,39 @@ export function createVaultQuotesWebSocketServer() {
         const p = msg.payload as PublishVaultQuotePayload;
         try {
           // basic payload validation
-          if (!p || !p.vaultAddress || !p.chainId || p.timestamp == null || p.vaultCollateralPerShare == null || !p.signedBy || !p.signature) {
-            try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'invalid_payload' } })); } catch {}
+          if (
+            !p ||
+            !p.vaultAddress ||
+            !p.chainId ||
+            p.timestamp == null ||
+            p.vaultCollateralPerShare == null ||
+            !p.signedBy ||
+            !p.signature
+          ) {
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'vault_quote.ack',
+                  payload: { error: 'invalid_payload' },
+                })
+              );
+            } catch {
+              void 0;
+            }
             return;
           }
           // anti-replay window (5 minutes)
           if (Math.abs(Date.now() - p.timestamp) > 5 * 60 * 1000) {
-            try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'stale_timestamp' } })); } catch {}
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'vault_quote.ack',
+                  payload: { error: 'stale_timestamp' },
+                })
+              );
+            } catch {
+              void 0;
+            }
             return;
           }
 
@@ -207,7 +280,10 @@ export function createVaultQuotesWebSocketServer() {
           let allowed = signerCache.get(key);
           const cacheFresh = allowed && Date.now() - allowed.fetchedAt < 60_000;
           if (!cacheFresh) {
-            const signers = await fetchAuthorizedSigners(p.chainId, p.vaultAddress);
+            const signers = await fetchAuthorizedSigners(
+              p.chainId,
+              p.vaultAddress
+            );
             allowed = { signers, fetchedAt: Date.now() };
             signerCache.set(key, allowed);
           }
@@ -219,11 +295,29 @@ export function createVaultQuotesWebSocketServer() {
             signature: p.signature as `0x${string}`,
           });
           if (!ok) {
-            try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'bad_signature' } })); } catch {}
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'vault_quote.ack',
+                  payload: { error: 'bad_signature' },
+                })
+              );
+            } catch {
+              void 0;
+            }
             return;
           }
           if (!allowed!.signers.has(p.signedBy.toLowerCase())) {
-            try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'unauthorized_signer' } })); } catch {}
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'vault_quote.ack',
+                  payload: { error: 'unauthorized_signer' },
+                })
+              );
+            } catch {
+              void 0;
+            }
             return;
           }
 
@@ -237,11 +331,31 @@ export function createVaultQuotesWebSocketServer() {
             signature: p.signature,
           };
           latestQuoteByKey.set(key, normalized);
-          const recipients = broadcast(key, { type: 'vault_quote.update', payload: normalized });
-          try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })); } catch {}
-          console.log(`[VaultQuotes-WS] quote published key=${key} recipients=${recipients}`);
+          const recipients = broadcast(key, {
+            type: 'vault_quote.update',
+            payload: normalized,
+          });
+          try {
+            ws.send(
+              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
+            );
+          } catch {
+            void 0;
+          }
+          console.log(
+            `[VaultQuotes-WS] quote published key=${key} recipients=${recipients}`
+          );
         } catch (err) {
-          try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: (err as Error).message || 'internal_error' } })); } catch {}
+          try {
+            ws.send(
+              JSON.stringify({
+                type: 'vault_quote.ack',
+                payload: { error: (err as Error).message || 'internal_error' },
+              })
+            );
+          } catch {
+            void 0;
+          }
         }
         return;
       }
@@ -255,5 +369,3 @@ export function createVaultQuotesWebSocketServer() {
 
   return wss;
 }
-
-

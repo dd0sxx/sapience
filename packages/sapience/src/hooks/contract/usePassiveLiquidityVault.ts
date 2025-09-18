@@ -55,11 +55,13 @@ export interface UsePassiveLiquidityVaultConfig {
   chainId?: number;
 }
 
-export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig) {
+export function usePassiveLiquidityVault(
+  config?: UsePassiveLiquidityVaultConfig
+) {
   const { address } = useAccount();
   const { toast } = useToast();
 
-  const VAULT_ADDRESS: Address = (config?.vaultAddress || DEFAULT_VAULT_ADDRESS);
+  const VAULT_ADDRESS: Address = config?.vaultAddress || DEFAULT_VAULT_ADDRESS;
   const TARGET_CHAIN_ID: number | undefined = config?.chainId;
 
   // Read vault data
@@ -183,34 +185,37 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
   const userWithdrawalIdx = (userData?.[2]?.result as bigint) || 0n;
   const userDepositIdx = (userData?.[4]?.result as bigint) || 0n;
 
-  const {
-    data: userQueueDetails,
-  } = useReadContracts({
+  const { data: userQueueDetails } = useReadContracts({
     contracts:
-      (userWithdrawalIdx > 0n || userDepositIdx > 0n)
+      userWithdrawalIdx > 0n || userDepositIdx > 0n
         ? [
             ...(userWithdrawalIdx > 0n
-              ? [{
-                  abi: PARLAY_VAULT_ABI,
-                  address: VAULT_ADDRESS,
-                  functionName: 'getWithdrawalRequest',
-                  args: [userWithdrawalIdx - 1n],
-                  chainId: TARGET_CHAIN_ID,
-                } as const]
+              ? [
+                  {
+                    abi: PARLAY_VAULT_ABI,
+                    address: VAULT_ADDRESS,
+                    functionName: 'getWithdrawalRequest',
+                    args: [userWithdrawalIdx - 1n],
+                    chainId: TARGET_CHAIN_ID,
+                  } as const,
+                ]
               : []),
             ...(userDepositIdx > 0n
-              ? [{
-                  abi: PARLAY_VAULT_ABI,
-                  address: VAULT_ADDRESS,
-                  functionName: 'getDepositRequest',
-                  args: [userDepositIdx - 1n],
-                  chainId: TARGET_CHAIN_ID,
-                } as const]
+              ? [
+                  {
+                    abi: PARLAY_VAULT_ABI,
+                    address: VAULT_ADDRESS,
+                    functionName: 'getDepositRequest',
+                    args: [userDepositIdx - 1n],
+                    chainId: TARGET_CHAIN_ID,
+                  } as const,
+                ]
               : []),
           ]
         : [],
     query: {
-      enabled: !!VAULT_ADDRESS && (userWithdrawalIdx > 0n || userDepositIdx > 0n),
+      enabled:
+        !!VAULT_ADDRESS && (userWithdrawalIdx > 0n || userDepositIdx > 0n),
     },
   });
 
@@ -251,27 +256,30 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
   });
 
   // Write contract hook
-  const { writeContract: writeVaultContract, sendCalls, isPending: isVaultPending } =
-    useSapienceWriteContract({
-      onSuccess: () => {
-        toast({
-          title: 'Transaction successful',
-          description: 'Your vault transaction has been processed.',
-        });
-        refetchVaultData();
-        refetchUserData();
-        refetchAssetBalance();
-      },
-      onError: (error) => {
-        toast({
-          title: 'Transaction failed',
-          description: error.message,
-          variant: 'destructive',
-        });
-      },
-      successMessage: 'Vault transaction submission was successful',
-      fallbackErrorMessage: 'Vault transaction failed',
-    });
+  const {
+    writeContract: writeVaultContract,
+    sendCalls,
+    isPending: isVaultPending,
+  } = useSapienceWriteContract({
+    onSuccess: () => {
+      toast({
+        title: 'Transaction successful',
+        description: 'Your vault transaction has been processed.',
+      });
+      refetchVaultData();
+      refetchUserData();
+      refetchAssetBalance();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Transaction failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+    successMessage: 'Vault transaction submission was successful',
+    fallbackErrorMessage: 'Vault transaction failed',
+  });
 
   // Parse vault data
   const parsedVaultData: VaultData | null = vaultData
@@ -309,25 +317,37 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
   const minDeposit = (vaultData?.[8]?.result as bigint) || 0n; // MIN_DEPOSIT
 
   // Queue details parsing (preserve ordering: [withdrawal?, deposit?])
-  const parsedWithdrawalRequest: WithdrawalRequestDetails | null = useMemo(() => {
-    if (!userQueueDetails || userQueueDetails.length === 0) return null;
-    const item = userWithdrawalIdx > 0n ? userQueueDetails[0] : undefined;
-    if (!item?.result) return null;
-    const r = item.result as unknown as { user: Address; shares: bigint; timestamp: bigint; processed: boolean };
-    return {
-      user: r.user,
-      shares: r.shares,
-      timestamp: r.timestamp,
-      processed: r.processed,
-    };
-  }, [userQueueDetails, userWithdrawalIdx]);
+  const parsedWithdrawalRequest: WithdrawalRequestDetails | null =
+    useMemo(() => {
+      if (!userQueueDetails || userQueueDetails.length === 0) return null;
+      const item = userWithdrawalIdx > 0n ? userQueueDetails[0] : undefined;
+      if (!item?.result) return null;
+      const r = item.result as unknown as {
+        user: Address;
+        shares: bigint;
+        timestamp: bigint;
+        processed: boolean;
+      };
+      return {
+        user: r.user,
+        shares: r.shares,
+        timestamp: r.timestamp,
+        processed: r.processed,
+      };
+    }, [userQueueDetails, userWithdrawalIdx]);
 
   const parsedDepositRequest: DepositRequestDetails | null = useMemo(() => {
     if (!userQueueDetails) return null;
     const hasWithdrawal = userWithdrawalIdx > 0n ? 1 : 0;
-    const item = userDepositIdx > 0n ? userQueueDetails[hasWithdrawal] : undefined;
+    const item =
+      userDepositIdx > 0n ? userQueueDetails[hasWithdrawal] : undefined;
     if (!item?.result) return null;
-    const r = item.result as unknown as { user: Address; amount: bigint; timestamp: bigint; processed: boolean };
+    const r = item.result as unknown as {
+      user: Address;
+      amount: bigint;
+      timestamp: bigint;
+      processed: boolean;
+    };
     return {
       user: r.user,
       amount: r.amount,
@@ -341,7 +361,7 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
     const totalAssetsWei = (vaultData?.[0]?.result as bigint) || 0n;
     const totalSupplyWei = (vaultData?.[1]?.result as bigint) || 0n;
     if (totalSupplyWei === 0n) return 10n ** 18n; // 1.0
-    return (totalAssetsWei * (10n ** 18n)) / totalSupplyWei;
+    return (totalAssetsWei * 10n ** 18n) / totalSupplyWei;
   }, [vaultData]);
 
   // Prefer offchain quote if available
@@ -356,13 +376,18 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
     vaultAddress: VAULT_ADDRESS,
     onChainFallbackRay: onChainPricePerShareRay,
   });
-  const pricePerShareRay = wsQuote.source === 'ws' ? wsQuote.pricePerShareRay : httpQuote.pricePerShareRay;
+  const pricePerShareRay =
+    wsQuote.source === 'ws'
+      ? wsQuote.pricePerShareRay
+      : httpQuote.pricePerShareRay;
 
   // Manager address (for signature validation)
   const vaultManager: Address | undefined = parsedVaultData?.manager;
 
   // Validate WS quote signature against owner (async)
-  const [quoteSignatureValid, setQuoteSignatureValid] = useState<boolean | undefined>(undefined);
+  const [quoteSignatureValid, setQuoteSignatureValid] = useState<
+    boolean | undefined
+  >(undefined);
   useEffect(() => {
     const raw = wsQuote.raw;
     (async () => {
@@ -371,7 +396,9 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
         return;
       }
       try {
-        if (raw.signedBy.toLowerCase() !== (vaultManager as string).toLowerCase()) {
+        if (
+          raw.signedBy.toLowerCase() !== (vaultManager as string).toLowerCase()
+        ) {
           setQuoteSignatureValid(false);
           return;
         }
@@ -392,20 +419,23 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
         setQuoteSignatureValid(false);
       }
     })();
-     
   }, [wsQuote.raw, vaultManager]);
 
-  const hasFunction = useCallback(
-    (name: string, inputsLength?: number) => {
-      try {
-        const abiItems = (PassiveLiquidityVault as { abi: Abi }).abi as unknown as Array<any>;
-        return abiItems.some((f: any) => f?.type === 'function' && f?.name === name && (inputsLength === undefined || (Array.isArray(f?.inputs) && f.inputs.length === inputsLength)));
-      } catch {
-        return false;
-      }
-    },
-    []
-  );
+  const hasFunction = useCallback((name: string, inputsLength?: number) => {
+    try {
+      const abiItems = (PassiveLiquidityVault as { abi: Abi })
+        .abi as unknown as Array<any>;
+      return abiItems.some(
+        (f: any) =>
+          f?.type === 'function' &&
+          f?.name === name &&
+          (inputsLength === undefined ||
+            (Array.isArray(f?.inputs) && f.inputs.length === inputsLength))
+      );
+    } catch {
+      return false;
+    }
+  }, []);
 
   // Deposit (enqueue) with optional minShares slippage protection when available
   const deposit = useCallback(
@@ -415,16 +445,22 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
       const amountWei = parseUnits(amount, assetDecimals);
 
       // Compute minShares using the provided quote (no slippage)
-      const estSharesWei = (amountWei * (10n ** 18n)) / (pricePerShareRay === 0n ? 10n ** 18n : pricePerShareRay);
+      const estSharesWei =
+        (amountWei * 10n ** 18n) /
+        (pricePerShareRay === 0n ? 10n ** 18n : pricePerShareRay);
       const minSharesWei = estSharesWei;
 
       // Prepare calldata for requestDeposit (with or without min)
-      const supportsRequestDepositWithMin = hasFunction('requestDeposit', 2) || hasFunction('requestDepositWithMin', 2);
+      const supportsRequestDepositWithMin =
+        hasFunction('requestDeposit', 2) ||
+        hasFunction('requestDepositWithMin', 2);
       const requestDepositAbi: Abi = supportsRequestDepositWithMin
         ? ([
             {
               type: 'function',
-              name: hasFunction('requestDepositWithMin', 2) ? 'requestDepositWithMin' : 'requestDeposit',
+              name: hasFunction('requestDepositWithMin', 2)
+                ? 'requestDepositWithMin'
+                : 'requestDeposit',
               stateMutability: 'nonpayable',
               inputs: [
                 { name: 'amount', type: 'uint256' },
@@ -436,15 +472,21 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
         : PARLAY_VAULT_ABI;
 
       const requestFunctionName = supportsRequestDepositWithMin
-        ? (hasFunction('requestDepositWithMin', 2) ? 'requestDepositWithMin' : 'requestDeposit')
+        ? hasFunction('requestDepositWithMin', 2)
+          ? 'requestDepositWithMin'
+          : 'requestDeposit'
         : 'requestDeposit';
 
       const requestDepositCalldata = encodeFunctionData({
-        abi: requestFunctionName === 'requestDeposit' && !supportsRequestDepositWithMin
-          ? PARLAY_VAULT_ABI
-          : requestDepositAbi,
+        abi:
+          requestFunctionName === 'requestDeposit' &&
+          !supportsRequestDepositWithMin
+            ? PARLAY_VAULT_ABI
+            : requestDepositAbi,
         functionName: requestFunctionName as any,
-        args: supportsRequestDepositWithMin ? [amountWei, minSharesWei] : [amountWei],
+        args: supportsRequestDepositWithMin
+          ? [amountWei, minSharesWei]
+          : [amountWei],
       });
 
       // If approval is required, batch approve + requestDeposit
@@ -468,9 +510,15 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
       await writeVaultContract({
         chainId,
         address: VAULT_ADDRESS,
-        abi: requestFunctionName === 'requestDeposit' && !supportsRequestDepositWithMin ? PARLAY_VAULT_ABI : requestDepositAbi,
+        abi:
+          requestFunctionName === 'requestDeposit' &&
+          !supportsRequestDepositWithMin
+            ? PARLAY_VAULT_ABI
+            : requestDepositAbi,
         functionName: requestFunctionName as any,
-        args: supportsRequestDepositWithMin ? [amountWei, minSharesWei] : [amountWei],
+        args: supportsRequestDepositWithMin
+          ? [amountWei, minSharesWei]
+          : [amountWei],
       });
     },
     [
@@ -494,15 +542,22 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
       const sharesWei = parseUnits(shares, assetDecimals);
 
       // Compute minAssets using the provided quote (no slippage)
-      const estAssetsWei = (sharesWei * (pricePerShareRay === 0n ? 10n ** 18n : pricePerShareRay)) / (10n ** 18n);
+      const estAssetsWei =
+        (sharesWei *
+          (pricePerShareRay === 0n ? 10n ** 18n : pricePerShareRay)) /
+        10n ** 18n;
       const minAssetsWei = estAssetsWei;
 
-      const supportsWithdrawalWithMin = hasFunction('requestWithdrawal', 2) || hasFunction('requestWithdrawalWithMin', 2);
+      const supportsWithdrawalWithMin =
+        hasFunction('requestWithdrawal', 2) ||
+        hasFunction('requestWithdrawalWithMin', 2);
       const withdrawalAbi: Abi = supportsWithdrawalWithMin
         ? ([
             {
               type: 'function',
-              name: hasFunction('requestWithdrawalWithMin', 2) ? 'requestWithdrawalWithMin' : 'requestWithdrawal',
+              name: hasFunction('requestWithdrawalWithMin', 2)
+                ? 'requestWithdrawalWithMin'
+                : 'requestWithdrawal',
               stateMutability: 'nonpayable',
               inputs: [
                 { name: 'shares', type: 'uint256' },
@@ -514,18 +569,31 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
         : PARLAY_VAULT_ABI;
 
       const functionName = supportsWithdrawalWithMin
-        ? (hasFunction('requestWithdrawalWithMin', 2) ? 'requestWithdrawalWithMin' : 'requestWithdrawal')
+        ? hasFunction('requestWithdrawalWithMin', 2)
+          ? 'requestWithdrawalWithMin'
+          : 'requestWithdrawal'
         : 'requestWithdrawal';
 
       await writeVaultContract({
         chainId,
         address: VAULT_ADDRESS,
-        abi: functionName === 'requestWithdrawal' && !supportsWithdrawalWithMin ? PARLAY_VAULT_ABI : withdrawalAbi,
+        abi:
+          functionName === 'requestWithdrawal' && !supportsWithdrawalWithMin
+            ? PARLAY_VAULT_ABI
+            : withdrawalAbi,
         functionName: functionName as any,
-        args: supportsWithdrawalWithMin ? [sharesWei, minAssetsWei] : [sharesWei],
+        args: supportsWithdrawalWithMin
+          ? [sharesWei, minAssetsWei]
+          : [sharesWei],
       });
     },
-    [assetDecimals, pricePerShareRay, hasFunction, writeVaultContract, VAULT_ADDRESS]
+    [
+      assetDecimals,
+      pricePerShareRay,
+      hasFunction,
+      writeVaultContract,
+      VAULT_ADDRESS,
+    ]
   );
 
   // Process withdrawals function
@@ -545,28 +613,72 @@ export function usePassiveLiquidityVault(config?: UsePassiveLiquidityVaultConfig
   // Cancel functions (available after contract upgrade)
   const cancelDeposit = useCallback(
     async (chainId: number) => {
-      const candidateNames = ['cancelDeposit', 'cancelDepositRequest', 'cancelPendingDeposit'];
+      const candidateNames = [
+        'cancelDeposit',
+        'cancelDepositRequest',
+        'cancelPendingDeposit',
+      ];
       const name = candidateNames.find((n) => hasFunction(n, 0));
       if (!name) {
-        toast({ title: 'Cancel not available', description: 'Contract upgrade required to cancel deposits.', variant: 'destructive' });
+        toast({
+          title: 'Cancel not available',
+          description: 'Contract upgrade required to cancel deposits.',
+          variant: 'destructive',
+        });
         return;
       }
-      const abiFragment: Abi = ([{ type: 'function', name, stateMutability: 'nonpayable', inputs: [], outputs: [] }] as unknown) as Abi;
-      await writeVaultContract({ chainId, address: VAULT_ADDRESS, abi: abiFragment, functionName: name as any, args: [] });
+      const abiFragment: Abi = [
+        {
+          type: 'function',
+          name,
+          stateMutability: 'nonpayable',
+          inputs: [],
+          outputs: [],
+        },
+      ] as unknown as Abi;
+      await writeVaultContract({
+        chainId,
+        address: VAULT_ADDRESS,
+        abi: abiFragment,
+        functionName: name as any,
+        args: [],
+      });
     },
     [VAULT_ADDRESS, hasFunction, writeVaultContract, toast]
   );
 
   const cancelWithdrawal = useCallback(
     async (chainId: number) => {
-      const candidateNames = ['cancelWithdrawal', 'cancelWithdrawalRequest', 'cancelPendingWithdrawal'];
+      const candidateNames = [
+        'cancelWithdrawal',
+        'cancelWithdrawalRequest',
+        'cancelPendingWithdrawal',
+      ];
       const name = candidateNames.find((n) => hasFunction(n, 0));
       if (!name) {
-        toast({ title: 'Cancel not available', description: 'Contract upgrade required to cancel withdrawals.', variant: 'destructive' });
+        toast({
+          title: 'Cancel not available',
+          description: 'Contract upgrade required to cancel withdrawals.',
+          variant: 'destructive',
+        });
         return;
       }
-      const abiFragment: Abi = ([{ type: 'function', name, stateMutability: 'nonpayable', inputs: [], outputs: [] }] as unknown) as Abi;
-      await writeVaultContract({ chainId, address: VAULT_ADDRESS, abi: abiFragment, functionName: name as any, args: [] });
+      const abiFragment: Abi = [
+        {
+          type: 'function',
+          name,
+          stateMutability: 'nonpayable',
+          inputs: [],
+          outputs: [],
+        },
+      ] as unknown as Abi;
+      await writeVaultContract({
+        chainId,
+        address: VAULT_ADDRESS,
+        abi: abiFragment,
+        functionName: name as any,
+        args: [],
+      });
     },
     [VAULT_ADDRESS, hasFunction, writeVaultContract, toast]
   );
