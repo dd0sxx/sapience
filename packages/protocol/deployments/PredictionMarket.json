@@ -1,5 +1,5 @@
 {
-  "address": "0x1b007EEbC853DC5F13202D85d92d5712f15AC575",
+  "address": "0xB5583Daa6388291e56cF8509c2184B16c35e32d0",
   "abi": [
     {
       "type": "constructor",
@@ -718,6 +718,12 @@
           "internalType": "address"
         },
         {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
           "name": "makerNftTokenId",
           "type": "uint256",
           "indexed": false,
@@ -796,6 +802,12 @@
           "type": "address",
           "indexed": true,
           "internalType": "address"
+        },
+        {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
         },
         {
           "name": "makerNftTokenId",
@@ -1123,13 +1135,13 @@
     "1000000000000000000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xbc69db2ec782f39529e644387c1f6795fb4206ef01dd45d5a1b0f6e8f5f2b01b",
-  "deployTxnBlockNumber": "380450684",
-  "deployTimestamp": "1758200771",
+  "deployTxnHash": "0xe8df58dc1869ce214733984c4a6d64f162f13bc7a797fb9db118c6b9077f7ad3",
+  "deployTxnBlockNumber": "380553670",
+  "deployTimestamp": "1758226495",
   "sourceName": "src/predictionMarket/PredictionMarket.sol",
   "contractName": "PredictionMarket",
   "deployedOn": "deploy.PredictionMarket",
   "highlight": true,
-  "gasUsed": 3655170,
+  "gasUsed": 3228263,
   "gasCost": "10000000"
 }
