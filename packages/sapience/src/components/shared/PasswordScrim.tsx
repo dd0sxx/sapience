@@ -19,6 +19,7 @@ const PasswordScrim = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showError, setShowError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const authStatus = localStorage.getItem('isAuthenticated');
@@ -34,6 +35,13 @@ const PasswordScrim = () => {
     if (queryPassword?.toLowerCase() === 'nostradamus') {
       localStorage.setItem('isAuthenticated', 'true');
       setIsAuthenticated(true);
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('sapience-authenticated'));
+        }
+      } catch {
+        console.error('Error dispatching sapience-authenticated event');
+      }
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -98,6 +106,13 @@ const PasswordScrim = () => {
       localStorage.setItem('isAuthenticated', 'true');
       setIsAuthenticated(true);
       setShowError(false);
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('sapience-authenticated'));
+        }
+      } catch {
+        console.error('Error dispatching sapience-authenticated event');
+      }
     } else {
       setShowError(true);
     }
@@ -118,7 +133,7 @@ const PasswordScrim = () => {
           transition={{
             duration: 0.33, // Fast fade in
           }}
-          className="fixed inset-0 z-[9999] flex flex-col bg-background h-screen"
+          className="fixed inset-0 z-[9999] flex flex-col bg-background h-screen pointer-events-auto select-none"
         >
           {/* Error Message moved here for fixed, centered positioning */}
           <AnimatePresence>
@@ -157,8 +172,15 @@ const PasswordScrim = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password"
-                    className="bg-background h-12 text-lg flex-grow pr-16 sm:pr-20"
+                    className="bg-background h-12 text-lg flex-grow pr-16 sm:pr-20 pointer-events-auto"
                     autoFocus
+                    ref={inputRef}
+                    onTouchEnd={() => {
+                      // Help Safari/iOS reliably focus the input
+                      setTimeout(() => {
+                        inputRef.current?.focus();
+                      }, 0);
+                    }}
                     data-1p-ignore
                   />
                   <AnimatePresence>
