@@ -24,7 +24,7 @@ import LottieLoader from '~/components/shared/LottieLoader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
 import ProfileStats from '~/components/profile/ProfileStats';
 
-const TAB_VALUES = ['trades', 'auction', 'lp', 'forecasts'] as const;
+const TAB_VALUES = ['trades', 'parlays', 'lp', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const ProfilePageContent = () => {
@@ -108,7 +108,7 @@ const ProfilePageContent = () => {
       ? (rawHash as TabValue)
       : ('trades' as TabValue);
     // If Parlays is disabled, fall back to trades
-    if (desired === 'auction' && !parlayFeatureEnabled)
+    if (desired === 'parlays' && !parlayFeatureEnabled)
       return 'trades' as TabValue;
     return desired;
   };
@@ -138,7 +138,7 @@ const ProfilePageContent = () => {
       ? (value as TabValue)
       : ('trades' as TabValue);
     // Prevent selecting Parlays when feature is disabled
-    if (nextValue === 'auction' && !parlayFeatureEnabled) {
+    if (nextValue === 'parlays' && !parlayFeatureEnabled) {
       return;
     }
     setTabValue(nextValue);
@@ -160,7 +160,7 @@ const ProfilePageContent = () => {
     const hasExplicitHash = (TAB_VALUES as readonly string[]).includes(rawHash);
     if (hasExplicitHash) {
       // If user explicitly navigated to Parlays while disabled, redirect to trades
-      if (rawHash === 'auction' && !parlayFeatureEnabled) {
+      if (rawHash === 'parlays' && !parlayFeatureEnabled) {
         didAutoRedirectRef.current = true;
         handleTabChange('trades');
         return;
@@ -171,7 +171,7 @@ const ProfilePageContent = () => {
 
     const tabHasContent = (tab: TabValue): boolean => {
       if (tab === 'trades') return hasTrades;
-      if (tab === 'auction') return false; // Parlays is coming soon
+      if (tab === 'parlays') return false; // Parlays is coming soon
       if (tab === 'lp') return hasLp;
       if (tab === 'forecasts') return hasForecasts;
       return false;
@@ -201,7 +201,7 @@ const ProfilePageContent = () => {
 
   // If the feature flag becomes disabled while on Parlays, snap back to trades
   useEffect(() => {
-    if (!parlayFeatureEnabled && tabValue === 'auction') {
+    if (!parlayFeatureEnabled && tabValue === 'parlays') {
       handleTabChange('trades');
     }
   }, [parlayFeatureEnabled, tabValue]);
@@ -231,7 +231,7 @@ const ProfilePageContent = () => {
               </TabsTrigger>
               <TabsTrigger
                 className="w-full"
-                value="auction"
+                value="parlays"
                 disabled={!parlayFeatureEnabled}
               >
                 Parlays
@@ -272,7 +272,7 @@ const ProfilePageContent = () => {
               ) : null}
             </TabsContent>
 
-            <TabsContent value="auction">
+            <TabsContent value="parlays">
               <UserParlaysTable account={address} showHeaderText={false} />
             </TabsContent>
 

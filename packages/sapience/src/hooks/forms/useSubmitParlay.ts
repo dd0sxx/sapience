@@ -62,7 +62,7 @@ export function useSubmitParlay({
       setError(null);
       onSuccess?.();
       if (address) {
-        router.push(`/profile/${address.toLowerCase()}#predictions`);
+        router.push(`/profile/${address.toLowerCase()}#parlays`);
       }
     },
     onError: (err) => {
