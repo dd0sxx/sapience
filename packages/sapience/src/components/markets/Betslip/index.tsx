@@ -96,7 +96,7 @@ const Betslip = ({
 
   // PredictionMarket address (constant)
   const PREDICTION_MARKET_ADDRESS =
-    '0x9D18f97c191D397338709CDCe8F0915F8fF9BD82' as Address;
+    '0xB5583Daa6388291e56cF8509c2184B16c35e32d0' as Address;
 
   // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({
