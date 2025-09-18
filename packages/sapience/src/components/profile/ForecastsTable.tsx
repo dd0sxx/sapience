@@ -32,26 +32,18 @@ import { MarketGroupClassification } from '~/lib/types';
 // we'll need to use parentMarketAddress when available
 const getMarketAddressForAttestation = (
   attestation: FormattedAttestation,
-  parentMarketAddress?: string,
-  marketGroups?: ReturnType<typeof useSapience>['marketGroups']
+  parentMarketAddress?: string
 ): string | null => {
   // If we have a parent market address (single market context), use it
   if (parentMarketAddress) {
     return parentMarketAddress.toLowerCase();
   }
 
-  // For profile view with multiple markets, we need to find the market group
-  // that contains this marketId. This is a limitation of the current data structure.
-  if (marketGroups && attestation.marketId) {
-    const marketId = parseInt(attestation.marketId, 16);
-    for (const group of marketGroups) {
-      const market = group.markets?.find((m: any) => m.marketId === marketId);
-      if (market && group.address) {
-        return group.address.toLowerCase();
-      }
-    }
+  if (attestation.marketAddress) {
+    return attestation.marketAddress.toLowerCase();
   }
 
+  // If marketAddress is missing, that's a data integrity issue
   return null;
 };
 
@@ -113,8 +105,7 @@ const renderPredictionCell = ({
 }) => {
   const marketAddress = getMarketAddressForAttestation(
     row.original,
-    parentMarketAddress,
-    marketGroups
+    parentMarketAddress
   );
 
   let marketGroup = undefined as
@@ -204,8 +195,7 @@ const renderQuestionCell = ({
 }) => {
   const marketAddress = getMarketAddressForAttestation(
     row.original,
-    parentMarketAddress,
-    marketGroups
+    parentMarketAddress
   );
   const marketIdHex = extractMarketIdHex(row.original);
 
@@ -314,8 +304,7 @@ const ForecastsTable = ({
     return attestations.some((attestation) => {
       const marketAddress = getMarketAddressForAttestation(
         attestation,
-        parentMarketAddress,
-        marketGroups
+        parentMarketAddress
       );
 
       if (!marketAddress) return false;

@@ -89,6 +89,7 @@ const formatAttestationData = (
     Number(attestation.time) * 1000
   ).toLocaleString();
 
+  console.log('attestation', attestation);
   return {
     id: attestation.id.toString(),
     uid: attestation.uid,
