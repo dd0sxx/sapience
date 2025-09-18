@@ -31,7 +31,7 @@ const VaultsPageContent = () => {
   const { isConnected } = useAccount();
   // Constants for vault integration
   const VAULT_CHAIN_ID = 42161; // Arbitrum One
-  const VAULT_ADDRESS = '0x6B402ABad7C121491d33784E87025AdE0E6893c1';
+  const VAULT_ADDRESS = '0xD0Fd2e76dFB4449F422cdB2D0Bc3EA67A33b34b2';
 
   // Parlays feature flag detection (same as MarketsPage.tsx)
   const [parlayFeatureEnabled, setParlayFeatureEnabled] = useState(false);
