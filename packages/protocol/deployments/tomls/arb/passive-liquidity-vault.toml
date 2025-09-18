@@ -1,5 +1,5 @@
 name="passive-liquidity-vault"
-version="1.0.2"
+version="1.0.3"
 preset="test"
 
 [var.settings]
