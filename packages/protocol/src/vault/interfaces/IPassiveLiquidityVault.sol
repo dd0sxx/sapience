@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 /**
  * @title IPassiveLiquidityVault
- * @notice Interface for the ERC-4626 compliant PassiveLiquidityVault contract with queued deposits and withdrawals
+ * @notice Interface for the ERC-4626 compliant PassiveLiquidityVault contract with request-based deposits and withdrawals
  */
 interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     // ============ Structs ============
@@ -40,10 +40,7 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     function availableAssets() external view returns (uint256);
     function totalDeployed() external view returns (uint256);
     function emergencyMode() external view returns (bool);
-    // function getReservedAssets() external view returns (uint256);
-    // function getReservedShares() external view returns (uint256);
-
-    // ============ Queued Deposit/Withdrawal Functions ============
+    // ============ Request-based Deposit/Withdrawal Functions ============
     
     function requestDeposit(uint256 assets, uint256 expectedShares) external ;
     function requestWithdrawal(uint256 shares, uint256 expectedAssets) external ;
@@ -69,6 +66,7 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     
     // function getPendingRequest(uint256 index) external view returns (PendingRequest memory);
     function getActiveProtocolsCount() external view returns (uint256);
+    function getActiveProtocols() external view returns (address[] memory);
     function getActiveProtocol(uint256 index) external view returns (address);
     // function getPendingDeposit(address user) external view returns (uint256 amount);
     // function getDepositRequest(uint256 index) external view returns (PendingRequest memory);
@@ -86,7 +84,7 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     // ============ Additional Functions Available in Contract ============
     // Note: The following functions are implemented in the contract but not declared in this interface
     
-    // ERC-4626 Standard Functions (inherited from IERC4626) - Note: These now queue requests instead of immediate execution
+    // ERC-4626 Standard Functions (inherited from IERC4626) - Note: These now create requests instead of immediate execution
     // function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     // function mint(uint256 shares, address receiver) external returns (uint256 assets);
     // function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
