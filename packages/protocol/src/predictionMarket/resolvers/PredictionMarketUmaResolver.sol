@@ -30,7 +30,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
     error MarketNotOpen();
     error MarketNotEnded();
     error MarketNotDisputed();
-    error NotEnoughBondAmount(address sender, address bondCurrency, uint256 bondAmount, uint256 finalBalance);
+    error NotEnoughBondAmount(address sender, address bondCurrency, uint256 bondAmount, uint256 initialBalance, uint256 finalBalance);
 
     // ============ Events ============
     event MarketWrapped(address wrapper, bytes32 marketId, bytes claim, uint256 endTime, uint256 wrapTime);
@@ -210,24 +210,27 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         }
 
         IERC20 bondCurrency = IERC20(config.bondCurrency);
+        OptimisticOracleV3Interface optimisticOracleV3 =
+            OptimisticOracleV3Interface(address(config.optimisticOracleV3));
+
+        uint256 minUMABond = optimisticOracleV3.getMinimumBond(config.bondCurrency);
+        uint256 effectiveBondAmount = config.bondAmount < minUMABond ? minUMABond : config.bondAmount;
 
         // Get the bond currency (with protection against tokens with fees on transfer)
         uint256 initialBalance = bondCurrency.balanceOf(address(this));
-        bondCurrency.safeTransferFrom(msg.sender, address(this), config.bondAmount);
+        bondCurrency.safeTransferFrom(msg.sender, address(this), effectiveBondAmount);
         uint256 finalBalance = bondCurrency.balanceOf(address(this));
-        if (finalBalance - initialBalance != config.bondAmount) {
-            revert NotEnoughBondAmount(msg.sender, config.bondCurrency, config.bondAmount, finalBalance - initialBalance);
+        if ( initialBalance + effectiveBondAmount != finalBalance) {
+            revert NotEnoughBondAmount(msg.sender, config.bondCurrency, effectiveBondAmount, initialBalance, finalBalance);
         }
 
         // Approve the bond currency to the Optimistic Oracle V3
-        bondCurrency.forceApprove(address(config.optimisticOracleV3), config.bondAmount);
+        bondCurrency.forceApprove(address(config.optimisticOracleV3), effectiveBondAmount);
 
         // Get the "false" claim
         bytes memory falseClaim = abi.encodePacked("False: ", claim);
 
         // Submit the assertion to UMA
-        OptimisticOracleV3Interface optimisticOracleV3 =
-            OptimisticOracleV3Interface(address(config.optimisticOracleV3));
         bytes32 assertionId = optimisticOracleV3.assertTruth(
                 resolvedToYes ? claim : falseClaim,
                 msg.sender,
@@ -235,7 +238,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
                 address(0),
                 config.assertionLiveness,
                 bondCurrency,
-                config.bondAmount,
+                effectiveBondAmount,
                 optimisticOracleV3.defaultIdentifier(),
                 bytes32(0)
             );

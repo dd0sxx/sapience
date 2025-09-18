@@ -780,4 +780,10 @@ contract MockOptimisticOracleV3 {
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
         return assertions[assertionId];
     }
+    
+    function getMinimumBond(address currency) external pure returns (uint256) {
+        // Return a reasonable minimum bond amount for testing
+        // This should be less than BOND_AMOUNT (1 ether) to ensure tests pass
+        return 0.5 ether;
+    }
 }

@@ -402,9 +402,7 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
             isActiveProtocol[protocol] = true;
         }
         
-        // Safe approval: reset to 0 first, then approve (prevents approval race conditions)
-        IERC20(asset()).approve(protocol, 0);
-        IERC20(asset()).approve(protocol, amount);
+        IERC20(asset()).forceApprove(protocol, amount);
         
         emit FundsApproved(msg.sender, amount, protocol);
         emit UtilizationRateUpdated(currentUtilization, newUtilization);
