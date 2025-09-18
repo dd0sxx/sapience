@@ -1,5 +1,5 @@
 {
-  "address": "0xe69b281c9Fee55c2a30F587Ed6eE9D46A6449fea",
+  "address": "0x1b007EEbC853DC5F13202D85d92d5712f15AC575",
   "abi": [
     {
       "type": "constructor",
@@ -1123,13 +1123,13 @@
     "1000000000000000000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xb77a0b34188f8ee82db89133576e2fb89bc029cbbab7713a76f59bf00470f7d9",
-  "deployTxnBlockNumber": "380218865",
-  "deployTimestamp": "1758142854",
+  "deployTxnHash": "0xbc69db2ec782f39529e644387c1f6795fb4206ef01dd45d5a1b0f6e8f5f2b01b",
+  "deployTxnBlockNumber": "380450684",
+  "deployTimestamp": "1758200771",
   "sourceName": "src/predictionMarket/PredictionMarket.sol",
   "contractName": "PredictionMarket",
   "deployedOn": "deploy.PredictionMarket",
   "highlight": true,
-  "gasUsed": 3153307,
-  "gasCost": "11163000"
+  "gasUsed": 3655170,
+  "gasCost": "10000000"
 }

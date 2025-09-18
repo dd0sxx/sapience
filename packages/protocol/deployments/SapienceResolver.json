@@ -1,5 +1,5 @@
 {
-  "address": "0xb836614a95Bef1499B2bc361105b778F72D7D4e9",
+  "address": "0xf7715f83dA254974f7f9B9363abc394925847FdF",
   "abi": [
     {
       "type": "constructor",
@@ -198,13 +198,13 @@
     ]
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x11663bea5dff9f733dd256a0935f1c28a19fb863c08c3919917ff9b0ec4183aa",
-  "deployTxnBlockNumber": "380218875",
-  "deployTimestamp": "1758142856",
+  "deployTxnHash": "0x4e2a1ae402521bab2c2ca8a6103874f446fd74b4345e803a00dbb415036cdc14",
+  "deployTxnBlockNumber": "380450692",
+  "deployTimestamp": "1758200773",
   "sourceName": "src/predictionMarket/resolvers/PredictionMarketSapienceResolver.sol",
   "contractName": "PredictionMarketSapienceResolver",
   "deployedOn": "deploy.SapienceResolver",
   "highlight": true,
-  "gasUsed": 781657,
-  "gasCost": "11040000"
+  "gasUsed": 908440,
+  "gasCost": "10000000"
 }

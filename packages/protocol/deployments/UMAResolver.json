@@ -1,5 +1,5 @@
 {
-  "address": "0xFDfE039cA45C734192b45F2b0afac8C09DB2b865",
+  "address": "0xeF789dA126d402Ac2a3D7AF0Fd19b891f7Cc8296",
   "abi": [
     {
       "type": "constructor",
@@ -576,6 +576,11 @@
           "internalType": "uint256"
         },
         {
+          "name": "initialBalance",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
           "name": "finalBalance",
           "type": "uint256",
           "internalType": "uint256"
@@ -619,7 +624,7 @@
       "maxPredictionMarkets": "5",
       "optimisticOracleV3": "0xa6147867264374F324524E30C02C331cF28aa879",
       "bondCurrency": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-      "bondAmount": "10000000",
+      "bondAmount": "500000000",
       "assertionLiveness": "600"
     },
     [
@@ -627,13 +632,13 @@
     ]
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x4e3f9e556eff0469bcb382ed84766761923eca2db223604482583932f4f53eb0",
-  "deployTxnBlockNumber": "380218885",
-  "deployTimestamp": "1758142859",
+  "deployTxnHash": "0xd79a3f45238dc645b3d946b63bce480f124a5cc4aeceb494b354e06caf7e81a3",
+  "deployTxnBlockNumber": "380450700",
+  "deployTimestamp": "1758200775",
   "sourceName": "src/predictionMarket/resolvers/PredictionMarketUmaResolver.sol",
   "contractName": "PredictionMarketUmaResolver",
   "deployedOn": "deploy.UMAResolver",
   "highlight": true,
-  "gasUsed": 1464949,
-  "gasCost": "11109000"
+  "gasUsed": 1762053,
+  "gasCost": "10000000"
 }
