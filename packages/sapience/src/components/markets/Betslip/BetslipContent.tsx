@@ -76,7 +76,7 @@ export const BetslipContent = ({
     <>
       <div className="w-full h-full flex flex-col">
         <div
-          className={`relative px-4 pt-1.5 pb-1.5 bg-muted/50 border-b border-border/40 ${isMobile ? 'border-t' : ''}`}
+          className={`relative px-4 ${isMobile ? '' : 'pt-1.5 pb-1.5 bg-muted/50 border-b border-border/40'}`}
         >
           <div className="grid grid-cols-[auto_1fr_auto] items-center h-10">
             <span className="text-lg font-medium">Make a Prediction</span>
