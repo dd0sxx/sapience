@@ -203,32 +203,31 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
      * and provides similar functionality through the request-based interface.
      */
     
-    function deposit(uint256 /* assets */, address /* receiver */) public override(ERC4626, IERC4626) returns (uint256 shares) {
+    function deposit(uint256 /* assets */, address /* receiver */) public override(ERC4626, IERC4626) returns (uint256) {
         revert NotImplemented();
     }
 
-    function mint(uint256 /* shares */, address /* receiver */) public override(ERC4626, IERC4626) returns (uint256 assets) {
+    function mint(uint256 /* shares */, address /* receiver */) public override(ERC4626, IERC4626) returns (uint256) {
         revert NotImplemented();
     }
 
-    function withdraw(uint256 /* assets */, address /* receiver */, address owner) public override(ERC4626, IERC4626) returns (uint256 shares) {
+    function withdraw(uint256 /* assets */, address /* receiver */, address /* owner */) public override(ERC4626, IERC4626) returns (uint256) {
         revert NotImplemented();
     }
 
-    function redeem(uint256 /* shares */, address /* receiver */, address owner) public override(ERC4626, IERC4626) returns (uint256 assets) {
+    function redeem(uint256 /* shares */, address /* receiver */, address /* owner */) public override(ERC4626, IERC4626) returns (uint256) {
         revert NotImplemented();
     }
 
     function totalAssets() public view override(ERC4626, IERC4626) returns (uint256) {
         revert NotImplemented();
-        // return IERC20(asset()).balanceOf(address(this)) + _deployedLiquidity();
     }
 
-    function previewDeposit(uint256 assets) public view override(ERC4626, IERC4626) returns (uint256 shares) {
+    function previewDeposit(uint256 /* assets */) public view override(ERC4626, IERC4626) returns (uint256) {
         revert NotImplemented();
     }
 
-    function previewMint(uint256 shares) public view override(ERC4626, IERC4626) returns (uint256 assets) {
+    function previewMint(uint256 /* shares */) public view override(ERC4626, IERC4626) returns (uint256) {
         revert NotImplemented();
     }
 
