@@ -13,7 +13,9 @@ interface UseVaultShareQuoteOptions {
   onChainFallbackRay: bigint;
 }
 
-export function useVaultShareQuote(options: UseVaultShareQuoteOptions): VaultShareQuote {
+export function useVaultShareQuote(
+  options: UseVaultShareQuoteOptions
+): VaultShareQuote {
   const { chainId, vaultAddress, onChainFallbackRay } = options;
   const [quote, setQuote] = useState<VaultShareQuote>({
     pricePerShareRay: onChainFallbackRay,
@@ -40,7 +42,7 @@ export function useVaultShareQuote(options: UseVaultShareQuoteOptions): VaultSha
       try {
         const res = await fetch(endpoint, {
           method: 'GET',
-          headers: { 'accept': 'application/json' },
+          headers: { accept: 'application/json' },
           signal: controller.signal,
           cache: 'no-store',
         });
@@ -53,7 +55,11 @@ export function useVaultShareQuote(options: UseVaultShareQuoteOptions): VaultSha
         if (!mounted) return;
         const now = Date.now();
         lastSetRef.current = now;
-        setQuote({ pricePerShareRay: ray, updatedAtMs: json?.updatedAtMs ?? now, source: 'offchain' });
+        setQuote({
+          pricePerShareRay: ray,
+          updatedAtMs: json?.updatedAtMs ?? now,
+          source: 'offchain',
+        });
       } catch {
         if (!mounted) return;
         // keep fallback; no state update to avoid flapping
@@ -73,10 +79,12 @@ export function useVaultShareQuote(options: UseVaultShareQuoteOptions): VaultSha
   // Keep fallback updated if on-chain fallback changes materially
   useEffect(() => {
     if (quote.source === 'offchain') return;
-    setQuote({ pricePerShareRay: onChainFallbackRay, updatedAtMs: Date.now(), source: 'fallback' });
+    setQuote({
+      pricePerShareRay: onChainFallbackRay,
+      updatedAtMs: Date.now(),
+      source: 'fallback',
+    });
   }, [onChainFallbackRay]);
 
   return quote;
 }
-
-

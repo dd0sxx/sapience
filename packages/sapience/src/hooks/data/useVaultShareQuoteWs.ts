@@ -23,7 +23,9 @@ interface UseVaultShareQuoteWsOptions {
   onChainFallbackRay: bigint;
 }
 
-export function useVaultShareQuoteWs(options: UseVaultShareQuoteWsOptions): VaultShareWsQuote {
+export function useVaultShareQuoteWs(
+  options: UseVaultShareQuoteWsOptions
+): VaultShareWsQuote {
   const { chainId, vaultAddress, onChainFallbackRay } = options;
   const [quote, setQuote] = useState<VaultShareWsQuote>({
     pricePerShareRay: onChainFallbackRay,
@@ -69,7 +71,12 @@ export function useVaultShareQuoteWs(options: UseVaultShareQuoteWsOptions): Vaul
             p.vaultAddress?.toLowerCase() === vaultAddress.toLowerCase()
           ) {
             const ray = BigInt(String(p.vaultCollateralPerShare));
-            setQuote({ pricePerShareRay: ray, updatedAtMs: p.timestamp, source: 'ws', raw: p });
+            setQuote({
+              pricePerShareRay: ray,
+              updatedAtMs: p.timestamp,
+              source: 'ws',
+              raw: p,
+            });
           }
         }
       } catch {
@@ -99,11 +106,13 @@ export function useVaultShareQuoteWs(options: UseVaultShareQuoteWsOptions): Vaul
   // Keep fallback synced if on-chain fallback changes and we don't have ws yet
   useEffect(() => {
     if (quote.source === 'ws') return;
-    setQuote({ pricePerShareRay: onChainFallbackRay, updatedAtMs: Date.now(), source: 'fallback' });
+    setQuote({
+      pricePerShareRay: onChainFallbackRay,
+      updatedAtMs: Date.now(),
+      source: 'fallback',
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onChainFallbackRay]);
 
   return quote;
 }
-
-
