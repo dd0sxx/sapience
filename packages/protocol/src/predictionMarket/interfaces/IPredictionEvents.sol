@@ -13,6 +13,7 @@ interface IPredictionEvents {
     event PredictionMinted(
         address indexed maker,
         address indexed taker,
+        bytes encodedPredictedOutcomes,
         uint256 makerNftTokenId,
         uint256 takerNftTokenId,
         uint256 makerCollateral, // locked in the pool from maker
@@ -24,6 +25,7 @@ interface IPredictionEvents {
     event PredictionBurned(
         address indexed maker,
         address indexed taker,
+        bytes encodedPredictedOutcomes,
         uint256 makerNftTokenId,
         uint256 takerNftTokenId,
         uint256 totalCollateral,

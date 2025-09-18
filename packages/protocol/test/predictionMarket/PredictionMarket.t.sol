@@ -32,6 +32,7 @@ contract PredictionMarketTest is Test {
     event PredictionMinted(
         address indexed maker,
         address indexed taker,
+        bytes encodedPredictedOutcomes,
         uint256 makerNftTokenId,
         uint256 takerNftTokenId,
         uint256 makerCollateral,
@@ -43,6 +44,7 @@ contract PredictionMarketTest is Test {
     event PredictionBurned(
         address indexed maker,
         address indexed taker,
+        bytes encodedPredictedOutcomes,
         uint256 makerNftTokenId,
         uint256 takerNftTokenId,
         uint256 totalCollateral,
@@ -172,6 +174,7 @@ contract PredictionMarketTest is Test {
         emit PredictionMinted(
             maker,
             taker,
+            ENCODED_OUTCOMES,
             1, // makerNftTokenId
             2, // takerNftTokenId
             MAKER_COLLATERAL,
@@ -290,6 +293,7 @@ contract PredictionMarketTest is Test {
         emit PredictionBurned(
             maker,
             taker,
+            ENCODED_OUTCOMES,
             makerNftTokenId,
             takerNftTokenId,
             TOTAL_COLLATERAL,
@@ -327,6 +331,7 @@ contract PredictionMarketTest is Test {
         emit PredictionBurned(
             maker,
             taker,
+            ENCODED_OUTCOMES,
             makerNftTokenId,
             takerNftTokenId,
             TOTAL_COLLATERAL,
@@ -634,6 +639,7 @@ contract PredictionMarketTest is Test {
         emit PredictionBurned(
             maker,
             taker,
+            ENCODED_OUTCOMES,
             makerNftTokenId,
             makerNftTokenId + 1,
             TOTAL_COLLATERAL,

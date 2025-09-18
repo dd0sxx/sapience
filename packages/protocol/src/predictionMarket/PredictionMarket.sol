@@ -206,6 +206,7 @@ contract PredictionMarket is
         emit PredictionMinted(
             mintPredictionRequestData.maker,
             mintPredictionRequestData.taker,
+            mintPredictionRequestData.encodedPredictedOutcomes,
             makerNftTokenId,
             takerNftTokenId,
             mintPredictionRequestData.makerCollateral,
@@ -258,6 +259,7 @@ contract PredictionMarket is
         emit PredictionBurned(
             prediction.maker,
             prediction.taker,
+            prediction.encodedPredictedOutcomes,
             prediction.makerNftTokenId,
             prediction.takerNftTokenId,
             payout,
