@@ -70,7 +70,7 @@ IERC20 public immutable asset;           // Underlying asset token
 address public manager;                  // EOA manager address
 uint256 public maxUtilizationRate;       // Max utilization (basis points)
 uint256 public utilizationRate;          // Current utilization (basis points)
-uint256 public withdrawalDelay;          // Withdrawal delay in seconds (default: 1 day)
+uint256 public interactionDelay;          // Withdrawal delay in seconds (default: 1 day)
 uint256 public totalDeployed;            // Total deployed to protocols
 bool public emergencyMode;               // Emergency mode flag
 
@@ -246,7 +246,7 @@ vault.setManager(newManager);
 vault.setMaxUtilizationRate(8000); // 80%
 
 // Set withdrawal delay
-vault.setWithdrawalDelay(2 days);
+vault.setinteractionDelay(2 days);
 
 // Toggle emergency mode
 vault.toggleEmergencyMode();
@@ -299,8 +299,7 @@ The contract emits comprehensive events for all major operations:
 - `WithdrawalProcessed`: When a withdrawal request is processed
 
 ### Manager Events
-- `FundsDeployed`: When manager approves funds usage
-- `UtilizationRateUpdated`: When utilization rate changes
+- `FundsApproved`: When manager approves funds usage
 
 ### Emergency Events
 - `EmergencyWithdrawal`: When emergency withdrawal occurs
@@ -308,7 +307,7 @@ The contract emits comprehensive events for all major operations:
 ### Configuration Events
 - `ManagerUpdated`: When manager address changes
 - `MaxUtilizationRateUpdated`: When max utilization rate changes
-- `WithdrawalDelayUpdated`: When withdrawal delay changes
+- `interactionDelayUpdated`: When withdrawal delay changes
 
 ## Security Considerations
 
@@ -361,7 +360,7 @@ forge test --match-path test/vault/PassiveLiquidityVault.t.sol
 ### Initial Configuration
 ```solidity
 // Set withdrawal delay (default: 1 day)
-vault.setWithdrawalDelay(1 days);
+vault.setinteractionDelay(1 days);
 
 // Set maximum utilization rate (default: 80%)
 vault.setMaxUtilizationRate(8000);

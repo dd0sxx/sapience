@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
+/*
+intend to deposit / withdraw => min shares, collateral (shares) are moved to the contract
+execute deposit/withdraw => sent by the manager with a price  (no minumum time)
+expiration time => configurable => if not executed, the user can remove the intent
+
+if at the time of execution the price is not good for the vault, the intent is removed and collateral/shares sent back to the user
+
+
+
+delay between last interaction from the user on deposits and withdrawals
+
+*/
+
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
@@ -15,7 +28,7 @@ import "./interfaces/IPassiveLiquidityVault.sol";
 
 /**
  * @title PassiveLiquidityVault
- * @notice An ERC-4626 compliant passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
+ * @notice An ERC-4626 semi-compliant passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
  * 
  * HOW IT WORKS:
  * 1. Users deposit ERC-20 tokens into a queue system and receive vault shares after processing (1:1 initially)
@@ -25,7 +38,7 @@ import "./interfaces/IPassiveLiquidityVault.sol";
  * 5. The vault tracks utilization rate to prevent over-leverage and includes emergency mechanisms
  * 
  * KEY FEATURES:
- * - ERC-4626 standard compliance for maximum DeFi interoperability
+ * - ERC-4626 standard (semi-compliant) for DeFi interoperability
  * - Queued deposit and withdrawal system for better liquidity management
  * - Utilization rate limits (default 80%) to control risk exposure
  * - Withdrawal delay (default 1 day) to prevent bank runs
@@ -42,6 +55,9 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
 
     // ============ Custom Errors ============
     
+    // Non ERC-4626 compliant errors
+    error NotImplemented();
+
     // Access control errors
     error OnlyManager(address caller, address expectedManager);
     error OnlyOwner(address caller, address owner);
@@ -57,18 +73,21 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     
     // State errors
     error EmergencyModeActive();
-    error ProcessingInProgress(bool withdrawals, bool deposits);
+    error ProcessingInProgress(bool pendingRequests);
     error InsufficientBalance(address user, uint256 requested, uint256 available);
     error InsufficientAvailableAssets(uint256 requested, uint256 available);
     error ExceedsMaxUtilization(uint256 current, uint256 max);
     error AmountTooSmall(uint256 amount, uint256 minimum);
     
     // Queue errors
-    error WithdrawalAlreadyPending(address user);
-    error DepositAlreadyPending(address user);
-    error TooManyRequests(uint256 requested, uint256 maxAllowed);
-    error WithdrawalProcessingInProgress();
-    error DepositProcessingInProgress();
+    error NoPendingRequests(address user);
+    error NoPendingWithdrawal(address user);
+    error NoPendingDeposit(address user);
+    error PendingRequestNotProcessed(address user);
+    error ProcessingRequestsInProgress();
+    error TransferFailed(uint256 balanceBefore, uint256 amount, uint256 balanceAfter);
+    error RequestNotExpired();
+    error InteractionDelayNotExpired();
     
     // Emergency errors
     error EmergencyModeNotActive();
@@ -84,27 +103,20 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     /// @notice Maximum utilization rate (in basis points, e.g., 8000 = 80%)
     uint256 public maxUtilizationRate = 8000; // 80%
     
-    /// @notice Withdrawal delay in seconds (default: 1 day)
-    uint256 public withdrawalDelay = 1 days;
+    /// @notice Interaction delay in seconds for users (deposits and withdrawals)(default: 1 day)
+    uint256 public interactionDelay = 1 days;
+
+    /// @notice Expiration time in seconds for user requests (default: 10 minutes)
+    uint256 public expirationTime = 10 minutes;
     
-    /// @notice Withdrawal queue
-    IPassiveLiquidityVault.WithdrawalRequest[] public withdrawalQueue;
-    
-    /// @notice Mapping of user to their withdrawal request index
-    mapping(address => uint256) public userWithdrawalIndex;
-    
-    /// @notice Deposit queue
-    IPassiveLiquidityVault.DepositRequest[] public depositQueue;
-    
-    /// @notice Mapping of user to their deposit request index
-    mapping(address => uint256) public userDepositIndex;
-    
+    /// @notice Mapping of user to their last interaction timestamp
+    mapping(address => uint256) public lastUserInteractionTimestamp;
+
     /// @notice List of active protocol addresses
     address[] public activeProtocols;
     
     /// @notice Mapping to check if protocol is in active list
     mapping(address => bool) public isActiveProtocol;
-    // TOOD Use a set instead of mapping 
     
     /// @notice Emergency mode flag
     bool public emergencyMode = false;
@@ -113,29 +125,19 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     uint256 public constant BASIS_POINTS = 10000;
     
     /// @notice Minimum deposit amount. Used also as min withdrawal amount unless available is less than minimum. A large enough amount to prevent DoS attacks on deposits or withdrawals
-    uint256 public constant MIN_DEPOSIT = 100e6; // 100 token (assuming 6 decimals)
+    uint256 public constant MIN_DEPOSIT = 100e18; // 100 token (assuming 18 decimals)
 
-    /// @notice Maximum number of withdrawal or deposit requests to process in a single call
-    uint256 public constant MAX_PROCESS_QUEUE_LENGTH = 100;
+    /// @notice Total assets reserved for pending requests
+    uint256 private unconfirmedAssets = 0;
     
-    /// @notice Last processed index in withdrawal queue
-    uint256 private lastProcessedWithdrawalIndex = 0;
-    
-    /// @notice Last processed index in deposit queue
-    uint256 private lastProcessedDepositIndex = 0;
-    
-    /// @notice Total assets reserved for pending withdrawals
-    uint256 private reservedAssets = 0;
-    
-    /// @notice Total shares reserved for pending deposits
-    uint256 private reservedShares = 0;
-    
-    /// @notice Lock to prevent concurrent withdrawal processing
-    bool private processingWithdrawals = false;
-    
-    /// @notice Lock to prevent concurrent deposit processing
-    bool private processingDeposits = false;
+    /// @notice Total shares reserved for pending requests
+    uint256 private unconfirmedShares = 0;
 
+    /// @notice Mapping of user to their pending request
+    mapping(address => PendingRequest) public pendingRequests;
+
+    bool private processingRequests = false;
+    
     // ============ Modifiers ============
     
     modifier onlyManager() {
@@ -148,11 +150,6 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         _;
     }
     
-    modifier notProcessing() {
-        if (processingWithdrawals || processingDeposits) revert ProcessingInProgress(processingWithdrawals, processingDeposits);
-        _;
-    }
-
     // ============ Constructor ============
     
     constructor(
@@ -169,88 +166,33 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
 
     // ============ ERC-4626 Overrides ============
     
-    /**
-     * @notice Override deposit to queue deposit request
-     * @param assets Amount of assets to deposit
-     * @param receiver Address to receive shares // unused, receiver is going to be the msg.sender
-     * @return shares Theoretical number of shares that will be minted (after processing)
-     */
-    function deposit(uint256 assets, address receiver) public override(ERC4626, IERC4626) nonReentrant whenNotPaused notEmergency returns (uint256 shares) {
-        shares = previewDeposit(assets);
-        _requestDeposit(assets);
-        return shares;
+    function deposit(uint256 /* assets */, address /* receiver */) public override(ERC4626, IERC4626) returns (uint256 shares) {
+        revert NotImplemented();
     }
 
-    /**
-     * @notice Override mint to queue deposit request
-     * @param shares Number of shares to mint
-     * @param receiver Address to receive shares // unused, receiver is going to be the msg.sender
-     * @return assets Theoretical amount of assets that will be deposited (after processing)
-     */
-    function mint(uint256 shares, address receiver) public override(ERC4626, IERC4626) nonReentrant whenNotPaused notEmergency returns (uint256 assets) {
-        assets = previewMint(shares);
-        _requestDeposit(assets);
-        return assets;
+    function mint(uint256 /* shares */, address /* receiver */) public override(ERC4626, IERC4626) returns (uint256 assets) {
+        revert NotImplemented();
     }
 
-    /**
-     * @notice Override withdraw to queue withdrawal request instead of immediate withdrawal
-     * @param assets Amount of assets to withdraw
-     * @param owner Address that owns the shares
-     * @return shares Theoretical number of shares that will be burned (after processing)
-     */
-    function withdraw(uint256 assets, address /* receiver */, address owner) public override(ERC4626, IERC4626) nonReentrant whenNotPaused returns (uint256 shares) {
-        shares = previewWithdraw(assets);
-        _requestWithdrawal(shares, owner);
-        return shares;
+    function withdraw(uint256 /* assets */, address /* receiver */, address owner) public override(ERC4626, IERC4626) returns (uint256 shares) {
+        revert NotImplemented();
     }
 
-    /**
-     * @notice Override redeem to queue withdrawal request instead of immediate withdrawal
-     * @param shares Number of shares to redeem
-     * @param owner Address that owns the shares
-     * @return assets Theoretical amount of assets that will be withdrawn (after processing)
-     */
-    function redeem(uint256 shares, address /* receiver */, address owner) public override(ERC4626, IERC4626) nonReentrant whenNotPaused returns (uint256 assets) {
-        assets = previewRedeem(shares);
-        _requestWithdrawal(shares, owner);
-        return assets;
+    function redeem(uint256 /* shares */, address /* receiver */, address owner) public override(ERC4626, IERC4626) returns (uint256 assets) {
+        revert NotImplemented();
     }
 
-    /**
-     * @notice Override totalAssets to include deployed funds
-     * @return Total assets (available + deployed)
-     */
     function totalAssets() public view override(ERC4626, IERC4626) returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this)) + _deployedLiquidity();
+        revert NotImplemented();
+        // return IERC20(asset()).balanceOf(address(this)) + _deployedLiquidity();
     }
 
-    /**
-     * @notice Override previewDeposit to handle initial deposit case
-     * @param assets Amount of assets to deposit
-     * @return shares Number of shares that would be minted
-     */
     function previewDeposit(uint256 assets) public view override(ERC4626, IERC4626) returns (uint256 shares) {
-        uint256 supply = totalSupply();
-        if (supply == 0) {
-            // Initial deposit: 1:1 ratio
-            return assets;
-        }
-        return _convertToShares(assets, Math.Rounding.Floor);
+        revert NotImplemented();
     }
 
-    /**
-     * @notice Override previewMint to handle initial deposit case
-     * @param shares Number of shares to mint
-     * @return assets Amount of assets required
-     */
     function previewMint(uint256 shares) public view override(ERC4626, IERC4626) returns (uint256 assets) {
-        uint256 supply = totalSupply();
-        if (supply == 0) {
-            // Initial mint: 1:1 ratio
-            return shares;
-        }
-        return _convertToAssets(shares, Math.Rounding.Ceil);
+        revert NotImplemented();
     }
 
     // ============ Custom totals, Withdrawal and Deposit Functions ============
@@ -259,11 +201,11 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         return IERC20(asset()).balanceOf(address(this));
     }
 
-    function totalDeployed() public view returns (uint256) {
+    function totalDeployed() external view returns (uint256) {
         return _deployedLiquidity();
     }
 
-    function utilizationRate() public view returns (uint256) {
+    function utilizationRate() external view returns (uint256) {
         uint256 deployedLiquidity = _deployedLiquidity();
         uint256 totalAssetsValue = availableAssets() + deployedLiquidity;
         return totalAssetsValue > 0 ? ((deployedLiquidity * BASIS_POINTS) / totalAssetsValue) : 0;
@@ -281,215 +223,157 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     }
     
     /**
-     * @notice Request withdrawal of shares (internal function used by withdraw/redeem)
-     * @param shares Number of shares to withdraw
-     * @param owner Address that owns the shares
-     * @return queuePosition Position in withdrawal queue
-     */
-    function _requestWithdrawal(uint256 shares, address owner) internal returns (uint256 queuePosition) {
-        if (shares == 0) revert InvalidShares(shares);
-        if (balanceOf(owner) < shares) revert InsufficientBalance(owner, shares, balanceOf(owner));
-        if (userWithdrawalIndex[owner] != 0) revert WithdrawalAlreadyPending(owner);
-        
-        // Don't burn shares immediately - keep them until processing
-        // Don't reserve assets - calculate at processing time
-        
-        // Add to withdrawal queue without pre-calculating assets
-        withdrawalQueue.push(IPassiveLiquidityVault.WithdrawalRequest({
-            user: owner,
-            shares: shares,
-            timestamp: block.timestamp,
-            processed: false
-        }));
-        
-        queuePosition = withdrawalQueue.length - 1;
-        userWithdrawalIndex[owner] = queuePosition + 1; // 1-indexed
-        
-        emit WithdrawalRequested(owner, shares, queuePosition);
-    }
-
-    /**
      * @notice Request withdrawal of shares (function for direct calls)
      * @param shares Number of shares to withdraw
-     * @return queuePosition Position in withdrawal queue
+     * @param expectedAssets Expected assets to receive
      */
-    function requestWithdrawal(uint256 shares) external nonReentrant whenNotPaused returns (uint256 queuePosition) {
-        return _requestWithdrawal(shares, msg.sender);
-    }
+    function requestWithdrawal(uint256 shares, uint256 expectedAssets) external nonReentrant whenNotPaused {
+        if (shares == 0) revert InvalidShares(shares);
+        if (balanceOf(msg.sender) < shares) revert InsufficientBalance(msg.sender, shares, balanceOf(msg.sender));
+        if (lastUserInteractionTimestamp[msg.sender] + interactionDelay > block.timestamp) revert InteractionDelayNotExpired();
+        if (pendingRequests[msg.sender].user == msg.sender && !pendingRequests[msg.sender].processed) revert PendingRequestNotProcessed(msg.sender);
 
-    /**
-     * @notice Request deposit of assets (queued for processing)
-     * @param assetsAmount Amount of assets to deposit
-     * @return queuePosition Position in deposit queue
-     */
-    function _requestDeposit(uint256 assetsAmount) internal returns (uint256 queuePosition) {
-        if (assetsAmount < MIN_DEPOSIT) revert AmountTooSmall(assetsAmount, MIN_DEPOSIT);
-        if (userDepositIndex[msg.sender] != 0) revert DepositAlreadyPending(msg.sender);
-        
-        // Transfer assets from user to vault
-        IERC20(asset()).safeTransferFrom(msg.sender, address(this), assetsAmount);
-        
-        // Calculate shares to reserve at current share price (round down to favor vault)
-        uint256 sharesToReserve;
-        uint256 supply = totalSupply();
-        if (supply == 0) {
-            // Initial deposit: 1:1 ratio
-            sharesToReserve = assetsAmount;
-        } else {
-            sharesToReserve = _convertToShares(assetsAmount, Math.Rounding.Floor);
-        }
-        
-        // Reserve shares to maintain correct share-to-asset ratio
-        reservedShares += sharesToReserve;
-        
-        // Add to deposit queue
-        depositQueue.push(IPassiveLiquidityVault.DepositRequest({
+        // Revert if withdrawal is small unless it's the full balance
+        if(shares < balanceOf(msg.sender) && expectedAssets < MIN_DEPOSIT) revert AmountTooSmall(expectedAssets, MIN_DEPOSIT);
+
+        pendingRequests[msg.sender] = IPassiveLiquidityVault.PendingRequest({
             user: msg.sender,
-            amount: assetsAmount,
+            isDeposit: false,
+            shares: shares,
+            assets: expectedAssets,
             timestamp: block.timestamp,
             processed: false
-        }));
+        });
         
-        queuePosition = depositQueue.length - 1;
-        userDepositIndex[msg.sender] = queuePosition + 1; // 1-indexed
-        
-        emit DepositRequested(msg.sender, assetsAmount, queuePosition);
-        return queuePosition;
+        emit PendingRequestCreated(msg.sender, false, shares, expectedAssets);
     }
 
-    function requestDeposit(uint256 amount) external nonReentrant whenNotPaused notEmergency returns (uint256 queuePosition) {
-        return _requestDeposit(amount);   
+    function requestDeposit(uint256 assets, uint256 expectedShares) external nonReentrant whenNotPaused notEmergency {
+        if (assets < MIN_DEPOSIT) revert AmountTooSmall(assets, MIN_DEPOSIT);
+        if (lastUserInteractionTimestamp[msg.sender] + interactionDelay > block.timestamp) revert InteractionDelayNotExpired();
+        if (pendingRequests[msg.sender].user == msg.sender && !pendingRequests[msg.sender].processed) revert PendingRequestNotProcessed(msg.sender);
+        
+        // Transfer assets from user to vault
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
+        IERC20(asset()).safeTransferFrom(msg.sender, address(this), assets);
+        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        if (balanceBefore + assets != balanceAfter) revert TransferFailed(balanceBefore, assets, balanceAfter);
+
+        pendingRequests[msg.sender] = IPassiveLiquidityVault.PendingRequest({
+            user: msg.sender,
+            isDeposit: true,
+            shares: expectedShares,
+            assets: assets,
+            timestamp: block.timestamp,
+            processed: false
+        });
+
+        unconfirmedAssets += assets;
+
+        lastUserInteractionTimestamp[msg.sender] = block.timestamp;
+        
+        emit PendingRequestCreated(msg.sender, true, expectedShares, assets);
     }
 
-    /**
-     * @notice Process withdrawal requests (can be called by anyone)
-     * @param maxRequests Maximum number of requests to process in this call
-     */
-    function processWithdrawals(uint256 maxRequests) external nonReentrant notProcessing {
-        if (maxRequests > MAX_PROCESS_QUEUE_LENGTH) revert TooManyRequests(maxRequests, MAX_PROCESS_QUEUE_LENGTH);
-        if (processingWithdrawals) revert WithdrawalProcessingInProgress();
+    function cancelWithdrawal() external nonReentrant {
+        PendingRequest storage request = pendingRequests[msg.sender];
+        if (request.user == address(0) || request.processed) revert NoPendingRequests(msg.sender);
+        if (request.isDeposit) revert NoPendingWithdrawal(msg.sender);
+        if (request.timestamp + expirationTime > block.timestamp) revert RequestNotExpired();
+
+        request.user = address(0);
+
+        emit PendingRequestCancelled(msg.sender, false, request.shares, request.assets);
+    }
+
+    function cancelDeposit() external nonReentrant {
+        PendingRequest storage request = pendingRequests[msg.sender];
+        if (request.user == address(0) || request.processed) revert NoPendingRequests(msg.sender);
+        if (!request.isDeposit) revert NoPendingDeposit(msg.sender);
+        if (request.timestamp + expirationTime > block.timestamp) revert RequestNotExpired();
+
+        request.user = address(0);
+        unconfirmedAssets -= request.assets;
+
+        // Transfer assets from vault to user
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
+        IERC20(asset()).safeTransfer(msg.sender, request.assets);
+        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        if (balanceBefore != request.assets + balanceAfter) revert TransferFailed(balanceBefore, request.assets, balanceAfter);
+
+        emit PendingRequestCancelled(msg.sender, true, request.shares, request.assets);
+    }
+
+    function processDeposit(address requestedBy) external nonReentrant {
+        // Check if the processing is already in progress
+        if (processingRequests) revert ProcessingRequestsInProgress();
+        processingRequests = true;
+
+        // Check if the caller is the manager
+        if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
+
+        PendingRequest storage request = pendingRequests[requestedBy];
+        if (request.user == address(0) || request.processed) revert NoPendingRequests(requestedBy);
+        if (!request.isDeposit) revert NoPendingDeposit(requestedBy);
         
-        processingWithdrawals = true;
+        request.processed = true;
+        unconfirmedAssets -= request.assets;
+
+        _mint(requestedBy, request.shares);
         
-        uint256 processed = 0;
-        // Include reserved assets in available amount since they can be used for withdrawals
-        uint256 availableAssetsAmount = IERC20(asset()).balanceOf(address(this));
-        
-        // Start from the last processed index to avoid reprocessing
-        uint256 examined = 0;
-        for (uint256 i = lastProcessedWithdrawalIndex; i < withdrawalQueue.length && processed < maxRequests; i++) {
-            IPassiveLiquidityVault.WithdrawalRequest storage request = withdrawalQueue[i];
-            examined++;
-            
-            if (request.processed) {
-                continue;
-            }
-            
-            if (block.timestamp < request.timestamp + withdrawalDelay) {
-                continue;
-            }
-            
-            // Calculate withdrawal amount at processing time
-            uint256 withdrawAmount = _convertToAssets(request.shares, Math.Rounding.Floor);
-            
-            // Check if we have enough liquidity
-            if (withdrawAmount > availableAssetsAmount) {
-                break; // Not enough liquidity
-            }
-            
-            // Process withdrawal
-            request.processed = true;
-            availableAssetsAmount -= withdrawAmount;
-            
-            // Burn shares and transfer assets
-            _burn(request.user, request.shares);
-            
-            // Reset user withdrawal index
-            userWithdrawalIndex[request.user] = 0;
-            
-            // Transfer assets to user
-            IERC20(asset()).safeTransfer(request.user, withdrawAmount);
-            
-            emit WithdrawalProcessed(request.user, request.shares, withdrawAmount);
-            processed++;
-        }
-        
-        // Update the last processed index to the current position
-        lastProcessedWithdrawalIndex = lastProcessedWithdrawalIndex + examined;
-        
+        emit PendingRequestProcessed(requestedBy, true, request.shares, request.assets);
+
         // Release the processing lock
-        processingWithdrawals = false;
+        processingRequests = false;
     }
 
-    /**
-     * @notice Process deposit requests (can be called by anyone)
-     * @param maxRequests Maximum number of requests to process in this call
-     */
-    function processDeposits(uint256 maxRequests) external nonReentrant notProcessing {
-        if (maxRequests > MAX_PROCESS_QUEUE_LENGTH) revert TooManyRequests(maxRequests, MAX_PROCESS_QUEUE_LENGTH);
-        if (processingDeposits) revert DepositProcessingInProgress();
+    function processWithdrawal(address requestedBy) external nonReentrant {
+        // Check if the processing is already in progress
+        if (processingRequests) revert ProcessingRequestsInProgress();
+        processingRequests = true;
+
+        // Check if the caller is the manager
+        if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
+
+        PendingRequest storage request = pendingRequests[requestedBy];
+        if (request.user == address(0) || request.processed) revert NoPendingRequests(requestedBy);
+        if (request.isDeposit) revert NoPendingWithdrawal(requestedBy);
+    
+        request.processed = true;
+        _burn(requestedBy, request.shares);
         
-        processingDeposits = true;
-        
-        uint256 processed = 0;
-        
-        // Start from the last processed index to avoid reprocessing
-        uint256 examined = 0;
-        for (uint256 i = lastProcessedDepositIndex; i < depositQueue.length && processed < maxRequests; i++) {
-            IPassiveLiquidityVault.DepositRequest storage request = depositQueue[i];
-            examined++;
-            
-            if (request.processed) {
-                continue;
-            }
-            
-            // Calculate shares to mint (round down to favor vault - user gets fewer shares)
-            uint256 shares;
-            uint256 supply = totalSupply();
-            if (supply == 0) {
-                // Initial deposit: 1:1 ratio
-                shares = request.amount;
-            } else {
-                shares = _convertToShares(request.amount, Math.Rounding.Floor);
-            }
-            
-            // Release reserved shares
-            reservedShares -= shares;
-            
-            // Mint shares to user
-            _mint(request.user, shares);
-            
-            // Mark as processed
-            request.processed = true;
-            
-            // Reset user deposit index
-            userDepositIndex[request.user] = 0;
-            
-            emit DepositProcessed(request.user, request.amount, shares);
-            processed++;
-        }
-        
-        // Update the last processed index to the current position
-        lastProcessedDepositIndex = lastProcessedDepositIndex + examined;
-        
+        // Transfer assets from vault to user
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
+        IERC20(asset()).safeTransfer(request.user, request.assets);
+        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        if (balanceBefore != request.assets + balanceAfter) revert TransferFailed(balanceBefore, request.assets, balanceAfter);
+    
+        emit PendingRequestProcessed(requestedBy, false, request.shares, request.assets);
+
         // Release the processing lock
-        processingDeposits = false;
+        processingRequests = false;
     }
 
     /**
-     * @notice Emergency withdrawal (bypasses queue and delay)
+     * @notice Emergency withdrawal (bypasses delay but uses just the vault's balance)
      * @param shares Number of shares to withdraw
      */
     function emergencyWithdraw(uint256 shares) external nonReentrant {
         if (!emergencyMode) revert EmergencyModeNotActive();
         if (shares == 0) revert InvalidShares(shares);
         if (balanceOf(msg.sender) < shares) revert InsufficientBalance(msg.sender, shares, balanceOf(msg.sender));
-        
-        uint256 withdrawAmount = _convertToAssets(shares, Math.Rounding.Floor);
-        if (withdrawAmount > _getAvailableAssets()) revert InsufficientAvailableAssets(withdrawAmount, _getAvailableAssets());
+
+        // Convert shares to assets using just the vault's balance and not the total assets
+        uint256 vaultBalance = _getAvailableAssets();
+        uint256 withdrawAmount = Math.mulDiv(shares, vaultBalance, totalSupply(), Math.Rounding.Floor);
+
+        if (withdrawAmount > vaultBalance) revert InsufficientAvailableAssets(withdrawAmount, vaultBalance);
         
         _burn(msg.sender, shares);
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
         IERC20(asset()).safeTransfer(msg.sender, withdrawAmount);
+        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        if (balanceBefore != withdrawAmount + balanceAfter) revert TransferFailed(balanceBefore, withdrawAmount, balanceAfter);
         
         emit EmergencyWithdrawal(msg.sender, shares, withdrawAmount);
     }
@@ -507,8 +391,9 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         if (amount > _getAvailableAssets()) revert InsufficientAvailableAssets(amount, _getAvailableAssets());
         
         // Check utilization rate limits
-        uint256 currentUtilization = utilizationRate();
-        uint256 newUtilization = ((_deployedLiquidity() + amount) * BASIS_POINTS) / totalAssets();
+        uint256 currentUtilization = this.utilizationRate();
+        uint256 totalAssetsValue = availableAssets() + _deployedLiquidity();
+        uint256 newUtilization = ((_deployedLiquidity() + amount) * BASIS_POINTS) / totalAssetsValue;
         if (newUtilization > maxUtilizationRate) revert ExceedsMaxUtilization(newUtilization, maxUtilizationRate);
         
         // Update deployment info
@@ -521,13 +406,13 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         IERC20(asset()).approve(protocol, 0);
         IERC20(asset()).approve(protocol, amount);
         
-        emit FundsDeployed(msg.sender, amount, protocol);
+        emit FundsApproved(msg.sender, amount, protocol);
         emit UtilizationRateUpdated(currentUtilization, newUtilization);
     }
 
     // ============ Signature Functions ============
 
-    function isValidSignature(bytes32 messageHash, bytes memory signature) public view returns (bytes4) {
+    function isValidSignature(bytes32 messageHash, bytes memory signature) external view returns (bytes4) {
         // check if the signer was the manager
         if (_isApprovalValid(messageHash, manager, signature)) {
             return IERC1271.isValidSignature.selector;
@@ -546,39 +431,6 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     }
 
     /**
-     * @notice Get pending withdrawal amount for a user
-     * @param user User address
-     * @return amount Pending withdrawal amount
-     */
-    function getPendingWithdrawal(address user) external view returns (uint256 amount) {
-        uint256 index = userWithdrawalIndex[user];
-        if (index == 0) return 0;
-        
-        IPassiveLiquidityVault.WithdrawalRequest storage request = withdrawalQueue[index - 1];
-        if (request.processed) return 0;
-        
-        return _convertToAssets(request.shares, Math.Rounding.Floor);
-    }
-
-    /**
-     * @notice Get withdrawal queue length
-     * @return Length of withdrawal queue
-     */
-    function getWithdrawalQueueLength() external view returns (uint256) {
-        return withdrawalQueue.length;
-    }
-
-    /**
-     * @notice Get withdrawal request by index
-     * @param index Index in withdrawal queue
-     * @return request Withdrawal request data
-     */
-    function getWithdrawalRequest(uint256 index) external view returns (IPassiveLiquidityVault.WithdrawalRequest memory) {
-        if (index >= withdrawalQueue.length) revert InvalidIndex(index, withdrawalQueue.length);
-        return withdrawalQueue[index];
-    }
-
-    /**
      * @notice Get number of active protocols
      * @return Number of active protocols
      */
@@ -594,55 +446,6 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
     function getActiveProtocol(uint256 index) external view returns (address) {
         if (index >= activeProtocols.length) revert InvalidIndex(index, activeProtocols.length);
         return activeProtocols[index];
-    }
-
-    /**
-     * @notice Get pending deposit amount for a user
-     * @param user User address
-     * @return amount Pending deposit amount
-     */
-    function getPendingDeposit(address user) external view returns (uint256 amount) {
-        uint256 index = userDepositIndex[user];
-        if (index == 0) return 0;
-        
-        IPassiveLiquidityVault.DepositRequest storage request = depositQueue[index - 1];
-        if (request.processed) return 0;
-        
-        return request.amount;
-    }
-
-    /**
-     * @notice Get deposit queue length
-     * @return Length of deposit queue
-     */
-    function getDepositQueueLength() external view returns (uint256) {
-        return depositQueue.length;
-    }
-
-    /**
-     * @notice Get deposit request by index
-     * @param index Index in deposit queue
-     * @return request Deposit request data
-     */
-    function getDepositRequest(uint256 index) external view returns (IPassiveLiquidityVault.DepositRequest memory) {
-        if (index >= depositQueue.length) revert InvalidIndex(index, depositQueue.length);
-        return depositQueue[index];
-    }
-
-    function getReservedAssets() external view returns (uint256) {
-        return reservedAssets;
-    }
-
-    function getReservedShares() external view returns (uint256) {
-        return reservedShares;
-    }
-
-    function isProcessingWithdrawals() external view returns (bool) {
-        return processingWithdrawals;
-    }
-
-    function isProcessingDeposits() external view returns (bool) {
-        return processingDeposits;
     }
 
     // ============ Admin Functions ============
@@ -666,17 +469,27 @@ contract PassiveLiquidityVault is ERC4626, IPassiveLiquidityVault, Ownable2Step,
         if (newMaxRate > BASIS_POINTS) revert InvalidRate(newMaxRate, BASIS_POINTS);
         uint256 oldRate = maxUtilizationRate;
         maxUtilizationRate = newMaxRate;
-        emit MaxUtilizationRateUpdated(oldRate, newMaxRate);
+        emit UtilizationRateUpdated(oldRate, newMaxRate);
     }
 
     /**
      * @notice Set withdrawal delay
      * @param newDelay New withdrawal delay in seconds
      */
-    function setWithdrawalDelay(uint256 newDelay) external onlyOwner {
-        uint256 oldDelay = withdrawalDelay;
-        withdrawalDelay = newDelay;
-        emit WithdrawalDelayUpdated(oldDelay, newDelay);
+    function setInteractionDelay(uint256 newDelay) external onlyOwner {
+        uint256 oldDelay = interactionDelay;
+        interactionDelay = newDelay;
+        emit InteractionDelayUpdated(oldDelay, newDelay);
+    }
+
+    /**
+     * @notice Set expiration time
+     * @param newExpirationTime New expiration time in seconds
+     */
+    function setExpirationTime(uint256 newExpirationTime) external onlyOwner {
+        uint256 oldExpirationTime = expirationTime;
+        expirationTime = newExpirationTime;
+        emit ExpirationTimeUpdated(oldExpirationTime, newExpirationTime);
     }
 
     /**

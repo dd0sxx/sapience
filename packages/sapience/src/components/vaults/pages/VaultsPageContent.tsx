@@ -45,7 +45,7 @@ const VaultsPageContent = () => {
     formatAssetAmount,
     formatSharesAmount,
     formatUtilizationRate,
-    formatWithdrawalDelay,
+    formatinteractionDelay,
   } = usePassiveLiquidityVault();
 
   // Form state
@@ -156,8 +156,8 @@ const VaultsPageContent = () => {
                               vaultData?.utilizationRate ?? 0n
                             )}
                             % • Delay:{' '}
-                            {formatWithdrawalDelay(
-                              vaultData?.withdrawalDelay ?? 0n
+                            {formatinteractionDelay(
+                              vaultData?.interactionDelay ?? 0n
                             )}
                             {vaultData?.emergencyMode &&
                               ' • Emergency Mode Active'}
@@ -358,8 +358,8 @@ const VaultsPageContent = () => {
                             <div className="text-sm text-muted-foreground">
                               Withdrawals are queued with a{' '}
                               {vaultData
-                                ? formatWithdrawalDelay(
-                                    vaultData?.withdrawalDelay ?? 0n
+                                ? formatinteractionDelay(
+                                    vaultData?.interactionDelay ?? 0n
                                   )
                                 : '1 day'}{' '}
                               delay to ensure vault stability and proper
@@ -413,8 +413,8 @@ const VaultsPageContent = () => {
                               vaultData?.utilizationRate ?? 0n
                             )}
                             % • Delay:{' '}
-                            {formatWithdrawalDelay(
-                              vaultData?.withdrawalDelay ?? 0n
+                            {formatinteractionDelay(
+                              vaultData?.interactionDelay ?? 0n
                             )}
                             {vaultData?.emergencyMode &&
                               ' • Emergency Mode Active'}
@@ -616,8 +616,8 @@ const VaultsPageContent = () => {
                             <p className="text-xs">
                               Withdrawals are queued with a{' '}
                               {vaultData
-                                ? formatWithdrawalDelay(
-                                    vaultData?.withdrawalDelay ?? 0n
+                                ? formatinteractionDelay(
+                                    vaultData?.interactionDelay ?? 0n
                                   )
                                 : '1 day'}{' '}
                               delay to ensure vault stability and proper

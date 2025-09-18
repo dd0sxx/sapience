@@ -19,7 +19,7 @@ export interface VaultData {
   totalSupply: bigint;
   utilizationRate: bigint;
   maxUtilizationRate: bigint;
-  withdrawalDelay: bigint;
+  interactionDelay: bigint;
   emergencyMode: boolean;
   paused: boolean;
   manager: Address;
@@ -66,7 +66,7 @@ export function usePassiveLiquidityVault() {
       {
         abi: PARLAY_VAULT_ABI,
         address: PARLAY_VAULT_ADDRESS,
-        functionName: 'withdrawalDelay',
+        functionName: 'interactionDelay',
       },
       {
         abi: PARLAY_VAULT_ABI,
@@ -189,7 +189,7 @@ export function usePassiveLiquidityVault() {
         totalSupply: (vaultData[1]?.result as bigint) || 0n,
         utilizationRate: (vaultData[2]?.result as bigint) || 0n,
         maxUtilizationRate: (vaultData[3]?.result as bigint) || 0n,
-        withdrawalDelay: (vaultData[4]?.result as bigint) || 0n,
+        interactionDelay: (vaultData[4]?.result as bigint) || 0n,
         emergencyMode: (vaultData[5]?.result as boolean) || false,
         paused: (vaultData[6]?.result as boolean) || false,
         manager:
@@ -311,7 +311,7 @@ export function usePassiveLiquidityVault() {
     return ((Number(rate) / 10000) * 100).toFixed(1); // Convert from basis points to percentage
   }, []);
 
-  const formatWithdrawalDelay = useCallback((delay: bigint) => {
+  const formatinteractionDelay = useCallback((delay: bigint) => {
     const days = Number(delay) / (24 * 60 * 60);
     return days >= 1
       ? `${days.toFixed(1)} days`
@@ -341,7 +341,7 @@ export function usePassiveLiquidityVault() {
     formatAssetAmount,
     formatSharesAmount,
     formatUtilizationRate,
-    formatWithdrawalDelay,
+    formatinteractionDelay,
 
     // Refetch functions
     refetchVaultData,

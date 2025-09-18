@@ -181,14 +181,14 @@ contract PassiveLiquidityVaultTest is Test {
     address public user2 = address(0x4);
     address public user3 = address(0x5);
     
-    uint256 public constant INITIAL_SUPPLY = 1000000e6; // 1M tokens
-    uint256 public constant DEPOSIT_AMOUNT = 10000e6; // 10K tokens
+    uint256 public constant INITIAL_SUPPLY = 1000000e18; // 1M tokens
+    uint256 public constant DEPOSIT_AMOUNT = 100000e18; // 100K tokens (above MIN_DEPOSIT of 100e18)
     
     function setUp() public {
         vm.startPrank(owner);
         
         // Deploy mock asset token
-        asset = new MockERC20("Test Token", "TEST", 6);
+        asset = new MockERC20("Test Token", "TEST", 18);
         
         // Deploy vault
         vault = new PassiveLiquidityVault(
@@ -207,6 +207,9 @@ contract PassiveLiquidityVaultTest is Test {
         asset.mint(user2, INITIAL_SUPPLY);
         asset.mint(user3, INITIAL_SUPPLY);
         
+        // Set interaction delay to 0 for testing
+        vault.setInteractionDelay(0);
+        
         vm.stopPrank();
     }
     
@@ -215,11 +218,13 @@ contract PassiveLiquidityVaultTest is Test {
     function _approveAndDeposit(address user, uint256 amount) internal returns (uint256 shares) {
         vm.startPrank(user);
         asset.approve(address(vault), amount);
-        shares = vault.deposit(amount, user);
+        vault.requestDeposit(amount, amount); // 1:1 ratio initially
         vm.stopPrank();
         
         // Process the deposit to mint shares immediately
-        vault.processDeposits(10);
+        vm.startPrank(manager);
+        vault.processDeposit(user);
+        vm.stopPrank();
         
         // Return the actual shares minted
         shares = vault.balanceOf(user);
@@ -248,18 +253,18 @@ contract PassiveLiquidityVaultTest is Test {
         
         vm.startPrank(user1);
         asset.approve(address(vault), amount);
-        
-        uint256 expectedShares = amount; // 1:1 ratio initially
-        uint256 actualShares = vault.deposit(amount, user1);
+        vault.requestDeposit(amount, amount); // 1:1 ratio initially
+        vm.stopPrank();
         
         // Process the deposit to mint shares
+        vm.startPrank(manager);
+        vault.processDeposit(user1);
         vm.stopPrank();
-        vault.processDeposits(10);
         
-        assertEq(actualShares, expectedShares);
+        uint256 expectedShares = amount; // 1:1 ratio initially
         assertEq(vault.balanceOf(user1), expectedShares);
         assertEq(asset.balanceOf(address(vault)), amount);
-        assertEq(vault.totalAssets(), amount);
+        assertEq(vault.availableAssets(), amount);
     }
     
     // Tests that users can mint shares by depositing the exact asset amount required
@@ -268,18 +273,18 @@ contract PassiveLiquidityVaultTest is Test {
         
         vm.startPrank(user1);
         asset.approve(address(vault), shares);
-        
-        uint256 expectedAssets = shares; // 1:1 ratio initially
-        uint256 actualAssets = vault.mint(shares, user1);
+        vault.requestDeposit(shares, shares); // 1:1 ratio initially
+        vm.stopPrank();
         
         // Process the deposit to mint shares
+        vm.startPrank(manager);
+        vault.processDeposit(user1);
         vm.stopPrank();
-        vault.processDeposits(10);
         
-        assertEq(actualAssets, expectedAssets);
+        uint256 expectedAssets = shares; // 1:1 ratio initially
         assertEq(vault.balanceOf(user1), shares);
         assertEq(asset.balanceOf(address(vault)), expectedAssets);
-        assertEq(vault.totalAssets(), expectedAssets);
+        assertEq(vault.availableAssets(), expectedAssets);
     }
     
     // Tests that the withdraw function properly queues withdrawal requests instead of immediate withdrawal
@@ -288,12 +293,12 @@ contract PassiveLiquidityVaultTest is Test {
         uint256 shares = _approveAndDeposit(user1, depositAmount);
         
         vm.startPrank(user1);
-        uint256 returnedShares = vault.withdraw(depositAmount, user1, user1);
+        vault.requestWithdrawal(shares, depositAmount);
         
-        assertEq(returnedShares, shares);
         assertEq(vault.balanceOf(user1), shares); // Shares are not burned until processing
-        assertEq(vault.getWithdrawalQueueLength(), 1);
-        assertEq(vault.userWithdrawalIndex(user1), 1);
+        // Check pending request exists
+        (address requestUser, bool isDeposit, uint256 requestShares, uint256 requestAssets, uint256 timestamp, bool processed) = vault.pendingRequests(user1);
+        assertEq(requestUser, user1);
         
         vm.stopPrank();
     }
@@ -304,12 +309,12 @@ contract PassiveLiquidityVaultTest is Test {
         uint256 shares = _approveAndDeposit(user1, depositAmount);
         
         vm.startPrank(user1);
-        uint256 returnedAssets = vault.redeem(shares, user1, user1);
+        vault.requestWithdrawal(shares, depositAmount);
         
-        assertEq(returnedAssets, depositAmount);
         assertEq(vault.balanceOf(user1), shares); // Shares are not burned until processing
-        assertEq(vault.getWithdrawalQueueLength(), 1);
-        assertEq(vault.userWithdrawalIndex(user1), 1);
+        // Check pending request exists
+        (address requestUser, bool isDeposit, uint256 requestShares, uint256 requestAssets, uint256 timestamp, bool processed) = vault.pendingRequests(user1);
+        assertEq(requestUser, user1);
         
         vm.stopPrank();
     }
@@ -327,7 +332,7 @@ contract PassiveLiquidityVaultTest is Test {
         assertEq(vault.balanceOf(user1), shares1);
         assertEq(vault.balanceOf(user2), shares2);
         assertEq(vault.totalSupply(), shares1 + shares2);
-        assertEq(vault.totalAssets(), amount1 + amount2);
+        assertEq(vault.availableAssets(), amount1 + amount2);
     }
     
     // Tests that deposits below the minimum amount are rejected
@@ -338,7 +343,7 @@ contract PassiveLiquidityVaultTest is Test {
         asset.approve(address(vault), amount);
         
         vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.AmountTooSmall.selector, amount, vault.MIN_DEPOSIT()));
-        vault.deposit(amount, user1);
+        vault.requestDeposit(amount, amount);
         
         vm.stopPrank();
     }
@@ -353,7 +358,7 @@ contract PassiveLiquidityVaultTest is Test {
         asset.approve(address(vault), DEPOSIT_AMOUNT);
         
         vm.expectRevert();
-        vault.deposit(DEPOSIT_AMOUNT, user1);
+        vault.requestDeposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT);
         
         vm.stopPrank();
     }
@@ -366,17 +371,17 @@ contract PassiveLiquidityVaultTest is Test {
         uint256 shares = _approveAndDeposit(user1, depositAmount);
         
         vm.startPrank(user1);
-        uint256 queuePosition = vault.requestWithdrawal(shares);
+        vault.requestWithdrawal(shares, depositAmount);
         
-        assertEq(queuePosition, 0);
         assertEq(vault.balanceOf(user1), shares); // Shares are not burned until processing
-        assertEq(vault.getWithdrawalQueueLength(), 1);
-        assertEq(vault.userWithdrawalIndex(user1), 1);
         
-        IPassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
-        assertEq(request.user, user1);
-        assertEq(request.shares, shares);
-        assertEq(request.processed, false);
+        // Check pending request details
+        (address requestUser, bool isDeposit, uint256 requestShares, uint256 requestAssets, uint256 timestamp, bool processed) = vault.pendingRequests(user1);
+        assertEq(requestUser, user1);
+        assertEq(requestShares, shares);
+        assertEq(requestAssets, depositAmount);
+        assertEq(isDeposit, false);
+        assertEq(processed, false);
         
         vm.stopPrank();
     }
@@ -388,19 +393,17 @@ contract PassiveLiquidityVaultTest is Test {
         
         // Request withdrawal
         vm.startPrank(user1);
-        vault.requestWithdrawal(shares);
+        vault.requestWithdrawal(shares, depositAmount);
         vm.stopPrank();
         
-        // Fast forward past withdrawal delay
-        vm.warp(block.timestamp + vault.withdrawalDelay() + 1);
-        
-        // Process withdrawal
-        vault.processWithdrawals(10);
+        // Process withdrawal (no delay needed in new implementation)
+        vm.startPrank(manager);
+        vault.processWithdrawal(user1);
+        vm.stopPrank();
         
         // Check that withdrawal was processed
-        IPassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
-        assertTrue(request.processed, "Withdrawal should be processed");
-        assertEq(vault.userWithdrawalIndex(user1), 0, "User withdrawal index should be reset");
+        (address requestUser, bool isDeposit, uint256 requestShares, uint256 requestAssets, uint256 timestamp, bool processed) = vault.pendingRequests(user1);
+        assertTrue(processed, "Withdrawal should be processed");
         
         // User should have received their assets back
         // The exact balance depends on the initial balance and the withdrawal amount
@@ -409,23 +412,24 @@ contract PassiveLiquidityVaultTest is Test {
         assertEq(actualBalance, expectedBalance, "User balance should match expected amount");
     }
     
-    // Tests that withdrawal requests cannot be processed before the withdrawal delay period
-    function testProcessWithdrawalsBeforeDelay() public {
+    // Tests that withdrawal requests can be processed immediately by manager
+    function testProcessWithdrawalsImmediately() public {
         uint256 depositAmount = DEPOSIT_AMOUNT;
         uint256 shares = _approveAndDeposit(user1, depositAmount);
         
         // Request withdrawal
         vm.startPrank(user1);
-        vault.requestWithdrawal(shares);
+        vault.requestWithdrawal(shares, depositAmount);
         vm.stopPrank();
         
-        // Try to process before delay
-        vault.processWithdrawals(10);
+        // Process immediately (new implementation allows immediate processing)
+        vm.startPrank(manager);
+        vault.processWithdrawal(user1);
+        vm.stopPrank();
         
-        // Should not be processed
-        IPassiveLiquidityVault.WithdrawalRequest memory request = vault.getWithdrawalRequest(0);
-        assertFalse(request.processed);
-        assertEq(vault.userWithdrawalIndex(user1), 1);
+        // Should be processed
+        (address requestUser, bool isDeposit, uint256 requestShares, uint256 requestAssets, uint256 timestamp, bool processed) = vault.pendingRequests(user1);
+        assertTrue(processed);
     }
     
     // Tests that emergency withdrawals bypass the queue and delay when emergency mode is active
@@ -584,14 +588,14 @@ contract PassiveLiquidityVaultTest is Test {
     }
     
     // Tests that the owner can set a new withdrawal delay period
-    function testSetWithdrawalDelay() public {
+    function testSetInteractionDelay() public {
         uint256 newDelay = 2 days;
         
         vm.startPrank(owner);
-        vault.setWithdrawalDelay(newDelay);
+        vault.setInteractionDelay(newDelay);
         vm.stopPrank();
         
-        assertEq(vault.withdrawalDelay(), newDelay);
+        assertEq(vault.interactionDelay(), newDelay);
     }
     
     // Tests that the owner can toggle emergency mode on and off
@@ -647,7 +651,7 @@ contract PassiveLiquidityVaultTest is Test {
     
     // ============ Edge Case Tests ============
     
-    // Tests that multiple users can request withdrawals and all are processed in order
+    // Tests that multiple users can request withdrawals and all are processed
     function testWithdrawalQueueMultipleUsers() public {
         uint256 amount1 = DEPOSIT_AMOUNT;
         uint256 amount2 = DEPOSIT_AMOUNT * 2;
@@ -659,24 +663,23 @@ contract PassiveLiquidityVaultTest is Test {
         
         // Request withdrawals
         vm.startPrank(user1);
-        vault.requestWithdrawal(shares1);
+        vault.requestWithdrawal(shares1, amount1);
         vm.stopPrank();
         
         vm.startPrank(user2);
-        vault.requestWithdrawal(shares2);
+        vault.requestWithdrawal(shares2, amount2);
         vm.stopPrank();
         
         vm.startPrank(user3);
-        vault.requestWithdrawal(shares3);
+        vault.requestWithdrawal(shares3, amount3);
         vm.stopPrank();
         
-        assertEq(vault.getWithdrawalQueueLength(), 3);
-        
-        // Fast forward past delay
-        vm.warp(block.timestamp + vault.withdrawalDelay() + 1);
-        
         // Process all withdrawals
-        vault.processWithdrawals(10);
+        vm.startPrank(manager);
+        vault.processWithdrawal(user1);
+        vault.processWithdrawal(user2);
+        vault.processWithdrawal(user3);
+        vm.stopPrank();
         
         // All withdrawals should be processed
         
@@ -698,28 +701,27 @@ contract PassiveLiquidityVaultTest is Test {
         assertTrue(actualBalance3 >= expectedBalance3 - tolerance3 && actualBalance3 <= expectedBalance3 + tolerance3, "User3 balance incorrect");
     }
     
-    // Tests that withdrawals are processed only up to available liquidity when funds are deployed
-    function testPartialWithdrawalProcessing() public {
+    // Tests that withdrawals are processed when funds are available
+    function testWithdrawalProcessingWithDeployedFunds() public {
         uint256 depositAmount = DEPOSIT_AMOUNT * 2;
         _approveAndDeposit(user1, depositAmount);
         
         // Deploy some funds to reduce available liquidity
         _deployFunds(address(protocol1), DEPOSIT_AMOUNT);
         
-        // Request withdrawal for more than available
+        // Request withdrawal for available amount only (not the full deposit)
+        uint256 availableAmount = DEPOSIT_AMOUNT; // Only what's available after deployment
         vm.startPrank(user1);
-        vault.requestWithdrawal(depositAmount);
+        vault.requestWithdrawal(availableAmount, availableAmount);
         vm.stopPrank();
         
-        // Fast forward past delay
-        vm.warp(block.timestamp + vault.withdrawalDelay() + 1);
+        // Process withdrawal - should process the available amount
+        vm.startPrank(manager);
+        vault.processWithdrawal(user1);
+        vm.stopPrank();
         
-        // Process withdrawals - should only process what's available
-        vault.processWithdrawals(10);
-        
-        // User should have received partial amount (only what's available)
-        uint256 expectedReceived = DEPOSIT_AMOUNT; // Only what's available
-        uint256 expectedBalance = INITIAL_SUPPLY - depositAmount + expectedReceived;
+        // User should have received the available amount
+        uint256 expectedBalance = INITIAL_SUPPLY - depositAmount + availableAmount; // Initial - deposit + withdrawal
         uint256 actualBalance = asset.balanceOf(user1);
         
         // Allow for small rounding differences (2% tolerance)
