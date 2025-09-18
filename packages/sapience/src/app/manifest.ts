@@ -4,7 +4,7 @@ const manifest = (): MetadataRoute.Manifest => ({
   short_name: 'Sapience',
   name: 'Sapience',
   lang: 'en',
-  start_url: '/',
+  start_url: '/markets',
   background_color: '#FFFFFF',
   theme_color: '#FFFFFF',
   dir: 'ltr',

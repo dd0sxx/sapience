@@ -198,19 +198,23 @@ const PasswordScrim = () => {
             initial={{ scale: 1, opacity: 0.5 }}
             exit={{ scale: 1.5, opacity: 0.5 }}
             transition={{ duration: 0.5 }}
-            className="absolute inset-0 w-full h-full pointer-events-none z-1"
+            className="absolute inset-0 w-full h-full pointer-events-none z-0"
+            aria-hidden="true"
           >
             <iframe
               ref={iframeRef}
               src="https://my.spline.design/particlesfutarchy-SDhuN0OYiCRHRPt2fFec4bCm/"
-              className="absolute inset-0 w-full h-full"
+              className="absolute inset-0 w-full h-full pointer-events-none"
               style={{
                 border: 'none',
                 colorScheme: 'light',
                 filter: 'none',
+                pointerEvents: 'none',
               }}
               loading="lazy"
               referrerPolicy="no-referrer"
+              tabIndex={-1}
+              aria-hidden="true"
               sandbox="allow-same-origin allow-scripts allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
             />
           </motion.div>

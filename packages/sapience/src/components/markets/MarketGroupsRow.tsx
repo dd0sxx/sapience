@@ -270,24 +270,7 @@ const MarketGroupsRow = ({
                 </span>
               </Link>
             </h3>
-            {/* Mobile-only: Sparkline above Market Prediction */}
-            {hasSparklineData && (
-              <div className="block md:hidden w-full h-[40px] my-2">
-                <Link
-                  href={`/markets/${chainShortName}:${marketAddress}`}
-                  className="block w-full h-full"
-                  aria-label="View market group"
-                >
-                  <MarketGroupSparkline
-                    marketIds={marketIds}
-                    rawChartData={chartData}
-                    marketClassification={marketClassification}
-                    minTimestamp={minSparklineTimestamp}
-                    width="100%"
-                  />
-                </Link>
-              </div>
-            )}
+            {/* Mobile sparkline moved to the right-side container to sit left of buttons */}
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
               <div className="text-xs text-muted-foreground">
@@ -300,9 +283,9 @@ const MarketGroupsRow = ({
           </div>
 
           {/* Right Side: Sparkline + Action Buttons */}
-          <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-6 md:ml-6 w-full md:w-auto">
+          <div className="flex flex-row items-center gap-5 md:items-center md:gap-6 md:ml-6 w-full md:w-auto">
             {hasSparklineData && (
-              <div className="hidden md:block w-[80px] h-[40px]">
+              <div className="block w-[80px] h-[40px] shrink-0">
                 <Link
                   href={`/markets/${chainShortName}:${marketAddress}`}
                   className="block w-full h-full"

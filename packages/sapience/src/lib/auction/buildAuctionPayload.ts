@@ -14,7 +14,9 @@ function encodePredictedOutcomes(
 ): `0x${string}` {
   // Convert marketId string to bytes32 format
   const normalized = outcomes.map((o) => ({
-    marketId: (o.marketId.startsWith('0x') ? o.marketId : `0x${o.marketId}`) as `0x${string}`,
+    marketId: (o.marketId.startsWith('0x')
+      ? o.marketId
+      : `0x${o.marketId}`) as `0x${string}`,
     prediction: !!o.prediction,
   }));
 
@@ -37,7 +39,8 @@ export function buildAuctionStartPayload(
   resolverOverride?: string
 ): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
   // Use the deployed UMA resolver address
-  const UMA_RESOLVER_ADDRESS = '0x7B83c7294692bbB08e54bF6650c8cB5Cbf721910' as `0x${string}`;
+  const UMA_RESOLVER_ADDRESS =
+    '0x7B83c7294692bbB08e54bF6650c8cB5Cbf721910' as `0x${string}`;
   const resolver: `0x${string}` = isHexAddress(resolverOverride)
     ? resolverOverride
     : UMA_RESOLVER_ADDRESS;
@@ -45,6 +48,6 @@ export function buildAuctionStartPayload(
   // Resolver expects a single bytes blob with abi.encode(PredictedOutcome[])
   const encoded = encodePredictedOutcomes(outcomes);
   const predictedOutcomes = [encoded];
-  
+
   return { resolver, predictedOutcomes };
 }
