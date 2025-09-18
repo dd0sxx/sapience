@@ -26,7 +26,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useResources } from '@sapience/ui/hooks/useResources';
 import { Plus, RefreshCw, Loader2, Upload } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { DEFAULT_FACTORY_ADDRESS } from './constants';
 import RFQTab from './RFQTab';
@@ -456,6 +456,46 @@ const Admin = () => {
   const [adminError, setAdminError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'liquid' | 'rfq'>('liquid');
 
+  // Sync tabs with URL hash for direct linking and back/forward navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hashToTab = (hash: string): 'liquid' | 'rfq' => {
+      const h = (hash || '').toLowerCase();
+      if (
+        h === '#rfq' ||
+        h === '#ba' ||
+        h === '#batch-auction' ||
+        h === '#batch-auction-settlement'
+      ) {
+        return 'rfq';
+      }
+      // default and aliases for concentrated liquidity
+      return 'liquid';
+    };
+
+    const applyHashToTab = () => {
+      setActiveTab(hashToTab(window.location.hash));
+    };
+
+    // Initialize from hash or set default hash without adding history entry
+    if (window.location.hash) {
+      applyHashToTab();
+    } else {
+      const defaultHash = '#liquid';
+      if (window.location.hash !== defaultHash) {
+        window.history.replaceState(
+          null,
+          '',
+          `${window.location.pathname}${defaultHash}`
+        );
+      }
+    }
+
+    window.addEventListener('hashchange', applyHashToTab);
+    return () => window.removeEventListener('hashchange', applyHashToTab);
+  }, []);
+
   const isHttpUrl = (value: string) => {
     try {
       const u = new URL(value);
@@ -593,7 +633,16 @@ const Admin = () => {
       </header>
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as 'liquid' | 'rfq')}
+        onValueChange={(v) => {
+          const next = v as 'liquid' | 'rfq';
+          setActiveTab(next);
+          if (typeof window !== 'undefined') {
+            const nextHash = next === 'liquid' ? '#liquid' : '#rfq';
+            if (window.location.hash !== nextHash) {
+              window.location.hash = nextHash;
+            }
+          }
+        }}
         className="w-full"
       >
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
