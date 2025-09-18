@@ -274,6 +274,42 @@ contract PassiveLiquidityVault is
         revert NotImplemented();
     }
 
+    function previewWithdraw(
+        uint256 /* assets */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function previewRedeem(
+        uint256 /* shares */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxDeposit(
+        address /* receiver */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxMint(
+        address /* receiver */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxWithdraw(
+        address /* owner */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxRedeem(
+        address /* owner */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
     // ============ Custom totals, Withdrawal and Deposit Functions ============
 
     function availableAssets() public view returns (uint256) {
