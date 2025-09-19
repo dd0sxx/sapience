@@ -94,4 +94,11 @@ interface IPredictionMarket is IERC721,  IPredictionStructs, IPredictionEvents {
     function getOwnedPredictions(
         address account
     ) external view returns (uint256[] memory nftTokenIds);
+
+    /**
+     * @notice Get the total collateral deposited by a user
+     * @param user The address of the user
+     * @return The total amount of collateral deposited by the user
+     */
+    function getUserCollateralDeposits(address user) external view returns (uint256);
 }

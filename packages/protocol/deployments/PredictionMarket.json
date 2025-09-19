@@ -1,5 +1,5 @@
 {
-  "address": "0x9D18f97c191D397338709CDCe8F0915F8fF9BD82",
+  "address": "0xB5583Daa6388291e56cF8509c2184B16c35e32d0",
   "abi": [
     {
       "type": "constructor",
@@ -358,6 +358,25 @@
     },
     {
       "type": "function",
+      "name": "getUserCollateralDeposits",
+      "inputs": [
+        {
+          "name": "user",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "isApprovedForAll",
       "inputs": [
         {
@@ -699,6 +718,12 @@
           "internalType": "address"
         },
         {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
           "name": "makerNftTokenId",
           "type": "uint256",
           "indexed": false,
@@ -777,6 +802,12 @@
           "type": "address",
           "indexed": true,
           "internalType": "address"
+        },
+        {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
         },
         {
           "name": "makerNftTokenId",
@@ -1104,13 +1135,13 @@
     "1000000000000000000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x87fe3eecf4045bf0b145db24b449188f5a3aeaa70ea1c1a9c48528c56c0a7d3d",
-  "deployTxnBlockNumber": "379504813",
-  "deployTimestamp": "1757964300",
+  "deployTxnHash": "0xe8df58dc1869ce214733984c4a6d64f162f13bc7a797fb9db118c6b9077f7ad3",
+  "deployTxnBlockNumber": "380553670",
+  "deployTimestamp": "1758226495",
   "sourceName": "src/predictionMarket/PredictionMarket.sol",
   "contractName": "PredictionMarket",
   "deployedOn": "deploy.PredictionMarket",
   "highlight": true,
-  "gasUsed": 3126722,
+  "gasUsed": 3228263,
   "gasCost": "10000000"
 }

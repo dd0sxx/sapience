@@ -3,364 +3,674 @@ pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "../predictionMarket/interfaces/IPredictionStructs.sol";
+import "../predictionMarket/interfaces/IPredictionMarket.sol";
+import "../predictionMarket/utils/SignatureProcessor.sol";
+import "./interfaces/IPassiveLiquidityVault.sol";
 
 /**
  * @title PassiveLiquidityVault
- * @notice An ERC-4626 compliant passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
- * 
+ * @notice An ERC-4626 semi-compliant passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
+ *
  * HOW IT WORKS:
- * 1. Users deposit ERC-20 tokens and receive vault shares (1:1 initially)
- * 2. A designated EOA manager deploys vault funds to external protocols (lending, DEXs, etc.) to generate yield
- * 3. Users can request withdrawals, which are queued with a configurable delay to prevent bank runs
- * 4. Withdrawals are processed when liquidity is available, maintaining fair first-come-first-served order
- * 5. The vault tracks utilization rate to prevent over-leverage and includes emergency mechanisms
- * 
+ * 1. Users request deposits by specifying assets and expected shares, with assets transferred immediately to the vault
+ * 2. Users request withdrawals by specifying shares and expected assets, with no immediate transfer
+ * 3. A designated EOA manager processes requests when market conditions are favorable (fair pricing)
+ * 4. If requests expire (default 10 minutes) or conditions aren't favorable, users can cancel their requests
+ * 5. Users must wait between requests (default 1 day) to prevent rapid-fire interactions
+ * 6. The manager deploys vault funds to external protocols to generate yield while maintaining utilization limits
+ * 7. Emergency mode allows immediate proportional withdrawals using only vault balance
+ *
  * KEY FEATURES:
- * - ERC-4626 standard compliance for maximum DeFi interoperability
+ * - ERC-4626 standard (semi-compliant) for DeFi interoperability
+ * - Request-based deposit and withdrawal system with manager-controlled processing
  * - Utilization rate limits (default 80%) to control risk exposure
- * - Withdrawal queue with delay (default 1 day) to manage liquidity
- * - Emergency mode for immediate withdrawals during crises
+ * - Interaction delay (default 1 day) between user requests to prevent abuse
+ * - Request expiration (default 10 minutes) with user cancellation capability
+ * - Emergency mode for immediate proportional withdrawals during crises
  * - EOA manager can deploy/recall funds to any protocol with custom calldata
  * - Comprehensive access controls and safety mechanisms
- * 
- * @dev Implements utilization rate management, withdrawal queue, and EOA-controlled fund deployment
+ * - Custom errors for gas-efficient error handling
+ *
+ * @dev Implements utilization rate management, request-based deposit/withdrawal system, and EOA-controlled fund deployment with custom errors
  */
-contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
+contract PassiveLiquidityVault is
+    ERC4626,
+    IPassiveLiquidityVault,
+    Ownable2Step,
+    ReentrancyGuard,
+    Pausable,
+    SignatureProcessor
+{
     using SafeERC20 for IERC20;
     using Math for uint256;
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    // ============ Custom Errors ============
+
+    // Non ERC-4626 compliant errors
+    error NotImplemented();
+
+    // Access control errors
+    error OnlyManager(address caller, address expectedManager);
+    error OnlyOwner(address caller, address owner);
+
+    // Validation errors
+    error InvalidAsset(address asset);
+    error InvalidManager(address manager);
+    error InvalidProtocol(address protocol);
+    error InvalidAmount(uint256 amount);
+    error InvalidShares(uint256 shares);
+    error InvalidRate(uint256 rate, uint256 maxRate);
+    error InvalidIndex(uint256 index, uint256 length);
+
+    // State errors
+    error EmergencyModeActive();
+    error ProcessingInProgress(bool pendingRequests);
+    error InsufficientBalance(
+        address user,
+        uint256 requested,
+        uint256 available
+    );
+    error InsufficientAvailableAssets(uint256 requested, uint256 available);
+    error ExceedsMaxUtilization(uint256 current, uint256 max);
+    error AmountTooSmall(uint256 amount, uint256 minimum);
+
+    // Queue errors
+    error NoPendingRequests(address user);
+    error NoPendingWithdrawal(address user);
+    error NoPendingDeposit(address user);
+    error PendingRequestNotProcessed(address user);
+    error ProcessingRequestsInProgress();
+    error TransferFailed(
+        uint256 balanceBefore,
+        uint256 amount,
+        uint256 balanceAfter
+    );
+    error RequestNotExpired();
+    error InteractionDelayNotExpired();
+
+    // Emergency errors
+    error EmergencyModeNotActive();
+
+    // Additional errors
+    error InvalidCaller();
+    error RequestExpired();
 
     // ============ Events ============
-    
-    event WithdrawalRequested(address indexed user, uint256 shares, uint256 queuePosition);
-    event WithdrawalProcessed(address indexed user, uint256 shares, uint256 amount);
-    event FundsDeployed(address indexed manager, uint256 amount, address targetProtocol);
-    event FundsRecalled(address indexed manager, uint256 amount, address targetProtocol);
-    event UtilizationRateUpdated(uint256 oldRate, uint256 newRate);
-    event EmergencyWithdrawal(address indexed user, uint256 shares, uint256 amount);
-    event ManagerUpdated(address indexed oldManager, address indexed newManager);
-    event MaxUtilizationRateUpdated(uint256 oldRate, uint256 newRate);
-    event WithdrawalDelayUpdated(uint256 oldDelay, uint256 newDelay);
-
-    // ============ Structs ============
-    
-    struct WithdrawalRequest {
-        address user;
-        uint256 shares;
-        uint256 timestamp;
-        bool processed;
-    }
-
-    struct DeploymentInfo {
-        address protocol;
-        uint256 amount;
-        uint256 timestamp;
-        bool active;
-    }
+    // Events are defined in the IPassiveLiquidityVault interface
 
     // ============ State Variables ============
-    
+
     /// @notice The EOA manager who can deploy funds to other protocols
     address public manager;
-    
+
     /// @notice Maximum utilization rate (in basis points, e.g., 8000 = 80%)
     uint256 public maxUtilizationRate = 8000; // 80%
-    
-    /// @notice Current utilization rate (in basis points)
-    uint256 public utilizationRate = 0;
-    
-    /// @notice Withdrawal delay in seconds (default: 1 day)
-    uint256 public withdrawalDelay = 1 days;
-    
-    /// @notice Total assets deployed to external protocols
-    uint256 public totalDeployed;
-    
-    /// @notice Withdrawal queue
-    WithdrawalRequest[] public withdrawalQueue;
-    
-    /// @notice Mapping of user to their withdrawal request index
-    mapping(address => uint256) public userWithdrawalIndex;
-    
-    /// @notice Mapping of protocol addresses to deployment info
-    mapping(address => DeploymentInfo) public deployments;
-    
-    /// @notice List of active protocol addresses
-    address[] public activeProtocols;
-    
-    /// @notice Mapping to check if protocol is in active list
-    mapping(address => bool) public isActiveProtocol;
-    
+
+    /// @notice Interaction delay in seconds between user requests (default: 1 day)
+    uint256 public interactionDelay = 1 days;
+
+    /// @notice Expiration time in seconds for user requests before they can be cancelled (default: 10 minutes)
+    uint256 public expirationTime = 10 minutes;
+
+    /// @notice Mapping of user to their last interaction timestamp (used to enforce interaction delay)
+    mapping(address => uint256) public lastUserInteractionTimestamp;
+
+    /// @notice Set of active protocol addresses
+    EnumerableSet.AddressSet private activeProtocols;
+
     /// @notice Emergency mode flag
     bool public emergencyMode = false;
-    
+
     /// @notice Basis points denominator (10000 = 100%)
     uint256 public constant BASIS_POINTS = 10000;
-    
-    /// @notice Minimum deposit amount
-    uint256 public constant MIN_DEPOSIT = 1e6; // 1 token (assuming 6 decimals)
+
+    /// @notice Minimum deposit amount. Used also as min withdrawal amount unless available is less than minimum. A large enough amount to prevent DoS attacks on deposits or withdrawals
+    uint256 public constant MIN_DEPOSIT = 100e18; // 100 token (assuming 18 decimals)
+
+    /// @notice Default maximum utilization rate (80%)
+    uint256 private constant DEFAULT_MAX_UTILIZATION_RATE = 8000;
+
+    /// @notice Default interaction delay (1 day)
+    uint256 private constant DEFAULT_INTERACTION_DELAY = 1 days;
+
+    /// @notice Default expiration time (10 minutes)
+    uint256 private constant DEFAULT_EXPIRATION_TIME = 2 minutes;
+
+    /// @notice Total assets reserved for pending deposit requests
+    uint256 private unconfirmedAssets = 0;
+
+    /// @notice Mapping of user to their pending request (only one request per user at a time)
+    mapping(address => PendingRequest) public pendingRequests;
+
+    bool private processingRequests = false;
 
     // ============ Modifiers ============
-    
+
     modifier onlyManager() {
-        require(msg.sender == manager, "Only manager");
+        if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
         _;
     }
-    
+
     modifier notEmergency() {
-        require(!emergencyMode, "Emergency mode active");
+        if (emergencyMode) revert EmergencyModeActive();
         _;
+    }
+
+    modifier notProcessingRequests() {
+        if (processingRequests) revert ProcessingRequestsInProgress();
+        processingRequests = true;
+        _;
+        processingRequests = false;
     }
 
     // ============ Constructor ============
-    
+
     constructor(
         address _asset,
         address _manager,
         string memory _name,
         string memory _symbol
-    ) ERC4626(IERC20(_asset)) ERC20(_name, _symbol) Ownable(msg.sender) {
-        require(_asset != address(0), "Invalid asset");
-        require(_manager != address(0), "Invalid manager");
-        
+    )
+        ERC4626(IERC20(_asset))
+        ERC20(_name, _symbol)
+        Ownable(msg.sender)
+        SignatureProcessor()
+    {
+        if (_asset == address(0)) revert InvalidAsset(_asset);
+        if (_manager == address(0)) revert InvalidManager(_manager);
+
         manager = _manager;
+        maxUtilizationRate = DEFAULT_MAX_UTILIZATION_RATE;
+        interactionDelay = DEFAULT_INTERACTION_DELAY;
+        expirationTime = DEFAULT_EXPIRATION_TIME;
     }
 
     // ============ ERC-4626 Overrides ============
-    
+
     /**
-     * @notice Override deposit to add custom logic
-     * @param assets Amount of assets to deposit
-     * @param receiver Address to receive shares
-     * @return shares Number of shares minted
+     * @notice ERC-4626 COMPLIANCE NOTICE:
+     *
+     * This vault intentionally deviates from the ERC-4626 standard to implement a request-based
+     * deposit/withdrawal system with manager-controlled processing. The standard ERC-4626 functions
+     * are overridden to revert with NotImplemented() to prevent direct usage.
+     *
+     * DEVIATION RATIONALE:
+     * 1. Request-based System: Users create requests that are processed by a manager when conditions
+     *    are favorable, rather than immediate execution as required by ERC-4626.
+     * 2. Manager Control: A designated manager controls when deposits/withdrawals are processed,
+     *    allowing for better risk management and fair pricing.
+     * 3. Request Expiration: Requests can expire and be cancelled, providing users with an escape
+     *    mechanism if conditions change.
+     * 4. Interaction Delays: Users must wait between requests to prevent abuse and rapid-fire
+     *    interactions that could destabilize the vault.
+     *
+     * ALTERNATIVE INTERFACE:
+     * - Use requestDeposit(assets, expectedShares) instead of deposit()
+     * - Use requestWithdrawal(shares, expectedAssets) instead of withdraw()
+     * - Use emergencyWithdraw(shares) for immediate withdrawals in emergency mode
+     * - Use availableAssets() and totalDeployed() instead of totalAssets()
+     *
+     * COMPATIBILITY:
+     * While not ERC-4626 compliant, this vault maintains ERC-20 compliance for the share token
+     * and provides similar functionality through the request-based interface.
      */
-    function deposit(uint256 assets, address receiver) public override nonReentrant whenNotPaused notEmergency returns (uint256 shares) {
-        require(assets >= MIN_DEPOSIT, "Amount too small");
-        return super.deposit(assets, receiver);
+
+    function deposit(
+        uint256 /* assets */,
+        address /* receiver */
+    ) public override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function mint(
+        uint256 /* shares */,
+        address /* receiver */
+    ) public override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function withdraw(
+        uint256 /* assets */,
+        address /* receiver */,
+        address /* owner */
+    ) public override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function redeem(
+        uint256 /* shares */,
+        address /* receiver */,
+        address /* owner */
+    ) public override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function totalAssets()
+        public
+        view
+        override(ERC4626, IERC4626)
+        returns (uint256)
+    {
+        revert NotImplemented();
+    }
+
+    function previewDeposit(
+        uint256 /* assets */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function previewMint(
+        uint256 /* shares */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function previewWithdraw(
+        uint256 /* assets */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function previewRedeem(
+        uint256 /* shares */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxDeposit(
+        address /* receiver */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxMint(
+        address /* receiver */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxWithdraw(
+        address /* owner */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxRedeem(
+        address /* owner */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    // ============ Custom totals, Withdrawal and Deposit Functions ============
+
+    function availableAssets() public view returns (uint256) {
+        return IERC20(asset()).balanceOf(address(this));
+    }
+
+    function totalDeployed() external view returns (uint256) {
+        return _deployedLiquidity();
+    }
+
+    function utilizationRate() external view returns (uint256) {
+        uint256 deployedLiquidity = _deployedLiquidity();
+        uint256 availableAssetsValue = availableAssets();
+        uint256 totalAssetsValue = availableAssetsValue + deployedLiquidity;
+        return
+            totalAssetsValue > 0
+                ? ((deployedLiquidity * BASIS_POINTS) / totalAssetsValue)
+                : 0;
+    }
+
+    function _deployedLiquidity() internal view returns (uint256) {
+        // get vault's owned NFTs and sum the collateral of each for each NFT
+        uint256 totalDeployedAmount = 0;
+        address[] memory protocols = activeProtocols.values();
+        for (
+            uint256 protocolIndex = 0;
+            protocolIndex < protocols.length;
+            protocolIndex++
+        ) {
+            address protocol = protocols[protocolIndex];
+            IPredictionMarket pm = IPredictionMarket(protocol);
+            uint256 userCollateralDeposits = pm.getUserCollateralDeposits(
+                address(this)
+            );
+            totalDeployedAmount += userCollateralDeposits;
+        }
+        return totalDeployedAmount;
     }
 
     /**
-     * @notice Override mint to add custom logic
-     * @param shares Number of shares to mint
-     * @param receiver Address to receive shares
-     * @return assets Amount of assets deposited
-     */
-    function mint(uint256 shares, address receiver) public override nonReentrant whenNotPaused notEmergency returns (uint256 assets) {
-        assets = previewMint(shares);
-        require(assets >= MIN_DEPOSIT, "Amount too small");
-        return super.mint(shares, receiver);
-    }
-
-    /**
-     * @notice Override withdraw to use withdrawal queue instead of immediate withdrawal
-     * @param assets Amount of assets to withdraw
-     * @param owner Address that owns the shares
-     * @return shares Number of shares burned
-     */
-    function withdraw(uint256 assets, address /* receiver */, address owner) public override nonReentrant whenNotPaused returns (uint256 shares) {
-        shares = previewWithdraw(assets);
-        _requestWithdrawal(shares, owner);
-        return shares;
-    }
-
-    /**
-     * @notice Override redeem to use withdrawal queue instead of immediate withdrawal
-     * @param shares Number of shares to redeem
-     * @param owner Address that owns the shares
-     * @return assets Amount of assets withdrawn
-     */
-    function redeem(uint256 shares, address /* receiver */, address owner) public override nonReentrant whenNotPaused returns (uint256 assets) {
-        assets = previewRedeem(shares);
-        _requestWithdrawal(shares, owner);
-        return assets;
-    }
-
-    /**
-     * @notice Override totalAssets to include deployed funds
-     * @return Total assets (available + deployed)
-     */
-    function totalAssets() public view override returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this)) + totalDeployed;
-    }
-
-    // ============ Custom Withdrawal Functions ============
-    
-    /**
-     * @notice Request withdrawal of shares (internal function used by withdraw/redeem)
+     * @notice Request withdrawal of shares - creates a pending request that the manager can process
      * @param shares Number of shares to withdraw
-     * @param owner Address that owns the shares
-     * @return queuePosition Position in withdrawal queue
+     * @param expectedAssets Expected assets to receive (used for validation by manager)
+     * @dev The request will expire after expirationTime and can be cancelled by the user
      */
-    function _requestWithdrawal(uint256 shares, address owner) internal returns (uint256 queuePosition) {
-        require(shares > 0, "Invalid shares");
-        require(balanceOf(owner) >= shares, "Insufficient balance");
-        require(userWithdrawalIndex[owner] == 0, "Withdrawal already pending");
-        
-        // Burn shares immediately
-        _burn(owner, shares);
-        
-        // Add to withdrawal queue
-        withdrawalQueue.push(WithdrawalRequest({
-            user: owner,
+    function requestWithdrawal(
+        uint256 shares,
+        uint256 expectedAssets
+    ) external nonReentrant whenNotPaused {
+        if (shares == 0) revert InvalidShares(shares);
+        if (balanceOf(msg.sender) < shares)
+            revert InsufficientBalance(
+                msg.sender,
+                shares,
+                balanceOf(msg.sender)
+            );
+        if (
+            lastUserInteractionTimestamp[msg.sender] + interactionDelay >
+            block.timestamp
+        ) revert InteractionDelayNotExpired();
+        if (
+            pendingRequests[msg.sender].user == msg.sender &&
+            !pendingRequests[msg.sender].processed
+        ) revert PendingRequestNotProcessed(msg.sender);
+
+        lastUserInteractionTimestamp[msg.sender] = block.timestamp;
+
+        // Revert if withdrawal is small unless it's the full balance
+        if (shares < balanceOf(msg.sender) && expectedAssets < MIN_DEPOSIT)
+            revert AmountTooSmall(expectedAssets, MIN_DEPOSIT);
+
+        pendingRequests[msg.sender] = IPassiveLiquidityVault.PendingRequest({
+            user: msg.sender,
+            isDeposit: false,
             shares: shares,
+            assets: expectedAssets,
             timestamp: block.timestamp,
             processed: false
-        }));
-        
-        queuePosition = withdrawalQueue.length - 1;
-        userWithdrawalIndex[owner] = queuePosition + 1; // 1-indexed
-        
-        emit WithdrawalRequested(owner, shares, queuePosition);
+        });
+
+        emit PendingRequestCreated(msg.sender, false, shares, expectedAssets);
     }
 
     /**
-     * @notice Request withdrawal of shares (public function for direct calls)
-     * @param shares Number of shares to withdraw
-     * @return queuePosition Position in withdrawal queue
+     * @notice Request deposit of assets - creates a pending request that the manager can process
+     * @param assets Number of assets to deposit (transferred immediately to vault)
+     * @param expectedShares Expected shares to receive (used for validation by manager)
+     * @dev The request will expire after expirationTime and can be cancelled by the user
      */
-    function requestWithdrawal(uint256 shares) public returns (uint256 queuePosition) {
-        return _requestWithdrawal(shares, msg.sender);
+    function requestDeposit(
+        uint256 assets,
+        uint256 expectedShares
+    ) external nonReentrant whenNotPaused notEmergency {
+        if (assets < MIN_DEPOSIT) revert AmountTooSmall(assets, MIN_DEPOSIT);
+        if (
+            lastUserInteractionTimestamp[msg.sender] + interactionDelay >
+            block.timestamp
+        ) revert InteractionDelayNotExpired();
+        if (
+            pendingRequests[msg.sender].user == msg.sender &&
+            !pendingRequests[msg.sender].processed
+        ) revert PendingRequestNotProcessed(msg.sender);
+
+        lastUserInteractionTimestamp[msg.sender] = block.timestamp;
+
+        // Transfer assets from user to vault
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
+        IERC20(asset()).safeTransferFrom(msg.sender, address(this), assets);
+        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        if (balanceBefore + assets != balanceAfter)
+            revert TransferFailed(balanceBefore, assets, balanceAfter);
+
+        pendingRequests[msg.sender] = IPassiveLiquidityVault.PendingRequest({
+            user: msg.sender,
+            isDeposit: true,
+            shares: expectedShares,
+            assets: assets,
+            timestamp: block.timestamp,
+            processed: false
+        });
+
+        unconfirmedAssets += assets;
+
+        emit PendingRequestCreated(msg.sender, true, expectedShares, assets);
     }
 
     /**
-     * @notice Process withdrawal requests (can be called by anyone)
-     * @param maxRequests Maximum number of requests to process in this call
+     * @notice Cancel a pending withdrawal request after expiration time
+     * @dev Can only be called after the request has expired
      */
-    function processWithdrawals(uint256 maxRequests) external nonReentrant {
-        uint256 processed = 0;
-        uint256 availableAssets = _getAvailableAssets();
-        
-        for (uint256 i = 0; i < withdrawalQueue.length && processed < maxRequests; i++) {
-            WithdrawalRequest storage request = withdrawalQueue[i];
-            
-            if (request.processed || block.timestamp < request.timestamp + withdrawalDelay) {
-                continue;
-            }
-            
-            uint256 withdrawAmount = _convertToAssets(request.shares, Math.Rounding.Floor);
-            
-            if (withdrawAmount > availableAssets) {
-                break; // Not enough liquidity
-            }
-            
-            // Process withdrawal
-            request.processed = true;
-            availableAssets -= withdrawAmount;
-            
-            // Reset user withdrawal index
-            userWithdrawalIndex[request.user] = 0;
-            
-            // Transfer assets to user
-            IERC20(asset()).safeTransfer(request.user, withdrawAmount);
-            
-            emit WithdrawalProcessed(request.user, request.shares, withdrawAmount);
-            processed++;
+    function cancelWithdrawal() external nonReentrant {
+        PendingRequest storage request = pendingRequests[msg.sender];
+        if (request.user == address(0) || request.processed)
+            revert NoPendingRequests(msg.sender);
+        if (request.isDeposit) revert NoPendingWithdrawal(msg.sender);
+        if (request.timestamp + expirationTime > block.timestamp)
+            revert RequestNotExpired();
+
+        request.user = address(0);
+
+        emit PendingRequestCancelled(
+            msg.sender,
+            false,
+            request.shares,
+            request.assets
+        );
+    }
+
+    /**
+     * @notice Cancel a pending deposit request after expiration time
+     * @dev Can only be called after the request has expired, returns assets to user
+     */
+    function cancelDeposit() external nonReentrant {
+        PendingRequest storage request = pendingRequests[msg.sender];
+        if (request.user == address(0) || request.processed)
+            revert NoPendingRequests(msg.sender);
+        if (!request.isDeposit) revert NoPendingDeposit(msg.sender);
+        if (request.timestamp + expirationTime > block.timestamp)
+            revert RequestNotExpired();
+
+        // Store assets amount before clearing request
+        uint256 assetsToReturn = request.assets;
+
+        // Clear the request first to prevent reentrancy
+        request.user = address(0);
+
+        // Safely decrease unconfirmed assets with underflow protection
+        if (unconfirmedAssets >= assetsToReturn) {
+            unconfirmedAssets -= assetsToReturn;
+        } else {
+            // This should never happen in normal operation, but handle gracefully
+            unconfirmedAssets = 0;
         }
+
+        // Transfer assets from vault to user
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
+        IERC20(asset()).safeTransfer(msg.sender, assetsToReturn);
+        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        if (balanceBefore != assetsToReturn + balanceAfter)
+            revert TransferFailed(balanceBefore, assetsToReturn, balanceAfter);
+
+        emit PendingRequestCancelled(
+            msg.sender,
+            true,
+            request.shares,
+            assetsToReturn
+        );
     }
 
     /**
-     * @notice Emergency withdrawal (bypasses queue and delay)
-     * @param shares Number of shares to withdraw
+     * @notice Process a pending deposit request (manager only)
+     * @param requestedBy Address of the user who made the deposit request
+     * @dev Mints shares to the user and marks the request as processed
      */
-    function emergencyWithdraw(uint256 shares) external nonReentrant {
-        require(emergencyMode, "Emergency mode not active");
-        require(shares > 0, "Invalid shares");
-        require(balanceOf(msg.sender) >= shares, "Insufficient balance");
-        
-        uint256 withdrawAmount = _convertToAssets(shares, Math.Rounding.Floor);
-        require(withdrawAmount <= _getAvailableAssets(), "Insufficient liquidity");
-        
+    function processDeposit(
+        address requestedBy
+    ) external nonReentrant notProcessingRequests {
+        // Check if the caller is the manager
+        if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
+
+        PendingRequest storage request = pendingRequests[requestedBy];
+        if (request.user == address(0) || request.processed)
+            revert NoPendingRequests(requestedBy);
+        if (!request.isDeposit) revert NoPendingDeposit(requestedBy);
+
+        // Check if request has expired
+        if (request.timestamp + expirationTime <= block.timestamp)
+            revert RequestExpired();
+
+        request.processed = true;
+        unconfirmedAssets -= request.assets;
+
+        _mint(requestedBy, request.shares);
+
+        emit PendingRequestProcessed(
+            requestedBy,
+            true,
+            request.shares,
+            request.assets
+        );
+    }
+
+    /**
+     * @notice Process a pending withdrawal request (manager only)
+     * @param requestedBy Address of the user who made the withdrawal request
+     * @dev Burns shares and transfers assets to the user, marks request as processed
+     */
+    function processWithdrawal(
+        address requestedBy
+    ) external nonReentrant notProcessingRequests {
+        // Check if the caller is the manager
+        if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
+
+        PendingRequest storage request = pendingRequests[requestedBy];
+        if (request.user == address(0) || request.processed)
+            revert NoPendingRequests(requestedBy);
+        if (request.isDeposit) revert NoPendingWithdrawal(requestedBy);
+
+        // Check if request has expired
+        if (request.timestamp + expirationTime <= block.timestamp)
+            revert RequestExpired();
+
+        request.processed = true;
+        _burn(requestedBy, request.shares);
+
+        // Transfer assets from vault to user
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
+        IERC20(asset()).safeTransfer(request.user, request.assets);
+        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        if (balanceBefore != request.assets + balanceAfter)
+            revert TransferFailed(balanceBefore, request.assets, balanceAfter);
+
+        emit PendingRequestProcessed(
+            requestedBy,
+            false,
+            request.shares,
+            request.assets
+        );
+    }
+
+    /**
+     * @notice Emergency withdrawal (bypasses delay and uses proportional vault balance)
+     * @param shares Number of shares to withdraw
+     * @dev Only available in emergency mode, uses vault balance only (not deployed funds)
+     */
+    function emergencyWithdraw(
+        uint256 shares
+    ) external nonReentrant notProcessingRequests {
+        if (!emergencyMode) revert EmergencyModeNotActive();
+        if (shares == 0) revert InvalidShares(shares);
+        if (balanceOf(msg.sender) < shares)
+            revert InsufficientBalance(
+                msg.sender,
+                shares,
+                balanceOf(msg.sender)
+            );
+
+        uint256 totalShares = totalSupply();
+        if (totalShares == 0) revert InvalidShares(totalShares); // No shares issued yet
+
+        // Convert shares to assets using just the vault's balance and not the total assets
+        uint256 vaultBalance = _getAvailableAssets();
+        if (vaultBalance == 0) revert InsufficientAvailableAssets(shares, 0);
+
+        uint256 withdrawAmount = Math.mulDiv(
+            shares,
+            vaultBalance,
+            totalShares,
+            Math.Rounding.Floor
+        );
+
+        // Ensure we don't withdraw more than available
+        if (withdrawAmount > vaultBalance)
+            revert InsufficientAvailableAssets(withdrawAmount, vaultBalance);
+        if (withdrawAmount == 0) revert AmountTooSmall(withdrawAmount, 1); // Prevent zero withdrawals
+
         _burn(msg.sender, shares);
+        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
         IERC20(asset()).safeTransfer(msg.sender, withdrawAmount);
-        
+        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        if (balanceBefore != withdrawAmount + balanceAfter)
+            revert TransferFailed(balanceBefore, withdrawAmount, balanceAfter);
+
         emit EmergencyWithdrawal(msg.sender, shares, withdrawAmount);
     }
 
     // ============ Manager Functions ============
-    
-    /**
-     * @notice Deploy funds to an external protocol
-     * @param protocol Address of the target protocol
-     * @param amount Amount of assets to deploy
-     * @param data Calldata for the protocol interaction
-     */
-    function deployFunds(address protocol, uint256 amount, bytes calldata data) external onlyManager nonReentrant {
-        require(protocol != address(0), "Invalid protocol");
-        require(amount > 0, "Invalid amount");
-        require(amount <= _getAvailableAssets(), "Insufficient available assets");
-        
-        // Check utilization rate limits
-        uint256 newUtilization = ((totalDeployed + amount) * BASIS_POINTS) / totalAssets();
-        require(newUtilization <= maxUtilizationRate, "Exceeds max utilization");
-        
-        // Update deployment info
-        if (!isActiveProtocol[protocol]) {
-            activeProtocols.push(protocol);
-            isActiveProtocol[protocol] = true;
-        }
-        
-        deployments[protocol] = DeploymentInfo({
-            protocol: protocol,
-            amount: deployments[protocol].amount + amount,
-            timestamp: block.timestamp,
-            active: true
-        });
-        
-        totalDeployed += amount;
-        utilizationRate = newUtilization;
-        
-        // Transfer assets to protocol
-        IERC20(asset()).safeTransfer(protocol, amount);
-        
-        // Call protocol function if data provided
-        if (data.length > 0) {
-            (bool success, ) = protocol.call(data);
-            require(success, "Protocol call failed");
-        }
-        
-        emit FundsDeployed(msg.sender, amount, protocol);
-        emit UtilizationRateUpdated(utilizationRate, newUtilization);
-    }
 
     /**
-     * @notice Recall funds from an external protocol
-     * @param protocol Address of the protocol to recall from
-     * @param amount Amount of assets to recall
-     * @param data Calldata for the protocol interaction
+     * @notice Approve funds usage to an external protocol
+     * @param protocol Address of the target protocol (PredictionMarket)
+     * @param amount Amount of assets to approve
      */
-    function recallFunds(address protocol, uint256 amount, bytes calldata data) external onlyManager nonReentrant {
-        require(protocol != address(0), "Invalid protocol");
-        require(amount > 0, "Invalid amount");
-        require(deployments[protocol].amount >= amount, "Insufficient deployed amount");
-        
-        // Call protocol function if data provided
-        if (data.length > 0) {
-            (bool success, ) = protocol.call(data);
-            require(success, "Protocol call failed");
+    function approveFundsUsage(
+        address protocol,
+        uint256 amount
+    ) external onlyManager nonReentrant {
+        if (protocol == address(0)) revert InvalidProtocol(protocol);
+        if (amount == 0) revert InvalidAmount(amount);
+
+        uint256 availableAssetsValue = _getAvailableAssets();
+        if (amount > availableAssetsValue)
+            revert InsufficientAvailableAssets(amount, availableAssetsValue);
+
+        // Check utilization rate limits - cache values to avoid multiple calls
+        uint256 deployedLiquidity = _deployedLiquidity();
+        uint256 totalAssetsValue = availableAssetsValue + deployedLiquidity;
+        uint256 newUtilization = ((deployedLiquidity + amount) * BASIS_POINTS) /
+            totalAssetsValue;
+        if (newUtilization > maxUtilizationRate)
+            revert ExceedsMaxUtilization(newUtilization, maxUtilizationRate);
+
+        // Update deployment info - use EnumerableSet for gas efficiency
+        activeProtocols.add(protocol);
+
+        IERC20(asset()).forceApprove(protocol, amount);
+
+        emit FundsApproved(msg.sender, amount, protocol);
+
+        // Calculate current utilization for event (avoid external call)
+        uint256 currentUtilization = totalAssetsValue > 0
+            ? ((deployedLiquidity * BASIS_POINTS) / totalAssetsValue)
+            : 0;
+        emit UtilizationRateUpdated(currentUtilization, newUtilization);
+    }
+
+    // ============ Signature Functions ============
+
+    function isValidSignature(
+        bytes32 messageHash,
+        bytes memory signature
+    ) external view returns (bytes4) {
+        // check if the signer was the manager
+        if (_isApprovalValid(messageHash, manager, signature)) {
+            return IERC1271.isValidSignature.selector;
         }
-        
-        // Update deployment info
-        deployments[protocol].amount -= amount;
-        totalDeployed -= amount;
-        
-        // Remove from active protocols if fully recalled
-        if (deployments[protocol].amount == 0) {
-            deployments[protocol].active = false;
-            _removeActiveProtocol(protocol);
-        }
-        
-        // Update utilization rate
-        uint256 newUtilization = totalAssets() > 0 ? (totalDeployed * BASIS_POINTS) / totalAssets() : 0;
-        utilizationRate = newUtilization;
-        
-        emit FundsRecalled(msg.sender, amount, protocol);
-        emit UtilizationRateUpdated(utilizationRate, newUtilization);
+        return 0xFFFFFFFF;
     }
 
     // ============ View Functions ============
-    
+
     /**
      * @notice Get available assets for withdrawals
      * @return Available assets
@@ -370,44 +680,15 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @notice Get pending withdrawal amount for a user
-     * @param user User address
-     * @return amount Pending withdrawal amount
-     */
-    function getPendingWithdrawal(address user) external view returns (uint256 amount) {
-        uint256 index = userWithdrawalIndex[user];
-        if (index == 0) return 0;
-        
-        WithdrawalRequest storage request = withdrawalQueue[index - 1];
-        if (request.processed) return 0;
-        
-        return _convertToAssets(request.shares, Math.Rounding.Floor);
-    }
-
-    /**
-     * @notice Get withdrawal queue length
-     * @return Length of withdrawal queue
-     */
-    function getWithdrawalQueueLength() external view returns (uint256) {
-        return withdrawalQueue.length;
-    }
-
-    /**
-     * @notice Get withdrawal request by index
-     * @param index Index in withdrawal queue
-     * @return request Withdrawal request data
-     */
-    function getWithdrawalRequest(uint256 index) external view returns (WithdrawalRequest memory) {
-        require(index < withdrawalQueue.length, "Invalid index");
-        return withdrawalQueue[index];
-    }
-
-    /**
      * @notice Get number of active protocols
      * @return Number of active protocols
      */
     function getActiveProtocolsCount() external view returns (uint256) {
-        return activeProtocols.length;
+        return activeProtocols.length();
+    }
+
+    function getActiveProtocols() external view returns (address[] memory) {
+        return activeProtocols.values();
     }
 
     /**
@@ -416,18 +697,17 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
      * @return protocol Protocol address
      */
     function getActiveProtocol(uint256 index) external view returns (address) {
-        require(index < activeProtocols.length, "Invalid index");
-        return activeProtocols[index];
+        return activeProtocols.at(index);
     }
 
     // ============ Admin Functions ============
-    
+
     /**
      * @notice Set new manager
      * @param newManager Address of new manager
      */
     function setManager(address newManager) external onlyOwner {
-        require(newManager != address(0), "Invalid manager");
+        if (newManager == address(0)) revert InvalidManager(newManager);
         address oldManager = manager;
         manager = newManager;
         emit ManagerUpdated(oldManager, newManager);
@@ -438,20 +718,31 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
      * @param newMaxRate New maximum utilization rate (in basis points)
      */
     function setMaxUtilizationRate(uint256 newMaxRate) external onlyOwner {
-        require(newMaxRate <= BASIS_POINTS, "Invalid rate");
+        if (newMaxRate > BASIS_POINTS)
+            revert InvalidRate(newMaxRate, BASIS_POINTS);
         uint256 oldRate = maxUtilizationRate;
         maxUtilizationRate = newMaxRate;
-        emit MaxUtilizationRateUpdated(oldRate, newMaxRate);
+        emit UtilizationRateUpdated(oldRate, newMaxRate);
     }
 
     /**
-     * @notice Set withdrawal delay
-     * @param newDelay New withdrawal delay in seconds
+     * @notice Set interaction delay between user requests
+     * @param newDelay New interaction delay in seconds
      */
-    function setWithdrawalDelay(uint256 newDelay) external onlyOwner {
-        uint256 oldDelay = withdrawalDelay;
-        withdrawalDelay = newDelay;
-        emit WithdrawalDelayUpdated(oldDelay, newDelay);
+    function setInteractionDelay(uint256 newDelay) external onlyOwner {
+        uint256 oldDelay = interactionDelay;
+        interactionDelay = newDelay;
+        emit InteractionDelayUpdated(oldDelay, newDelay);
+    }
+
+    /**
+     * @notice Set expiration time for user requests
+     * @param newExpirationTime New expiration time in seconds (after which requests can be cancelled)
+     */
+    function setExpirationTime(uint256 newExpirationTime) external onlyOwner {
+        uint256 oldExpirationTime = expirationTime;
+        expirationTime = newExpirationTime;
+        emit ExpirationTimeUpdated(oldExpirationTime, newExpirationTime);
     }
 
     /**
@@ -473,22 +764,5 @@ contract PassiveLiquidityVault is ERC4626, Ownable, ReentrancyGuard, Pausable {
      */
     function unpause() external onlyOwner {
         _unpause();
-    }
-
-    // ============ Internal Functions ============
-    
-    /**
-     * @notice Remove protocol from active protocols list
-     * @param protocol Protocol address to remove
-     */
-    function _removeActiveProtocol(address protocol) internal {
-        for (uint256 i = 0; i < activeProtocols.length; i++) {
-            if (activeProtocols[i] == protocol) {
-                activeProtocols[i] = activeProtocols[activeProtocols.length - 1];
-                activeProtocols.pop();
-                isActiveProtocol[protocol] = false;
-                break;
-            }
-        }
     }
 }
