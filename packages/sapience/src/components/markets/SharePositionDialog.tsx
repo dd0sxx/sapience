@@ -24,6 +24,8 @@ interface SharePositionDialogProps {
   payoutOverride?: number | string;
   /** Extra query params to include in the share URL */
   extraParams?: Record<string, string>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 // no-op: we now send the full address for OG rendering
@@ -34,8 +36,15 @@ export default function SharePositionDialog({
   wagerOverride,
   payoutOverride,
   extraParams,
+  open: controlledOpen,
+  onOpenChange,
 }: SharePositionDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = typeof controlledOpen === 'boolean';
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = isControlled
+    ? (val: boolean) => onOpenChange && onOpenChange(val)
+    : setUncontrolledOpen;
   const [cacheBust, setCacheBust] = useState('');
   const [imgLoading, setImgLoading] = useState(true);
   const { toast } = useToast();
@@ -116,7 +125,10 @@ export default function SharePositionDialog({
     sp.set('dir', side);
     // For closed trades, wagerOverride should represent entry, payoutOverride exit.
     sp.set('wager', wager);
-    if (maxPayout) {
+    // Prefer explicit exit value (payoutOverride) when provided; otherwise fallback to Yes/No max payout
+    if (exitValue) {
+      sp.set('payout', exitValue);
+    } else if (maxPayout) {
       sp.set('payout', maxPayout);
     }
     // Also include explicit entry/exit for richer previews when available

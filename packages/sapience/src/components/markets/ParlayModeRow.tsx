@@ -29,7 +29,7 @@ export interface ParlayModeRowProps {
 const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
   const { id, question, shortName, endTime, description, similarMarkets } =
     condition;
-  const { addParlaySelection } = useBetSlipContext();
+  const { addParlaySelection, parlaySelections } = useBetSlipContext();
 
   // Removed condition id display in dialog; keep id for keys only
 
@@ -51,6 +51,16 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
   }, [endTime]);
 
   const displayQ = shortName || question;
+
+  // Determine selected state for this condition in parlay mode
+  const selectionState = React.useMemo(() => {
+    if (!id) return { selectedYes: false, selectedNo: false };
+    const existing = parlaySelections.find((s) => s.conditionId === id);
+    return {
+      selectedYes: !!existing && existing.prediction === true,
+      selectedNo: !!existing && existing.prediction === false,
+    };
+  }, [parlaySelections, id]);
 
   const handleYes = React.useCallback(() => {
     if (!id) return;
@@ -139,6 +149,8 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
               onNo={handleNo}
               className="w-full md:min-w-[10rem]"
               size="lg"
+              selectedYes={selectionState.selectedYes}
+              selectedNo={selectionState.selectedNo}
             />
           </div>
         </div>

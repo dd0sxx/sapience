@@ -127,6 +127,11 @@ export default function LpPositionsTable({
   summaryMarketsForColors,
 }: LpPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
+  const [openSharePositionId, setOpenSharePositionId] = React.useState<
+    number | string | null
+  >(null);
+  const [selectedPositionSnapshot, setSelectedPositionSnapshot] =
+    React.useState<PositionType | null>(null);
 
   const inferredMarketContext: MarketContext | undefined =
     marketContext ||
@@ -630,17 +635,17 @@ export default function LpPositionsTable({
                     ))
                   )}
 
-                  <SharePositionDialog
-                    position={position}
-                    trigger={
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                      >
-                        Share
-                      </button>
-                    }
-                  />
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                    onClick={() => {
+                      setSelectedPositionSnapshot(position);
+                      setOpenSharePositionId(position.positionId);
+                      // ---
+                    }}
+                  >
+                    Share
+                  </button>
                 </div>
               </div>
             );
@@ -709,6 +714,16 @@ export default function LpPositionsTable({
           </TableBody>
         </Table>
       </div>
+      {selectedPositionSnapshot && (
+        <SharePositionDialog
+          position={selectedPositionSnapshot}
+          open={openSharePositionId !== null}
+          onOpenChange={(next) => {
+            if (!next) setOpenSharePositionId(null);
+          }}
+          trigger={<span />}
+        />
+      )}
     </div>
   );
 }

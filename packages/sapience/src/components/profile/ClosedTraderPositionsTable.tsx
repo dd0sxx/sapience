@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   Position as PositionType,
   Transaction as TransactionType,
@@ -132,6 +132,29 @@ export default function ClosedTraderPositionsTable({
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'position', desc: true },
   ]);
+
+  const [openSharePositionId, setOpenSharePositionId] = useState<
+    number | string | null
+  >(null);
+  const [selectedPositionSnapshot, setSelectedPositionSnapshot] =
+    useState<PositionType | null>(null);
+  // ---
+  const selectedRow = useMemo(() => {
+    if (openSharePositionId === null) return null;
+    return (
+      rows.find((r) => String(r.positionId) === String(openSharePositionId)) ||
+      null
+    );
+  }, [rows, openSharePositionId]);
+  useEffect(() => {
+    if (openSharePositionId === null) return;
+    if (selectedRow?.position) {
+      setSelectedPositionSnapshot(selectedRow.position);
+      // ---
+    } else {
+      // ---
+    }
+  }, [openSharePositionId, selectedRow]);
 
   const columns: ColumnDef<RowData>[] = [
     {
@@ -324,19 +347,17 @@ export default function ClosedTraderPositionsTable({
         const r = row.original;
         return (
           <div className="whitespace-nowrap text-right">
-            <SharePositionDialog
-              position={r.position}
-              wagerOverride={r.entry}
-              payoutOverride={r.exit}
-              trigger={
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                >
-                  Share
-                </button>
-              }
-            />
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+              onClick={() => {
+                setSelectedPositionSnapshot(r.position);
+                setOpenSharePositionId(r.positionId || null);
+                // ---
+              }}
+            >
+              Share
+            </button>
           </div>
         );
       },
@@ -392,6 +413,19 @@ export default function ClosedTraderPositionsTable({
           ))}
         </TableBody>
       </Table>
+      {selectedPositionSnapshot && (
+        <SharePositionDialog
+          position={selectedPositionSnapshot}
+          wagerOverride={selectedRow?.entry}
+          payoutOverride={selectedRow?.exit}
+          open={openSharePositionId !== null}
+          onOpenChange={(next) => {
+            if (!next) setOpenSharePositionId(null);
+          }}
+          trigger={<span />}
+          debugLabel="ClosedTraderShareDialog"
+        />
+      )}
     </div>
   );
 }

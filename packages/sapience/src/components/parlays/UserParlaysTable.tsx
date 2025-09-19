@@ -1,8 +1,7 @@
 'use client';
 
 import type { Address } from 'viem';
-import { useUserParlays } from '~/hooks/graphql/useUserParlays';
-import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
+import { formatEther } from 'viem';
 const ZERO_REF_CODE =
   '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`;
 import {
@@ -24,7 +23,35 @@ import {
 } from '@tanstack/react-table';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import * as React from 'react';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
+import { useUserParlays } from '~/hooks/graphql/useUserParlays';
+import NumberDisplay from '~/components/shared/NumberDisplay';
+import ShareDialog from '~/components/shared/ShareDialog';
+
+function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
+  const [nowMs, setNowMs] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const days = Math.max(
+    1,
+    Math.ceil((endsAtMs - nowMs) / (1000 * 60 * 60 * 24))
+  );
+  return (
+    <Button size="sm" variant="outline" disabled>
+      {`Ends In ${days} Days`}
+    </Button>
+  );
+}
 
 export default function UserParlaysTable({
   account,
@@ -33,6 +60,11 @@ export default function UserParlaysTable({
   account: Address;
   showHeaderText?: boolean;
 }) {
+  // ---
+  const { burn, isPending: isClaimPending } = usePredictionMarketWriteContract({
+    successMessage: 'Claim submitted',
+    fallbackErrorMessage: 'Claim failed',
+  });
   type UILeg = { question: string; choice: 'Yes' | 'No' };
   type UIParlay = {
     positionId: number;
@@ -41,62 +73,89 @@ export default function UserParlaysTable({
     endsAt: number; // ms
     status: 'active' | 'won' | 'lost';
     tokenIdToClaim?: bigint;
+    createdAt: number; // ms
+    totalPayoutWei: bigint;
   };
 
   // Fetch real data
   const { data } = useUserParlays({ address: String(account) });
+  // ---
 
-  const viewer = String(account || '').toLowerCase();
-  const rows: UIParlay[] = (data || []).map((p: any) => {
-    const legs: UILeg[] = (p.predictedOutcomes || []).map((o: any) => ({
-      question: o?.condition?.question || o.conditionId,
-      choice: o.prediction ? 'Yes' : 'No',
-    }));
-    const endsAtSec =
-      p.endsAt ||
-      Math.max(
-        0,
-        ...(p.predictedOutcomes || []).map(
-          (o: any) => o?.condition?.endTime || 0
-        )
-      );
-    const userIsMaker =
-      typeof p.maker === 'string' && p.maker.toLowerCase() === viewer;
-    const userIsTaker =
-      typeof p.taker === 'string' && p.taker.toLowerCase() === viewer;
-    const isActive = p.status === 'active';
-    const userWon =
-      !isActive &&
-      ((userIsMaker && p.makerWon === true) ||
-        (userIsTaker && p.makerWon === false));
-    const status: UIParlay['status'] = isActive
-      ? 'active'
-      : userWon
-        ? 'won'
-        : 'lost';
-    const tokenIdToClaim = userWon
-      ? userIsMaker
-        ? BigInt(p.makerNftTokenId)
-        : BigInt(p.takerNftTokenId)
-      : undefined;
-    return {
-      positionId: p.makerNftTokenId ? Number(p.makerNftTokenId) : p.id,
-      legs,
-      direction: 'Long',
-      endsAt: endsAtSec ? endsAtSec * 1000 : Date.now(),
-      status,
-      tokenIdToClaim,
-    };
-  });
+  const viewer = React.useMemo(
+    () => String(account || '').toLowerCase(),
+    [account]
+  );
+  const rows: UIParlay[] = React.useMemo(() => {
+    return (data || []).map((p: any) => {
+      const legs: UILeg[] = (p.predictedOutcomes || []).map((o: any) => ({
+        question:
+          o?.condition?.shortName || o?.condition?.question || o.conditionId,
+        choice: o.prediction ? 'Yes' : 'No',
+      }));
+      const endsAtSec =
+        p.endsAt ||
+        Math.max(
+          0,
+          ...(p.predictedOutcomes || []).map(
+            (o: any) => o?.condition?.endTime || 0
+          )
+        );
+      const userIsMaker =
+        typeof p.maker === 'string' && p.maker.toLowerCase() === viewer;
+      const userIsTaker =
+        typeof p.taker === 'string' && p.taker.toLowerCase() === viewer;
+      const isActive = p.status === 'active';
+      const userWon =
+        !isActive &&
+        ((userIsMaker && p.makerWon === true) ||
+          (userIsTaker && p.makerWon === false));
+      const status: UIParlay['status'] = isActive
+        ? 'active'
+        : userWon
+          ? 'won'
+          : 'lost';
+      const tokenIdToClaim = userWon
+        ? userIsMaker
+          ? BigInt(p.makerNftTokenId)
+          : BigInt(p.takerNftTokenId)
+        : undefined;
+      return {
+        positionId: p.makerNftTokenId ? Number(p.makerNftTokenId) : p.id,
+        legs,
+        direction: 'Long',
+        endsAt: endsAtSec ? endsAtSec * 1000 : Date.now(),
+        status,
+        tokenIdToClaim,
+        createdAt: p.mintedAt ? Number(p.mintedAt) * 1000 : Date.now(),
+        totalPayoutWei: (() => {
+          try {
+            return BigInt(p.totalCollateral || '0');
+          } catch {
+            return 0n;
+          }
+        })(),
+      };
+    });
+  }, [data, viewer]);
+
+  // Keep Share dialog open state outside of row to survive re-renders
+  const [openShareParlayId, setOpenShareParlayId] = React.useState<
+    number | null
+  >(null);
+  const selectedParlay = React.useMemo(() => {
+    if (openShareParlayId === null) return null;
+    return rows.find((r) => r.positionId === openShareParlayId) || null;
+  }, [rows, openShareParlayId]);
+  // ---
 
   const columns = React.useMemo<ColumnDef<UIParlay>[]>(
     () => [
       {
         id: 'positionId',
         accessorFn: (row) => row.positionId,
-        size: 120,
-        minSize: 100,
-        maxSize: 150,
+        size: 360,
+        minSize: 260,
+        maxSize: 420,
         header: ({ column }) => (
           <Button
             type="button"
@@ -112,7 +171,7 @@ export default function UserParlaysTable({
                   : 'descending'
             }
           >
-            Position ID
+            Position
             {column.getIsSorted() === 'asc' ? (
               <ArrowUp className="ml-1 h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -122,146 +181,162 @@ export default function UserParlaysTable({
             )}
           </Button>
         ),
-        cell: ({ row }) => (
-          <div className="whitespace-nowrap">#{row.original.positionId}</div>
+        cell: ({ row }) => {
+          const created = new Date(row.original.createdAt).toLocaleDateString(
+            'en-US',
+            {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZoneName: 'short',
+            }
+          );
+          return (
+            <div>
+              <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] mb-0.5">
+                Position #{row.original.positionId}
+              </h2>
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                <span>created at {created}</span>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'wager',
+        accessorFn: (row) => Number(formatEther(row.totalPayoutWei || 0n)),
+        size: 260,
+        minSize: 220,
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Wager
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
         ),
+        cell: ({ row }) => {
+          const total = Number(formatEther(row.original.totalPayoutWei || 0n));
+          const symbol = 'USDe';
+          const isClosed = row.original.status !== 'active';
+          return (
+            <div>
+              <div className="whitespace-nowrap">
+                <NumberDisplay value={total} /> {symbol}
+              </div>
+              {!isClosed && (
+                <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
+                  To Win: <NumberDisplay value={total} /> {symbol}
+                </div>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: 'conditions',
         accessorFn: (row) => row.legs.length,
+        enableSorting: false,
         size: 400,
         minSize: 300,
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Conditions
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
-          </Button>
-        ),
+        header: () => null,
         cell: ({ row }) => (
           <div className="space-y-1">
+            {row.original.direction === 'Long' ? null : (
+              <div className="mb-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="default">Anti-Parlay</Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>One or more of these conditions will not be met.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
             {row.original.legs.map((leg, idx) => (
-              <div key={idx} className="text-sm">
-                <span className="font-medium">{leg.question}</span>{' '}
-                <span
+              <div key={idx} className="text-sm flex items-center gap-2">
+                <span className="font-medium">{leg.question}</span>
+                <Badge
+                  variant="outline"
                   className={
-                    leg.choice === 'Yes' ? 'text-green-600' : 'text-red-600'
+                    leg.choice === 'Yes'
+                      ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0'
+                      : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'
                   }
                 >
-                  ({leg.choice})
-                </span>
+                  {leg.choice}
+                </Badge>
               </div>
             ))}
           </div>
         ),
       },
+
       {
-        id: 'side',
-        accessorFn: (row) => row.direction,
-        size: 200,
-        minSize: 150,
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Side
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
-          </Button>
-        ),
+        id: 'actions',
+        enableSorting: false,
+        size: 140,
+        minSize: 100,
+        header: () => null,
         cell: ({ row }) => (
-          <div className="whitespace-nowrap">
-            {row.original.direction === 'Long'
-              ? 'Conditions will be met'
-              : 'Not all conditions will be met'}
-          </div>
-        ),
-      },
-      {
-        id: 'endsAt',
-        accessorFn: (row) => row.endsAt,
-        size: 180,
-        minSize: 150,
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Status
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
-          </Button>
-        ),
-        cell: ({ row }) => (
-          <div className="whitespace-nowrap text-left xl:text-right xl:mt-0">
-            {row.original.status === 'active' && (
-              <Button size="sm" variant="outline" disabled>
-                {`Ends In ${Math.max(1, Math.ceil((row.original.endsAt - Date.now()) / (1000 * 60 * 60 * 24)))} Days`}
-              </Button>
-            )}
-            {row.original.status === 'won' &&
-              row.original.tokenIdToClaim !== undefined && (
-                <ClaimButton tokenId={row.original.tokenIdToClaim} />
+          <div className="whitespace-nowrap xl:mt-0">
+            <div className="flex items-center gap-2 justify-start xl:justify-end">
+              {row.original.status === 'active' && (
+                <EndsInButton endsAtMs={row.original.endsAt} />
               )}
-            {row.original.status === 'lost' && (
-              <Button size="sm" variant="outline" disabled>
-                Parlay Lost
-              </Button>
-            )}
+              {row.original.status === 'won' &&
+                row.original.tokenIdToClaim !== undefined && (
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      burn(row.original.tokenIdToClaim!, ZERO_REF_CODE)
+                    }
+                    disabled={isClaimPending}
+                  >
+                    {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
+                  </Button>
+                )}
+              {row.original.status === 'lost' && (
+                <Button size="sm" variant="outline" disabled>
+                  Parlay Lost
+                </Button>
+              )}
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                onClick={() => setOpenShareParlayId(row.original.positionId)}
+              >
+                Share
+              </button>
+            </div>
           </div>
         ),
       },
     ],
-    []
+    [isClaimPending, burn, account]
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([
@@ -277,23 +352,10 @@ export default function UserParlaysTable({
     getSortedRowModel: getSortedRowModel(),
     columnResizeMode: 'onChange',
     enableColumnResizing: false,
+    getRowId: (row) => String(row.positionId),
   });
 
-  function ClaimButton({ tokenId }: { tokenId: bigint }) {
-    const { burn, isPending } = usePredictionMarketWriteContract({
-      successMessage: 'Claim submitted',
-      fallbackErrorMessage: 'Claim failed',
-    });
-    return (
-      <Button
-        size="sm"
-        onClick={() => burn(tokenId, ZERO_REF_CODE)}
-        disabled={isPending}
-      >
-        {isPending ? 'Claiming...' : 'Claim Winnings'}
-      </Button>
-    );
-  }
+  // Claim button is inlined per row using shared hook to avoid many hook instances
 
   return (
     <div>
@@ -301,10 +363,10 @@ export default function UserParlaysTable({
         <h2 className="text-lg font-medium mb-2">Your Parlays</h2>
       )}
       {rows.length === 0 ? (
-        <EmptyTabState message="No Parlays found" />
+        <EmptyTabState message="No parlays found" />
       ) : (
         <div className="rounded border">
-          <Table className="table-fixed">
+          <Table className="table-auto">
             <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -312,9 +374,8 @@ export default function UserParlaysTable({
                     <TableHead
                       key={header.id}
                       className={
-                        header.id === 'endsAt' ? 'text-right' : undefined
+                        header.id === 'actions' ? 'text-right' : undefined
                       }
-                      style={{ width: header.getSize() }}
                     >
                       {header.isPlaceholder
                         ? null
@@ -336,8 +397,7 @@ export default function UserParlaysTable({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className={`block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 ${cell.column.id === 'endsAt' ? 'text-left xl:text-right xl:mt-0' : ''}`}
-                      style={{ width: cell.column.getSize() }}
+                      className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 ${cell.column.id === 'actions' ? 'text-left xl:text-right xl:mt-0' : ''}`}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -350,6 +410,26 @@ export default function UserParlaysTable({
             </TableBody>
           </Table>
         </div>
+      )}
+      {selectedParlay && (
+        <ShareDialog
+          question={`Parlay #${selectedParlay.positionId}`}
+          legs={selectedParlay.legs?.map((l) => ({
+            question: l.question,
+            choice: l.choice,
+          }))}
+          wager={Number(formatEther(selectedParlay.totalPayoutWei || 0n))}
+          payout={Number(formatEther(selectedParlay.totalPayoutWei || 0n))}
+          symbol="USDe"
+          owner={String(account)}
+          imagePath="/og/parlay"
+          open={openShareParlayId !== null}
+          onOpenChange={(next) => {
+            if (!next) setOpenShareParlayId(null);
+          }}
+          trigger={<span />}
+          title="Share Your Parlay"
+        />
       )}
     </div>
   );

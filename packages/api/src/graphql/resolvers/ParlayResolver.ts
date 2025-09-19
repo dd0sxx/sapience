@@ -9,6 +9,9 @@ class ConditionSummary {
   @Field(() => String, { nullable: true })
   question?: string | null;
 
+  @Field(() => String, { nullable: true })
+  shortName?: string | null;
+
   @Field(() => Int, { nullable: true })
   endTime?: number | null;
 }
@@ -100,7 +103,7 @@ export class ParlayResolver {
     const conditions = conditionIds.length
       ? await prisma.condition.findMany({
           where: { id: { in: conditionIds } },
-          select: { id: true, question: true, endTime: true },
+          select: { id: true, question: true, shortName: true, endTime: true },
         })
       : [];
     const condMap = new Map(conditions.map((c) => [c.id, c]));

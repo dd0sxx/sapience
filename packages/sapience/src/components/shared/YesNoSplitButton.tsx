@@ -34,7 +34,7 @@ export default function YesNoSplitButton({
         : 'h-11 md:h-10 text-base';
 
   const common = cn(
-    'flex-1 px-4 font-medium transition-all duration-200 ease-in-out select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none',
+    'flex-1 px-4 font-medium transition-all duration-200 ease-in-out select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none rounded-md border',
     sizeClasses
   );
 
@@ -47,9 +47,8 @@ export default function YesNoSplitButton({
         className={cn(
           common,
           selectedYes
-            ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/25 hover:bg-emerald-500/30 border-emerald-400/80 hover:border-emerald-500/60'
-            : 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-400/50 hover:border-emerald-500/60',
-          'border rounded-md'
+            ? 'text-emerald-900 dark:text-emerald-50 bg-emerald-500/30 hover:bg-emerald-500/40 border-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.25)]'
+            : 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-400/60'
         )}
       >
         Yes
@@ -61,9 +60,8 @@ export default function YesNoSplitButton({
         className={cn(
           common,
           selectedNo
-            ? 'text-rose-600 dark:text-rose-400 bg-rose-500/25 hover:bg-rose-500/30 border-rose-400/80 hover:border-rose-500/50'
-            : 'text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border-rose-400/50 hover:border-rose-500/50',
-          'border rounded-md'
+            ? 'text-rose-900 dark:text-rose-50 bg-rose-500/30 hover:bg-rose-500/40 border-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.25)]'
+            : 'text-rose-700 dark:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border-rose-400/60'
         )}
       >
         No

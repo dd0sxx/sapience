@@ -1055,6 +1055,7 @@ export type ConditionSummary = {
   endTime?: Maybe<Scalars['Int']['output']>;
   id: Scalars['String']['output'];
   question?: Maybe<Scalars['String']['output']>;
+  shortName?: Maybe<Scalars['String']['output']>;
 };
 
 export type ConditionWhereInput = {

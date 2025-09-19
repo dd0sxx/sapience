@@ -109,7 +109,7 @@ export async function GET(req: Request) {
                 width: 800,
                 height: 800,
                 objectFit: 'cover',
-                opacity: 0.66,
+                opacity: 0.75,
               }}
             />
           </div>

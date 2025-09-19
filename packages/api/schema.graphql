@@ -945,6 +945,7 @@ type ConditionSummary {
   endTime: Int
   id: String!
   question: String
+  shortName: String
 }
 
 input ConditionWhereInput {
