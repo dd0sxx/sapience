@@ -34,7 +34,7 @@ const MarketCard = ({
   marketClassification,
   displayUnit,
 }: MarketCardProps) => {
-  const { addPosition } = useBetSlipContext();
+  const { addPosition, singlePositions } = useBetSlipContext();
   const router = useRouter();
 
   const chainShortName = React.useMemo(
@@ -181,6 +181,22 @@ const MarketCard = ({
 
   const canShowPredictionElement = isActive && market.length > 0;
 
+  // Compute selected state for YES/NO (singles mode) and for each option in multichoice
+  const yesNoSelection = React.useMemo(() => {
+    if (marketClassification !== MarketGroupClassificationEnum.YES_NO) {
+      return { selectedYes: false, selectedNo: false };
+    }
+    const existing = singlePositions.find(
+      (p) =>
+        p.marketAddress === marketAddress &&
+        p.marketClassification === MarketGroupClassificationEnum.YES_NO
+    );
+    return {
+      selectedYes: !!existing && existing.prediction === true,
+      selectedNo: !!existing && existing.prediction === false,
+    };
+  }, [singlePositions, marketAddress, marketClassification]);
+
   return (
     <div className="w-full h-full">
       <motion.div
@@ -282,6 +298,7 @@ const MarketCard = ({
                   }}
                   className="w-full"
                   size="md"
+                  // For this card case, we can't map per-option reliably; don't mark selected here
                 />
               )}
             {isActive &&
@@ -291,6 +308,8 @@ const MarketCard = ({
                   onNo={handleNoClick}
                   className="w-full"
                   size="md"
+                  selectedYes={yesNoSelection.selectedYes}
+                  selectedNo={yesNoSelection.selectedNo}
                 />
               )}
           </div>

@@ -39,7 +39,7 @@ const MarketGroupsRow = ({
   displayUnit,
 }: MarketGroupsRowProps) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const { addPosition } = useBetSlipContext();
+  const { addPosition, singlePositions } = useBetSlipContext();
 
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
@@ -248,6 +248,22 @@ const MarketGroupsRow = ({
     return market[0];
   }, [isActive, market, marketClassification]);
 
+  // Determine selected state for YES/NO buttons in singles mode
+  const yesNoSelection = React.useMemo(() => {
+    if (marketClassification !== MarketGroupClassificationEnum.YES_NO) {
+      return { selectedYes: false, selectedNo: false };
+    }
+    const existing = singlePositions.find(
+      (p) =>
+        p.marketAddress === marketAddress &&
+        p.marketClassification === MarketGroupClassificationEnum.YES_NO
+    );
+    return {
+      selectedYes: !!existing && existing.prediction === true,
+      selectedNo: !!existing && existing.prediction === false,
+    };
+  }, [singlePositions, marketAddress, marketClassification]);
+
   const canShowPredictionElement = isActive && market.length > 0;
 
   return (
@@ -274,7 +290,6 @@ const MarketGroupsRow = ({
                 </span>
               </Link>
             </h3>
-            {/* Mobile sparkline moved to the right-side container to sit left of buttons */}
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
               <div className="text-xs text-muted-foreground">
@@ -287,7 +302,7 @@ const MarketGroupsRow = ({
           </div>
 
           {/* Right Side: Sparkline + Action Buttons */}
-          <div className="flex flex-row items-center gap-5 md:items-center md:gap-6 md:ml-6 w-full md:w-auto">
+          <div className="flex flex-row-reverse md:flex-row items-center gap-5 md:items-center md:gap-6 md:ml-6 w-full md:w-auto">
             {hasSparklineData && (
               <div className="block w-[80px] h-[40px] shrink-0">
                 <Link
@@ -374,6 +389,8 @@ const MarketGroupsRow = ({
                           onNo={() => handleAddToBetSlip(noMarket, false)}
                           className="w-full md:min-w-[10rem]"
                           size="lg"
+                          selectedYes={yesNoSelection.selectedYes}
+                          selectedNo={yesNoSelection.selectedNo}
                         />
                       );
                     })()
@@ -448,24 +465,41 @@ const MarketGroupsRow = ({
                           {/* Right Side: Actions */}
                           <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto w-full md:w-auto">
                             {/* For multichoice rows, add as MULTIPLE_CHOICE and set long/short via prediction */}
-                            <YesNoSplitButton
-                              onYes={() =>
-                                handleAddToBetSlip(
-                                  marketItem,
-                                  true,
-                                  MarketGroupClassificationEnum.MULTIPLE_CHOICE
-                                )
-                              }
-                              onNo={() =>
-                                handleAddToBetSlip(
-                                  marketItem,
-                                  false,
-                                  MarketGroupClassificationEnum.MULTIPLE_CHOICE
-                                )
-                              }
-                              className="w-full md:min-w-[10rem]"
-                              size="lg"
-                            />
+                            {(() => {
+                              const existing = singlePositions.find(
+                                (p) =>
+                                  p.marketAddress === marketAddress &&
+                                  p.marketId === marketItem.marketId &&
+                                  p.marketClassification ===
+                                    MarketGroupClassificationEnum.MULTIPLE_CHOICE
+                              );
+                              const selectedYes =
+                                !!existing && existing.prediction === true;
+                              const selectedNo =
+                                !!existing && existing.prediction === false;
+                              return (
+                                <YesNoSplitButton
+                                  onYes={() =>
+                                    handleAddToBetSlip(
+                                      marketItem,
+                                      true,
+                                      MarketGroupClassificationEnum.MULTIPLE_CHOICE
+                                    )
+                                  }
+                                  onNo={() =>
+                                    handleAddToBetSlip(
+                                      marketItem,
+                                      false,
+                                      MarketGroupClassificationEnum.MULTIPLE_CHOICE
+                                    )
+                                  }
+                                  className="w-full md:min-w-[10rem]"
+                                  size="lg"
+                                  selectedYes={selectedYes}
+                                  selectedNo={selectedNo}
+                                />
+                              );
+                            })()}
                           </div>
                         </div>
                       ))}

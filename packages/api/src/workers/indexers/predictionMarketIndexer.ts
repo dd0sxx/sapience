@@ -44,6 +44,7 @@ const PREDICTION_MARKET_ABI = [
     inputs: [
       { name: 'maker', type: 'address', indexed: true },
       { name: 'taker', type: 'address', indexed: true },
+      { name: 'encodedPredictedOutcomes', type: 'bytes', indexed: false },
       { name: 'makerNftTokenId', type: 'uint256', indexed: false },
       { name: 'takerNftTokenId', type: 'uint256', indexed: false },
       { name: 'totalCollateral', type: 'uint256', indexed: false },
@@ -244,7 +245,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       );
       const predictionBurnedTopic = keccak256(
         toHex(
-          'PredictionBurned(address,address,uint256,uint256,uint256,bool,bytes32)'
+          'PredictionBurned(address,address,bytes,uint256,uint256,uint256,bool,bytes32)'
         )
       );
       const predictionConsolidatedTopic = keccak256(
@@ -340,7 +341,12 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       });
 
       const [outcomes] = decodeAbiParameters(
-        [{ type: 'tuple(bytes32,bool)[]' }],
+        [
+          {
+            type: 'tuple[]',
+            components: [{ type: 'bytes32' }, { type: 'bool' }],
+          },
+        ],
         decodedAny.args.encodedPredictedOutcomes
       ) as unknown as [[`0x${string}`, boolean][]];
       const predictedOutcomes = outcomes.map(([marketId, prediction]) => ({

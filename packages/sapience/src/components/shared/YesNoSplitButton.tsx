@@ -8,6 +8,9 @@ interface YesNoSplitButtonProps {
   className?: string;
   disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  // When true, visually mark the corresponding side as selected
+  selectedYes?: boolean;
+  selectedNo?: boolean;
 }
 
 /**
@@ -20,6 +23,8 @@ export default function YesNoSplitButton({
   className,
   disabled,
   size = 'lg',
+  selectedYes,
+  selectedNo,
 }: YesNoSplitButtonProps) {
   const sizeClasses =
     size === 'sm'
@@ -41,8 +46,10 @@ export default function YesNoSplitButton({
         disabled={disabled}
         className={cn(
           common,
-          'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20',
-          'border border-emerald-400/50 hover:border-emerald-500/60 rounded-md'
+          selectedYes
+            ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/25 hover:bg-emerald-500/30 border-emerald-400/80 hover:border-emerald-500/60'
+            : 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-400/50 hover:border-emerald-500/60',
+          'border rounded-md'
         )}
       >
         Yes
@@ -53,8 +60,10 @@ export default function YesNoSplitButton({
         disabled={disabled}
         className={cn(
           common,
-          'text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20',
-          'border border-rose-400/50 hover:border-rose-500/50 rounded-md'
+          selectedNo
+            ? 'text-rose-600 dark:text-rose-400 bg-rose-500/25 hover:bg-rose-500/30 border-rose-400/80 hover:border-rose-500/50'
+            : 'text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border-rose-400/50 hover:border-rose-500/50',
+          'border rounded-md'
         )}
       >
         No
