@@ -340,12 +340,12 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       });
 
       const [outcomes] = decodeAbiParameters(
-        [{ type: 'tuple(bytes32 marketId,bool prediction)[]' }],
+        [{ type: 'tuple(bytes32,bool)[]' }],
         decodedAny.args.encodedPredictedOutcomes
-      ) as unknown as [{ marketId: `0x${string}`; prediction: boolean }[]];
-      const predictedOutcomes = outcomes.map((o) => ({
-        conditionId: o.marketId,
-        prediction: o.prediction,
+      ) as unknown as [[`0x${string}`, boolean][]];
+      const predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
+        conditionId: marketId,
+        prediction,
       }));
 
       // Compute endsAt from known conditions (optional)
