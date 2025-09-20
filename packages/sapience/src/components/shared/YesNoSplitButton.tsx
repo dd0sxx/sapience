@@ -11,6 +11,9 @@ interface YesNoSplitButtonProps {
   // When true, visually mark the corresponding side as selected
   selectedYes?: boolean;
   selectedNo?: boolean;
+  // Optional sublabels to render beneath the primary labels
+  yesOddsText?: string;
+  noOddsText?: string;
 }
 
 /**
@@ -25,7 +28,10 @@ export default function YesNoSplitButton({
   size = 'lg',
   selectedYes,
   selectedNo,
+  yesOddsText,
+  noOddsText,
 }: YesNoSplitButtonProps) {
+  const hasOdds = Boolean(yesOddsText || noOddsText);
   const sizeClasses =
     size === 'sm'
       ? 'h-8 text-sm'
@@ -51,7 +57,18 @@ export default function YesNoSplitButton({
             : 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-400/60'
         )}
       >
-        Yes
+        {hasOdds ? (
+          <span className="flex flex-col items-center justify-center translate-y-[1px]">
+            <span className="leading-none">Yes</span>
+            {yesOddsText ? (
+              <span className="text-[8px] leading-none text-emerald-900/80 dark:text-emerald-100/80 mt-0.5">
+                {yesOddsText}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          'Yes'
+        )}
       </button>
       <button
         type="button"
@@ -64,7 +81,18 @@ export default function YesNoSplitButton({
             : 'text-rose-700 dark:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border-rose-400/60'
         )}
       >
-        No
+        {hasOdds ? (
+          <span className="flex flex-col items-center justify-center translate-y-[1px]">
+            <span className="leading-none">No</span>
+            {noOddsText ? (
+              <span className="text-[8px] leading-none text-rose-900/80 dark:text-rose-100/80 mt-0.5">
+                {noOddsText}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          'No'
+        )}
       </button>
     </div>
   );

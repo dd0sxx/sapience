@@ -16,6 +16,7 @@ import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
 import type { MultiMarketChartDataPoint } from '~/lib/utils/chartUtils';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 export interface MarketGroupsRowProps {
   chainId: number;
@@ -40,6 +41,7 @@ const MarketGroupsRow = ({
 }: MarketGroupsRowProps) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const { addPosition, singlePositions } = useBetSlipContext();
+  const { showAmericanOdds } = useSettings();
 
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
@@ -266,6 +268,45 @@ const MarketGroupsRow = ({
 
   const canShowPredictionElement = isActive && market.length > 0;
 
+  // Convert probability (0-1) to American odds string
+  const toAmericanOdds = React.useCallback((prob: number | undefined) => {
+    const p = typeof prob === 'number' ? prob : 0;
+    if (!(p > 0) || !(p < 1)) return undefined;
+    if (p > 0.5) {
+      const val = Math.round((p / (1 - p)) * 100);
+      return `-${val}`;
+    }
+    const val = Math.round(((1 - p) / p) * 100);
+    return `+${val}`;
+  }, []);
+
+  // Compute Yes/No odds text when applicable
+  const yesNoOdds = React.useMemo(() => {
+    if (
+      !isActive ||
+      marketClassification !== MarketGroupClassificationEnum.YES_NO ||
+      market.length === 0
+    ) {
+      return {
+        yesOddsText: undefined as string | undefined,
+        noOddsText: undefined as string | undefined,
+      };
+    }
+    const yesMarket = market.find((m) => m.optionName === 'Yes') || market[0];
+    const noMarket = market.find((m) => m.optionName === 'No');
+    const yesPrice = latestPrices[yesMarket.marketId];
+    const noPrice =
+      typeof noMarket?.marketId === 'number'
+        ? latestPrices[noMarket.marketId]
+        : typeof yesPrice === 'number'
+          ? 1 - yesPrice
+          : undefined;
+    return {
+      yesOddsText: toAmericanOdds(yesPrice),
+      noOddsText: toAmericanOdds(noPrice),
+    };
+  }, [isActive, marketClassification, market, latestPrices, toAmericanOdds]);
+
   return (
     <div className="w-full">
       {/* Main Row Container for Color Bar + Content */}
@@ -280,7 +321,7 @@ const MarketGroupsRow = ({
         <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-6 md:py-2 gap-3">
           {/* Left Side: Question + Prediction */}
           <div className="flex-grow">
-            <h3 className="text-md mb-1">
+            <h3 className="text-md mb-1.5">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}`}
                 className="group"
@@ -391,6 +432,12 @@ const MarketGroupsRow = ({
                           size="lg"
                           selectedYes={yesNoSelection.selectedYes}
                           selectedNo={yesNoSelection.selectedNo}
+                          yesOddsText={
+                            showAmericanOdds ? yesNoOdds.yesOddsText : undefined
+                          }
+                          noOddsText={
+                            showAmericanOdds ? yesNoOdds.noOddsText : undefined
+                          }
                         />
                       );
                     })()
@@ -441,7 +488,7 @@ const MarketGroupsRow = ({
                         >
                           {/* Left Side: Option Name + Prediction */}
                           <div className="flex-grow">
-                            <div className="text-foreground inline-flex items-center gap-2 mb-1">
+                            <div className="text-foreground inline-flex items-center gap-2 mb-1.5">
                               <Link
                                 href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
                                 className="group inline-flex items-center"

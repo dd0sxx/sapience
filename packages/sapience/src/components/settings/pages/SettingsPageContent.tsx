@@ -16,6 +16,7 @@ import {
   CommandList,
 } from '@sapience/ui/components/ui/command';
 import { Textarea } from '@sapience/ui/components/ui/textarea';
+import { Switch } from '@sapience/ui/components/ui/switch';
 import {
   Tabs,
   TabsList,
@@ -169,6 +170,7 @@ const SettingsPageContent = () => {
     researchAgentSystemMessage,
     researchAgentModel,
     researchAgentTemperature,
+    showAmericanOdds,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setQuoterBaseUrl,
@@ -178,6 +180,7 @@ const SettingsPageContent = () => {
     setResearchAgentSystemMessage,
     setResearchAgentModel,
     setResearchAgentTemperature,
+    setShowAmericanOdds,
     defaults,
   } = useSettings();
   const [mounted, setMounted] = useState(false);
@@ -584,6 +587,23 @@ const SettingsPageContent = () => {
                         )}
                       </div>
                     </div>
+
+                    <div className="grid gap-1">
+                      <Label htmlFor="show-american-odds">
+                        Show American Odds
+                      </Label>
+                      <div
+                        id="show-american-odds"
+                        className="flex items-center h-10"
+                      >
+                        <Switch
+                          checked={Boolean(
+                            showAmericanOdds ?? defaults.showAmericanOdds
+                          )}
+                          onCheckedChange={(val) => setShowAmericanOdds(val)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -719,7 +739,7 @@ const SettingsPageContent = () => {
 
                     <div className="grid gap-2">
                       <Label htmlFor="research-temperature">Temperature</Label>
-                      <div className="space-y-2.5">
+                      <div className="mt-1 space-y-2.5">
                         <Slider
                           value={[temperatureInput]}
                           onValueChange={(vals) => {

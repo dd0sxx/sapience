@@ -382,25 +382,40 @@ function MobileAndDesktopLists({
           className="w-full h-full"
         >
           <CarouselContent className="-ml-8 items-stretch h-full">
-            {items.map((marketGroup) => (
-              <CarouselItem
-                key={marketGroup.key}
-                className="pl-8 basis-[80%] h-full"
-              >
-                <MarketCard
-                  chainId={marketGroup.chainId}
-                  marketAddress={marketGroup.marketAddress}
-                  market={marketGroup.markets}
-                  color={marketGroup.color}
-                  displayQuestion={
-                    marketGroup.displayQuestion || marketGroup.marketName
-                  }
-                  isActive={marketGroup.isActive}
-                  marketClassification={marketGroup.marketClassification}
-                  displayUnit={marketGroup.displayUnit}
-                />
-              </CarouselItem>
-            ))}
+            {items.map((marketGroup) => {
+              // choose a single representative market per group
+              const preferred =
+                marketGroup.markets.find((m) => m.optionName === 'Yes') ||
+                marketGroup.markets[0];
+              // attempt to locate complementary yes/no ids when present
+              const yesId = marketGroup.markets.find(
+                (m) => m.optionName === 'Yes'
+              )?.marketId;
+              const noId = marketGroup.markets.find(
+                (m) => m.optionName === 'No'
+              )?.marketId;
+              return (
+                <CarouselItem
+                  key={marketGroup.key}
+                  className="pl-8 basis-[80%] h-full"
+                >
+                  <MarketCard
+                    chainId={marketGroup.chainId}
+                    marketAddress={marketGroup.marketAddress}
+                    market={preferred}
+                    yesMarketId={yesId}
+                    noMarketId={noId}
+                    color={marketGroup.color}
+                    displayQuestion={
+                      marketGroup.displayQuestion || marketGroup.marketName
+                    }
+                    isActive={marketGroup.isActive}
+                    marketClassification={marketGroup.marketClassification}
+                    displayUnit={marketGroup.displayUnit}
+                  />
+                </CarouselItem>
+              );
+            })}
           </CarouselContent>
         </Carousel>
       </div>
@@ -414,25 +429,38 @@ function MobileAndDesktopLists({
           className="w-full h-full"
         >
           <CarouselContent className="-ml-8 items-stretch h-full">
-            {items.map((marketGroup) => (
-              <CarouselItem
-                key={marketGroup.key}
-                className={`${desktopItemClass} h-full`}
-              >
-                <MarketCard
-                  chainId={marketGroup.chainId}
-                  marketAddress={marketGroup.marketAddress}
-                  market={marketGroup.markets}
-                  color={marketGroup.color}
-                  displayQuestion={
-                    marketGroup.displayQuestion || marketGroup.marketName
-                  }
-                  isActive={marketGroup.isActive}
-                  marketClassification={marketGroup.marketClassification}
-                  displayUnit={marketGroup.displayUnit}
-                />
-              </CarouselItem>
-            ))}
+            {items.map((marketGroup) => {
+              const preferred =
+                marketGroup.markets.find((m) => m.optionName === 'Yes') ||
+                marketGroup.markets[0];
+              const yesId = marketGroup.markets.find(
+                (m) => m.optionName === 'Yes'
+              )?.marketId;
+              const noId = marketGroup.markets.find(
+                (m) => m.optionName === 'No'
+              )?.marketId;
+              return (
+                <CarouselItem
+                  key={marketGroup.key}
+                  className={`${desktopItemClass} h-full`}
+                >
+                  <MarketCard
+                    chainId={marketGroup.chainId}
+                    marketAddress={marketGroup.marketAddress}
+                    market={preferred}
+                    yesMarketId={yesId}
+                    noMarketId={noId}
+                    color={marketGroup.color}
+                    displayQuestion={
+                      marketGroup.displayQuestion || marketGroup.marketName
+                    }
+                    isActive={marketGroup.isActive}
+                    marketClassification={marketGroup.marketClassification}
+                    displayUnit={marketGroup.displayUnit}
+                  />
+                </CarouselItem>
+              );
+            })}
           </CarouselContent>
         </Carousel>
       </div>
