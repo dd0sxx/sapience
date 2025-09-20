@@ -3,7 +3,6 @@ import { type UseFormReturn } from 'react-hook-form';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
 
-import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import BetslipSinglesForm from './BetslipSinglesForm';
 import BetslipParlayForm from './BetslipParlayForm';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
@@ -60,7 +59,6 @@ export const BetslipContent = ({
   collateralDecimals,
   minWager,
 }: BetslipContentProps) => {
-  const isMobile = useIsMobile();
   const {
     betSlipPositions,
     clearBetSlip,
@@ -75,9 +73,7 @@ export const BetslipContent = ({
   return (
     <>
       <div className="w-full h-full flex flex-col">
-        <div
-          className={`relative px-4 ${isMobile ? '' : 'pt-1.5 pb-1.5 bg-muted/50 border-b border-border/40'}`}
-        >
+        <div className="relative px-4 pt-1.5 pb-1.5 lg:bg-muted/50 lg:border-b lg:border-border/40">
           <div className="grid grid-cols-[auto_1fr_auto] items-center h-10">
             <span className="text-lg font-medium">Make a Prediction</span>
             <div className="col-start-3 justify-self-end">

@@ -138,6 +138,32 @@ const MarketsPage = () => {
     }
   }, []);
 
+  // Initialize parlay mode from URL hash when feature is enabled
+  React.useEffect(() => {
+    if (!parlayFeatureEnabled) return;
+    if (typeof window === 'undefined') return;
+    if (window.location.hash === '#parlays') {
+      setParlayMode(true);
+    }
+  }, [parlayFeatureEnabled]);
+
+  // Handle parlay mode toggle and keep URL hash in sync
+  const handleParlayModeChange = (enabled: boolean) => {
+    setParlayMode(enabled);
+    if (typeof window === 'undefined') return;
+    if (enabled) {
+      const newHash = '#parlays';
+      if (window.location.hash !== newHash) {
+        // Update hash without scrolling or adding a new history entry
+        window.history.replaceState(null, '', newHash);
+      }
+    } else {
+      // Clear hash entirely
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, '', url);
+    }
+  };
+
   // RFQ Conditions via GraphQL
   const { data: allConditions = [], isLoading: isLoadingConditions } =
     useConditions({ take: 200 });
@@ -608,9 +634,11 @@ const MarketsPage = () => {
   return (
     <div className="relative flex flex-col lg:flex-row items-start">
       {/* Render only one betslip instance based on viewport */}
-      <div className="block lg:hidden">
-        <Betslip isParlayMode={parlayMode} />
-      </div>
+      {isMobile ? (
+        <div className="block lg:hidden">
+          <Betslip isParlayMode={parlayMode} />
+        </div>
+      ) : null}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-6 pr-0 lg:pr-12">
@@ -633,7 +661,7 @@ const MarketsPage = () => {
                 statusFilter={statusFilter}
                 handleStatusFilterClick={handleStatusFilterClick}
                 parlayMode={parlayMode}
-                onParlayModeChange={setParlayMode}
+                onParlayModeChange={handleParlayModeChange}
                 isLoadingCategories={isLoadingCategories}
                 categories={categories}
                 getCategoryStyle={getCategoryStyle}
