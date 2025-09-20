@@ -13,7 +13,7 @@ import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketCard from '../markets/MarketCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
-import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
+import { getYAxisConfig, formatQuestion } from '~/lib/utils/util';
 
 // Removed LottieLoader in favor of simple fade-in cards and fixed-height placeholder
 
@@ -168,17 +168,18 @@ export default function FeaturedMarketGroupCards() {
           displayUnit = yAxisConfig.unit;
         }
 
-        // Use the same question logic as the header
-        // Determine the "active market" for header logic:
-        // If there's only one market total, use that market; otherwise use null
+        // Always prefer a market-level question for display
         const allMarketsInGroup = enrichedGroup?.markets || [];
-        const singleMarket =
-          allMarketsInGroup.length === 1 ? allMarketsInGroup[0] : null;
-
-        const displayQuestion = getMarketHeaderQuestion(
-          enrichedGroup,
-          singleMarket
-        );
+        const marketWithQuestion =
+          markets.find((m) => !!m.question) ||
+          allMarketsInGroup.find((m) => !!m.question) ||
+          null;
+        const displayQuestion =
+          (marketWithQuestion &&
+            (formatQuestion(marketWithQuestion.question) ||
+              marketWithQuestion.question)) ||
+          enrichedGroup.question ||
+          '';
 
         return {
           key,

@@ -606,16 +606,14 @@ const MarketsPage = () => {
 
   // Render content once both are loaded
   return (
-    <div className="relative flex flex-col md:flex-row items-start">
+    <div className="relative flex flex-col lg:flex-row items-start">
       {/* Render only one betslip instance based on viewport */}
-      {isMobile ? (
-        <div className="block md:hidden">
-          <Betslip isParlayMode={parlayMode} />
-        </div>
-      ) : null}
+      <div className="block lg:hidden">
+        <Betslip isParlayMode={parlayMode} />
+      </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-6 pr-0 md:pr-12">
+      <div className="flex-1 flex flex-col gap-6 pr-0 lg:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
         <div className="bg-background/90 pt-2">
           <SearchBar
@@ -798,7 +796,7 @@ const MarketsPage = () => {
 
       {/* Desktop/Tablet sticky betslip sidebar */}
       {!isMobile ? (
-        <div className="hidden md:block w-[24rem] shrink-0 self-start sticky top-24">
+        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24">
           <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
               <Betslip variant="panel" isParlayMode={parlayMode} />

@@ -74,7 +74,9 @@ export default function UserParlaysTable({
     status: 'active' | 'won' | 'lost';
     tokenIdToClaim?: bigint;
     createdAt: number; // ms
-    totalPayoutWei: bigint;
+    totalPayoutWei: bigint; // total payout if won
+    makerCollateralWei?: bigint; // user's wager if they are maker
+    takerCollateralWei?: bigint; // user's wager if they are taker
   };
 
   // Fetch real data
@@ -132,6 +134,20 @@ export default function UserParlaysTable({
             return BigInt(p.totalCollateral || '0');
           } catch {
             return 0n;
+          }
+        })(),
+        makerCollateralWei: (() => {
+          try {
+            return p.makerCollateral ? BigInt(p.makerCollateral) : undefined;
+          } catch {
+            return undefined;
+          }
+        })(),
+        takerCollateralWei: (() => {
+          try {
+            return p.takerCollateral ? BigInt(p.takerCollateral) : undefined;
+          } catch {
+            return undefined;
           }
         })(),
       };
@@ -207,7 +223,19 @@ export default function UserParlaysTable({
       },
       {
         id: 'wager',
-        accessorFn: (row) => Number(formatEther(row.totalPayoutWei || 0n)),
+        accessorFn: (row) => {
+          // Show the viewer's contributed collateral as the wager
+          const viewerWagerWei = (() => {
+            // Prefer makerCollateral for makers; takerCollateral for takers — both may be present
+            if (row.makerCollateralWei && row.takerCollateralWei) {
+              // If both present, wager is the one associated with the viewer; but accessorFn lacks viewer context
+              // Fall back to makerCollateral (most users will be makers submitting wagers)
+              return row.makerCollateralWei;
+            }
+            return row.makerCollateralWei ?? row.takerCollateralWei ?? 0n;
+          })();
+          return Number(formatEther(viewerWagerWei));
+        },
         size: 260,
         minSize: 220,
         header: ({ column }) => (
@@ -236,17 +264,33 @@ export default function UserParlaysTable({
           </Button>
         ),
         cell: ({ row }) => {
-          const total = Number(formatEther(row.original.totalPayoutWei || 0n));
           const symbol = 'USDe';
           const isClosed = row.original.status !== 'active';
+          const totalPayout = Number(
+            formatEther(row.original.totalPayoutWei || 0n)
+          );
+          const viewerWagerWei = (() => {
+            if (
+              row.original.makerCollateralWei &&
+              row.original.takerCollateralWei
+            ) {
+              return row.original.makerCollateralWei;
+            }
+            return (
+              row.original.makerCollateralWei ??
+              row.original.takerCollateralWei ??
+              0n
+            );
+          })();
+          const viewerWager = Number(formatEther(viewerWagerWei));
           return (
             <div>
               <div className="whitespace-nowrap">
-                <NumberDisplay value={total} /> {symbol}
+                <NumberDisplay value={viewerWager} /> {symbol}
               </div>
               {!isClosed && (
                 <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
-                  To Win: <NumberDisplay value={total} /> {symbol}
+                  To Win: <NumberDisplay value={totalPayout} /> {symbol}
                 </div>
               )}
             </div>
@@ -418,7 +462,13 @@ export default function UserParlaysTable({
             question: l.question,
             choice: l.choice,
           }))}
-          wager={Number(formatEther(selectedParlay.totalPayoutWei || 0n))}
+          wager={Number(
+            formatEther(
+              selectedParlay.makerCollateralWei ??
+                selectedParlay.takerCollateralWei ??
+                0n
+            )
+          )}
           payout={Number(formatEther(selectedParlay.totalPayoutWei || 0n))}
           symbol="USDe"
           owner={String(account)}

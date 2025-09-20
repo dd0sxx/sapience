@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Copy, Share2 } from 'lucide-react';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import LottieLoader from '~/components/shared/LottieLoader';
 
 interface ShareDialogProps {
   question: string;
@@ -143,8 +144,7 @@ export default function ShareDialog(props: ShareDialogProps) {
           <div className="w-full aspect-[1200/630] bg-muted rounded overflow-hidden relative border border-border">
             {imgLoading && (
               <div className="absolute inset-0 flex items-center justify-center">
-                {/* Simple loader replacement to avoid extra deps */}
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-muted-foreground" />
+                <LottieLoader width={48} height={48} />
               </div>
             )}
             <Image

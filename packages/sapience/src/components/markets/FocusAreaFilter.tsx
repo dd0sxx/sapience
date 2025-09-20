@@ -63,7 +63,7 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
   };
   return (
     <div className={containerClassName || 'px-0 py-0 w-full'}>
-      <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center lg:justify-between gap-2 md:gap-4 lg:gap-2">
         {/* Categories Row */}
         <CategoryChips
           selectedCategorySlug={selectedCategorySlug}
@@ -74,7 +74,7 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
         />
 
         {/* Status on the right (stacks below on small screens) */}
-        <div className="order-1 md:order-2 w-full md:w-auto flex-shrink-0 mb-1 md:mb-0">
+        <div className="order-1 lg:order-2 w-full lg:w-auto flex-shrink-0 mb-1 lg:mb-0">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-medium text-muted-foreground mr-1.5">
               Status
@@ -94,8 +94,8 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
               All
             </button>
 
-            <div className="hidden md:block h-4 w-px bg-border mx-1" />
-            <div className="ml-auto md:ml-0 flex items-center gap-1.5">
+            <div className="hidden lg:block h-4 w-px bg-border mx-1" />
+            <div className="ml-auto lg:ml-0 flex items-center gap-1.5">
               <span className="text-xs font-medium text-muted-foreground ml-2">
                 Parlay Mode
               </span>

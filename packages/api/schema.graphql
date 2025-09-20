@@ -2874,6 +2874,7 @@ type ParlayType {
   endsAt: Int
   id: Int!
   maker: String!
+  makerCollateral: String
   makerNftTokenId: String!
   makerWon: Boolean
   marketAddress: String!
@@ -2883,6 +2884,7 @@ type ParlayType {
   settledAt: Int
   status: String!
   taker: String!
+  takerCollateral: String
   takerNftTokenId: String!
   totalCollateral: String!
 }
