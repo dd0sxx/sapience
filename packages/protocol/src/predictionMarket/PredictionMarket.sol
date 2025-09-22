@@ -33,6 +33,8 @@ contract PredictionMarket is
     error InvalidCollateralToken();
     error InvalidMinCollateral();
     error MakerIsNotCaller();
+    error InvalidEncodedPredictedOutcomes();
+    error PredictionAlreadySettled();
     error CollateralBelowMinimum();
     error MakerCollateralMustBeGreaterThanZero();
     error TakerCollateralMustBeGreaterThanZero();
@@ -283,7 +285,6 @@ contract PredictionMarket is
     function placeOrder(
         IPredictionStructs.OrderRequestData calldata orderRequestData
     ) external nonReentrant returns (uint256 orderId) {
-        orderId = orderIdCounter++;
         address maker = msg.sender;
 
         if (orderRequestData.makerCollateral == 0)
@@ -299,6 +300,8 @@ contract PredictionMarket is
             maker,
             orderRequestData.makerCollateral
         );
+
+        orderId = orderIdCounter++;
 
         // 2- Store order request data
         unfilledOrders[orderId] = IPredictionStructs.LimitOrderData({
