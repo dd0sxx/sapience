@@ -37,50 +37,39 @@ Tip: Regardless of editor, pasting a specific docs page URL (e.g., a GraphQL or 
 
 ## Attach the Sapience MCP server (Optional)
 
-Attaching MCP gives your editor live Sapience tools (GraphQL queries, market data, quotes, attestations, etc.). This enables troubleshooting against real data, understanding active markets, and—even if you supply a private key via environment variables—trading directly from your editor. Learn more about the MCP server at [/api/mcp](/api/mcp).
+Attaching MCP gives your editor live Sapience tools (GraphQL queries, market data, quotes, attestations, etc.). This enables troubleshooting against real data and understanding active markets. Learn more about the MCP server at [/api/mcp](/api/mcp).
+
+### Configuration
+
+Use this config with any MCP-enabled client to attach the Sapience server via `mcp-remote`:
+
+```json
+{
+  "mcpServers": {
+    "sapience": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://api.sapience.xyz/mcp"]
+    }
+  }
+}
+```
+
+See tool details and transport notes at [/api/mcp](/api/mcp).
 
 ### Cursor: add the Sapience MCP server
 
 1) Open Cursor → Settings → Cursor Settings → MCP → Add new global MCP server
-2) Update your MCP config to include Sapience using `mcp-remote`:
-
-```json
-{
-  "mcpServers": {
-    "sapience": {
-      "command": "npx",
-      "args": ["mcp-remote", "https://api.sapience.xyz/mcp"]
-    }
-  }
-}
-```
+2) Paste the configuration from the Configuration section above and save
 
 - Requires Node.js on your PATH so `npx` is available.
 - After saving, restart Cursor if tools do not appear.
-- See tool details and transport notes at [/api/mcp](/api/mcp).
 
 ### Claude Code (Claude Desktop): add the Sapience MCP server
 
-Claude Desktop supports MCP remote servers via `mcp-remote`. Add Sapience with this config:
+Claude Desktop supports MCP remote servers via `mcp-remote`.
 
-```json
-{
-  "mcpServers": {
-    "sapience": {
-      "command": "npx",
-      "args": ["mcp-remote", "https://api.sapience.xyz/mcp"]
-    }
-  }
-}
-```
+1) Open Settings and search for "MCP" to edit the configuration file (see Anthropic docs for the file location on your OS)
+2) Paste the configuration from the Configuration section above and save
 
-- In Claude Desktop, open Settings and search for "MCP" to edit the configuration file (see Anthropic docs for the file location on your OS).
 - Ensure Node.js is installed so `npx` is available.
 - After saving, restart Claude Desktop and ask Claude to list available tools.
-- For HTTP transport details and available tools, see [/api/mcp](/api/mcp).
-
-### Notes on other editors
-
-If your editor supports MCP, use the same `mcp-remote` config above with the Sapience endpoint. If MCP is not supported, you can still provide `https://docs.sapience.xyz/` links in your prompts so the assistant has the right context.
-
-

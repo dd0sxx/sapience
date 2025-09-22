@@ -5,14 +5,13 @@ description: "A fast, fun platform for building and trading prediction markets."
 
 # What is Sapience?
 
-Sapience is building open source, fully transparent prediction markets. The developer tools are geared towards hobbyist builders and professional desks alike.
+Sapience is a platform for open source, fully transparent prediction markets. Our developer tools are geared towards hobbyist builders as well as professional desks.
 
 ## Why build on Sapience
 
-- Lightning-fast builder path: spin up your first bot in minutes
-- Two market designs with limit-like execution (CLOB and Batch Auctions). See [Market Types](/concepts/market-types).
-- Agent-native APIs: GraphQL (data), Quoter (sizing), Batch Auction Relayer (quotes/WS), MCP (tools)
- 
+- Lightning-fast builder path: [spin up your first bot in minutes](/guides/forecasting-bots)
+- Public, open source APIs: [GraphQL](/api/graphql) (for market data), [Quoter](/api/quoter) (for sizing orders), [Batch Auction Relayer](/api/auction-relayer) (for RFQ-style markets), [MCP](/api/mcp) (for AI agent tools)
+- Two onchain market designs for different liquidity profiles. See [Market Types](/concepts/market-types).
 
 ## Why prediction markets matter
 
@@ -28,6 +27,6 @@ Sapience is building open source, fully transparent prediction markets. The deve
 
 ## Interpreting prices
 
-- Buying a YES is like buying a token that will convert to $1 if the event resolves to YES; if it resolves to NO, it becomes worthless.
-- The token’s current price reflects the market‑implied probability of YES (e.g., 0.18 ≈ 18%).
-- No one “sets” odds—they emerge from the order book and auction prints.
+- Buying a Yes Share is like buying a token that will convert to $1 if the event resolves to Yes; if it resolves to No, it becomes worthless.
+- The token’s current price reflects the market‑implied probability of Yes (e.g., 0.18 ≈ 18%).
+- No one sets odds; they emerge from the order book and auction prints.
