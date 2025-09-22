@@ -1,6 +1,6 @@
 ---
 title: "Forecasting Bot"
-description: "Fork and deploy a forecasting bot that publishes forecasts to Ethereum and shows up on Sapience and the leaderboard."
+description: "Deploy a forecasting bot on Railway, customize it, and publish forecasts to Ethereum."
 ---
 
 import BuilderGuideAlert from '../../components/BuilderGuideAlert'
@@ -9,71 +9,68 @@ import BuilderGuideAlert from '../../components/BuilderGuideAlert'
 
 # Forecasting Bot
 
-This guide makes it easy to fork the forecasting agent template, one‑click deploy it on Railway, customize it, and publish each forecast to [Ethereum](https://attest.org) so it:
+This guide makes it easy to one‑click deploy the forecasting agent template built with [ElizaOS](https://elizaos.ai/) on [Railway](https://railway.com/), customize it, and publish its forecasts to [Ethereum](https://attest.org) so it:
 
 - Appears on the Sapience [Forecast](https://sapience.xyz/forecast) feed
 - Contributes to its Accuracy Score on the [Leaderboard](https://sapience.xyz/leaderboard#accuracy)
 
 In [the next guide](/guides/trading-bots), you can have it **automatically submit a $1 wager based on its forecasts**.
 
-## Prerequisites
+## Get Keys
 
 - An AI provider key:
   - OpenAI: create a key at [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
   - Anthropic: create a key at [https://console.anthropic.com](https://console.anthropic.com)
-- A dedicated Ethereum wallet private key for publishing
-  - Never reuse a personal wallet; keep a small amount of gas on Arbitrum for attestations
+- A dedicated Ethereum wallet private key for publishing forecasts
+  - Never reuse a personal wallet; keep a small amount of gas on Arbitrum
   - Export instructions: [MetaMask export guide](https://support.metamask.io/configure/accounts/how-to-export-an-accounts-private-key/)
 
-## Fork the Sage Template
+## One‑click Deploy
 
-- Open the template repo: [sapiencexyz/sage-template](https://github.com/sapiencexyz/sage-template)
-- Click “Fork” to create your own copy under your GitHub account
-- (Optional) Rename the repo; we’ll refer to it as `your-sage-bot`
-
-Reference: [sapiencexyz/sage-template](https://github.com/sapiencexyz/sage-template)
-
-## One‑click deploy on Railway
-
-- Use the button below for a one‑click deploy, or in Railway: New Project → Deploy from GitHub → select `your-sage-bot`
+Use the button below for a one‑click deploy. Alternatively in Railway: New Project → Deploy from GitHub → select the template repository.
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/vfc8cZ?referralCode=DbBhWB)
 
-- Environment Variables (required):
-  - `OPENAI_API_KEY`: required for LLM inference
-  - `ETHEREUM_PRIVATE_KEY`: required; used to publish forecasts to EAS
 - Start Command:
   - Prefer `elizaos start`
-  - If that’s unavailable in your fork, use your package script (e.g. `bun run start` or `pnpm start`)
+  - If that’s unavailable, use your package script (e.g. `bun run start` or `pnpm start`)
 - Deploy and wait for the build to finish; open the service URL and verify logs show the agent booted
 
-Tip: See Railway’s quick start for screenshots and deeper setup: [Railway quick start](https://docs.railway.com/quick-start)
 
-## Environment variables
+### Environment Variables
 
-| Variable | Required | Default | Notes |
-| --- | --- | --- | --- |
-| `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | Yes (one) | — | AI provider for generating forecasts |
-| `ETHEREUM_PRIVATE_KEY` | Yes | — | Publishes forecasts to EAS; required for visibility/leaderboard |
-| `AUTO_MODE_ENABLED` | No | `true` | Whether to run forecasts automatically (if supported by your fork) |
-| `AUTO_MODE_INTERVAL` | No | `1` | Hours between runs (if supported by your fork) |
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | — | AI provider for generating forecasts |
+| `ETHEREUM_PRIVATE_KEY` | — | Publishes forecasts to EAS; required for visibility/leaderboard |
+| `AUTO_MODE_ENABLED` | `true` | Whether to run forecasts automatically (if supported by the template) |
+| `AUTO_MODE_INTERVAL` | `1` | Hours between runs (if supported by the template) |
 
 Auto‑mode: When enabled, Railway keeps your service running and the bot will forecast on a cadence. To change cadence, set `AUTO_MODE_INTERVAL` to the number of hours.
 
-## Publish forecasts to Sapience
+## Customize Your Agent
 
-Set `ETHEREUM_PRIVATE_KEY` so forecasts are attested onchain and show up on Sapience and count toward the Leaderboard.
+We strongly recommend using an [LLM-powered code editor](/getting-started/quickstart) to customize your agent.
 
-- Add `ETHEREUM_PRIVATE_KEY` in Railway (use a dedicated wallet)
-- Ensure the wallet has a small amount of gas on the configured network
-- Keep logs enabled to see the EAS attestation transaction hash and status
+### Eject to your GitHub and pull locally
 
-Notes:
+First, connect the deployed service to your own repository so you can edit and push changes.
 
-- Without a wallet, your forecasts won’t appear on Sapience or on the Leaderboard
-- Network/provider configuration follows the template defaults; check your fork’s README or `src/index.ts` for settings
+1) In Railway, open your service → Source → Eject → choose your GitHub org → Eject service
+2) Clone the newly created repo and set up locally:
 
-## Customize for an edge
+```bash
+git clone <your-new-repo-url> your-sage-bot
+cd your-sage-bot
+# install deps (choose your tool)
+bun install # or: pnpm install / npm install
+cp .env.example .env
+# set OPENAI_API_KEY/ANTHROPIC_API_KEY and ETHEREUM_PRIVATE_KEY in .env
+```
+
+3) Push changes; enable Autodeploy in Railway so pushes redeploy automatically.
+
+### Edit Your Agent Code
 
 You’ll customize prompts and model selection. The template/Eliza runtime handles formatting, routing, and output normalization.
 
@@ -107,12 +104,13 @@ You’ll customize prompts and model selection. The template/Eliza runtime handl
    - Tweak: filter by topic/category via environment, pin a specific market or group, or swap the selection provider/action in `src/index.ts`
    - Logs include `marketId`, `groupId` (if present), and `endTimestamp` so you can verify behavior
 
-## Run locally
+### Run Locally
 
 Local development (example with Bun):
 
 ```bash
-git clone https://github.com/sapiencexyz/sage-template your-sage-bot
+# after Eject, clone your repo (replace with your URL)
+git clone <your-new-repo-url> your-sage-bot
 cd your-sage-bot
 bun install
 cp .env.example .env
@@ -122,6 +120,6 @@ bun run dev
 
 Looking to deploy manually? See the Railway CLI guide: [Deploy with the CLI](https://docs.railway.com/guides/cli).
 
-## Next: Trade from your belief
+## Add Trading Actions
 
-Head to [Trading Bots](/guides/trading-bots) to size a $1 trade from your 0–100% belief using the Quoter API and execute it in a bot action.
+Head to the [Trading Bots](/guides/trading-bots) guide to have your agent place a $1 wager when it makes a forecast.
