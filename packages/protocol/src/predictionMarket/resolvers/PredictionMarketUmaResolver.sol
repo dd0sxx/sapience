@@ -345,10 +345,13 @@ contract PredictionMarketUmaResolver is
         if (assertedTruthfully) {
             market.settled = true;
             market.resolvedToYes = umaSettlements[assertionId].resolvedToYes;
-            // if asserted truthfully, is false, it means it was disputed. We just clean the assertion to enable a new assertion.
+        } else {
+            // If assertedTruthfully is false, the assertion was disputed and rejected.
+            // The market remains unsettled, but we clear the assertion state to allow a new assertion.
         }
 
-        // clear the assertionId to allow close the loop.
+        // Clear the assertion state to enable re-submission of assertions after disputes in case market wasn't settled.
+        // This allows the dispute cycle to repeat: submit → dispute → resolve → re-submit.
         market.assertionId = bytes32(0);
         market.assertionSubmitted = false;
 

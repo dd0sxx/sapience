@@ -120,6 +120,8 @@ contract PredictionMarket is
             revert MakerCollateralMustBeGreaterThanZero();
         if (mintPredictionRequestData.takerCollateral == 0)
             revert TakerCollateralMustBeGreaterThanZero();
+        if (mintPredictionRequestData.encodedPredictedOutcomes.length == 0)
+            revert InvalidEncodedPredictedOutcomes();
 
         // 2- Confirm the taker signature is valid for this prediction (hash of predicted outcomes, taker collateral and maker collateral, resolver and maker address)
         bytes32 messageHash = keccak256(
@@ -187,13 +189,14 @@ contract PredictionMarket is
         uint256 predictionId = nftToPredictionId[tokenId];
 
         // 1- Get prediction from Store
-        IPredictionStructs.PredictionData memory prediction = predictions[
+        IPredictionStructs.PredictionData storage prediction = predictions[
             predictionId
         ];
 
         // 2- Initial checks
         if (prediction.maker == address(0)) revert PredictionNotFound();
         if (prediction.taker == address(0)) revert PredictionNotFound();
+        if (prediction.settled) revert PredictionAlreadySettled();
 
         // 3- Ask resolver if markets are settled, and if prediction succeeded or not, it means maker won
         (bool isValid, , bool makerWon) = IPredictionMarketResolver(
@@ -240,13 +243,14 @@ contract PredictionMarket is
         uint256 predictionId = nftToPredictionId[tokenId];
 
         // 1- Get prediction from store
-        IPredictionStructs.PredictionData memory prediction = predictions[
+        IPredictionStructs.PredictionData storage prediction = predictions[
             predictionId
         ];
 
         // 2- Initial checks
         if (prediction.maker == address(0)) revert PredictionNotFound();
         if (prediction.taker == address(0)) revert PredictionNotFound();
+        if (prediction.settled) revert PredictionAlreadySettled();
 
         if (prediction.maker != prediction.taker)
             revert MakerAndTakerAreDifferent();
@@ -365,6 +369,7 @@ contract PredictionMarket is
         ];
         if (order.orderId != orderId) revert OrderNotFound();
         if (block.timestamp < order.orderDeadline) revert OrderNotExpired();
+        if (order.maker != msg.sender) revert MakerIsNotCaller();
 
         _safeTransferOut(
             config.collateralToken,
