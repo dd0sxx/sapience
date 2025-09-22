@@ -19,7 +19,7 @@ import type {
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
 const PREDICTION_MARKET_CONTRACT_ADDRESS =
-  '0xB5583Daa6388291e56cF8509c2184B16c35e32d0';
+  '0x8D1D1946cBc56F695584761d25D13F174906671C';
 
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [
