@@ -1,34 +1,34 @@
 ---
 title: Market Types
-description: Compare Yes Contract Markets (CLOB) and Batch Auction Markets, and how to express limit-like intent in each.
+description: Compare Order Book Markets (CLOB-like) and Batch Auction Markets, and how to express limit-like intent in each.
 ---
 
 # Market Types
 
-Sapience supports two complementary market designs that can both be traded programmatically and via UI. Execution supports limit-like behavior in both models, but native onchain resting limit orders are not available on CLOB today.
+Sapience supports two complementary market designs that can both be traded programmatically and via UI.
 
-## Yes Contract Markets (CLOB)
+## Order Book Markets (CLOB-like)
 
-- Onchain order book (CLOB) with concentrated liquidity
+- Onchain order book; effectively CLOB-like with concentrated liquidity (similar to Uniswap v3's concentrated liquidity model)
 - Continuous matching; no native onchain resting limit orders
 - Maker/taker model; capital efficient via price ranges
 - Great for intraday trading and tight spreads
+- Limit-like behavior via bot-managed quotes/cancels
+- Data surfaces: on-chain events; order book snapshots (app layer); GraphQL
 
-## Batch Auction Markets (Auction/Intent)
+## Batch Auction Markets (RFQ-like)
 
 - Batch auction / RFQ / intents-driven matching
 - Quotes are explicit price-constrained intents submitted off-chain to the relayer/auction
 - Discrete clearing events with netting; efficient for episodic flow
-
-### Limit Orders (Auction/Intent)
-
-- Submit a quote with explicit price constraints (limit) and size
-- Quotes are accepted/rejected during batch clearing; unfilled quotes can be withdrawn or updated
-- Behaves like a limit order in discrete-time auctions or RFQ flows
+- Components: Relayer, Quoter, contracts (market group, settlement adapters), indexer
+- Lifecycle: open → quote → cross → submit → settle
+- Data surfaces: WebSocket topics (quotes, provisional crosses, prints); GraphQL entities
+- See also: API → Batch Auction Relayer (topics, quote formats); API → Quoter (programmatic pricing/sizing); API → GraphQL (indexed data)
 
 ## Comparison
 
-| Dimension | Yes Contract Markets (CLOB) | Batch Auction Markets (Auction/Intent) |
+| Dimension | Order Book Markets (CLOB-like) | Batch Auction Markets (RFQ-like) |
 | --- | --- | --- |
 | Price representation | YES price in [0,1] | clearing/quote price per batch/intention |
 | Liquidity model | maker/taker + concentrated liquidity | commit/reveal, batch clearing, or RFQ matching |
@@ -37,7 +37,7 @@ Sapience supports two complementary market designs that can both be traded progr
 | Slippage dynamics | function of book depth | function of batch/quote quality |
 | Fees/incentives | maker/taker, rebates possible | auction/relayer fees, quote incentives |
 | Composability | onchain positions, tradable | intent-style settlement, programmable quotes |
-| Settlement interface | CLOB settlement adapter | Auction/Intent settlement adapter |
+| Settlement interface | Order Book settlement adapter (CLOB-like) | Auction/Intent settlement adapter |
 
 ## Why Not Conditional Tokens?
 
@@ -51,13 +51,13 @@ Conditional tokens are a powerful primitive but can lead to UX and capital-effic
 
 ### Sapience Approach
 
-- Yes Contract Markets (CLOB) for continuous trading with concentrated liquidity
+- Order Book Markets (CLOB-like) for continuous trading with concentrated liquidity
 - Batch Auction Markets for batch/RFQ/intents with efficient netting
 - Unified APIs and pluggable settlement adapters
 
 ## Key Entities
 
-### Market Groups (Yes Contract Markets)
+### Market Groups (Order Book Markets)
 
 - Definition: The onchain contract instance that anchors a set of YES/NO markets sharing the same question and parameters.
 - Role: Holds market parameters, mints/burns positions, and is the contract you interact with for deploy and settle actions.
@@ -78,27 +78,4 @@ Conditional tokens are a powerful primitive but can lead to UX and capital-effic
   - UI: Parlay mode and auction lists display public conditions.
   - API/GraphQL: `conditions` queries; quotes and prints reference `conditionId`.
   - Admin: CSV import and CRUD for creating/editing conditions.
-
-## Oracles and Settlement
-
-Both market types settle via oracle outcomes. Today Sapience integrates with UMA. We are actively exploring alternative verification and settlement processes. See Concepts → Oracles & Settlement for the full story.
-
-> Note: For implementing limit-like behavior on CLOB, see Guides → CLOB Trading Bot. A deeper, end-to-end example will be provided in the “Build a prediction market trading bot” guide.
-
-### Architecture Highlights
-
-#### CLOB (Yes Contract Markets)
-- Onchain order book with concentrated liquidity ranges; maker/taker fees
-- Continuous matching; emulate limit-like behavior via bot-managed quotes/cancels
-- Data surfaces: on-chain events, order book snapshots (app layer), GraphQL
-
-#### Batch Auction (Auction/Intent)
-- Off-chain signed quotes (intents) with price limits submitted to the relayer
-- Discrete batches with uniform clearing price and netting
-- Components: Relayer, Quoter, contracts (market group, settlement adapters), indexer
-- Lifecycle: open → quote → cross → submit → settle
-- Data surfaces: WebSocket topics (quotes, provisional crosses, prints), GraphQL entities
-
-> For WebSocket topics and quote formats, see API → Batch Auction Relayer. For programmatic pricing/sizing, see API → Quoter. For indexed data, see API → GraphQL.
-
 
