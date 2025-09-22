@@ -66,14 +66,12 @@ railway login
 **Clone and Deploy:**
 ```bash
 # Clone the Sage agent repository
-git clone https://github.com/your-username/sage-agent.git
+git clone https://github.com/sapiencexyz/sage-template
 cd sage-agent
 
 # Initialize Railway project
 railway init
 
-# Add PostgreSQL database (recommended)
-railway add postgresql
 
 # Set your API keys
 railway variables set OPENAI_API_KEY=sk-your-actual-key-here
@@ -88,17 +86,17 @@ railway up
 Your Sage agent is now running! Here's what it does automatically:
 
 **Core Features:**
-- 🤖 **AI Analysis**: Uses GPT-4 to analyze prediction markets
-- 📊 **Market Monitoring**: Continuously scans Sapience Protocol markets
-- 🔗 **Blockchain Integration**: Creates attestations on Ethereum networks
-- 🚀 **Autonomous Mode**: Runs predictions automatically (configurable)
+- **AI Analysis**: Uses GPT-5 to analyze prediction markets
+- **Market Monitoring**: Continuously scans Sapience Protocol markets
+- **EAS Integration**: Creates attestations on Ethereum networks
+- **Autonomous Mode**: Runs predictions automatically (configurable)
 
 **Environment Variables Reference:**
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | ✅ | Your OpenAI API key |
-| `EVM_PRIVATE_KEY` | ❌ | For blockchain attestations |
+| `EVM_PRIVATE_KEY` | ✅  | For blockchain attestations |
 | `AUTO_MODE_ENABLED` | ❌ | Enable autonomous predictions (default: `true`) |
 | `AUTO_MODE_INTERVAL` | ❌ | Hours between predictions (default: `1`) |
 
@@ -113,10 +111,10 @@ Once deployed, your agent will:
 
 **Check the logs** in Railway to see your agent in action:
 ```
-✅ Initializing Sage prediction agent
-✅ AttestationService initialization started
-🤖 Found 15 active markets to analyze
-📊 Generated prediction for market: "Will Bitcoin reach $100k by 2025?"
+Initializing Sage prediction agent
+AttestationService initialization started
+Found active markets to analyze
+Generated prediction for market: "Will Bitcoin reach $100k by 2025?"
 ```
 
 ## 5. Interact with Your Agent
@@ -130,7 +128,7 @@ Your Sage agent supports various commands when running:
 - `stop auto mode` - Stop autonomous predictions
 - `show dashboard` - View attestation statistics and performance
 
-## 🔧 Alternative Deployment Options
+## Alternative Deployment Options
 
 ### Docker (For Custom Hosting)
 
@@ -168,7 +166,7 @@ cp .env.example .env
 bun run dev
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -201,13 +199,13 @@ railway variables set DATABASE_URL="sqlite:///data/sage.db"
 
 ---
 
-## 🎉 You're Done!
+## You're Done!
 
 Your Sage agent is now running autonomously, analyzing prediction markets and making AI-powered assessments. 
 
 **What happens next:**
 - Your agent continuously monitors Sapience Protocol markets
-- It generates probability assessments using GPT-4 and real-time research
+- It generates probability assessments using OpenAI and real-time research
 - Creates blockchain attestations (if EAS integration is enabled)
 - Builds a history of predictions and performance metrics
 
