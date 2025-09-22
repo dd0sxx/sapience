@@ -1,0 +1,215 @@
+# Quick Start: Deploy Sage Agent
+
+This guide walks you through deploying the Sage prediction market agent:
+
+* An autonomous AI agent that analyzes prediction markets on Sapience Protocol powered by ElizaOS
+* Generates probability assessments using real-time data
+* Creates on-chain attestations via Ethereum Attestation Service (EAS)
+* Runs continuously, monitoring markets and making predictions
+* Can interact with users across Discord, Twitter, and Telegram while maintaining consistent personality
+
+You can run this bot locally by cloning our Github Repo or you can also use our Railway template to deploy your agent. 
+
+
+## 1. Get Your API Keys
+
+You'll need an OpenAI API key to power the AI predictions.
+
+**Get OpenAI API Key:**
+1. Go to [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+2. Sign up or log in
+3. Click "Create new secret key"
+4. Copy the key (starts with `sk-`)
+
+You will need to add funds in your OpenAI account for your API key to be active. 
+
+## 2. Get Your Ethereum Key 
+You will need a Ethereum wallet private key. These can generally be found in the settings of your prefered wallet. 
+
+**DO NOT** share this key with anyone. We recommended generating a new wallet for this bot and not using a wallet that you use frequently. 
+
+Guides to Exporting Private Key: 
+
+[MetaMask](https://support.metamask.io/configure/accounts/how-to-export-an-accounts-private-key/#:~:text=Use%20the%20account%20selector%20at,password%20and%20hit%20'Next'.)
+
+[Rabby](https://blockwallet.io/docs/import-from-Rabby)
+
+## 3. Deploy to Railway
+
+Railway provides the easiest deployment with automatic Bun support.
+
+### Option A: Use Our Railway Template (Recommended)
+
+**One-Click Deploy:**
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/vfc8cZ?referralCode=DbBhWB)
+
+1. Click the "Deploy on Railway" button above
+2. Connect your GitHub account (if not already connected)
+3. Set your environment variables:
+   - `OPENAI_API_KEY`: Your OpenAI API key from step 1
+   - `EVM_PRIVATE_KEY`: Your Ethereum private key from step 2
+4. Click "Deploy" - Railway will automatically:
+   - Clone the repository
+   - Install dependencies with Bun
+   - Set up PostgreSQL database
+   - Deploy your agent
+
+### Option B: Manual Deployment
+
+**Install Railway CLI:**
+```bash
+npm install -g @railway/cli
+railway login
+```
+
+**Clone and Deploy:**
+```bash
+# Clone the Sage agent repository
+git clone https://github.com/your-username/sage-agent.git
+cd sage-agent
+
+# Initialize Railway project
+railway init
+
+# Add PostgreSQL database (recommended)
+railway add postgresql
+
+# Set your API keys
+railway variables set OPENAI_API_KEY=sk-your-actual-key-here
+railway variables set EVM_PRIVATE_KEY=your-ethereum-private-key
+
+# Deploy!
+railway up
+```
+
+## 3. Configure Your Agent
+
+Your Sage agent is now running! Here's what it does automatically:
+
+**Core Features:**
+- 🤖 **AI Analysis**: Uses GPT-4 to analyze prediction markets
+- 📊 **Market Monitoring**: Continuously scans Sapience Protocol markets
+- 🔗 **Blockchain Integration**: Creates attestations on Ethereum networks
+- 🚀 **Autonomous Mode**: Runs predictions automatically (configurable)
+
+**Environment Variables Reference:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | ✅ | Your OpenAI API key |
+| `EVM_PRIVATE_KEY` | ❌ | For blockchain attestations |
+| `AUTO_MODE_ENABLED` | ❌ | Enable autonomous predictions (default: `true`) |
+| `AUTO_MODE_INTERVAL` | ❌ | Hours between predictions (default: `1`) |
+
+## 4. Test Your Agent
+
+Once deployed, your agent will:
+
+1. **Connect to Sapience Protocol** - Fetch active prediction markets
+2. **Analyze Markets** - Use AI to research and assess probabilities  
+3. **Generate Predictions** - Create probability assessments (0-100%)
+4. **Create Attestations** - Submit predictions to EAS (if private key provided)
+
+**Check the logs** in Railway to see your agent in action:
+```
+✅ Initializing Sage prediction agent
+✅ AttestationService initialization started
+🤖 Found 15 active markets to analyze
+📊 Generated prediction for market: "Will Bitcoin reach $100k by 2025?"
+```
+
+## 5. Interact with Your Agent
+
+Your Sage agent supports various commands when running:
+
+**Available Commands:**
+- `list markets` - View available prediction markets
+- `predict market 147` - Analyze a specific market by ID
+- `start auto mode` - Begin autonomous attestation mode
+- `stop auto mode` - Stop autonomous predictions
+- `show dashboard` - View attestation statistics and performance
+
+## 🔧 Alternative Deployment Options
+
+### Docker (For Custom Hosting)
+
+```bash
+# Clone and run with Docker
+git clone https://github.com/your-username/sage-agent.git
+cd sage-agent
+
+# Create .env file
+echo "OPENAI_API_KEY=sk-your-key-here" > .env
+
+# Build and run
+docker build -t sage-agent .
+docker run -d --env-file .env -p 3000:3000 sage-agent
+```
+
+### Local Development
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/sage-agent.git
+cd sage-agent
+
+# Install Bun (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+
+# Install dependencies
+bun install
+
+# Create environment file
+cp .env.example .env
+# Edit .env with your OPENAI_API_KEY
+
+# Start in development mode
+bun run dev
+```
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+**Agent won't start:**
+```bash
+# Check your API key is set correctly
+railway variables get OPENAI_API_KEY
+
+# View deployment logs
+railway logs
+```
+
+**Database connection errors:**
+```bash
+# Railway automatically sets DATABASE_URL for PostgreSQL
+# For SQLite, ensure data directory exists:
+railway variables set DATABASE_URL="sqlite:///data/sage.db"
+```
+
+**No predictions being made:**
+- Verify OpenAI API key has sufficient credits
+- Check if autonomous mode is enabled: `AUTO_MODE_ENABLED=true`
+- Ensure markets are available on Sapience Protocol
+
+### Get Help
+
+- **Documentation**: [ElizaOS Docs](https://elizaos.github.io/eliza/)
+- **Community**: [Sapience Discord](https://discord.gg/HRWFwXHM7x)
+- **Issues**: [GitHub Issues](https://github.com/your-username/sage-agent/issues)
+
+---
+
+## 🎉 You're Done!
+
+Your Sage agent is now running autonomously, analyzing prediction markets and making AI-powered assessments. 
+
+**What happens next:**
+- Your agent continuously monitors Sapience Protocol markets
+- It generates probability assessments using GPT-4 and real-time research
+- Creates blockchain attestations (if EAS integration is enabled)
+- Builds a history of predictions and performance metrics
+
+Join the [Sapience Discord](https://discord.gg/HRWFwXHM7x) to connect with other prediction market bot builders and share your results!
+
