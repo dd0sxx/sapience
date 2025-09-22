@@ -116,36 +116,14 @@ const MarketsPage = () => {
 
   // Parlay Mode toggle
   const [parlayMode, setParlayMode] = React.useState<boolean>(false);
-  // Feature flag for Parlay Mode via localStorage `sapience.parlays` or URL ?parlays=true
-  const [parlayFeatureEnabled, setParlayFeatureEnabled] =
-    React.useState<boolean>(false);
-  React.useEffect(() => {
-    try {
-      const params =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search)
-          : null;
-      if (params?.get('parlays') === 'true') {
-        window.localStorage.setItem('sapience.parlays', 'true');
-      }
-      const stored =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('sapience.parlays')
-          : null;
-      setParlayFeatureEnabled(stored === 'true');
-    } catch {
-      setParlayFeatureEnabled(false);
-    }
-  }, []);
 
-  // Initialize parlay mode from URL hash when feature is enabled
+  // Initialize parlay mode from URL hash unconditionally
   React.useEffect(() => {
-    if (!parlayFeatureEnabled) return;
     if (typeof window === 'undefined') return;
     if (window.location.hash === '#parlays') {
       setParlayMode(true);
     }
-  }, [parlayFeatureEnabled]);
+  }, []);
 
   // Handle parlay mode toggle and keep URL hash in sync
   const handleParlayModeChange = (enabled: boolean) => {
@@ -666,7 +644,6 @@ const MarketsPage = () => {
                 categories={categories}
                 getCategoryStyle={getCategoryStyle}
                 containerClassName="px-0 md:px-0 py-0 w-full"
-                parlayFeatureEnabled={parlayFeatureEnabled}
               />
             </motion.div>
           </div>

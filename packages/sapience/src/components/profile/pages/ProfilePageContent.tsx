@@ -31,27 +31,7 @@ const ProfilePageContent = () => {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
 
-  // Feature flag: enable Parlays only when explicitly turned on
-  const [parlayFeatureEnabled, setParlayFeatureEnabled] =
-    useState<boolean>(false);
-  useEffect(() => {
-    try {
-      const params =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search)
-          : null;
-      if (params?.get('parlays') === 'true') {
-        window.localStorage.setItem('sapience.parlays', 'true');
-      }
-      const stored =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('sapience.parlays')
-          : null;
-      setParlayFeatureEnabled(stored === 'true');
-    } catch {
-      setParlayFeatureEnabled(false);
-    }
-  }, []);
+  // Remove parlay feature flag; Parlays tab is always available
 
   const {
     data: positionsData,
@@ -107,9 +87,6 @@ const ProfilePageContent = () => {
     const desired = (TAB_VALUES as readonly string[]).includes(rawHash)
       ? (rawHash as TabValue)
       : ('trades' as TabValue);
-    // If Parlays is disabled, fall back to trades
-    if (desired === 'parlays' && !parlayFeatureEnabled)
-      return 'trades' as TabValue;
     return desired;
   };
 
@@ -117,7 +94,7 @@ const ProfilePageContent = () => {
 
   useEffect(() => {
     setTabValue(getHashValue());
-  }, [parlayFeatureEnabled]);
+  }, []);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -137,10 +114,6 @@ const ProfilePageContent = () => {
     const nextValue = (TAB_VALUES as readonly string[]).includes(value)
       ? (value as TabValue)
       : ('trades' as TabValue);
-    // Prevent selecting Parlays when feature is disabled
-    if (nextValue === 'parlays' && !parlayFeatureEnabled) {
-      return;
-    }
     setTabValue(nextValue);
     if (typeof window !== 'undefined') {
       const url = `${window.location.pathname}${window.location.search}#${nextValue}`;
@@ -159,12 +132,6 @@ const ProfilePageContent = () => {
         : '';
     const hasExplicitHash = (TAB_VALUES as readonly string[]).includes(rawHash);
     if (hasExplicitHash) {
-      // If user explicitly navigated to Parlays while disabled, redirect to trades
-      if (rawHash === 'parlays' && !parlayFeatureEnabled) {
-        didAutoRedirectRef.current = true;
-        handleTabChange('trades');
-        return;
-      }
       didAutoRedirectRef.current = true;
       return;
     }
@@ -183,7 +150,6 @@ const ProfilePageContent = () => {
       return;
     }
 
-    // Parlays is currently feature-flagged; skip it in auto-redirect logic unless enabled
     const firstWithContent: TabValue | null = hasTrades
       ? 'trades'
       : hasLp
@@ -197,14 +163,9 @@ const ProfilePageContent = () => {
     }
     // Mark as done to avoid overriding user interactions later
     didAutoRedirectRef.current = true;
-  }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts, parlayFeatureEnabled]);
+  }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts]);
 
-  // If the feature flag becomes disabled while on Parlays, snap back to trades
-  useEffect(() => {
-    if (!parlayFeatureEnabled && tabValue === 'parlays') {
-      handleTabChange('trades');
-    }
-  }, [parlayFeatureEnabled, tabValue]);
+  // No feature flag; nothing to monitor
 
   return (
     <div className="container max-w-6xl mx-auto py-32 px-4">
@@ -229,11 +190,7 @@ const ProfilePageContent = () => {
               <TabsTrigger className="w-full" value="trades">
                 Trades
               </TabsTrigger>
-              <TabsTrigger
-                className="w-full"
-                value="parlays"
-                disabled={!parlayFeatureEnabled}
-              >
+              <TabsTrigger className="w-full" value="parlays">
                 Parlays
               </TabsTrigger>
               <TabsTrigger className="w-full" value="lp">

@@ -1,13 +1,7 @@
 'use client';
 
-import * as React from 'react';
+import type * as React from 'react';
 import { Switch } from '@sapience/ui/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 import CategoryChips from './CategoryChips';
 import type { FocusArea } from '~/lib/constants/focusAreas';
 
@@ -31,7 +25,6 @@ interface FocusAreaFilterProps {
   categories: Category[] | null | undefined;
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
   containerClassName?: string;
-  parlayFeatureEnabled: boolean;
 }
 
 const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
@@ -45,22 +38,7 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
   categories,
   getCategoryStyle,
   containerClassName,
-  parlayFeatureEnabled,
 }) => {
-  const [isParlayTooltipOpen, setIsParlayTooltipOpen] = React.useState(false);
-  const closeTimeoutRef = React.useRef<number | null>(null);
-
-  const handleParlayTapOpen = () => {
-    if (closeTimeoutRef.current) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    setIsParlayTooltipOpen(true);
-    closeTimeoutRef.current = window.setTimeout(() => {
-      setIsParlayTooltipOpen(false);
-      closeTimeoutRef.current = null;
-    }, 1500);
-  };
   return (
     <div className={containerClassName || 'px-0 py-0 w-full'}>
       <div className="flex flex-col lg:flex-row items-start lg:items-center lg:justify-between gap-2 md:gap-4 lg:gap-2">
@@ -99,31 +77,10 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
               <span className="text-xs font-medium text-muted-foreground ml-2">
                 Parlay Mode
               </span>
-              {parlayFeatureEnabled ? (
-                <Switch
-                  checked={parlayMode}
-                  onCheckedChange={onParlayModeChange}
-                />
-              ) : (
-                <TooltipProvider>
-                  <Tooltip
-                    open={isParlayTooltipOpen}
-                    onOpenChange={setIsParlayTooltipOpen}
-                  >
-                    <TooltipTrigger asChild>
-                      <div
-                        onClick={handleParlayTapOpen}
-                        onTouchStart={handleParlayTapOpen}
-                      >
-                        <Switch checked={false} disabled />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Coming Soon</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
+              <Switch
+                checked={parlayMode}
+                onCheckedChange={onParlayModeChange}
+              />
             </div>
           </div>
         </div>
