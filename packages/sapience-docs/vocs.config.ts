@@ -7,7 +7,7 @@ export default defineConfig({
     dark: '/sapience-dark.svg',
   },
   topNav: [
-    { text: 'User Guide', link: '/user-guide', match: '/user-guide' },
+    { text: 'User Guide', link: '/user-guide/introduction/what-is-sapience', match: '/user-guide' },
     { text: 'Builder Guide', link: '/guides/trading-bots', match: '/guides' },
   ],
   banner: {
@@ -95,10 +95,6 @@ export default defineConfig({
     ],
     '/user-guide': [
       {
-        text: 'User Guide',
-        items: [{ text: 'Overview', link: '/user-guide' }],
-      },
-      {
         text: 'Introduction',
         items: [
           { text: 'What is Sapience?', link: '/user-guide/introduction/what-is-sapience' },
@@ -145,10 +141,6 @@ export default defineConfig({
       },
     ],
     '/user-guide/': [
-      {
-        text: 'User Guide',
-        items: [{ text: 'Overview', link: '/user-guide' }],
-      },
       {
         text: 'Introduction',
         items: [
