@@ -1,0 +1,40 @@
+---
+title: Custom Trading App
+description: Start from the full Sapience app and customize it to your needs.
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+Start from the full Sapience app and customize.
+
+## Fork the Sapience App
+
+1. Fork the repo on GitHub (your fork URL) and clone it
+
+```bash
+git clone <your-fork-url>
+cd foil
+pnpm install
+```
+
+2. Run the Sapience app
+
+```bash
+# from repo root
+pnpm --filter sapience dev
+# or
+cd packages/sapience && pnpm dev
+```
+
+3. Configure environment (optional)
+
+- Set GraphQL endpoint and API base if needed (see app README/env example)
+- Start editing pages in `packages/sapience/src`
+
+4. Deploy
+
+Push to your fork and deploy with Vercel/Netlify.
+
+

@@ -1,0 +1,147 @@
+---
+title: Design Dashboards, Games, and more
+description: Build your own app with @sapience/ui, GraphQL, Quoter, and Auctions.
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+This guide shows how to scaffold a Next.js app that uses the `@sapience/ui` package for forms and components, and wires data via GraphQL and the Quoter/Auction APIs.
+
+## Install
+
+```bash
+pnpm add @sapience/ui
+```
+
+Ensure peer dependencies (React, Next, wagmi/viem, TanStack Query, etc.) are present per the package’s peerDependencies.
+
+## Import Components and Hooks
+
+```tsx
+import { TradeForm } from '@sapience/ui';
+```
+
+## Connect Data
+
+- GraphQL: fetch markets, prices, and positions
+- Quoter: size your trades with price constraints
+- Auction WS: submit/receive quotes for Batch Auction Markets
+- MCP: optional agentic tools for research/trading flows
+
+```ts
+// Quoter URL builder example
+function toQuoteUrl(params: {
+  base: string;
+  chainId: number;
+  marketGroupAddress: string;
+  marketId: number;
+  expectedPrice: number;
+  collateralAvailable: bigint;
+  maxIterations?: number;
+  priceLimit?: number;
+}) {
+  const { base, chainId, marketGroupAddress, marketId, expectedPrice, collateralAvailable, maxIterations, priceLimit } = params;
+  const qs = new URLSearchParams();
+  qs.set('expectedPrice', String(expectedPrice));
+  qs.set('collateralAvailable', String(collateralAvailable));
+  if (maxIterations) qs.set('maxIterations', String(maxIterations));
+  if (priceLimit) qs.set('priceLimit', String(priceLimit));
+  return `${base}/quoter/${chainId}/${marketGroupAddress}/${marketId}/?${qs.toString()}`;
+}
+```
+
+## Example Page
+
+```tsx
+import { useMemo, useState } from 'react';
+import { TradeForm } from '@sapience/ui';
+
+export default function TradePage() {
+  const [baseUrl] = useState('https://api.sapience.xyz');
+  const chainId = 1;
+  const marketGroupAddress = '0x...';
+  const marketId = 1;
+
+  const getEstimatedCost = useMemo(() => {
+    return async (size: string, direction: 'Long' | 'Short') => {
+      // naive example: call quoter to size collateral given a target price
+      const expectedPrice = direction === 'Long' ? 0.55 : 0.45;
+      const collateralAvailable = BigInt(1e18); // 1 token in wei
+      const url = toQuoteUrl({
+        base: baseUrl,
+        chainId,
+        marketGroupAddress,
+        marketId,
+        expectedPrice,
+        collateralAvailable,
+      });
+      const res = await fetch(url);
+      const data = await res.json();
+      // return collateral cost estimate string (for demo use expected maxSize)
+      return data.maxSize ?? '0';
+    };
+  }, [baseUrl]);
+
+  async function onTradeSubmit(values: { size: string; direction: 'Long' | 'Short'; slippage: string; }) {
+    // Integrate with write logic or relayer
+    console.log('submit trade', values);
+  }
+
+  return (
+    <TradeForm
+      onTradeSubmit={onTradeSubmit}
+      getEstimatedCost={getEstimatedCost}
+      collateralAssetTicker="sUSDS"
+      walletBalanceDisplay="100.0"
+    />
+  );
+}
+```
+
+## GraphQL Example
+
+```ts
+import { GraphQLClient, gql } from 'graphql-request';
+
+const client = new GraphQLClient('https://api.sapience.xyz/graphql');
+
+const MarketsQuery = gql`
+  query Markets {
+    markets { id title status }
+  }
+`;
+
+export async function fetchMarkets() {
+  return client.request(MarketsQuery);
+}
+```
+
+## Theming and UI
+
+`@sapience/ui` ships with shadcn-like primitives and a Tailwind preset. Import the preset and include it in your Tailwind config.
+
+```ts
+// tailwind.config.ts
+import type { Config } from 'tailwindcss'
+import sapiencePreset from '@sapience/ui/tailwind-preset'
+
+export default {
+  presets: [sapiencePreset],
+  content: [
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './node_modules/@sapience/ui/dist/**/*.{js,mjs}'
+  ],
+} satisfies Config
+```
+
+## Next Steps
+
+- Add market data via GraphQL
+- Use Quoter to compute max size and price constraints
+- Add Auction WS for batch markets and limit-like quotes
+
+

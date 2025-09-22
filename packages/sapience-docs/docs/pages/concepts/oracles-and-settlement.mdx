@@ -1,0 +1,27 @@
+---
+title: "Oracles & Settlement"
+description: "How markets resolve, UMA today, and interfaces for alternatives."
+---
+
+# Oracles & Settlement
+
+Sapience markets resolve via oracle-attested outcomes.
+
+## UMA
+
+- UMA provides dispute-based verification and finality windows
+- Both market types (Yes Contract Markets/CLOB and Batch Auction/Intent) reference UMA outcome data to settle positions
+- Typical UMA finality: proposal minutes–hours; dispute hours–days (market-dependent); final after dispute window elapses without valid challenge
+
+## Settlement Interfaces
+
+- Yes Contract Markets (CLOB): settlement adapter updates outcome and PnL
+- Batch Auction Markets (Auction/Intent): settlement adapter clears positions
+
+Adapters are versioned and kept minimal so new oracle flows can be plugged in without breaking the core trade model.
+
+## Alternative Flows
+
+We are actively exploring non-UMA verification, including optimistic and zk attestations. The interfaces are designed to support pluggable settlement.
+
+

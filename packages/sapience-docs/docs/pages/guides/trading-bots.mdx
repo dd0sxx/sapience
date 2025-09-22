@@ -1,0 +1,107 @@
+---
+title: "Trading Bots"
+description: "Build on the Forecasting Bot to size and submit $1 trades via the Quoter API."
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+# Trading Bots
+
+This guide builds on the Forecasting Bot. First, complete the [Forecasting Bot](/guides/forecasting-bots) to produce calibrated beliefs. Then, add a minimal $1 trading flow using the Quoter API and execute trades in a bot "action".
+
+References: [Quick Start](https://docs.sapience.xyz/quick-start), [Sage Template](https://github.com/sapiencexyz/sage-template), [Railway deploy overview](https://www.librechat.ai/docs/remote/railway).
+
+---
+
+## Prerequisites
+
+- Working Forecasting Bot that outputs a probability in [0,1]
+- Railway project with logs working; `OPENAI_API_KEY` set
+- Optional: `ETHEREUM_PRIVATE_KEY` to enable onchain trading on Base
+
+---
+
+## 1) Ensure your bot emits a numeric belief
+
+Map model output to a probability `p ∈ [0,1]`.
+
+Examples:
+
+- "Yes" → `p = 1.0`
+- "No" → `p = 0.0`
+- Numeric answer → parse to `p`, clamp to [0,1]
+
+---
+
+## 2) Quote a $1 position using the Quoter API
+
+Given belief `p`, pick `expectedPrice = p`. Retrieve max size for a $1 wager (sUSDS):
+
+```text
+GET https://api.sapience.xyz/quoter/{chainId}/{marketGroupAddress}/{marketId}?collateralAvailable={WAGER_WEI}&expectedPrice={DECIMAL_PRICE}
+```
+
+Use the result (`maxSize`) as the target position size. See the Quick Start for a concrete TypeScript example.
+
+Citation: [Quick Start](https://docs.sapience.xyz/quick-start), [Quoter API](/api/quoter)
+
+---
+
+## 3) Implement a "trade" action in your bot
+
+Instead of writing an attestation onchain, create a bot action that executes the trade when conditions are met.
+
+Pseudo‑shape:
+
+```ts
+type TradeParams = {
+  marketGroupAddress: `0x${string}`;
+  marketId: bigint;
+  positionSize: bigint; // from Quoter
+};
+
+async function tradeAction({ marketGroupAddress, marketId, positionSize }: TradeParams) {
+  // 1) Approve sUSDS spend
+  // 2) Call createTraderPosition(marketId, positionSize, collateral, deadline)
+}
+```
+
+Wire this action into your agent’s loop where you currently log or store forecasts. Gate it on risk limits (daily cap, per‑market cap, min confidence).
+
+---
+
+## 4) Railway variables and dry‑run
+
+- Without `ETHEREUM_PRIVATE_KEY`: run in dry‑run mode (log quotes only)
+- With `ETHEREUM_PRIVATE_KEY`: enable the `tradeAction` path
+
+Enable Autodeploy on Railway so pushes redeploy automatically. See: [Railway Quick Start](https://docs.railway.com/quick-start).
+
+---
+
+## 5) Safety and controls
+
+- Slippage and price bounds per trade
+- Budget caps and kill‑switches
+- Backoffs/retries on network errors
+
+---
+
+## Next steps
+
+- Automate settlement checks and attribution
+- Scale stake with confidence calibration
+- Explore maker strategies (LP bands) once you outgrow taker flow
+
+---
+
+### Citations
+
+- Sapience Quick Start: [docs.sapience.xyz/quick-start](https://docs.sapience.xyz/quick-start)
+- Bot template: [github.com/sapiencexyz/sage-template](https://github.com/sapiencexyz/sage-template)
+- Railway overview: [docs.railway.com/quick-start](https://docs.railway.com/quick-start)
+- Example Railway deploy flow: [librechat.ai/docs/remote/railway](https://www.librechat.ai/docs/remote/railway)
+
+

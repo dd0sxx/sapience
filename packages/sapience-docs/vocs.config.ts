@@ -2,42 +2,62 @@ import { defineConfig } from 'vocs'
 
 export default defineConfig({
   title: 'Sapience',
+  logoUrl: {
+    light: '/sapience.svg',
+    dark: '/sapience-dark.svg',
+  },
+  theme: {
+    accentColor: {
+      backgroundAccent: {
+        light: 'rgba(145, 179, 240, 0.2)',
+        dark: 'rgba(145, 179, 240, 0.2)',
+      },
+      backgroundAccentHover: {
+        light: 'rgba(145, 179, 240, 0.3)',
+        dark: 'rgba(145, 179, 240, 0.3)',
+      },
+      backgroundAccentText: {
+        light: 'black',
+        dark: 'white',
+      },
+      borderAccent: {
+        light: 'rgba(145, 179, 240, 0.8)',
+        dark: 'rgba(145, 179, 240, 0.8)',
+      },
+      textAccent: {
+        light: '#91B3F0',
+        dark: '#91B3F0',
+      },
+      textAccentHover: {
+        light: '#7AA1EE',
+        dark: '#7AA1EE',
+      },
+    },
+  },
   sidebar: [
     {
-      text: 'Overview',
-      link: '/',
-    },
-    {
-      text: 'Build a Bot',
-      link: '/quick-start',
-    },
-    {
-      text: 'FAQ',
-      link: '/faq',
-    },
-    {
-      text: 'Add Docs to Cursor',
-      link: '/docs-for-cursor',
-    },
-    {
-      text: 'MCP',
+      text: 'Getting Started',
       items: [
-        {
-          text: 'Use with Claude',
-          link: '/mcp/use-with-claude',
-        },
-        {
-          text: 'Use with Cursor',
-          link: '/mcp/use-with-cursor',
-        },
-        {
-          text: 'Use with Langchain',
-          link: '/mcp/use-with-langchain',
-        },
-        {
-          text: 'Use with Google ADK',
-          link: '/mcp/use-with-google-adk',
-        },
+        { text: 'What is Sapience?', link: '/getting-started/what-is-sapience' },
+        { text: 'Quickstart', link: '/getting-started/quickstart' },
+      ],
+    },
+    {
+      text: 'Builder Guides',
+      items: [
+        { text: 'Forecasting Bot', link: '/guides/forecasting-bots' },
+        { text: 'Trading Bots', link: '/guides/trading-bots' },
+        { text: 'Liquidity Provisioning Bot', link: '/guides/liquidity-provisioning-bots' },
+        { text: 'Batch Auction Market Bot', link: '/guides/trading-auction-intent-markets' },
+        { text: 'Custom Trading App', link: '/guides/custom-trading-app' },
+        { text: 'Dashboards, Games, and more', link: '/guides/design-dashboards-games' },
+      ],
+    },
+    {
+      text: 'Core Concepts',
+      items: [
+        { text: 'Market Types', link: '/concepts/market-types' },
+        { text: 'Oracles & Settlement', link: '/concepts/oracles-and-settlement' },
       ],
     },
     {
@@ -52,23 +72,23 @@ export default defineConfig({
           link: '/api/quoter',
         },
         {
-          text: 'MCP',
-          link: '/api/mcp',
+          text: 'Batch Auction Relayer',
+          link: '/api/auction-relayer',
         },
+        { text: 'MCP', link: '/api/mcp' },
       ],
     },
+    
     {
-      text: 'Protocol',
+      text: 'Reference',
       items: [
-        {
-          text: 'Technical Reference',
-          link: '/technical-reference',
-        },
-        {
-          text: 'Smart Contract Reference',
-          link: '/protocol-reference',
-        },
+        { text: 'Contracts & Addresses', link: '/reference/contracts-and-addresses' },
+        { text: 'GraphQL Schema', link: '/reference/graphql-schema' },
+        { text: 'Batch Auction Relayer', link: '/reference/auction-relayer' },
+        // MCP Endpoints consolidated into API → MCP
       ],
     },
+    { text: 'FAQ', link: '/faq' },
+    { text: 'Contributing', link: '/contributing' },
   ],
 })

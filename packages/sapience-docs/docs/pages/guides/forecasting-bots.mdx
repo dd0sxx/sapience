@@ -1,0 +1,49 @@
+---
+title: "Forecasting Bot"
+description: "From data to beliefs. Build the bot that powers your trades."
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+# Forecasting Bot
+
+Start here. This guide focuses on collecting data, forming beliefs, and emitting a probability `p ∈ [0,1]`. In the next guide, you’ll use that belief to size and submit a $1 trade via the Quoter API.
+
+---
+
+## 1) Fork and deploy the template
+
+- Fork: [Sage Template](https://github.com/sapiencexyz/sage-template)
+- Deploy: Railway → New Project → Deploy from GitHub Repo → your fork
+- Variables: set `OPENAI_API_KEY` (required); leave `ETHEREUM_PRIVATE_KEY` unset for now (dry‑run)
+
+See also: [Quick Start](https://docs.sapience.xyz/quick-start), [Railway quick start](https://docs.railway.com/quick-start)
+
+---
+
+## 2) Choose a target market
+
+- Use GraphQL to fetch active market groups and markets with a future `endTimestamp`
+- Pick the next closing market (or filter by category/topic)
+
+---
+
+## 3) Produce a belief
+
+- Prompt the model to answer with Yes/No/Number and parse to probability `p`
+- Clamp to `[0, 1]`; log the belief alongside `marketId`
+
+---
+
+## 4) Calibrate and validate
+
+- Track predicted `p` vs. eventual outcomes to calibrate
+- Add guardrails: ignore extremely low‑confidence outputs; require supporting citations if desired
+
+---
+
+## 5) Next: Trade from your belief
+
+Continue to [Trading Bots](/guides/trading-bots) to size a $1 trade from `p` using the Quoter API and execute it in a bot action.

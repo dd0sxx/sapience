@@ -1,0 +1,50 @@
+---
+title: "Batch Auction Market Bot"
+description: "Participate in batch auctions and RFQs with limit-like quotes."
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+# Batch Auction Market Bot
+
+- Submitting quotes with price constraints and size
+- Handling accepts/rejects and partial fills
+- Integrating with the Batch Auction Relayer
+
+## WebSocket Flow
+
+```ts
+const ws = new WebSocket('wss://api.sapience.xyz/auction');
+ws.onmessage = (ev) => console.log('msg', ev.data);
+
+// Start auction (maker)
+ws.send(JSON.stringify({
+  type: 'auction.start',
+  payload: {
+    maker: '0x...',
+    wager: '1000000000000000000',
+    resolver: '0x...',
+    predictedOutcomes: ['0x...']
+  }
+}));
+
+// Submit bid (taker)
+ws.send(JSON.stringify({
+  type: 'bid.submit',
+  payload: {
+    auctionId: 'auction-123',
+    taker: '0xTaker',
+    takerWager: '500000000000000000',
+    takerDeadline: Math.floor(Date.now()/1000)+60,
+    takerSignature: '0x...'
+  }
+}));
+```
+
+## Accept Flow
+
+After selecting the best valid bid, the maker constructs mint parameters (including taker data and signatures) and submits the transaction. The relayer broadcasts updates; unfilled quotes can be withdrawn/updated.
+
+

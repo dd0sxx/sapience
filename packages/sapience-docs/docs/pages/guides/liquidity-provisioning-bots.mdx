@@ -1,0 +1,303 @@
+---
+title: "Liquidity Provisioning Bot"
+description: "Provide liquidity across CLOB and Auction/Intent Markets."
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+# Liquidity Provisioning Bots
+
+Build Uniswap V3–style LP bots: place liquidity in ranges, earn fees, and programmatically create, edit, or close positions while managing inventory.
+
+## LP vs. CLOB market making
+
+- **CLOB market making**: You place discrete bids/asks on an order book. Your PnL comes from spread capture minus adverse selection. You actively cancel/replace orders as price moves.
+- **Concentrated liquidity (Sapience)**:
+  - You deposit collateral and provide liquidity across a continuous price range \([lowerTick, upperTick]\). Under the hood, the protocol mints a Uniswap V3 LP NFT for that range.
+  - You earn trading fees when swaps pass through your range. Your inventory shifts from quote to base (or vice versa) as price moves within the range.
+  - You can modify liquidity (add/remove) or close the position. PnL depends on fees accrued and the mark value of your inventory at settlement.
+
+Key differences:
+
+- **Quoting granularity**: CLOB = point quotes; LP = continuous band.  
+- **Inventory dynamics**: CLOB inventory changes when orders fill; LP inventory changes continuously as price traverses your band.  
+- **Rebalancing**: CLOB re-quotes; LP re-centers or widens/narrows the band.  
+
+### Emulate spread capture with multiple bands
+
+- You can run **multiple LP positions at once** to approximate a ladder of bids/asks, i.e., “capture spread.”  
+- Use **narrow bands (as tight as `tickSpacing`)** as micro-quotes around the mid-price, and place several bands above and below.  
+- This lets you allocate inventory per level, skew exposure, and collect fees as flow crosses those micro-bands.  
+- You can also provide liquidity to an **individual tick-width band** (effectively the smallest quote unit) to be highly targeted.
+
+### Mapping for CLOB makers
+
+- **Post bid/ask** → Open a narrow LP band around the desired level (one or a few ticks wide).  
+- **Tighten/widen spread** → Narrow/widen your LP band width around mid.  
+- **Shift quotes up/down** → Move your LP band(s) up/down by changing `lowerTick`/`upperTick`.  
+- **Cancel/replace** → Decrease liquidity or close a band, then create a new band at the new price range.  
+- **Quote ladder** → Maintain multiple concurrent LP NFTs at staggered ticks (grid of micro-bands).  
+
+Why LP can beat CLOB:
+
+- **Continuous execution and fee accrual** within your range vs. discrete, cancellable orders.  
+- **Lower operational overhead**: fewer cancel/replace wars; re-center bands on a schedule or signal.  
+- **Inventory-aware** by design: your inventory shifts smoothly with price traversal; you can shape exposure with band placement and width.  
+- **Programmable**: hooks expose quoting and tx flows for bots to adapt bands to volatility, forecasts, and inventory targets.
+
+### Binary settlement and inventory risk
+
+Most Sapience markets settle to 0 or 1. Loser-side inventory goes to 0 at settlement. You still earn fees as flow crosses your band, but inventory drifts with price and can end up on the losing side.
+
+- **Implication**: Fees must compensate for the expected loss of any loser-side inventory. Near resolution, adverse selection increases; avoid being net-long the loser.
+- **Simple EV framing**: For a band centered at probability \(p\), break-even is roughly: expectedFees ≥ \((1 - p)\) × loserInventoryValue.
+- **Practical tactics**:
+  - **Inventory caps per side**: stop adding liquidity if net YES or NO inventory exceeds a threshold.
+  - **Skew bands**: center around your forecast and narrow near extremes (≈0.01/0.99) to avoid accumulating tail inventory that can go to 0.
+  - **Micro-bands with auto-prune**: run multiple narrow bands and remove the ones that build loser exposure.
+  - **Pre-resolution unwind**: withdraw or re-center N minutes before resolution or when \(|p-0.5|\) crosses a limit (e.g., ≥ 0.45 from mid).
+  - **External hedge (optional)**: offset inventory on a CLOB or perps venue to keep net outcome exposure near zero while still earning LP fees.
+  - **Volatility-aware width**: widen during volatility spikes; narrow when confident to balance fee APY vs. inventory-to-zero risk.
+
+Implementation hooks:
+
+- Use `useModifyLP` and `closeLiquidityPosition` to unwind bands based on inventory or probability triggers.
+- Use `priceToTick`/`tickToPrice` to place or shift bands away from tails and toward your forecast.
+- Use quoting hooks to monitor token deltas so you don’t cross inventory caps.
+
+---
+
+## Prerequisites
+
+- Market contract address/ABI and the `marketId` you’re interacting with
+- Wallet connection and chain configured
+- Tick spacing and helper utils like `priceToTick`
+
+Useful hooks and utils:
+
+- `useCreateLiquidityQuoter` → estimates token amounts for a new LP range
+- `useCreateLP` → creates the LP position
+- `useModifyLiquidityQuoter` → quotes token/liquidity deltas and collateral requirements when changing an existing position
+- `useModifyLP` → adds or removes liquidity on an existing position
+- `priceToTick`/`tickToPrice` → convert forecasted prices to ticks
+
+---
+
+## Create a liquidity position
+
+Steps:
+
+1) Pick a price band and convert to ticks.  
+2) Quote expected token amounts for your collateral.  
+3) Submit the `createLiquidityPosition` transaction.
+
+```tsx
+import { useCreateLiquidityQuoter, useCreateLP } from '@sapience/app/hooks/contract';
+import { priceToTick } from '@sapience/app/lib/utils/tickUtils';
+
+function CreateLPExample({ marketAddress, marketAbi, chainId, marketId, tickSpacing = 200 }) {
+  const collateralAmount = '1000'; // in quote token units (human-readable)
+  const lowPrice = 0.45;
+  const highPrice = 0.55;
+
+  const lowTick = priceToTick(lowPrice, tickSpacing);
+  const highTick = priceToTick(highPrice, tickSpacing);
+
+  const { amount0, amount1, loading: quoting } = useCreateLiquidityQuoter({
+    marketAddress,
+    marketAbi,
+    marketId: BigInt(marketId),
+    chainId,
+    collateralAmount,
+    lowTick,
+    highTick,
+    enabled: true,
+  });
+
+  const { createLP, isLoading: creating } = useCreateLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    marketId: BigInt(marketId),
+    collateralAmount,
+    lowPriceTick: lowTick,
+    highPriceTick: highTick,
+    amount0,
+    amount1,
+    slippagePercent: 0.5, // 0.5%
+    collateralTokenAddress: undefined, // set if approval is needed
+  });
+
+  return (
+    <button disabled={quoting || creating} onClick={() => createLP()}>Create LP</button>
+  );
+}
+```
+
+---
+
+## Modify a liquidity position (add/remove)
+
+You can increase liquidity (add collateral/tokens) or decrease liquidity (withdraw tokens and, optionally, collateral). Use the quoter to plan deltas and slippage.
+
+```tsx
+import { useModifyLiquidityQuoter, useModifyLP } from '@sapience/app/hooks/contract';
+
+function ModifyLPExample({ marketAddress, marketAbi, chainId, marketId, positionId, currentLiquidity, tickLower, tickUpper }) {
+  // Plan to add/remove X% of current liquidity
+  const mode: 'add' | 'remove' = 'add';
+  const percentage = 25; // 25%
+
+  const { amount0, amount1, liquidityDelta } = useModifyLiquidityQuoter({
+    marketAddress,
+    marketAbi,
+    marketId: BigInt(marketId),
+    chainId,
+    positionId: String(positionId),
+    currentLiquidity,
+    tickLower,
+    tickUpper,
+    mode,
+    percentage,
+  });
+
+  const { modifyLP, isLoading } = useModifyLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    positionId: String(positionId),
+    mode,
+    liquidityDelta,
+    amount0,
+    amount1,
+    collateralDelta: mode === 'add' ? '250' : '0', // optional additional collateral
+    slippagePercent: 0.5,
+    collateralTokenAddress: undefined,
+  });
+
+  return (
+    <button disabled={isLoading} onClick={() => modifyLP()}>
+      {mode === 'add' ? 'Add Liquidity' : 'Remove Liquidity'}
+    </button>
+  );
+}
+```
+
+---
+
+## Close a liquidity position
+
+Two common ways:
+
+- **Remove 100% of liquidity** using decrease; you’ll receive the underlying token amounts and any remaining collateral.  
+- **Close via contract `closeLiquidityPosition`** to fully unwind per your slippage settings.
+
+```tsx
+// Option A: Remove 100% using modify hooks
+// 1) Quote percentage=100 in remove mode, then call useModifyLP with that delta.
+
+// Option B: Direct contract call (wagmi) for closeLiquidityPosition
+import { useSapienceWriteContract } from '@sapience/app/hooks/blockchain/useSapienceWriteContract';
+
+function CloseLPExample({ marketAddress, marketAbi, chainId, positionId }) {
+  const { writeContract, isPending } = useSapienceWriteContract();
+
+  const close = async () => {
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+    await writeContract({
+      address: marketAddress,
+      abi: marketAbi,
+      functionName: 'closeLiquidityPosition',
+      args: [{
+        positionId: BigInt(positionId),
+        amount0Min: BigInt(0),
+        amount1Min: BigInt(0),
+        tradeSlippage: BigInt(5e15), // 0.5% in 1e18
+        deadline,
+      }],
+      chainId,
+    });
+  };
+
+  return <button disabled={isPending} onClick={close}>Close Position</button>;
+}
+```
+
+---
+
+## Forecast-driven rebalancing example
+
+Re-center your LP band based on a forecasted price distribution. Example: center at forecast mean and cover a confidence interval.
+
+```tsx
+import { priceToTick } from '@sapience/app/lib/utils/tickUtils';
+import { useCreateLiquidityQuoter, useModifyLP } from '@sapience/app/hooks/contract';
+
+function computeBandFromForecast({ mean, stdev, z = 1.28 }) {
+  // ~80% CI with z=1.28; adjust to your risk
+  const low = Math.max(1e-6, mean - z * stdev);
+  const high = mean + z * stdev;
+  return { low, high };
+}
+
+function ForecastRebalance({ marketAddress, marketAbi, chainId, marketId, tickSpacing, positionId, currentLiquidity }) {
+  // 1) Get/update your forecast (from model, oracle, or API)
+  const forecast = { mean: 0.52, stdev: 0.03 };
+  const { low, high } = computeBandFromForecast(forecast);
+
+  // 2) Convert to ticks
+  const lowTick = priceToTick(low, tickSpacing);
+  const highTick = priceToTick(high, tickSpacing);
+
+  // 3) Quote token amounts for the new band given collateral
+  const collateralAmount = '800';
+  const { amount0, amount1 } = useCreateLiquidityQuoter({
+    marketAddress,
+    marketAbi,
+    marketId: BigInt(marketId),
+    chainId,
+    collateralAmount,
+    lowTick,
+    highTick,
+  });
+
+  // 4) Decide action: add to band if within range; otherwise remove then re-create in the new band
+  const { modifyLP } = useModifyLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    positionId: String(positionId),
+    mode: 'remove', // e.g., remove 50% before migrating
+    liquidityDelta: currentLiquidity / BigInt(2),
+    amount0: BigInt(0),
+    amount1: BigInt(0),
+    collateralDelta: '0',
+    slippagePercent: 0.5,
+  });
+
+  const rebalance = async () => {
+    // Example policy: remove some liquidity, then create a new position in the forecast band
+    await modifyLP();
+    // After removal confirms, call create as shown in the Create example with { lowTick, highTick, amount0, amount1 }
+    // Optionally close the old position entirely if fully migrated.
+  };
+
+  return <button onClick={rebalance}>Rebalance to Forecast</button>;
+}
+```
+
+Tips:
+
+- **Widen during volatility** and narrow when confident to balance fee APY vs. inventory risk.
+- **Inventory-aware skew**: shift the band to nudge inventory toward your target.
+- **Automate on a schedule** (e.g., every N minutes) or on events (volatility spikes, forecast updates).
+
+---
+
+## Operational notes
+
+- Always set conservative `slippage` thresholds in create/modify/close calls.
+- Check approvals for collateral tokens before adding liquidity.
+- Use the quoting hooks to preview token movements and required collateral before executing transactions.
