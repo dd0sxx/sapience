@@ -1,0 +1,103 @@
+---
+title: "Batch Auction Relayer Reference"
+description: "Message channels, payload shapes, and limits for the Batch Auction WebSocket."
+---
+
+# Batch Auction Relayer Reference
+
+This page defines the canonical message channels, payload shapes, acknowledgments, and broadcasts for the Batch Auction WebSocket Relayer.
+
+> For an overview and integration guide, see API → Batch Auction Relayer.
+
+## Endpoint
+
+- Production: `wss://api.sapience.xyz/auction` (confirm base URL)
+- Local dev (monorepo): `ws://localhost:3001/auction`
+
+## Message Flow
+
+- `auction.start` → `auction.ack` + `auction.started`
+- `bid.submit` → `bid.ack` + `auction.bids`
+- `accept.submit` → forwarded for onchain mint/settle flow
+
+## Message Schemas
+
+### auction.start
+Starts a new auction and subscribes the maker to that auction's channel.
+
+```typescript
+// Client → Relayer
+{
+  type: 'auction.start',
+  payload: {
+    maker: string,              // 0x...
+    wager: string,              // wei string
+    resolver: string,           // contract address
+    predictedOutcomes: string[] // bytes strings
+  }
+}
+```
+
+Acknowledgment:
+```typescript
+{ type: 'auction.ack', payload: { auctionId: string, error?: string } }
+```
+
+Broadcast:
+```typescript
+{ type: 'auction.started', payload: { auctionId: string, maker: string, wager: string, predictedOutcomes: string[], resolver: string } }
+```
+
+### bid.submit
+Taker submits a bid/quote with explicit constraints.
+
+```typescript
+// Client → Relayer
+{
+  type: 'bid.submit',
+  payload: {
+    auctionId: string,
+    taker: string,
+    takerWager: string,      // wei
+    takerDeadline: number,   // unix seconds
+    takerSignature: string   // 0x...
+  }
+}
+```
+
+Acknowledgment:
+```typescript
+{ type: 'bid.ack', payload: { error?: string } }
+```
+
+Broadcast (to maker subscribers):
+```typescript
+{ type: 'auction.bids', payload: { bids: [{ auctionId: string, takerSignature: string, taker: string, takerWager: string, takerDeadline: number }] } }
+```
+
+### accept.submit
+Maker accepts a specific bid for settlement.
+
+```typescript
+// Client → Relayer
+{
+  type: 'accept.submit',
+  payload: {
+    auctionId: string,
+    taker: string,
+    takerSignature: string
+  }
+}
+```
+
+Forwarded downstream to mint/settle flow. Errors are surfaced via `error` fields on acks where relevant.
+
+## Limits
+
+- Rate limit: 100 messages / 10s window; violations close with 1008
+- Max message size: 64KB; violations close with 1009
+
+## Validation Highlights
+
+- Auction: positive wager, ≥1 outcome, valid addresses
+- Bid: not expired, takerWager > 0 and ≤ maker wager, valid signature

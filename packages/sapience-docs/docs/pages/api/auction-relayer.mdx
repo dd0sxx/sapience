@@ -1,0 +1,35 @@
+---
+title: "Batch Auction Relayer API"
+description: "Overview and integration notes for the Batch Auction WebSocket."
+---
+
+# Batch Auction Relayer API
+
+The Batch Auction WebSocket API connects makers and takers in Batch Auction Markets. Use it to start auctions, receive bids, and submit accepts.
+
+## Endpoint
+
+- Production: `wss://api.sapience.xyz/auction` (confirm base URL)
+- Local dev (monorepo): `ws://localhost:3001/auction`
+
+## Lifecycle (High Level)
+
+- Maker connects and sends `auction.start` to create an auction
+- Relayer acks and broadcasts `auction.started` to subscribers
+- Takers submit `bid.submit`; relayer acks and streams `auction.bids` to the maker
+- Maker chooses a bid and sends `accept.submit`; relayer forwards for onchain mint/settle
+
+## Integration Notes
+
+- Authenticate/identify by wallet address in message payloads
+- Use short deadlines on bids; makers should validate expiry and signature
+- Expect rate limits and payload size limits; handle 1008/1009 close codes gracefully
+- Subscribe to auction-specific broadcasts after `auction.start`
+
+## Reference
+
+For the canonical message channels, payload shapes, acknowledgments, limits, and validation rules, see the Reference:
+
+- [Batch Auction Relayer Reference](/reference/auction-relayer)
+
+
