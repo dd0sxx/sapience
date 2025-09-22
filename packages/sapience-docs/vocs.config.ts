@@ -8,7 +8,7 @@ export default defineConfig({
   },
   topNav: [
     { text: 'User Guide', link: '/user-guide/introduction/what-is-sapience', match: '/user-guide' },
-    { text: 'Builder Guide', link: '/guides/trading-bots', match: '/guides' },
+    { text: 'Builder Guide', link: '/getting-started/what-is-sapience', match: '/guides' },
   ],
   banner: {
     dismissable: ('false' as unknown as boolean),
@@ -114,7 +114,10 @@ export default defineConfig({
       },
       {
         text: 'Liquidity Provisioning',
-        items: [{ text: 'Overview', link: '/user-guide/liquidity-provisioning' }],
+        items: [
+          { text: 'Overview', link: '/user-guide/liquidity-provisioning' },
+          { text: 'Tutorial', link: '/user-guide/liquidity-provisioning/tutorial' },
+        ],
       },
       {
         text: 'Deposits & Withdrawals',
@@ -134,7 +137,6 @@ export default defineConfig({
           { text: 'Audits', link: '/user-guide/other-resources/audits' },
           { text: 'Brand Assets', link: '/user-guide/other-resources/brand-assets' },
           { text: 'Contact & Community', link: '/user-guide/other-resources/contact-and-community' },
-          { text: 'Developer Tools & Bots', link: '/user-guide/other-resources/developer-tools-and-bots' },
           { text: 'FAQ', link: '/user-guide/other-resources/faq' },
           { text: 'Glossary of Terms', link: '/user-guide/other-resources/glossary' },
         ],
@@ -161,7 +163,10 @@ export default defineConfig({
       },
       {
         text: 'Liquidity Provisioning',
-        items: [{ text: 'Overview', link: '/user-guide/liquidity-provisioning' }],
+        items: [
+          { text: 'Overview', link: '/user-guide/liquidity-provisioning' },
+          { text: 'Tutorial', link: '/user-guide/liquidity-provisioning/tutorial' },
+        ],
       },
       {
         text: 'Deposits & Withdrawals',
@@ -181,7 +186,6 @@ export default defineConfig({
           { text: 'Audits', link: '/user-guide/other-resources/audits' },
           { text: 'Brand Assets', link: '/user-guide/other-resources/brand-assets' },
           { text: 'Contact & Community', link: '/user-guide/other-resources/contact-and-community' },
-          { text: 'Developer Tools & Bots', link: '/user-guide/other-resources/developer-tools-and-bots' },
           { text: 'FAQ', link: '/user-guide/other-resources/faq' },
           { text: 'Glossary of Terms', link: '/user-guide/other-resources/glossary' },
         ],
