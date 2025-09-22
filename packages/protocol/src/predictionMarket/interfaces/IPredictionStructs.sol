@@ -51,7 +51,6 @@ interface IPredictionStructs {
         address resolver;
         uint256 makerCollateral;
         uint256 takerCollateral;
-        address maker;
         bytes32 refCode;
     }
 

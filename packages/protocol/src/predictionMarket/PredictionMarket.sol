@@ -280,12 +280,14 @@ contract PredictionMarket is
         IPredictionStructs.OrderRequestData calldata orderRequestData
     ) external nonReentrant returns (uint256 orderId) {
         orderId = orderIdCounter++;
-        address maker = orderRequestData.maker;
+        address maker = msg.sender;
 
         if (orderRequestData.makerCollateral == 0)
             revert MakerCollateralMustBeGreaterThanZero();
         if (orderRequestData.takerCollateral == 0)
             revert TakerCollateralMustBeGreaterThanZero();
+        if (orderRequestData.makerCollateral < config.minCollateral)
+            revert CollateralBelowMinimum();
 
         // 1- Transfer collateral to the contract
         _safeTransferIn(
@@ -322,8 +324,8 @@ contract PredictionMarket is
         IPredictionStructs.LimitOrderData storage order = unfilledOrders[
             orderId
         ];
-        if (order.orderDeadline < block.timestamp) revert OrderExpired();
         if (order.orderId != orderId) revert OrderNotFound();
+        if (order.orderDeadline < block.timestamp) revert OrderExpired();
 
         // 3- Transfer collateral to the taker
         address taker = msg.sender;
@@ -340,8 +342,10 @@ contract PredictionMarket is
             refCode
         );
 
-        // 5- Set the order as filled
+        // 5- Set the order as filled and remove from tracking
         order.orderId = 0; // zero means no order
+        unfilledOrderIds.remove(orderId);
+        unfilledOrdersByMaker[order.maker].remove(orderId);
 
         // 6- emit event
         emit OrderFilled(
@@ -399,21 +403,6 @@ contract PredictionMarket is
         address maker
     ) external view returns (uint256[] memory) {
         return unfilledOrdersByMaker[maker].values();
-    }
-
-    function _getOrderRequestId(
-        IPredictionStructs.OrderRequestData memory orderRequestData
-    ) internal returns (bytes32) {
-        bytes32 requestId = keccak256(
-            abi.encodePacked(
-                msg.sender,
-                orderRequestData.encodedPredictedOutcomes,
-                orderRequestData.resolver,
-                orderRequestData.makerCollateral,
-                orderRequestData.takerCollateral
-            )
-        );
-        return requestId;
     }
 
     // ============ View Functions ============
@@ -566,7 +555,7 @@ contract PredictionMarket is
         IERC20(token).safeTransferFrom(from, address(this), amount);
         uint256 finalBalance = IERC20(token).balanceOf(address(this));
         // for in bound transfers we need to ensure contract collateral increased at least by the amount
-        if (finalBalance >= initialBalance + amount) revert TransferFailed();
+        if (finalBalance < initialBalance + amount) revert TransferFailed();
     }
 
     function _safeTransferOut(
@@ -578,6 +567,6 @@ contract PredictionMarket is
         IERC20(token).safeTransfer(to, amount);
         uint256 finalBalance = IERC20(token).balanceOf(address(this));
         // for out bound transfers we need to ensure contract collateral deducted no more than the amount
-        if (finalBalance + amount >= initialBalance) revert TransferFailed();
+        if (finalBalance + amount < initialBalance) revert TransferFailed();
     }
 }
