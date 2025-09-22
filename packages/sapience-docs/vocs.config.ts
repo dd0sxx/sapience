@@ -46,7 +46,7 @@ export default defineConfig({
       text: 'Builder Guides',
       items: [
         { text: 'Forecasting Bot', link: '/guides/forecasting-bots' },
-        { text: 'Trading Bots', link: '/guides/trading-bots' },
+        { text: 'Prediction Market Trading Bots', link: '/guides/trading-bots' },
         { text: 'Liquidity Provisioning Bot', link: '/guides/liquidity-provisioning-bots' },
         { text: 'Batch Auction Market Bot', link: '/guides/trading-auction-intent-markets' },
         { text: 'Custom Trading App', link: '/guides/custom-trading-app' },

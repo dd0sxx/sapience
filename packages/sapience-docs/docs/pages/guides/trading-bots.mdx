@@ -9,7 +9,7 @@ import BuilderGuideAlert from '../../components/BuilderGuideAlert'
 
 # Trading Bots
 
-This guide builds on the Forecasting Bot. First, complete the [Forecasting Bot](/guides/forecasting-bots) to produce calibrated beliefs. Then, add a minimal $1 trading flow using the Quoter API and execute trades in a bot "action".
+This guide builds on the Forecasting Bot. First, complete the [Forecasting Bot](/guides/forecasting-bots) to produce calibrated beliefs (0–100%). Then, add a minimal $1 trading flow using the Quoter API and execute trades in a bot "action".
 
 References: [Quick Start](https://docs.sapience.xyz/quick-start), [Sage Template](https://github.com/sapiencexyz/sage-template), [Railway deploy overview](https://www.librechat.ai/docs/remote/railway).
 
@@ -17,33 +17,72 @@ References: [Quick Start](https://docs.sapience.xyz/quick-start), [Sage Template
 
 ## Prerequisites
 
-- Working Forecasting Bot that outputs a probability in [0,1]
+- Working Forecasting Bot that outputs a probability in 0–100%
 - Railway project with logs working; `OPENAI_API_KEY` set
 - Optional: `ETHEREUM_PRIVATE_KEY` to enable onchain trading on Base
 
 ---
 
-## 1) Ensure your bot emits a numeric belief
+## 1) Carry over your 0–100% forecast
 
-Map model output to a probability `p ∈ [0,1]`.
+Map model output to a percentage `pct ∈ [0,100]`, then convert to an expected price in [0,1] for quoting/trading.
 
 Examples:
 
-- "Yes" → `p = 1.0`
-- "No" → `p = 0.0`
-- Numeric answer → parse to `p`, clamp to [0,1]
+- "Yes" → `pct = 100`
+- "No" → `pct = 0`
+- Numeric answer → parse to `pct`, clamp to [0,100]
+
+Turn this into a decimal price string. The Quoter expects `expectedPrice > 0`, so use a tiny epsilon for 0%:
+
+```ts
+function forecastToExpectedPriceDecimalString(percent: number): string {
+  const clamped = Math.max(0, Math.min(100, percent));
+  if (clamped === 0) return '0.0000009';
+  return (clamped / 100).toString();
+}
+```
 
 ---
 
 ## 2) Quote a $1 position using the Quoter API
 
-Given belief `p`, pick `expectedPrice = p`. Retrieve max size for a $1 wager (sUSDS):
+Given your belief `pct`, set `expectedPrice = pct / 100`. Retrieve the max size for a $1 wager (sUSDS):
 
 ```text
 GET https://api.sapience.xyz/quoter/{chainId}/{marketGroupAddress}/{marketId}?collateralAvailable={WAGER_WEI}&expectedPrice={DECIMAL_PRICE}
 ```
 
-Use the result (`maxSize`) as the target position size. See the Quick Start for a concrete TypeScript example.
+Use the result (`maxSize`) as the target position size. Example TypeScript (simplified):
+
+```ts
+import { parseEther } from 'viem';
+
+const SUSDS_ADDRESS = '0x5875eEE11Cf8398102FdAd704C9E96607675467a';
+const WAGER_AMOUNT = parseEther('1'); // 1 sUSDS
+
+function forecastToExpectedPriceDecimalString(percent: number): string {
+  const clamped = Math.max(0, Math.min(100, percent));
+  if (clamped === 0) return '0.0000009';
+  return (clamped / 100).toString();
+}
+
+async function getQuote({ chainId, marketGroupAddress, marketId, forecastPercent }: {
+  chainId: number;
+  marketGroupAddress: string;
+  marketId: number | string;
+  forecastPercent: number;
+}) {
+  const expectedPrice = forecastToExpectedPriceDecimalString(forecastPercent);
+  const url = `https://api.sapience.xyz/quoter/${chainId}/${marketGroupAddress}/${marketId}?collateralAvailable=${WAGER_AMOUNT.toString()}&expectedPrice=${expectedPrice}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Quoter error ${res.status}`);
+  const { maxSize } = await res.json() as { maxSize: string };
+  return { positionSize: BigInt(maxSize) };
+}
+```
+
+See the Quick Start for a full end‑to‑end example.
 
 Citation: [Quick Start](https://docs.sapience.xyz/quick-start), [Quoter API](/api/quoter)
 
@@ -51,20 +90,37 @@ Citation: [Quick Start](https://docs.sapience.xyz/quick-start), [Quoter API](/ap
 
 ## 3) Implement a "trade" action in your bot
 
-Instead of writing an attestation onchain, create a bot action that executes the trade when conditions are met.
-
-Pseudo‑shape:
+Create a bot action that approves sUSDS and submits a trade sized by the Quoter result. This assumes Base chain and the Foil/Sapience market contract.
 
 ```ts
-type TradeParams = {
-  marketGroupAddress: `0x${string}`;
+import Foil from './Foil.json' assert { type: 'json' };
+import { createWalletClient, createPublicClient, http, parseEther } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { base } from 'viem/chains';
+
+const WAGER_AMOUNT = parseEther('1');
+
+async function tradeAction({ marketAddress, marketId, positionSize }: {
+  marketAddress: `0x${string}`;
   marketId: bigint;
   positionSize: bigint; // from Quoter
-};
+}) {
+  const ETHEREUM_PRIVATE_KEY = process.env.ETHEREUM_PRIVATE_KEY as `0x${string}` | undefined;
+  if (!ETHEREUM_PRIVATE_KEY) throw new Error('Missing ETHEREUM_PRIVATE_KEY');
 
-async function tradeAction({ marketGroupAddress, marketId, positionSize }: TradeParams) {
-  // 1) Approve sUSDS spend
-  // 2) Call createTraderPosition(marketId, positionSize, collateral, deadline)
+  const account = privateKeyToAccount(ETHEREUM_PRIVATE_KEY);
+  const walletClient = createWalletClient({ account, chain: base, transport: http() });
+  const publicClient = createPublicClient({ chain: base, transport: http() });
+
+  // Approve spender (market) for up to $1 sUSDS if needed, then trade
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 60);
+  const hash = await walletClient.writeContract({
+    address: marketAddress,
+    abi: Foil.abi,
+    functionName: 'createTraderPosition',
+    args: [marketId, positionSize, WAGER_AMOUNT, deadline],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
 }
 ```
 
@@ -89,19 +145,39 @@ Enable Autodeploy on Railway so pushes redeploy automatically. See: [Railway Qui
 
 ---
 
-## Next steps
+## Limit orders
 
-- Automate settlement checks and attribution
-- Scale stake with confidence calibration
-- Explore maker strategies (LP bands) once you outgrow taker flow
+You can implement a limit order without revealing your target by waiting for price to reach your level, then submitting immediately. Instead of broadcasting a transaction that advertises your limit, poll (or subscribe) for price changes and trigger when your condition is met.
 
----
+- Choose a limit, e.g. `limitPercent = 62` for buying YES only at ≤ 0.62.
+- Monitor price client-side via polling or a subscription. When `currentPrice ≤ limit`, quote/submit at that moment.
+- This avoids “showing your hand” in advance while achieving limit-like execution.
 
-### Citations
+Minimal polling sketch:
 
-- Sapience Quick Start: [docs.sapience.xyz/quick-start](https://docs.sapience.xyz/quick-start)
-- Bot template: [github.com/sapiencexyz/sage-template](https://github.com/sapiencexyz/sage-template)
-- Railway overview: [docs.railway.com/quick-start](https://docs.railway.com/quick-start)
-- Example Railway deploy flow: [librechat.ai/docs/remote/railway](https://www.librechat.ai/docs/remote/railway)
+```ts
+const limitPercent = 62; // YES buy limit
+const limit = limitPercent / 100;
 
+while (true) {
+  const current = await getCurrentYesPrice({ chainId: base.id, marketGroupAddress, marketId }); // returns 0..1
+  if (current <= limit) {
+    // Quote using your limit (or your belief) and submit immediately
+    const { positionSize } = await getQuote({
+      chainId: base.id,
+      marketGroupAddress,
+      marketId,
+      forecastPercent: limitPercent,
+    });
+    await tradeAction({
+      marketAddress: marketGroupAddress as `0x${string}`,
+      marketId: BigInt(marketId),
+      positionSize,
+    });
+    break;
+  }
+  await new Promise((r) => setTimeout(r, 5_000)); // backoff/jitter as needed
+}
+```
 
+Event-driven alternative: subscribe to market price updates and run the same trigger logic in your handler. Keep risk controls (daily caps, per‑market caps) in place regardless of polling or subscriptions.
