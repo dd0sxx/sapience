@@ -169,6 +169,8 @@ export default function UserParlaysTable({
       {
         id: 'positionId',
         accessorFn: (row) => row.positionId,
+        sortingFn: (rowA, rowB) =>
+          rowA.original.createdAt - rowB.original.createdAt,
         size: 360,
         minSize: 260,
         maxSize: 420,
