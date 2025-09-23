@@ -77,6 +77,7 @@ export default function UserParlaysTable({
     totalPayoutWei: bigint; // total payout if won
     makerCollateralWei?: bigint; // user's wager if they are maker
     takerCollateralWei?: bigint; // user's wager if they are taker
+    userPnL: string; // user's PnL in wei for settled parlays
   };
 
   // Fetch real data
@@ -88,7 +89,7 @@ export default function UserParlaysTable({
     [account]
   );
   const rows: UIParlay[] = React.useMemo(() => {
-    return (data || []).map((p: any) => {
+    const parlayRows = (data || []).map((p: any) => {
       const legs: UILeg[] = (p.predictedOutcomes || []).map((o: any) => ({
         question:
           o?.condition?.shortName || o?.condition?.question || o.conditionId,
@@ -121,10 +122,41 @@ export default function UserParlaysTable({
           ? BigInt(p.makerNftTokenId)
           : BigInt(p.takerNftTokenId)
         : undefined;
+
+      // Calculate PnL for settled parlays
+      let userPnL = '0';
+      if (!isActive && p.makerCollateral && p.takerCollateral && p.totalCollateral) {
+        try {
+          const makerCollateral = BigInt(p.makerCollateral);
+          const takerCollateral = BigInt(p.takerCollateral);
+          const totalCollateral = BigInt(p.totalCollateral);
+          
+          if (userIsMaker) {
+            if (p.makerWon) {
+              // Maker won: profit = totalCollateral - makerCollateral
+              userPnL = (totalCollateral - makerCollateral).toString();
+            } else {
+              // Maker lost: loss = -makerCollateral
+              userPnL = (-makerCollateral).toString();
+            }
+          } else if (userIsTaker) {
+            if (!p.makerWon) {
+              // Taker won: profit = totalCollateral - takerCollateral
+              userPnL = (totalCollateral - takerCollateral).toString();
+            } else {
+              // Taker lost: loss = -takerCollateral
+              userPnL = (-takerCollateral).toString();
+            }
+          }
+        } catch (e) {
+          console.error('Error calculating parlay PnL:', e);
+        }
+      }
+
       return {
         positionId: p.makerNftTokenId ? Number(p.makerNftTokenId) : p.id,
         legs,
-        direction: 'Long',
+        direction: 'Long' as const,
         endsAt: endsAtSec ? endsAtSec * 1000 : Date.now(),
         status,
         tokenIdToClaim,
@@ -150,8 +182,40 @@ export default function UserParlaysTable({
             return undefined;
           }
         })(),
+        userPnL, // Add PnL to the row data
       };
     });
+
+    // Console log parlay PnL data
+    if (parlayRows.length > 0) {
+      console.log('🎯 PARLAY PnL DATA:', {
+        user: viewer,
+        totalParlays: parlayRows.length,
+        parlays: parlayRows.map(row => ({
+          positionId: row.positionId,
+          status: row.status,
+          userPnL: row.userPnL,
+          userPnLEth: row.userPnL !== '0' ? formatEther(BigInt(row.userPnL)) : '0',
+          legs: row.legs.map(leg => `${leg.question}: ${leg.choice}`).join(' + ')
+        })),
+        totalPnL: parlayRows.reduce((sum, row) => {
+          try {
+            return sum + BigInt(row.userPnL);
+          } catch {
+            return sum;
+          }
+        }, 0n).toString(),
+        totalPnLEth: formatEther(parlayRows.reduce((sum, row) => {
+          try {
+            return sum + BigInt(row.userPnL);
+          } catch {
+            return sum;
+          }
+        }, 0n))
+      });
+    }
+
+    return parlayRows;
   }, [data, viewer]);
 
   // Keep Share dialog open state outside of row to survive re-renders

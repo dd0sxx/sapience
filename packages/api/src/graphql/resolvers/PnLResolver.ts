@@ -6,6 +6,7 @@ import {
 } from '../types/AggregatedProfitTypes';
 import prisma from '../../db';
 import { TtlCache } from '../../utils/ttlCache';
+import { calculateParlayPnL } from '../../helpers/parlayPnL';
 
 @Resolver(() => PnLType)
 export class PnLResolver {
@@ -51,15 +52,49 @@ export class PnLResolver {
     }));
   }
 
+  @Query(() => [PnLType])
+  @Directive('@cacheControl(maxAge: 60)')
+  async getParlayLeaderboard(
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('marketAddress', () => String) marketAddress: string
+  ): Promise<PnLType[]> {
+    // Get parlay PnL directly from calculation
+    const parlayPnL = await calculateParlayPnL(chainId, marketAddress);
+    
+    // Get market group info for decimals
+    const mg = await prisma.marketGroup.findFirst({
+      where: { chainId, address: marketAddress.toLowerCase() },
+    });
+    const decimals = mg?.collateralDecimals ?? 18;
+    
+    return parlayPnL.map((r) => ({
+      marketId: 0, // Parlays don't have marketId, use 0 as placeholder
+      owner: r.owner,
+      totalDeposits: '0', // We don't track deposits separately in simplified approach
+      totalWithdrawals: '0', // We don't track withdrawals separately in simplified approach
+      openPositionsPnL: '0', // Parlays are always settled
+      totalPnL: r.totalPnL,
+      positions: [],
+      positionCount: r.parlayCount,
+      collateralAddress: mg?.collateralAsset || undefined,
+      collateralSymbol: mg?.collateralSymbol || undefined,
+      collateralDecimals: decimals || undefined,
+    }));
+  }
+
   @Query(() => [AggregatedProfitEntryType])
   @Directive('@cacheControl(maxAge: 60)')
   async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
-    const cacheKey = 'allTimeProfitLeaderboard:v2.1';
+    const cacheKey = 'allTimeProfitLeaderboard:v3.0';
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
     if (existing) return existing;
 
-    // Aggregate across precomputed table, normalizing by collateral decimals per market group
-    const all = await prisma.ownerMarketRealizedPnl.findMany();
+    // Get market PnL from precomputed table and parlay PnL directly
+    const [marketPnL, parlayPnL] = await Promise.all([
+      prisma.ownerMarketRealizedPnl.findMany(),
+      calculateParlayPnL(), // Calculate all parlay PnL
+    ]);
+    
     const mgList = await prisma.marketGroup.findMany({
       select: { chainId: true, address: true, collateralDecimals: true },
     });
@@ -73,12 +108,24 @@ export class PnLResolver {
     }
 
     const aggregated = new Map<string, number>();
-    for (const r of all) {
+    
+    // Process market-based PnL (from precomputed table)
+    for (const r of marketPnL) {
       const owner = (r.owner || '').toLowerCase();
       if (!owner) continue;
       const dec = decimalsByMg.get(key(r.chainId, r.address)) ?? 18;
       const divisor = Math.pow(10, dec);
       const val = parseFloat(r.realizedPnl.toString()) / divisor;
+      if (!Number.isFinite(val)) continue;
+      aggregated.set(owner, (aggregated.get(owner) || 0) + val);
+    }
+
+    // Process parlay-based PnL (calculated directly)
+    for (const r of parlayPnL) {
+      const owner = r.owner.toLowerCase();
+      // For parlays, assume 18 decimals (USDe) - could be made more sophisticated
+      const divisor = Math.pow(10, 18);
+      const val = parseFloat(r.totalPnL) / divisor;
       if (!Number.isFinite(val)) continue;
       aggregated.set(owner, (aggregated.get(owner) || 0) + val);
     }
