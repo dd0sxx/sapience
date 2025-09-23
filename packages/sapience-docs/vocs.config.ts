@@ -67,13 +67,6 @@ export default defineConfig({
         ],
       },
       {
-        text: 'Core Concepts',
-        items: [
-          { text: 'Market Types', link: '/concepts/market-types' },
-          { text: 'Oracles & Settlement', link: '/concepts/oracles-and-settlement' },
-        ],
-      },
-      {
         text: 'API',
         items: [
           { text: 'GraphQL', link: '/api/graphql' },
@@ -88,6 +81,7 @@ export default defineConfig({
           { text: 'Contracts & Addresses', link: '/reference/contracts-and-addresses' },
           { text: 'GraphQL Schema', link: '/reference/graphql-schema' },
           { text: 'Batch Auction Relayer', link: '/reference/auction-relayer' },
+          { text: 'Oracles & Settlement', link: '/reference/oracles-and-settlement' },
         ],
       },
       { text: 'FAQ', link: '/faq' },
