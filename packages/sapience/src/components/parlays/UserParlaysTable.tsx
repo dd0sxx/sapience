@@ -24,17 +24,27 @@ import {
 import { ArrowUpDown, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
 import * as React from 'react';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import { useReadContracts } from 'wagmi';
+import type { Abi } from 'abitype';
+import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
 import { useUserParlays } from '~/hooks/graphql/useUserParlays';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import ShareDialog from '~/components/shared/ShareDialog';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
 
 function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
   const [nowMs, setNowMs] = React.useState(() => Date.now());
@@ -61,9 +71,16 @@ export default function UserParlaysTable({
   showHeaderText?: boolean;
 }) {
   // ---
+  const queryClient = useQueryClient();
   const { burn, isPending: isClaimPending } = usePredictionMarketWriteContract({
     successMessage: 'Claim submitted',
     fallbackErrorMessage: 'Claim failed',
+    onSuccess: () => {
+      const addr = String(account || '').toLowerCase();
+      queryClient
+        .invalidateQueries({ queryKey: ['userParlays', addr] })
+        .catch(() => {});
+    },
   });
   type UILeg = { question: string; choice: 'Yes' | 'No' };
   type UIParlay = {
@@ -78,6 +95,7 @@ export default function UserParlaysTable({
     makerCollateralWei?: bigint; // user's wager if they are maker
     takerCollateralWei?: bigint; // user's wager if they are taker
     addressRole: 'maker' | 'taker' | 'unknown';
+    counterpartyAddress?: Address | null;
   };
 
   // Fetch real data
@@ -163,9 +181,52 @@ export default function UserParlaysTable({
         makerCollateralWei: viewerMakerCollateralWei,
         takerCollateralWei: viewerTakerCollateralWei,
         addressRole: userIsMaker ? 'maker' : userIsTaker ? 'taker' : 'unknown',
+        counterpartyAddress:
+          (userIsMaker
+            ? (p.taker as Address | undefined)
+            : userIsTaker
+              ? (p.maker as Address | undefined)
+              : undefined) ?? null,
       };
     });
   }, [data, viewer]);
+  // Detect claimability by checking on-chain ownerOf for the potential claim tokenIds
+  const tokenIdsToCheck = React.useMemo(
+    () =>
+      rows
+        .filter((r) => r.status === 'won' && r.tokenIdToClaim !== undefined)
+        .map((r) => r.tokenIdToClaim!),
+    [rows]
+  );
+  const ownerReads = React.useMemo(
+    () =>
+      tokenIdsToCheck.map((tokenId) => ({
+        address: '0x8D1D1946cBc56F695584761d25D13F174906671C' as Address,
+        abi: PredictionMarket.abi as unknown as Abi,
+        functionName: 'ownerOf',
+        args: [tokenId],
+        chainId: 42161,
+      })),
+    [tokenIdsToCheck]
+  );
+  const ownersResult = useReadContracts({
+    contracts: ownerReads,
+    query: { enabled: ownerReads.length > 0 },
+  });
+  const claimableTokenIds = React.useMemo(() => {
+    const set = new Set<string>();
+    const viewerAddr = String(account || '').toLowerCase();
+    const items = ownersResult?.data || [];
+    items.forEach((item, idx) => {
+      if (item && item.status === 'success') {
+        const owner = String(item.result || '').toLowerCase();
+        if (owner && owner === viewerAddr) {
+          set.add(String(tokenIdsToCheck[idx]));
+        }
+      }
+    });
+    return set;
+  }, [ownersResult?.data, tokenIdsToCheck, account]);
 
   // Keep Share dialog open state outside of row to survive re-renders
   const [openShareParlayId, setOpenShareParlayId] = React.useState<
@@ -232,6 +293,15 @@ export default function UserParlaysTable({
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <span>created at {created}</span>
               </div>
+              {row.original.counterpartyAddress && (
+                <div className="text-sm text-muted-foreground flex items-baseline gap-1.5 mt-0.5">
+                  <span>with</span>
+                  <AddressDisplay
+                    address={row.original.counterpartyAddress}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           );
         },
@@ -341,7 +411,29 @@ export default function UserParlaysTable({
             )}
             {row.original.legs.map((leg, idx) => (
               <div key={idx} className="text-sm flex items-center gap-2">
-                <span className="font-medium">{leg.question}</span>
+                {/^0x[0-9a-fA-F]{64}$/.test(String(leg.question)) ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="font-medium underline decoration-dotted underline-offset-4 hover:opacity-80"
+                        aria-label="View missing condition details"
+                      >
+                        Parlay Condition Not Found
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent>
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">Condition ID</div>
+                        <div className="text-xs break-all font-mono text-muted-foreground">
+                          {String(leg.question)}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <span className="font-medium">{leg.question}</span>
+                )}
                 <Badge
                   variant="outline"
                   className={
@@ -371,7 +463,8 @@ export default function UserParlaysTable({
                 <EndsInButton endsAtMs={row.original.endsAt} />
               )}
               {row.original.status === 'won' &&
-                row.original.tokenIdToClaim !== undefined && (
+                row.original.tokenIdToClaim !== undefined &&
+                claimableTokenIds.has(String(row.original.tokenIdToClaim)) && (
                   <Button
                     size="sm"
                     onClick={() =>
@@ -380,6 +473,15 @@ export default function UserParlaysTable({
                     disabled={isClaimPending}
                   >
                     {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
+                  </Button>
+                )}
+              {row.original.status === 'won' &&
+                (row.original.tokenIdToClaim === undefined ||
+                  !claimableTokenIds.has(
+                    String(row.original.tokenIdToClaim)
+                  )) && (
+                  <Button size="sm" variant="outline" disabled>
+                    Claimed
                   </Button>
                 )}
               {row.original.status === 'lost' && (
