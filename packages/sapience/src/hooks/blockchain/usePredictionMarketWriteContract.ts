@@ -16,10 +16,14 @@ const predictionMarketAbi = [
 export function usePredictionMarketWriteContract(opts?: {
   successMessage?: string;
   fallbackErrorMessage?: string;
+  onSuccess?: (receipt: any) => void;
+  onError?: (error: Error) => void;
 }) {
   const { writeContract, isPending } = useSapienceWriteContract({
     successMessage: opts?.successMessage,
     fallbackErrorMessage: opts?.fallbackErrorMessage,
+    onSuccess: opts?.onSuccess,
+    onError: opts?.onError,
   });
 
   // Hardcoded Arbitrum One + PredictionMarket address

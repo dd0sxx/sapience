@@ -103,12 +103,6 @@ export function ThemedSpline() {
   /* Remove vertical padding from content wrapper on this page */
   .vocs_Content { padding-top: 0 !important; padding-bottom: 0 !important; }
 
-  /* Homepage only: move desktop search button to the far right */
-  .vocs_DocsLayout[data-layout='landing'] .vocs_DesktopTopNav .vocs_DesktopSearch_search {
-    order: 99;
-    margin-left: auto;
-  }
-
   /* Ensure content area doesn't exceed viewport height by header size */
   .vocs_Content { min-height: calc(100dvh - var(--vocs-header-height, 64px)) !important; }
 
