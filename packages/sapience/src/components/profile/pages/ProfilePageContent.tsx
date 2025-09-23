@@ -19,6 +19,7 @@ import ForecastsTable from '~/components/profile/ForecastsTable';
 import UserParlaysTable from '~/components/parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
+import { useUserParlays } from '~/hooks/graphql/useUserParlays';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 import LottieLoader from '~/components/shared/LottieLoader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
@@ -66,12 +67,21 @@ const ProfilePageContent = () => {
     schemaId: SCHEMA_UID,
   });
 
+  // Parlays for this profile address
+  const { data: parlays, isLoading: parlaysLoading } = useUserParlays({
+    address: String(address),
+  });
+
   const allLoaded =
-    !positionsLoading && !forecastsLoading && !positionsFetching;
+    !positionsLoading &&
+    !forecastsLoading &&
+    !positionsFetching &&
+    !parlaysLoading;
 
   const hasTrades = traderPositions.length > 0;
   const hasLp = lpPositions.length > 0;
   const hasForecasts = (attestations?.length || 0) > 0;
+  const hasParlays = (parlays?.length || 0) > 0;
 
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -138,7 +148,7 @@ const ProfilePageContent = () => {
 
     const tabHasContent = (tab: TabValue): boolean => {
       if (tab === 'trades') return hasTrades;
-      if (tab === 'parlays') return false; // Parlays is coming soon
+      if (tab === 'parlays') return hasParlays;
       if (tab === 'lp') return hasLp;
       if (tab === 'forecasts') return hasForecasts;
       return false;
@@ -152,11 +162,13 @@ const ProfilePageContent = () => {
 
     const firstWithContent: TabValue | null = hasTrades
       ? 'trades'
-      : hasLp
-        ? 'lp'
-        : hasForecasts
-          ? 'forecasts'
-          : null;
+      : hasParlays
+        ? 'parlays'
+        : hasLp
+          ? 'lp'
+          : hasForecasts
+            ? 'forecasts'
+            : null;
 
     if (firstWithContent && tabValue !== firstWithContent) {
       handleTabChange(firstWithContent);
@@ -178,7 +190,7 @@ const ProfilePageContent = () => {
       </div>
 
       {hasLoadedOnce ? (
-        !(hasTrades || hasLp || hasForecasts) ? (
+        !(hasTrades || hasParlays || hasLp || hasForecasts) ? (
           <EmptyProfileState />
         ) : (
           <Tabs

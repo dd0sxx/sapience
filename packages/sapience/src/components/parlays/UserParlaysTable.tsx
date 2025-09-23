@@ -21,7 +21,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
 import * as React from 'react';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import {
@@ -77,6 +77,7 @@ export default function UserParlaysTable({
     totalPayoutWei: bigint; // total payout if won
     makerCollateralWei?: bigint; // user's wager if they are maker
     takerCollateralWei?: bigint; // user's wager if they are taker
+    addressRole: 'maker' | 'taker' | 'unknown';
   };
 
   // Fetch real data
@@ -121,8 +122,31 @@ export default function UserParlaysTable({
           ? BigInt(p.makerNftTokenId)
           : BigInt(p.takerNftTokenId)
         : undefined;
+      // Choose positionId based on the profile address' role
+      const positionId = userIsMaker
+        ? Number(p.makerNftTokenId)
+        : userIsTaker
+          ? Number(p.takerNftTokenId)
+          : p.makerNftTokenId
+            ? Number(p.makerNftTokenId)
+            : p.id;
+      // Choose wager based on the profile address' role
+      const viewerMakerCollateralWei = (() => {
+        try {
+          return p.makerCollateral ? BigInt(p.makerCollateral) : undefined;
+        } catch {
+          return undefined;
+        }
+      })();
+      const viewerTakerCollateralWei = (() => {
+        try {
+          return p.takerCollateral ? BigInt(p.takerCollateral) : undefined;
+        } catch {
+          return undefined;
+        }
+      })();
       return {
-        positionId: p.makerNftTokenId ? Number(p.makerNftTokenId) : p.id,
+        positionId,
         legs,
         direction: 'Long',
         endsAt: endsAtSec ? endsAtSec * 1000 : Date.now(),
@@ -136,20 +160,9 @@ export default function UserParlaysTable({
             return 0n;
           }
         })(),
-        makerCollateralWei: (() => {
-          try {
-            return p.makerCollateral ? BigInt(p.makerCollateral) : undefined;
-          } catch {
-            return undefined;
-          }
-        })(),
-        takerCollateralWei: (() => {
-          try {
-            return p.takerCollateral ? BigInt(p.takerCollateral) : undefined;
-          } catch {
-            return undefined;
-          }
-        })(),
+        makerCollateralWei: viewerMakerCollateralWei,
+        takerCollateralWei: viewerTakerCollateralWei,
+        addressRole: userIsMaker ? 'maker' : userIsTaker ? 'taker' : 'unknown',
       };
     });
   }, [data, viewer]);
@@ -227,15 +240,12 @@ export default function UserParlaysTable({
         id: 'wager',
         accessorFn: (row) => {
           // Show the viewer's contributed collateral as the wager
-          const viewerWagerWei = (() => {
-            // Prefer makerCollateral for makers; takerCollateral for takers — both may be present
-            if (row.makerCollateralWei && row.takerCollateralWei) {
-              // If both present, wager is the one associated with the viewer; but accessorFn lacks viewer context
-              // Fall back to makerCollateral (most users will be makers submitting wagers)
-              return row.makerCollateralWei;
-            }
-            return row.makerCollateralWei ?? row.takerCollateralWei ?? 0n;
-          })();
+          const viewerWagerWei =
+            row.addressRole === 'maker'
+              ? (row.makerCollateralWei ?? 0n)
+              : row.addressRole === 'taker'
+                ? (row.takerCollateralWei ?? 0n)
+                : (row.makerCollateralWei ?? row.takerCollateralWei ?? 0n);
           return Number(formatEther(viewerWagerWei));
         },
         size: 260,
@@ -271,19 +281,14 @@ export default function UserParlaysTable({
           const totalPayout = Number(
             formatEther(row.original.totalPayoutWei || 0n)
           );
-          const viewerWagerWei = (() => {
-            if (
-              row.original.makerCollateralWei &&
-              row.original.takerCollateralWei
-            ) {
-              return row.original.makerCollateralWei;
-            }
-            return (
-              row.original.makerCollateralWei ??
-              row.original.takerCollateralWei ??
-              0n
-            );
-          })();
+          const viewerWagerWei =
+            row.original.addressRole === 'maker'
+              ? (row.original.makerCollateralWei ?? 0n)
+              : row.original.addressRole === 'taker'
+                ? (row.original.takerCollateralWei ?? 0n)
+                : (row.original.makerCollateralWei ??
+                  row.original.takerCollateralWei ??
+                  0n);
           const viewerWager = Number(formatEther(viewerWagerWei));
           return (
             <div>
@@ -308,18 +313,30 @@ export default function UserParlaysTable({
         header: () => null,
         cell: ({ row }) => (
           <div className="space-y-1">
-            {row.original.direction === 'Long' ? null : (
+            {row.original.addressRole === 'taker' && (
               <div className="mb-1">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge variant="default">Anti-Parlay</Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>One or more of these conditions will not be met.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline">Anti-Parlay</Badge>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Anti-Parlay details"
+                          className="inline-flex items-center justify-center h-5 w-5 text-muted-foreground hover:text-foreground"
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          This position is that one or more of these conditions
+                          will not be met.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             )}
             {row.original.legs.map((leg, idx) => (
