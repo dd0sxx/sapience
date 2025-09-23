@@ -480,8 +480,17 @@ const MarketsPage = () => {
       (c) => c.public
     );
     if (publicConditions.length === 0) return [] as ConditionType[];
+    const nowSec = Math.floor(Date.now() / 1000);
     const lower = debouncedSearchTerm.toLowerCase();
     return publicConditions.filter((c) => {
+      // exclude conditions that have an endTime in the past
+      if (
+        typeof c.endTime === 'number' &&
+        c.endTime > 0 &&
+        c.endTime <= nowSec
+      ) {
+        return false;
+      }
       // filter by category
       if (selectedCategorySlug && c.category?.slug !== selectedCategorySlug) {
         return false;
