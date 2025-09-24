@@ -213,12 +213,12 @@ const ForecastPageImp = () => {
   return (
     <div
       className={`min-h-screen bg-background ${
-        authenticated ? 'pt-20' : 'pt-20 md:pt-0'
+        authenticated ? 'pt-16 mt-2' : 'pt-16 mt-2 md:pt-0'
       }`}
     >
       {/* Main content container with Twitter-like layout */}
       <div
-        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card ${!authenticated ? 'mt-2 md:mt-0' : 'mt-2'}`}
+        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card md:mt-2`}
       >
         <>
           {/* Tabs */}
