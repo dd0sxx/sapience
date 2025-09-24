@@ -631,7 +631,10 @@ const MarketsPage = () => {
       {/* Render only one betslip instance based on viewport */}
       {isMobile ? (
         <div className="block lg:hidden">
-          <Betslip isParlayMode={parlayMode} />
+          <Betslip
+            isParlayMode={parlayMode}
+            onParlayModeChange={handleParlayModeChange}
+          />
         </div>
       ) : null}
 
@@ -825,7 +828,11 @@ const MarketsPage = () => {
         <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24">
           <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
-              <Betslip variant="panel" isParlayMode={parlayMode} />
+              <Betslip
+                variant="panel"
+                isParlayMode={parlayMode}
+                onParlayModeChange={handleParlayModeChange}
+              />
             </div>
           </div>
         </div>
