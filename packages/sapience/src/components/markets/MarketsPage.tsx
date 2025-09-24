@@ -483,8 +483,9 @@ const MarketsPage = () => {
     const nowSec = Math.floor(Date.now() / 1000);
     const lower = debouncedSearchTerm.toLowerCase();
     return publicConditions.filter((c) => {
-      // exclude conditions that have an endTime in the past
+      // Respect Active/All: only exclude ended when Active
       if (
+        statusFilter === 'active' &&
         typeof c.endTime === 'number' &&
         c.endTime > 0 &&
         c.endTime <= nowSec
@@ -507,7 +508,7 @@ const MarketsPage = () => {
       if (Array.isArray(c.similarMarkets)) haystacks.push(...c.similarMarkets);
       return haystacks.some((h) => h.toLowerCase().includes(lower));
     });
-  }, [allConditions, selectedCategorySlug, debouncedSearchTerm]);
+  }, [allConditions, selectedCategorySlug, debouncedSearchTerm, statusFilter]);
 
   const rfqConditionsByDay = React.useMemo(() => {
     if (!filteredRfqConditions || filteredRfqConditions.length === 0)
@@ -531,23 +532,30 @@ const MarketsPage = () => {
         (c) => typeof c.endTime === 'number' && c.endTime > 0
       ) as Array<ConditionType & { endTime: number }>;
       if (withEnds.length > 0) {
-        const earliest = [...withEnds].sort((a, b) => a.endTime - b.endTime)[0]
-          .endTime;
-        result[dayKey] = earliest;
+        if (statusFilter === 'all') {
+          const latest = [...withEnds].sort((a, b) => b.endTime - a.endTime)[0]
+            .endTime;
+          result[dayKey] = latest;
+        } else {
+          const earliest = [...withEnds].sort(
+            (a, b) => a.endTime - b.endTime
+          )[0].endTime;
+          result[dayKey] = earliest;
+        }
       } else {
         result[dayKey] = Math.floor(Date.now() / 1000);
       }
     });
     return result;
-  }, [rfqConditionsByDay]);
+  }, [rfqConditionsByDay, statusFilter]);
 
   const sortedRfqDays = React.useMemo(() => {
     return Object.keys(rfqConditionsByDay).sort((a, b) => {
       const timeA = rfqDayEndTimes[a] ?? 0;
       const timeB = rfqDayEndTimes[b] ?? 0;
-      return timeA - timeB;
+      return statusFilter === 'all' ? timeB - timeA : timeA - timeB;
     });
-  }, [rfqConditionsByDay, rfqDayEndTimes]);
+  }, [rfqConditionsByDay, rfqDayEndTimes, statusFilter]);
 
   // Create a key that changes whenever filters change to force complete re-render
   const filterKey = React.useMemo(() => {
@@ -623,14 +631,17 @@ const MarketsPage = () => {
       {/* Render only one betslip instance based on viewport */}
       {isMobile ? (
         <div className="block lg:hidden">
-          <Betslip isParlayMode={parlayMode} />
+          <Betslip
+            isParlayMode={parlayMode}
+            onParlayModeChange={handleParlayModeChange}
+          />
         </div>
       ) : null}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-6 pr-0 lg:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
-        <div className="bg-background/90 pt-2">
+        <div className="bg-background/90 pt-4 md:pt-2">
           <SearchBar
             isMobile={isMobile}
             value={searchTerm}
@@ -781,7 +792,11 @@ const MarketsPage = () => {
                         </h3>
                         <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
                           {[...(rfqConditionsByDay[dayKey] || [])]
-                            .sort((a, b) => (a.endTime ?? 0) - (b.endTime ?? 0))
+                            .sort((a, b) => {
+                              const aT = a.endTime ?? 0;
+                              const bT = b.endTime ?? 0;
+                              return statusFilter === 'all' ? bT - aT : aT - bT;
+                            })
                             .map((c) => {
                               const categorySlug = c.category?.slug || '';
                               const styleInfo = categorySlug
@@ -813,7 +828,11 @@ const MarketsPage = () => {
         <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24">
           <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
-              <Betslip variant="panel" isParlayMode={parlayMode} />
+              <Betslip
+                variant="panel"
+                isParlayMode={parlayMode}
+                onParlayModeChange={handleParlayModeChange}
+              />
             </div>
           </div>
         </div>

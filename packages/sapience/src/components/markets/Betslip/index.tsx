@@ -56,11 +56,13 @@ import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
   isParlayMode?: boolean; // controlled by page-level switch
+  onParlayModeChange?: (enabled: boolean) => void;
 }
 
 const Betslip = ({
   variant = 'triggered',
   isParlayMode: externalParlayMode = false,
+  onParlayModeChange,
 }: BetslipProps) => {
   const {
     betSlipPositions,
@@ -726,6 +728,7 @@ const Betslip = ({
 
   const contentProps = {
     isParlayMode,
+    onParlayModeChange,
     individualMethods: formMethods as unknown as UseFormReturn<{
       positions: Record<
         string,
