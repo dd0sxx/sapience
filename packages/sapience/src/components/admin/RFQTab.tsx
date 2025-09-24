@@ -248,6 +248,9 @@ const RFQTab = ({
           try {
             const body = {
               question: row.question.trim(),
+              ...(row.shortName && row.shortName.trim()
+                ? { shortName: row.shortName.trim() }
+                : {}),
               ...(row.categorySlug
                 ? { categorySlug: row.categorySlug.trim() }
                 : {}),
