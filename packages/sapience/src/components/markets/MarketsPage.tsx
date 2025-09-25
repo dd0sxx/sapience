@@ -59,7 +59,6 @@ export interface MarketWithContext extends GraphQLMarketType {
   collateralAsset: string;
   categorySlug: string;
   categoryId: string;
-  // currentPrice?: string | null; // Removed
 }
 
 // Interface for the final grouped market data structure
@@ -79,8 +78,6 @@ interface GroupedMarketGroup {
   marketClassification?: MarketGroupClassification;
   displayUnit?: string;
 }
-
-// FocusAreaFilter extracted to its own file
 
 // Helper function to determine the day for a given timestamp
 const getDayKey = (timestamp: number): string => {
@@ -627,7 +624,7 @@ const MarketsPage = () => {
 
   // Render content once both are loaded
   return (
-    <div className="relative flex flex-col lg:flex-row items-start">
+    <div className="relative w-full max-w-full overflow-x-hidden flex flex-col lg:flex-row items-start">
       {/* Render only one betslip instance based on viewport */}
       {isMobile ? (
         <div className="block lg:hidden">
@@ -639,38 +636,37 @@ const MarketsPage = () => {
       ) : null}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-6 pr-0 lg:pr-6">
-        {/* Add Text Filter Input with inline filter button for mobile */}
-        <div className="bg-background/90 pt-4 md:pt-2">
+      <div className="flex-1 min-w-0 max-w-full overflow-x-hidden flex flex-col gap-6 pr-0 lg:pr-6">
+        {/* Top controls section with simplified spacing */}
+        <div className="bg-background/90 w-full max-w-full box-border py-3 md:py-2 px-0 md:px-0 min-w-0">
           <SearchBar
             isMobile={isMobile}
             value={searchTerm}
             onChange={handleSearchChange}
           />
-          <div className="pt-4 md:pt-5">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-            >
-              <FocusAreaFilter
-                selectedCategorySlug={selectedCategorySlug}
-                handleCategoryClick={handleCategoryClick}
-                statusFilter={statusFilter}
-                handleStatusFilterClick={handleStatusFilterClick}
-                parlayMode={parlayMode}
-                onParlayModeChange={handleParlayModeChange}
-                isLoadingCategories={isLoadingCategories}
-                categories={categories}
-                getCategoryStyle={getCategoryStyle}
-                containerClassName="px-0 md:px-0 py-0 w-full"
-              />
-            </motion.div>
-          </div>
+          <motion.div
+            className="mt-3"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <FocusAreaFilter
+              selectedCategorySlug={selectedCategorySlug}
+              handleCategoryClick={handleCategoryClick}
+              statusFilter={statusFilter}
+              handleStatusFilterClick={handleStatusFilterClick}
+              parlayMode={parlayMode}
+              onParlayModeChange={handleParlayModeChange}
+              isLoadingCategories={isLoadingCategories}
+              categories={categories}
+              getCategoryStyle={getCategoryStyle}
+              containerClassName="px-0 md:px-0 py-0 w-full max-w-full box-border"
+            />
+          </motion.div>
         </div>
 
         {/* Results area */}
-        <div className="relative min-h-[300px]">
+        <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
           {!parlayMode ? (
             <AnimatePresence mode="wait" key={filterKey}>
               {groupedMarketGroups.length === 0 && (

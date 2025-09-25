@@ -30,7 +30,11 @@ import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { getAttestationViewURL } from '~/lib/constants/eas';
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 import { useSapience } from '~/lib/context/SapienceProvider';
-import { getChainShortName, sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
+import {
+  getChainShortName,
+  sqrtPriceX96ToPriceD18,
+  formatNumber,
+} from '~/lib/utils/util';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import { MarketGroupClassification } from '~/lib/types';
 
@@ -306,6 +310,127 @@ const renderActionsCell = ({
   );
 };
 
+const renderResolutionCell = ({
+  row,
+  marketGroups,
+  isMarketsLoading,
+  parentMarketAddress,
+}: {
+  row: { original: FormattedAttestation };
+  marketGroups: ReturnType<typeof useSapience>['marketGroups'];
+  isMarketsLoading: boolean;
+  parentMarketAddress?: string;
+}) => {
+  const marketAddress = getMarketAddressForAttestation(
+    row.original,
+    parentMarketAddress
+  );
+
+  if (isMarketsLoading || !marketAddress) {
+    return (
+      <Badge variant="secondary" className="whitespace-nowrap">
+        Pending
+      </Badge>
+    );
+  }
+
+  const marketGroup = marketGroups.find(
+    (group) => group.address?.toLowerCase() === marketAddress
+  );
+
+  if (!marketGroup) {
+    return (
+      <Badge variant="secondary" className="whitespace-nowrap">
+        Pending
+      </Badge>
+    );
+  }
+
+  const classification = getMarketGroupClassification(marketGroup);
+
+  const marketIdHex = extractMarketIdHex(row.original);
+  const marketId = marketIdHex ? parseInt(marketIdHex, 16) : undefined;
+  const market = marketGroup.markets?.find(
+    (m: { marketId: number }) => m.marketId === marketId
+  );
+
+  const isSettled = Boolean(market?.settled);
+
+  if (!isSettled) {
+    return (
+      <Badge variant="secondary" className="whitespace-nowrap">
+        Pending
+      </Badge>
+    );
+  }
+
+  // Settled: compute the outcome label per classification
+  // For markets other than YES_NO/NUMERIC, fall back to Pending semantics
+  if (classification === MarketGroupClassification.MULTIPLE_CHOICE) {
+    return (
+      <Badge variant="secondary" className="whitespace-nowrap">
+        Pending
+      </Badge>
+    );
+  }
+
+  if (classification === MarketGroupClassification.YES_NO) {
+    const sp = market?.settlementPriceD18;
+    if (sp) {
+      const price = Number(sp) / 10 ** 18;
+      const isYes = price === 1;
+      const label = isYes ? 'Yes' : price === 0 ? 'No' : 'Pending';
+      if (label === 'Pending') {
+        return (
+          <Badge variant="secondary" className="whitespace-nowrap">
+            Pending
+          </Badge>
+        );
+      }
+      const className = isYes
+        ? 'border-green-500/40 bg-green-500/10 text-green-600'
+        : 'border-red-500/40 bg-red-500/10 text-red-600';
+      return (
+        <Badge variant="outline" className={`${className} whitespace-nowrap`}>
+          {label}
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="whitespace-nowrap">
+        Pending
+      </Badge>
+    );
+  }
+
+  if (classification === MarketGroupClassification.NUMERIC) {
+    const sp = market?.settlementPriceD18;
+    if (sp) {
+      const value = Number(sp) / 10 ** 18;
+      const text = `${formatNumber(value, 4)} units`;
+      return (
+        <Badge
+          variant="outline"
+          className="border-blue-500/40 bg-blue-500/10 text-blue-600 whitespace-nowrap"
+        >
+          {text}
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="whitespace-nowrap">
+        Pending
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="secondary" className="whitespace-nowrap">
+      Pending
+    </Badge>
+  );
+};
+
 const ForecastsTable = ({
   attestations,
   parentMarketAddress,
@@ -442,6 +567,73 @@ const ForecastsTable = ({
         ),
         cell: (info) =>
           renderPredictionCell({
+            row: info.row,
+            marketGroups,
+            isMarketsLoading,
+            parentMarketAddress,
+          }),
+      },
+      {
+        id: 'resolution',
+        accessorFn: (row) => {
+          const marketAddress = getMarketAddressForAttestation(
+            row,
+            parentMarketAddress
+          );
+          if (!marketAddress) return 'Pending';
+          const group = marketGroups.find(
+            (g) => g.address?.toLowerCase() === marketAddress
+          );
+          if (!group) return 'Pending';
+          const classification = getMarketGroupClassification(group);
+          const marketIdHex = extractMarketIdHex(row);
+          const marketId = marketIdHex ? parseInt(marketIdHex, 16) : undefined;
+          const market = group.markets?.find(
+            (m: { marketId: number }) => m.marketId === marketId
+          );
+          const isSettled = Boolean(market?.settled);
+          if (!isSettled) return 'Pending';
+          if (classification === MarketGroupClassification.YES_NO) {
+            const sp = market?.settlementPriceD18;
+            if (!sp) return 'Pending';
+            const price = Number(sp) / 10 ** 18;
+            return price === 1 ? 'Yes' : price === 0 ? 'No' : 'Pending';
+          }
+          if (classification === MarketGroupClassification.NUMERIC) {
+            const sp = market?.settlementPriceD18;
+            if (!sp) return 'Pending';
+            const value = Number(sp) / 10 ** 18;
+            return value; // Allow numeric sorting
+          }
+          return 'Pending';
+        },
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Resolution
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: (info) =>
+          renderResolutionCell({
             row: info.row,
             marketGroups,
             isMarketsLoading,

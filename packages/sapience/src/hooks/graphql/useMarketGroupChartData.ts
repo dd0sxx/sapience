@@ -9,7 +9,6 @@ import {
   type MultiMarketChartDataPoint, // Use new data point type
 } from '../../lib/utils/chartUtils';
 import { getChainIdFromShortName } from '../../lib/utils/util'; // Import getChainIdFromShortName
-import { useSapience } from '~/lib/context/SapienceProvider'; // Import useSapience
 
 // Adjust marketId type if needed (String! vs Int!) based on schema
 const GET_MARKET_CANDLES = /* GraphQL */ `
@@ -117,9 +116,6 @@ export const useMarketGroupChartData = ({
   const [isLoadingCandles, setIsLoadingCandles] = useState<boolean>(false);
   const [isErrorCandles, setIsErrorCandles] = useState<boolean>(false);
   const [errorCandles, setErrorCandles] = useState<Error | null>(null);
-
-  // Get stEthPerToken from context
-  const { stEthPerToken } = useSapience();
 
   const chainId = getChainIdFromShortName(chainShortName); // Calculate chainId outside useEffect
 
@@ -237,14 +233,8 @@ export const useMarketGroupChartData = ({
               candles: r.candles, // Safe due to filter
             }));
 
-        // Calculate index multiplier (unchanged)
-        let indexMultiplier: number;
-        if (quoteTokenName?.toLowerCase() === 'wsteth') {
-          indexMultiplier =
-            stEthPerToken && stEthPerToken > 0 ? 1e18 / stEthPerToken : 1e18;
-        } else {
-          indexMultiplier = 1e9;
-        }
+        // Calculate index multiplier: use fixed gwei->wei scaling
+        const indexMultiplier: number = 1e9;
 
         // Process data using the refactored function
         // Pass the RAW index candles and the calculated multiplier
@@ -276,7 +266,6 @@ export const useMarketGroupChartData = ({
     propFromTimestamp,
     propToTimestamp,
     quoteTokenName,
-    stEthPerToken,
   ]);
 
   const isLoading = isLoadingCandles;
