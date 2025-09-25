@@ -158,6 +158,7 @@ contract PredictionMarketUmaResolver is
         makerWon = true;
         isValid = true;
         error = Error.NO_ERROR;
+        bool hasUnsettledMarkets = false;
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             bytes32 marketId = predictedOutcomes[i].marketId;
@@ -175,17 +176,24 @@ contract PredictionMarketUmaResolver is
             }
 
             if (!market.settled) {
-                isValid = false;
-                error = Error.MARKET_NOT_SETTLED;
-                break;
+                // Do not immediately invalidate; record and continue.
+                hasUnsettledMarkets = true;
+                continue;
             }
 
             bool marketOutcome = market.resolvedToYes;
 
             if (predictedOutcomes[i].prediction != marketOutcome) {
                 makerWon = false;
-                break;
+                // Decisive loss on a settled market: return valid with no error
+                return (true, Error.NO_ERROR, makerWon);
             }
+        }
+
+        if (isValid && hasUnsettledMarkets && makerWon) {
+            // No decisive loss found, but at least one market is unsettled
+            isValid = false;
+            error = Error.MARKET_NOT_SETTLED;
         }
 
         return (isValid, error, makerWon);
