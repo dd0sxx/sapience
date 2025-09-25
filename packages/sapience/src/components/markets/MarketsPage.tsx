@@ -639,7 +639,7 @@ const MarketsPage = () => {
       ) : null}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-6 pr-0 lg:pr-12">
+      <div className="flex-1 flex flex-col gap-6 pr-0 lg:pr-6">
         {/* Add Text Filter Input with inline filter button for mobile */}
         <div className="bg-background/90 pt-4 md:pt-2">
           <SearchBar
