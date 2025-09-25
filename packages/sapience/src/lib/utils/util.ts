@@ -58,7 +58,7 @@ export const foilApi = {
   },
 };
 
-// Mainnet client for ENS resolution and stEthPerToken query
+// Mainnet client for ENS resolution
 export const mainnetClient = createPublicClient({
   chain: mainnet,
   transport: process.env.NEXT_PUBLIC_INFURA_API_KEY

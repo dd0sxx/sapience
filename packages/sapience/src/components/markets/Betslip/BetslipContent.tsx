@@ -109,9 +109,9 @@ export const BetslipContent = ({
               : betSlipPositions.length === 0
           ) ? (
             <div className="w-full h-full flex items-center justify-center text-center">
-              <div className="flex flex-col items-center gap-2.5">
+              <div className="flex flex-col items-center gap-3">
                 <Image src="/usde.svg" alt="USDe" width={42} height={42} />
-                <p className="text-base text-muted-foreground max-w-[180px] mx-auto">
+                <p className="text-base text-muted-foreground max-w-[180px] mx-auto mb-2">
                   {'Add predictions to see your potential winnings'}
                 </p>
                 <Button
