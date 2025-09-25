@@ -3065,6 +3065,7 @@ export type ParlayType = {
   endsAt?: Maybe<Scalars['Int']['output']>;
   id: Scalars['Int']['output'];
   maker: Scalars['String']['output'];
+  makerCollateral?: Maybe<Scalars['String']['output']>;
   makerNftTokenId: Scalars['String']['output'];
   makerWon?: Maybe<Scalars['Boolean']['output']>;
   marketAddress: Scalars['String']['output'];
@@ -3074,6 +3075,7 @@ export type ParlayType = {
   settledAt?: Maybe<Scalars['Int']['output']>;
   status: Scalars['String']['output'];
   taker: Scalars['String']['output'];
+  takerCollateral?: Maybe<Scalars['String']['output']>;
   takerNftTokenId: Scalars['String']['output'];
   totalCollateral: Scalars['String']['output'];
 };
