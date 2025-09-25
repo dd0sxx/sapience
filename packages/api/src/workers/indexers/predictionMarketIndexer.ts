@@ -15,6 +15,7 @@ import type {
   Resource,
   transaction_type_enum,
 } from '../../../generated/prisma';
+import { alertParlayEvent } from '../discordBot';
 
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
@@ -297,7 +298,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
   private async processLog(log: Log, block: Block): Promise<void> {
     try {
-      console.log(`[PredictionMarketIndexer] Processing log: ${log.address}`);
+      console.log(`[PredictionMarketIndexer] Processing log: ${log.address}, topics: ${log.topics.join(', ')}`);
       // Check if this is a PredictionMarket event
       if (
         log.address.toLowerCase() !==
@@ -339,6 +340,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
   private async processPredictionMinted(log: Log, block: Block): Promise<void> {
     try {
+      console.log(`[PredictionMarketIndexer] processPredictionMinted called for tx: ${log.transactionHash}`);
       const decodedAny = decodeEventLog({
         abi: PREDICTION_MARKET_ABI,
         data: log.data,
@@ -396,6 +398,47 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
           console.log(
             `[PredictionMarketIndexer] Parlay already exists for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
           );
+          
+          // Still send Discord alert for existing parlay (useful for testing/reindexing)
+          try {
+            console.log(`[PredictionMarketIndexer] Sending Discord alert for existing parlay: ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`);
+            // Decode predicted outcomes for Discord display
+            const [outcomes] = decodeAbiParameters(
+              [
+                {
+                  type: 'tuple[]',
+                  components: [{ type: 'bytes32' }, { type: 'bool' }],
+                },
+              ],
+              decodedAny.args.encodedPredictedOutcomes
+            ) as unknown as [[`0x${string}`, boolean][]];
+            const predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
+              conditionId: marketId,
+              prediction,
+            }));
+
+            // Use existing parlay's endsAt
+            await alertParlayEvent(this.chainId, 'PredictionMinted', {
+              maker: eventData.maker,
+              taker: eventData.taker,
+              makerNftTokenId: eventData.makerNftTokenId,
+              takerNftTokenId: eventData.takerNftTokenId,
+              totalCollateral: eventData.totalCollateral,
+              makerCollateral: eventData.makerCollateral,
+              takerCollateral: eventData.takerCollateral,
+              transactionHash: eventData.transactionHash || '',
+              blockNumber: eventData.blockNumber,
+              timestamp: eventData.timestamp,
+              endsAt: existingParlay.endsAt,
+              predictedOutcomes,
+            });
+          } catch (discordError) {
+            console.warn(
+              '[PredictionMarketIndexer] Failed to send Discord alert for existing PredictionMinted:',
+              discordError
+            );
+          }
+          
           return;
         } else {
           console.log(
@@ -487,6 +530,31 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
           predictedOutcomes: predictedOutcomes as unknown as object,
         },
       });
+
+      // Send Discord alert for new parlay
+      try {
+        console.log(`[PredictionMarketIndexer] About to call Discord alert for PredictionMinted: ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`);
+        await alertParlayEvent(this.chainId, 'PredictionMinted', {
+          maker: eventData.maker,
+          taker: eventData.taker,
+          makerNftTokenId: eventData.makerNftTokenId,
+          takerNftTokenId: eventData.takerNftTokenId,
+          totalCollateral: eventData.totalCollateral,
+          makerCollateral: eventData.makerCollateral,
+          takerCollateral: eventData.takerCollateral,
+          transactionHash: eventData.transactionHash || '',
+          blockNumber: eventData.blockNumber,
+          timestamp: eventData.timestamp,
+          endsAt: endsAt,
+          predictedOutcomes,
+        });
+      } catch (discordError) {
+        console.warn(
+          '[PredictionMarketIndexer] Failed to send Discord alert for PredictionMinted:',
+          discordError
+        );
+        // Don't fail the entire indexing process for Discord alerts
+      }
 
       console.log(
         `[PredictionMarketIndexer] Processed PredictionMinted: ${eventData.makerNftTokenId}, ${eventData.takerNftTokenId}`
@@ -586,6 +654,29 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         );
       }
 
+      // Send Discord alert for parlay settlement
+      try {
+        await alertParlayEvent(this.chainId, 'PredictionBurned', {
+          maker: eventData.maker,
+          taker: eventData.taker,
+          makerNftTokenId: eventData.makerNftTokenId,
+          takerNftTokenId: eventData.takerNftTokenId,
+          totalCollateral: eventData.totalCollateral,
+          makerWon: eventData.makerWon,
+          transactionHash: eventData.transactionHash || '',
+          blockNumber: eventData.blockNumber,
+          timestamp: eventData.timestamp,
+          endsAt: null, // Parlay has ended
+          predictedOutcomes: [], // Not available for burned events
+        });
+      } catch (discordError) {
+        console.warn(
+          '[PredictionMarketIndexer] Failed to send Discord alert for PredictionBurned:',
+          discordError
+        );
+        // Don't fail the entire indexing process for Discord alerts
+      }
+
       console.log(
         `[PredictionMarketIndexer] Processed PredictionBurned: ${eventData.makerNftTokenId}, ${eventData.takerNftTokenId}, winner: ${eventData.makerWon ? 'maker' : 'taker'}`
       );
@@ -676,6 +767,29 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
               settledAt: Number(block.timestamp),
             },
           });
+
+          // Send Discord alert for parlay consolidation
+          try {
+            await alertParlayEvent(this.chainId, 'PredictionConsolidated', {
+              maker: parlay.maker,
+              taker: parlay.taker,
+              makerNftTokenId: eventData.makerNftTokenId,
+              takerNftTokenId: eventData.takerNftTokenId,
+              totalCollateral: eventData.totalCollateral,
+              makerWon: true, // Consolidation means maker won
+              transactionHash: eventData.transactionHash || '',
+              blockNumber: eventData.blockNumber,
+              timestamp: eventData.timestamp,
+              endsAt: null, // Parlay has ended
+              predictedOutcomes: [], // Not available for consolidated events
+            });
+          } catch (discordError) {
+            console.warn(
+              '[PredictionMarketIndexer] Failed to send Discord alert for PredictionConsolidated:',
+              discordError
+            );
+            // Don't fail the entire indexing process for Discord alerts
+          }
         }
       } catch (e) {
         console.warn(
@@ -704,7 +818,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
     this.isWatching = true;
     console.log(
-      `[PredictionMarketIndexer] Starting to watch events for resource: ${resource.slug}`
+      `[PredictionMarketIndexer] Starting to watch events for resource: ${resource.slug} on chain ${this.chainId} at address ${PREDICTION_MARKET_CONTRACT_ADDRESS}`
     );
 
     try {
@@ -713,6 +827,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         address: PREDICTION_MARKET_CONTRACT_ADDRESS as `0x${string}`,
         abi: PREDICTION_MARKET_ABI,
         onLogs: async (logs) => {
+          console.log(`[PredictionMarketIndexer] Received ${logs.length} logs from watcher`);
           for (const log of logs) {
             try {
               // Get the block for timestamp information
