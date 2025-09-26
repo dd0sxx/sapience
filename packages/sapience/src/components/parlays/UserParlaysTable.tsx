@@ -48,11 +48,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
+import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
 import { useUserParlays } from '~/hooks/graphql/useUserParlays';
@@ -625,43 +621,16 @@ export default function UserParlaysTable({
                 </div>
               </div>
             )}
-            {row.original.legs.map((leg, idx) => (
-              <div key={idx} className="text-sm flex items-center gap-2">
-                {/^0x[0-9a-fA-F]{64}$/.test(String(leg.question)) ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="font-medium underline decoration-dotted underline-offset-4 hover:opacity-80"
-                        aria-label="View missing condition details"
-                      >
-                        Parlay Condition Not Found
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent>
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">Condition ID</div>
-                        <div className="text-xs break-all font-mono text-muted-foreground">
-                          {String(leg.question)}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <span className="font-medium">{leg.question}</span>
-                )}
-                <Badge
-                  variant="outline"
-                  className={
-                    leg.choice === 'Yes'
-                      ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0'
-                      : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'
-                  }
-                >
-                  {leg.choice}
-                </Badge>
-              </div>
-            ))}
+            <ParlayLegsList
+              legs={row.original.legs.map((l) => ({
+                shortName: l.question,
+                question: l.question,
+                conditionId: /^0x[0-9a-fA-F]{64}$/.test(String(l.question))
+                  ? l.question
+                  : undefined,
+                choice: l.choice,
+              }))}
+            />
           </div>
         ),
       },
