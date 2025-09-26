@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { createPublicClient, formatEther, http, type PublicClient } from 'viem';
+import { createPublicClient, formatEther, http } from 'viem';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
 import type { MarketType, TransactionType } from '@sapience/ui/types';
@@ -68,11 +68,12 @@ export const mainnetClient = createPublicClient({
     : http('https://ethereum-rpc.publicnode.com'),
 });
 
-const publicClientCache: Map<number, PublicClient> = new Map();
+// Use unknown to avoid structural type incompatibilities across different viem instances
+const publicClientCache: Map<number, unknown> = new Map();
 
-export function getPublicClientForChainId(chainId: number): PublicClient {
+export function getPublicClientForChainId(chainId: number) {
   const cached = publicClientCache.get(chainId);
-  if (cached) return cached;
+  if (cached) return cached as any;
 
   const chainObj = Object.values(chains).find(
     (c: any) => c?.id === chainId

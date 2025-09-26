@@ -2,6 +2,7 @@
 
 import type React from 'react';
 import { useMemo } from 'react';
+import { formatEther } from 'viem';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import FeedTable, { type FeedRow } from './FeedTable';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
@@ -116,9 +117,15 @@ function createForecastRow(attestation: FormattedAttestation) {
 export default function CombinedFeedTable({
   rows,
   forecasts: forecastsProp,
+  minAmount,
+  searchQuery,
+  address,
 }: {
   rows: FeedRow[];
   forecasts?: FormattedAttestation[];
+  minAmount?: number | null;
+  searchQuery?: string;
+  address?: string | null;
 }) {
   const { marketGroups } = useSapience();
   const { data: forecastsHook = [] } = useForecasts({});
@@ -213,5 +220,77 @@ export default function CombinedFeedTable({
     return [...rows, ...forecastRows];
   }, [rows, forecastRows]);
 
-  return <FeedTable rows={combinedRows} />;
+  const filteredRows = useMemo(() => {
+    const query = (searchQuery || '').trim().toLowerCase();
+
+    function extractOwnerLower(tx: UiTransaction): string {
+      const lowerType = String(tx.type || '').toLowerCase();
+      const eventLog: any = (tx as any)?.event?.logData || {};
+      const fallbackMaker: string =
+        typeof eventLog?.maker === 'string' ? eventLog.maker : '';
+      const owner =
+        (tx as any)?.position?.owner ||
+        (lowerType.includes('mintparlay') ? fallbackMaker : '') ||
+        '';
+      return owner.toString().toLowerCase();
+    }
+
+    function extractAmountNumber(tx: UiTransaction): number {
+      try {
+        const raw =
+          (tx as any)?.collateralTransfer?.collateral ??
+          (tx as any)?.position?.collateral ??
+          (tx as any)?.collateral;
+        const big = BigInt(raw || '0');
+        // Convert to token units (ether) and take absolute value for comparison
+        const asEther = Number(formatEther(big < 0n ? -big : big));
+        return asEther;
+      } catch {
+        return 0;
+      }
+    }
+
+    function extractSearchText(tx: UiTransaction): string {
+      const lowerType = String(tx.type || '').toLowerCase();
+      const normalizedType = lowerType.replace(/[^a-z]/g, '');
+      if (normalizedType.includes('mintparlay')) {
+        const eventLog: any = (tx as any)?.event?.logData || {};
+        const outcomes = Array.isArray(eventLog?.predictedOutcomes)
+          ? eventLog.predictedOutcomes
+          : [];
+        const first = outcomes[0] || {};
+        const text =
+          first.shortName || first.question || first.conditionId || '';
+        return String(text).toLowerCase();
+      }
+      const q = (tx as any)?.position?.market?.marketGroup?.question || '';
+      const opt = (tx as any)?.position?.market?.optionName || '';
+      const comment = (tx as any)?.comment || '';
+      return `${String(q)} ${String(opt)} ${String(comment)}`.toLowerCase();
+    }
+
+    return combinedRows.filter(({ tx }) => {
+      // Address filter
+      if (address) {
+        const owner = extractOwnerLower(tx);
+        if (owner !== address.toLowerCase()) return false;
+      }
+
+      // Min amount filter (token units)
+      if (minAmount != null && Number.isFinite(minAmount)) {
+        const value = extractAmountNumber(tx);
+        if (value < minAmount) return false;
+      }
+
+      // Search filter
+      if (query) {
+        const text = extractSearchText(tx);
+        if (!text.includes(query)) return false;
+      }
+
+      return true;
+    });
+  }, [combinedRows, minAmount, searchQuery, address]);
+
+  return <FeedTable rows={filteredRows} />;
 }

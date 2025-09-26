@@ -51,7 +51,10 @@ function sortAccessor(row: FeedRow, key: SortKey): string | number {
     }
     case 'amount': {
       try {
-        const raw = (tx as any)?.position?.collateral ?? tx.collateral;
+        const raw =
+          (tx as any)?.collateralTransfer?.collateral ??
+          (tx as any)?.position?.collateral ??
+          tx.collateral;
         // Convert from wei assuming string decimal, keep as number for sort
         const big = BigInt(raw || '0');
         // Avoid importing viem on the client just to sort; compare BigInt directly

@@ -359,7 +359,7 @@ const Header = () => {
                 }}
                 className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
               >
-                <span>Log In</span>
+                <span>Log in</span>
               </Button>
             )}
           </div>

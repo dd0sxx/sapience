@@ -201,7 +201,7 @@ export function getTransactionTypeDisplay(type: string) {
       return { label: 'Settle', variant: 'secondary' as const };
     case 'SETTLED_POSITION':
     case 'settledPosition':
-      return { label: 'Settled Position', variant: 'secondary' as const };
+      return { label: 'Settled', variant: 'secondary' as const };
     case 'mintParlayNFTs':
     case 'MINT_PARLAY_NFTS':
       return { label: 'Create Parlay', variant: 'default' as const };
@@ -326,7 +326,10 @@ export function TransactionAmountCell({
   sortedMarketsForColors?: any[];
   showForecastBadgesInAmount?: boolean;
 }) {
-  const collateralRaw = tx.position?.collateral ?? tx.collateral;
+  const collateralRaw =
+    tx.collateralTransfer?.collateral ??
+    tx.position?.collateral ??
+    tx.collateral;
   let amount = 0;
   try {
     amount = collateralRaw ? Number(formatEther(BigInt(collateralRaw))) : 0;
@@ -335,6 +338,41 @@ export function TransactionAmountCell({
   }
   const lowerType = String(tx.type || '').toLowerCase();
   const normalizedType = lowerType.replace(/[^a-z]/g, '');
+  // Determine direction of flow relative to the protocol
+  const flowDirection: 'in' | 'out' | null = (() => {
+    if (normalizedType.includes('forecast')) return null;
+    // Prefer explicit delta from collateralTransfer if present
+    const deltaStr = tx.collateralTransfer?.collateral;
+    if (typeof deltaStr === 'string') {
+      try {
+        const delta = BigInt(deltaStr);
+        if (delta > 0n) return 'in';
+        if (delta < 0n) return 'out';
+      } catch {
+        // fall through
+      }
+    }
+    // Fallback to type-based heuristic when delta is unavailable
+    if (
+      normalizedType.includes('removeliquidity') ||
+      normalizedType.includes('settleposition') ||
+      normalizedType.includes('settledposition') ||
+      normalizedType.includes('burnparlay')
+    ) {
+      return 'out';
+    }
+    if (
+      normalizedType.includes('addliquidity') ||
+      normalizedType.includes('long') ||
+      normalizedType.includes('short') ||
+      normalizedType.includes('mintparlay') ||
+      normalizedType === 'parlay' ||
+      normalizedType === 'antiparlay'
+    ) {
+      return 'in';
+    }
+    return null;
+  })();
   const shouldShowBadgesInAmount =
     showForecastBadgesInAmount && normalizedType.includes('forecast');
   let predictionBadge: React.ReactNode = null;
@@ -511,6 +549,11 @@ export function TransactionAmountCell({
             {collateralAssetTicker ? (
               <span>{collateralAssetTicker}</span>
             ) : null}
+            {flowDirection ? (
+              <span className="text-muted-foreground size-xs">
+                {flowDirection}
+              </span>
+            ) : null}
           </>
         )}
       </div>
@@ -640,7 +683,7 @@ export function TransactionPositionCell({
       seriesColor = getSeriesColorByIndex(idx);
     }
   }
-  const isLiquidity = tx?.positionType === 'LP' || Boolean(position?.isLP);
+  // Removed Trader/Liquidity badge; liquidity flag no longer needed here
 
   // For forecast rows, render option and chance badges first, inline with the comment
   if (normalizedType.includes('forecast')) {
@@ -745,11 +788,7 @@ export function TransactionPositionCell({
         {position?.positionId ? (
           <span className="whitespace-nowrap">#{position.positionId}</span>
         ) : null}
-        {!normalizedType.includes('forecast') ? (
-          <Badge variant="outline" className="font-normal whitespace-nowrap">
-            {isLiquidity ? 'Liquidity' : 'Trader'}
-          </Badge>
-        ) : null}
+        {/* Removed Trader/Liquidity badge */}
         {!normalizedType.includes('forecast') && optionName
           ? (() => {
               const lower = String(optionName).toLowerCase();

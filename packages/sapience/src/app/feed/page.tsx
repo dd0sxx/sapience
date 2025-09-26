@@ -1,8 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { graphqlRequest } from '@sapience/ui/lib';
 import type { Transaction as TransactionType } from '@sapience/ui/types';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Zap, Search } from 'lucide-react';
+import Image from 'next/image';
 import CombinedFeedTable from './CombinedFeedTable';
 import type { FeedRow } from './FeedTable';
 import {
@@ -13,6 +16,7 @@ import {
 } from '~/components/markets/DataDrawer/TransactionCells';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
+import AddressFilter from '~/components/shared/AddressFilter';
 
 type FeedTransaction = Pick<
   TransactionType,
@@ -109,6 +113,24 @@ export default function FeedPage() {
   const intervalRef = useRef<number | null>(null);
   const { data: forecastsData = [], isLoading: forecastsLoading } =
     useForecasts({});
+
+  // Min amount filter (token units)
+  const [minAmountInput, setMinAmountInput] = useState<string>('');
+  const minAmount = useMemo(() => {
+    const parsed = parseFloat(minAmountInput);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [minAmountInput]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [address, setAddress] = useState<string | null>(null);
+
+  // Try to infer a primary collateral symbol from loaded rows
+  const primaryCollateralSymbol = useMemo(() => {
+    for (const r of rows) {
+      const sym = (r as any)?.collateralAssetTicker;
+      if (typeof sym === 'string' && sym.trim()) return sym;
+    }
+    return 'testUSDe';
+  }, [rows]);
 
   const buildRows = useCallback(
     (
@@ -322,14 +344,14 @@ export default function FeedPage() {
 
   if (!initialLoaded) {
     return (
-      <div className="mt-24 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6">
-        <div className="mx-auto w-full max-w-7xl">
+      <div className="mt-20 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6">
+        <div className="mx-auto w-full">
           {errorMessage ? (
             <div className="px-4 py-3 text-sm text-destructive">
               {errorMessage}
             </div>
           ) : null}
-          <div className="flex items-center justify-center py-16">
+          <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
             <LottieLoader width={24} height={24} />
           </div>
         </div>
@@ -338,15 +360,83 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="mt-24 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6">
-      <div className="mx-auto w-full max-w-7xl">
+    <div className="my-20 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6">
+      <div className="mx-auto w-full">
+        <div className="mt-3 mb-6 lg:mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <h1 className="text-xl font-medium inline-flex items-center gap-2">
+            <Zap className="h-5 w-5" aria-hidden="true" />
+            <span>Live Activity Feed</span>
+          </h1>
+          <div className="grid grid-cols-1 gap-2 lg:gap-2 lg:grid-cols-3 lg:items-end w-full lg:max-w-[840px] lg:ml-auto">
+            <div className="px-0 lg:px-2 block lg:hidden text-xs text-muted-foreground">
+              Filters
+            </div>
+            <div className="px-0 lg:px-2">
+              <div className="relative">
+                <Image
+                  src="/usde.svg"
+                  alt="USDe"
+                  width={20}
+                  height={20}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-5 w-5 z-10 opacity-90 pointer-events-none"
+                />
+                <Input
+                  inputMode="decimal"
+                  type="text"
+                  placeholder="Minimum amount"
+                  value={minAmountInput}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/[^0-9.]/g, '');
+                    const parts = v.split('.');
+                    const cleaned =
+                      parts.length > 2
+                        ? `${parts[0]}.${parts.slice(1).join('')}`
+                        : v;
+                    setMinAmountInput(cleaned);
+                  }}
+                  className="h-8 text-sm pr-20 pl-8 w-full"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs pointer-events-none">
+                  {primaryCollateralSymbol}
+                </span>
+              </div>
+            </div>
+            <div className="px-0 lg:px-2">
+              <div className="relative">
+                <Search
+                  className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none"
+                  aria-hidden="true"
+                />
+                <Input
+                  placeholder="Search questions and positions"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 text-sm w-full pl-8"
+                />
+              </div>
+            </div>
+            <AddressFilter
+              selectedAddress={address}
+              onAddressChange={setAddress}
+              placeholder="Filter by address or ENS"
+              className="px-0 lg:pl-2 lg:pr-0"
+              inputClassName="h-8 text-sm w-full"
+            />
+          </div>
+        </div>
         <div className="rounded border bg-card">
           {errorMessage ? (
             <div className="px-4 py-3 text-sm text-destructive">
               {errorMessage}
             </div>
           ) : null}
-          <CombinedFeedTable rows={rows} forecasts={forecastsData} />
+          <CombinedFeedTable
+            rows={rows}
+            forecasts={forecastsData}
+            minAmount={minAmount ?? undefined}
+            searchQuery={searchQuery}
+            address={address}
+          />
           {initialLoaded && rows.length === 0 ? (
             <div className="px-4 py-8 text-center text-muted-foreground">
               No transactions found.
