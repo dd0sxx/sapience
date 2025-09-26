@@ -3315,6 +3315,7 @@ type Query {
   getMarketGroup(where: MarketGroupWhereUniqueInput!): MarketGroup
   getMarketLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
   getMarketPrice(where: MarketPriceWhereUniqueInput!): MarketPrice
+  getParlayLeaderboard(chainId: Int!, marketAddress: String!): [PnLType!]!
   getPosition(where: PositionWhereUniqueInput!): Position
   getResource(where: ResourceWhereUniqueInput!): Resource
   getResourcePrice(where: ResourcePriceWhereUniqueInput!): ResourcePrice

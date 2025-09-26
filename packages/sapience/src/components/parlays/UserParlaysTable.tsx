@@ -115,6 +115,7 @@ export default function UserParlaysTable({
     totalPayoutWei: bigint; // total payout if won
     makerCollateralWei?: bigint; // user's wager if they are maker
     takerCollateralWei?: bigint; // user's wager if they are taker
+    userPnL: string; // pnl for settled parlays
     addressRole: 'maker' | 'taker' | 'unknown';
     counterpartyAddress?: Address | null;
     chainId: number;
@@ -130,7 +131,7 @@ export default function UserParlaysTable({
     [account]
   );
   const rows: UIParlay[] = React.useMemo(() => {
-    return (data || []).map((p: any) => {
+    const parlayRows = (data || []).map((p: any) => {
       const legs: UILeg[] = (p.predictedOutcomes || []).map((o: any) => ({
         question:
           o?.condition?.shortName || o?.condition?.question || o.conditionId,
@@ -163,6 +164,42 @@ export default function UserParlaysTable({
           ? BigInt(p.makerNftTokenId)
           : BigInt(p.takerNftTokenId)
         : undefined;
+
+      // Calculate PnL for settled parlays
+      let userPnL = '0';
+      if (
+        !isActive &&
+        p.makerCollateral &&
+        p.takerCollateral &&
+        p.totalCollateral
+      ) {
+        try {
+          const makerCollateral = BigInt(p.makerCollateral);
+          const takerCollateral = BigInt(p.takerCollateral);
+          const totalCollateral = BigInt(p.totalCollateral);
+
+          if (userIsMaker) {
+            if (p.makerWon) {
+              // Maker won: profit = totalCollateral - makerCollateral
+              userPnL = (totalCollateral - makerCollateral).toString();
+            } else {
+              // Maker lost: loss = -makerCollateral
+              userPnL = (-makerCollateral).toString();
+            }
+          } else if (userIsTaker) {
+            if (!p.makerWon) {
+              // Taker won: profit = totalCollateral - takerCollateral
+              userPnL = (totalCollateral - takerCollateral).toString();
+            } else {
+              // Taker lost: loss = -takerCollateral
+              userPnL = (-takerCollateral).toString();
+            }
+          }
+        } catch (e) {
+          console.error('Error calculating parlay PnL:', e);
+        }
+      }
+
       // Choose positionId based on the profile address' role
       const positionId = userIsMaker
         ? Number(p.makerNftTokenId)
@@ -189,7 +226,7 @@ export default function UserParlaysTable({
       return {
         positionId,
         legs,
-        direction: 'Long',
+        direction: 'Long' as const,
         endsAt: endsAtSec ? endsAtSec * 1000 : Date.now(),
         status,
         tokenIdToClaim,
@@ -203,7 +240,12 @@ export default function UserParlaysTable({
         })(),
         makerCollateralWei: viewerMakerCollateralWei,
         takerCollateralWei: viewerTakerCollateralWei,
-        addressRole: userIsMaker ? 'maker' : userIsTaker ? 'taker' : 'unknown',
+        userPnL,
+        addressRole: userIsMaker
+          ? ('maker' as const)
+          : userIsTaker
+            ? ('taker' as const)
+            : ('unknown' as const),
         counterpartyAddress:
           (userIsMaker
             ? (p.taker as Address | undefined)
@@ -215,6 +257,8 @@ export default function UserParlaysTable({
           '0x8D1D1946cBc56F695584761d25D13F174906671C') as Address,
       };
     });
+
+    return parlayRows;
   }, [data, viewer]);
   // Detect claimability by checking on-chain ownerOf for the potential claim tokenIds
   const tokenIdsToCheck = React.useMemo(
@@ -572,13 +616,27 @@ export default function UserParlaysTable({
                   row.original.takerCollateralWei ??
                   0n);
           const viewerWager = Number(formatEther(viewerWagerWei));
+          const pnlValue = Number(formatEther(BigInt(row.original.userPnL)));
+          const roi = viewerWager > 0 ? (pnlValue / viewerWager) * 100 : 0;
+
           return (
             <div>
               <div className="whitespace-nowrap">
                 <NumberDisplay value={viewerWager} /> {symbol}
               </div>
-              {!isClosed && (
-                <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
+              {isClosed ? (
+                row.original.status === 'won' ? (
+                  <div className="text-sm text-muted-foreground mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
+                    Won: <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
+                    {viewerWager > 0 && (
+                      <span className="text-xs text-green-600">
+                        ({roi.toFixed(2)}%)
+                      </span>
+                    )}
+                  </div>
+                ) : null
+              ) : (
+                <div className="text-sm text-muted-foreground mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
                   To Win: <NumberDisplay value={totalPayout} /> {symbol}
                 </div>
               )}
