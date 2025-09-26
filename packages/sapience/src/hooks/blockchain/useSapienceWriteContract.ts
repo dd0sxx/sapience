@@ -34,7 +34,7 @@ export function useSapienceWriteContract({
   const [chainId, setChainId] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const { wallets } = useWallets();
-  const { user } = usePrivy();
+  const { user, login } = usePrivy();
   const embeddedWallet = useMemo(() => {
     const match = wallets?.find(
       (wallet) => (wallet as any)?.walletClientType === 'privy'
@@ -42,6 +42,17 @@ export function useSapienceWriteContract({
     return match;
   }, [wallets]);
   const isEmbeddedWallet = Boolean(embeddedWallet);
+  const ensureEmbeddedAuth = useCallback(async () => {
+    if (!isEmbeddedWallet) return true;
+    if (user?.wallet?.id) return true;
+    try {
+      if (!login) return false;
+      await Promise.resolve(login());
+      return Boolean(user?.wallet?.id);
+    } catch {
+      return false;
+    }
+  }, [isEmbeddedWallet, login, user?.wallet?.id]);
 
   // Unified success toast formatting
   const successTitle = 'Transaction successfully submitted.';
@@ -111,11 +122,10 @@ export function useSapienceWriteContract({
             functionName,
             args: fnArgs,
           });
+          const ok = await ensureEmbeddedAuth();
           const walletId = user?.wallet?.id;
-          if (!walletId) {
-            throw new Error(
-              'Embedded walletId not found for sponsorship. Please relogin.'
-            );
+          if (!ok || !walletId) {
+            throw new Error('Authentication required. Please try again.');
           }
           const response = await fetch('/api/privy/send-calls', {
             method: 'POST',
@@ -221,11 +231,10 @@ export function useSapienceWriteContract({
               const body = (args[0] as any) ?? {};
               const calls = Array.isArray(body?.calls) ? body.calls : [];
               let lastResult: any = undefined;
+              const ok = await ensureEmbeddedAuth();
               const walletId = user?.wallet?.id;
-              if (!walletId) {
-                throw new Error(
-                  'Embedded walletId not found for sponsorship. Please relogin.'
-                );
+              if (!ok || !walletId) {
+                throw new Error('Authentication required. Please try again.');
               }
               // Execute each call sequentially as individual sponsored txs
               for (const call of calls) {

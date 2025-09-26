@@ -11,6 +11,8 @@ import {
   BurnParlayNFTTransactionRow,
   type UiTransaction,
 } from '~/components/markets/DataDrawer/TransactionCells';
+import LottieLoader from '~/components/shared/LottieLoader';
+import { useForecasts } from '~/hooks/graphql/useForecasts';
 
 type FeedTransaction = Pick<
   TransactionType,
@@ -105,6 +107,8 @@ export default function FeedPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [firstLoadComplete, setFirstLoadComplete] = useState(false);
   const intervalRef = useRef<number | null>(null);
+  const { data: forecastsData = [], isLoading: forecastsLoading } =
+    useForecasts({});
 
   const buildRows = useCallback(
     (
@@ -314,6 +318,25 @@ export default function FeedPage() {
     };
   }, [fetchAndBuild]);
 
+  const initialLoaded = firstLoadComplete && !forecastsLoading;
+
+  if (!initialLoaded) {
+    return (
+      <div className="mt-24 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6">
+        <div className="mx-auto w-full max-w-7xl">
+          {errorMessage ? (
+            <div className="px-4 py-3 text-sm text-destructive">
+              {errorMessage}
+            </div>
+          ) : null}
+          <div className="flex items-center justify-center py-16">
+            <LottieLoader width={24} height={24} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-24 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6">
       <div className="mx-auto w-full max-w-7xl">
@@ -323,8 +346,8 @@ export default function FeedPage() {
               {errorMessage}
             </div>
           ) : null}
-          <CombinedFeedTable rows={rows} />
-          {firstLoadComplete && rows.length === 0 ? (
+          <CombinedFeedTable rows={rows} forecasts={forecastsData} />
+          {initialLoaded && rows.length === 0 ? (
             <div className="px-4 py-8 text-center text-muted-foreground">
               No transactions found.
             </div>

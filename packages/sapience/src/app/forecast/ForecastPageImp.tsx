@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
@@ -12,6 +11,7 @@ import {
   TooltipTrigger,
 } from '@/sapience/ui/index';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -83,7 +83,7 @@ const TabsHeader = ({
 };
 
 const ForecastPageImp = () => {
-  const { authenticated } = usePrivy();
+  const { hasConnectedWallet } = useConnectedWallet();
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<CommentFilters | null>(null);
@@ -112,7 +112,7 @@ const ForecastPageImp = () => {
     return (
       <div
         className={`min-h-screen bg-background ${
-          authenticated ? 'pt-32' : 'pt-24 md:pt-0'
+          hasConnectedWallet ? 'pt-32' : 'pt-24 md:pt-0'
         }`}
       >
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
@@ -135,7 +135,7 @@ const ForecastPageImp = () => {
     return (
       <div
         className={`min-h-screen bg-background ${
-          authenticated ? 'pt-24' : 'pt-24 md:pt-0'
+          hasConnectedWallet ? 'pt-24' : 'pt-24 md:pt-0'
         }`}
       >
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
@@ -213,7 +213,7 @@ const ForecastPageImp = () => {
   return (
     <div
       className={`min-h-screen bg-background ${
-        authenticated ? 'pt-16 mt-2' : 'pt-16 mt-2 md:pt-0'
+        hasConnectedWallet ? 'pt-16 mt-2' : 'pt-16 mt-2 md:pt-0'
       }`}
     >
       {/* Main content container with Twitter-like layout */}
