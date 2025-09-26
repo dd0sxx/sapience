@@ -49,16 +49,6 @@ export const useUserProfitRank = (ownerAddress?: string) => {
       const totalPnL = userEntry?.totalPnL || 0;
       const rank = index >= 0 ? index + 1 : null;
 
-      // Console log to verify combined PnL is working
-      if (userEntry) {
-        console.log('🎯 COMBINED PnL (Market + Parlay):', {
-          user: addressLc,
-          totalPnL,
-          rank,
-          totalParticipants,
-          note: 'This includes both market trading PnL and parlay PnL'
-        });
-      }
 
       return { totalPnL, rank, totalParticipants };
     },

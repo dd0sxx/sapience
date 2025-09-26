@@ -61,18 +61,18 @@ export class PnLResolver {
     // Get parlay PnL directly from calculation
     const parlayPnL = await calculateParlayPnL(chainId, marketAddress);
     
-    // Get market group info for decimals
+    
     const mg = await prisma.marketGroup.findFirst({
       where: { chainId, address: marketAddress.toLowerCase() },
     });
     const decimals = mg?.collateralDecimals ?? 18;
     
     return parlayPnL.map((r) => ({
-      marketId: 0, // Parlays don't have marketId, use 0 as placeholder
+      marketId: 0, // parlays don't have marketId, use 0 as placeholder
       owner: r.owner,
-      totalDeposits: '0', // We don't track deposits separately in simplified approach
-      totalWithdrawals: '0', // We don't track withdrawals separately in simplified approach
-      openPositionsPnL: '0', // Parlays are always settled
+      totalDeposits: '0', 
+      totalWithdrawals: '0', 
+      openPositionsPnL: '0', 
       totalPnL: r.totalPnL,
       positions: [],
       positionCount: r.parlayCount,
@@ -85,7 +85,7 @@ export class PnLResolver {
   @Query(() => [AggregatedProfitEntryType])
   @Directive('@cacheControl(maxAge: 60)')
   async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
-    const cacheKey = 'allTimeProfitLeaderboard:v3.0';
+    const cacheKey = 'allTimeProfitLeaderboard:v2.1';
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
     if (existing) return existing;
 

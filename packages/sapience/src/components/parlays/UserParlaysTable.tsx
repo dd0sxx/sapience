@@ -115,7 +115,7 @@ export default function UserParlaysTable({
     totalPayoutWei: bigint; // total payout if won
     makerCollateralWei?: bigint; // user's wager if they are maker
     takerCollateralWei?: bigint; // user's wager if they are taker
-    userPnL: string; // user's PnL in wei for settled parlays
+    userPnL: string; // pnl for settled parlays
     addressRole: 'maker' | 'taker' | 'unknown';
     counterpartyAddress?: Address | null;
     chainId: number;
@@ -235,7 +235,7 @@ export default function UserParlaysTable({
         })(),
         makerCollateralWei: viewerMakerCollateralWei,
         takerCollateralWei: viewerTakerCollateralWei,
-        userPnL, // Add PnL to the row data
+        userPnL, 
         addressRole: userIsMaker ? ('maker' as const) : userIsTaker ? ('taker' as const) : ('unknown' as const),
         counterpartyAddress:
           (userIsMaker
@@ -249,34 +249,6 @@ export default function UserParlaysTable({
       };
     });
 
-    // Console log parlay PnL data
-    if (parlayRows.length > 0) {
-      console.log('🎯 PARLAY PnL DATA:', {
-        user: viewer,
-        totalParlays: parlayRows.length,
-        parlays: parlayRows.map(row => ({
-          positionId: row.positionId,
-          status: row.status,
-          userPnL: row.userPnL,
-          userPnLEth: row.userPnL !== '0' ? formatEther(BigInt(row.userPnL)) : '0',
-          legs: row.legs.map(leg => `${leg.question}: ${leg.choice}`).join(' + ')
-        })),
-        totalPnL: parlayRows.reduce((sum, row) => {
-          try {
-            return sum + BigInt(row.userPnL);
-          } catch {
-            return sum;
-          }
-        }, 0n).toString(),
-        totalPnLEth: formatEther(parlayRows.reduce((sum, row) => {
-          try {
-            return sum + BigInt(row.userPnL);
-          } catch {
-            return sum;
-          }
-        }, 0n))
-      });
-    }
 
     return parlayRows;
   }, [data, viewer]);
