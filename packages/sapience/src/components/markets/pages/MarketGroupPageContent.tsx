@@ -13,10 +13,10 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import type { Address } from 'viem';
 import { Button } from '@sapience/ui/components/ui/button';
 import { RefreshCw, CandlestickChart } from 'lucide-react';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 
 import { useSapience } from '~/lib/context/SapienceProvider';
 import { useWagerFlip } from '~/lib/context/WagerFlipContext';
@@ -176,7 +176,8 @@ const MarketGroupPageContent = () => {
   const { wallets } = useWallets();
   const connectedPrivyWallet = wallets[0];
   const { hasConnectedWallet } = useConnectedWallet();
-  const authenticatedAddress = ready && hasConnectedWallet ? connectedPrivyWallet?.address : undefined;
+  const authenticatedAddress =
+    ready && hasConnectedWallet ? connectedPrivyWallet?.address : undefined;
   const params = useParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -662,23 +663,25 @@ const MarketGroupPageContent = () => {
                       </div>
                     </div>
                   </TabsContent>
-                  {ready && hasConnectedWallet && connectedPrivyWallet?.address && (
-                    <TabsContent value="positions" className="mt-0">
-                      <div className="pt-1 pb-4">
-                        <UserPositionsTable
-                          showHeaderText={false}
-                          showParlaysTab={false}
-                          account={authenticatedAddress as Address}
-                          marketAddress={marketAddress}
-                          chainId={chainId}
-                          marketIds={activeMarkets.map((m) =>
-                            Number(m.marketId)
-                          )}
-                          refetchUserPositions={refetchUserPositions}
-                        />
-                      </div>
-                    </TabsContent>
-                  )}
+                  {ready &&
+                    hasConnectedWallet &&
+                    connectedPrivyWallet?.address && (
+                      <TabsContent value="positions" className="mt-0">
+                        <div className="pt-1 pb-4">
+                          <UserPositionsTable
+                            showHeaderText={false}
+                            showParlaysTab={false}
+                            account={authenticatedAddress as Address}
+                            marketAddress={marketAddress}
+                            chainId={chainId}
+                            marketIds={activeMarkets.map((m) =>
+                              Number(m.marketId)
+                            )}
+                            refetchUserPositions={refetchUserPositions}
+                          />
+                        </div>
+                      </TabsContent>
+                    )}
                   {/* Mobile-only: Always Agent first, then Rules */}
                   <TabsContent
                     value="agent"

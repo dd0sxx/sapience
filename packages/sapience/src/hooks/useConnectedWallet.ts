@@ -18,5 +18,3 @@ export function useConnectedWallet(): ConnectedWalletState {
 
   return { ready, connectedWallet, hasConnectedWallet };
 }
-
-

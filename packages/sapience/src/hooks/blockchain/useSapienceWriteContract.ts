@@ -46,7 +46,8 @@ export function useSapienceWriteContract({
     if (!isEmbeddedWallet) return true;
     if (user?.wallet?.id) return true;
     try {
-      await login?.();
+      if (!login) return false;
+      await Promise.resolve(login());
       return Boolean(user?.wallet?.id);
     } catch {
       return false;
@@ -122,11 +123,8 @@ export function useSapienceWriteContract({
             args: fnArgs,
           });
           const ok = await ensureEmbeddedAuth();
-          let walletId = user?.wallet?.id;
+          const walletId = user?.wallet?.id;
           if (!ok || !walletId) {
-            throw new Error('Authentication required. Please try again.');
-          }
-          if (!walletId) {
             throw new Error('Authentication required. Please try again.');
           }
           const response = await fetch('/api/privy/send-calls', {
@@ -234,7 +232,7 @@ export function useSapienceWriteContract({
               const calls = Array.isArray(body?.calls) ? body.calls : [];
               let lastResult: any = undefined;
               const ok = await ensureEmbeddedAuth();
-              let walletId = user?.wallet?.id;
+              const walletId = user?.wallet?.id;
               if (!ok || !walletId) {
                 throw new Error('Authentication required. Please try again.');
               }

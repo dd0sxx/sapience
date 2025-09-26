@@ -7,10 +7,10 @@ import { z } from 'zod';
 
 import { useAccount } from 'wagmi';
 import { useConnectOrCreateWallet } from '@privy-io/react-auth';
-import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
 import YesNoPredict from './inputs/YesNoPredict';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
@@ -176,7 +176,9 @@ export default function ForecastForm({
     if (!hasConnectedWallet || !isConnected) {
       try {
         connectOrCreateWallet();
-      } catch {}
+      } catch (error) {
+        console.error('Failed to connect or create wallet', error);
+      }
       return;
     }
     await submitPrediction();

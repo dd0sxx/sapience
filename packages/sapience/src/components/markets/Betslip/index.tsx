@@ -499,7 +499,9 @@ const Betslip = ({
     if (!hasConnectedWallet) {
       try {
         connectOrCreateWallet();
-      } catch {}
+      } catch (error) {
+        console.error('connectOrCreateWallet failed', error);
+      }
       return;
     }
 
@@ -671,7 +673,9 @@ const Betslip = ({
     if (!hasConnectedWallet) {
       try {
         connectOrCreateWallet();
-      } catch {}
+      } catch (error) {
+        console.error('connectOrCreateWallet failed', error);
+      }
       return;
     }
 

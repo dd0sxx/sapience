@@ -787,11 +787,6 @@ export function TransactionPositionCell({
             })()
           : null}
       </div>
-      {comment ? (
-        <div className="text-sm mt-1 text-foreground/90 tracking-[-0.005em]">
-          {comment}
-        </div>
-      ) : null}
     </div>
   );
 }

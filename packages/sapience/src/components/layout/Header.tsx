@@ -1,6 +1,10 @@
 'use client';
 
-import { usePrivy, useWallets, useConnectOrCreateWallet } from '@privy-io/react-auth';
+import {
+  usePrivy,
+  useWallets,
+  useConnectOrCreateWallet,
+} from '@privy-io/react-auth';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -29,6 +33,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
+import { useDisconnect } from 'wagmi';
 import CollateralBalanceButton from './CollateralBalanceButton';
 // Chat button moved to app layout as a floating action button
 import { shortenAddress } from '~/lib/utils/util';
@@ -179,6 +184,7 @@ const Header = () => {
   const connectedWallet = wallets[0];
   const { hasConnectedWallet } = useConnectedWallet();
   const { data: ensName } = useEnsName(connectedWallet?.address || '');
+  const { disconnect } = useDisconnect();
 
   const handleLogout = async () => {
     try {
@@ -189,6 +195,26 @@ const Header = () => {
           window.dispatchEvent(new Event('sapience:chat_logout'));
         } catch {
           /* noop */
+        }
+      }
+    } catch {
+      /* noop */
+    }
+    // Proactively disconnect any connected wallets (wagmi + Privy wallet instances)
+    try {
+      disconnect?.();
+    } catch {
+      /* noop */
+    }
+    try {
+      if (Array.isArray(wallets)) {
+        for (const w of wallets) {
+          try {
+            // Some wallet connectors expose a disconnect method
+            await (w as any)?.disconnect?.();
+          } catch {
+            /* noop */
+          }
         }
       }
     } catch {
@@ -307,7 +333,9 @@ const Header = () => {
                 onClick={() => {
                   try {
                     connectOrCreateWallet();
-                  } catch {}
+                  } catch {
+                    /* noop */
+                  }
                 }}
                 className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
               >

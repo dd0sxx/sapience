@@ -29,6 +29,7 @@ import { Moon, Sun, Monitor, Key, Share2, Bot } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import LottieLoader from '~/components/shared/LottieLoader';
@@ -197,7 +198,7 @@ const SettingsPageContent = () => {
   const [activeTab, setActiveTab] = useState<
     'network' | 'appearance' | 'agent'
   >('network');
-  const { ready, authenticated, exportWallet } = usePrivy();
+  const { ready, exportWallet } = usePrivy();
   const { wallets } = useWallets();
   const activeWallet = (
     wallets && wallets.length > 0 ? (wallets[0] as any) : undefined
@@ -205,6 +206,7 @@ const SettingsPageContent = () => {
   const isActiveEmbeddedWallet = Boolean(
     (activeWallet as any)?.walletClientType === 'privy'
   );
+  const { hasConnectedWallet } = useConnectedWallet();
 
   // Validation hints handled within SettingField to avoid parent re-renders breaking focus
   const [hydrated, setHydrated] = useState(false);
@@ -529,7 +531,13 @@ const SettingsPageContent = () => {
                         <div id="export-wallet">
                           <Button
                             onClick={exportWallet}
-                            disabled={!(ready && authenticated)}
+                            disabled={
+                              !(
+                                ready &&
+                                isActiveEmbeddedWallet &&
+                                hasConnectedWallet
+                              )
+                            }
                             size="sm"
                           >
                             <Key className="h-4 w-4" />
