@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react'; // <-- Import useMemo and useState
+import { useMemo, useRef, useState } from 'react';
 import {
   Area,
   CartesianGrid,
@@ -14,6 +14,8 @@ import {
 } from 'recharts';
 
 import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { AnimatePresence, motion } from 'framer-motion';
 import LottieLoader from '../shared/LottieLoader';
 import ChartLegend from './ChartLegend';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
@@ -25,8 +27,8 @@ import {
   transformMarketGroupChartData,
   type MultiMarketChartDataPoint,
   getEffectiveMinTimestampFromData,
-} from '~/lib/utils/chartUtils'; // Added for type safety and transformer
-import { getYAxisConfig, sqrtPriceX96ToPriceD18 } from '~/lib/utils/util'; // Import moved functions
+} from '~/lib/utils/chartUtils';
+import { getYAxisConfig, sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
 import {
   CHART_INDEX_COLOR,
   CHART_SERIES_COLORS,
@@ -35,8 +37,7 @@ import {
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
-
-// Colors come from centralized theme
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
 
 interface MarketGroupChartProps {
   chainShortName: string;
@@ -68,6 +69,31 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   });
   const [hoveredChartData, setHoveredChartData] =
     useState<MultiMarketChartDataPoint | null>(null); // New state for hovered data
+  const [hoveredForecastDot, setHoveredForecastDot] = useState<{
+    x: number;
+    y: number;
+    att: FormattedAttestation;
+  } | null>(null);
+  const hideTooltipTimeoutRef = useRef<number | null>(null);
+  const isHoveringInteractiveRef = useRef<boolean>(false);
+  const cancelHideTooltip = () => {
+    if (hideTooltipTimeoutRef.current != null) {
+      window.clearTimeout(hideTooltipTimeoutRef.current);
+      hideTooltipTimeoutRef.current = null;
+    }
+  };
+  const scheduleHideTooltip = (delayMs = 80) => {
+    // Only schedule if not already scheduled and not over interactive region
+    if (
+      hideTooltipTimeoutRef.current == null &&
+      !isHoveringInteractiveRef.current
+    ) {
+      hideTooltipTimeoutRef.current = window.setTimeout(() => {
+        hideTooltipTimeoutRef.current = null;
+        setHoveredForecastDot(null);
+      }, delayMs);
+    }
+  };
 
   // Forecasts: fetch (before any early returns to keep hooks order stable)
   const { data: forecasts } = useForecasts({
@@ -189,6 +215,146 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     return result;
   }, [forecasts, marketIds, market, classification]);
 
+  // Helpers to render forecast tooltip content anchored to a specific dot
+  const renderPredictionBadgeForAtt = (att: FormattedAttestation) => {
+    const baseTokenName = market?.baseTokenName || '';
+    const quoteTokenName = market?.quoteTokenName || '';
+
+    if (
+      classification === MarketGroupClassificationEnum.YES_NO ||
+      classification === MarketGroupClassificationEnum.MULTIPLE_CHOICE ||
+      baseTokenName.toLowerCase() === 'yes'
+    ) {
+      try {
+        const priceD18 = sqrtPriceX96ToPriceD18(BigInt(att.value));
+        const yesD18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
+        const percentageD2 = (priceD18 * 10000n) / yesD18;
+        const percentage = Math.round(Number(percentageD2) / 100);
+
+        const shouldColor = percentage !== 50;
+        const isGreen = shouldColor && percentage > 50;
+        const isRed = shouldColor && percentage < 50;
+        const variant = shouldColor ? 'outline' : 'default';
+        const className = shouldColor
+          ? isGreen
+            ? 'border-green-500/40 bg-green-500/10 text-green-600'
+            : isRed
+              ? 'border-red-500/40 bg-red-500/10 text-red-600'
+              : ''
+          : '';
+
+        return (
+          <Badge variant={variant as any} className={className}>
+            {`${percentage}% Chance`}
+          </Badge>
+        );
+      } catch (_) {
+        // fall through
+      }
+    }
+
+    if (classification === MarketGroupClassificationEnum.NUMERIC) {
+      try {
+        const numericValue = Number(
+          sqrtPriceX96ToPriceD18(BigInt(att.value)) / BigInt(10 ** 36)
+        );
+        const hideQuote = (quoteTokenName || '').toUpperCase().includes('USD');
+        const basePart = baseTokenName ? ` ${baseTokenName}` : '';
+        const quotePart =
+          !hideQuote && quoteTokenName ? `/${quoteTokenName}` : '';
+        const text = `${numericValue.toString()}${basePart}${quotePart}`;
+        return <Badge variant="default">{text}</Badge>;
+      } catch (_) {
+        // fall through
+      }
+    }
+
+    return <Badge variant="default">{att.value}</Badge>;
+  };
+
+  const ForecastTooltipContent: React.FC<{ att: FormattedAttestation }> = ({
+    att,
+  }) => {
+    const comment = (att.comment || '').trim();
+    return (
+      <div className="rounded-md border border-border bg-background shadow-md p-3 text-xs max-w-[340px] min-w-[320px]">
+        {comment ? (
+          <div className="text-foreground/90 text-sm leading-snug mb-2 break-words">
+            {comment}
+          </div>
+        ) : null}
+        <div className="flex items-center justify-between gap-3">
+          <div className="shrink-0">{renderPredictionBadgeForAtt(att)}</div>
+          <div className="grow flex justify-end">
+            <AddressDisplay address={att.attester} compact />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Custom scatter dot to capture precise hover and anchor tooltip to the dot
+  const ForecastDotShape = (props: any) => {
+    const { cx, cy, payload, ...rest } = props || {};
+    const att: FormattedAttestation | undefined = payload?.att;
+    const isActive = Boolean(
+      hoveredForecastDot &&
+        att &&
+        ((hoveredForecastDot.att.uid &&
+          hoveredForecastDot.att.uid === att.uid) ||
+          (hoveredForecastDot.att.id && hoveredForecastDot.att.id === att.id))
+    );
+    const color = (rest && rest.fill) || undefined;
+    return (
+      <g
+        onMouseEnter={() => {
+          cancelHideTooltip();
+          if (
+            att &&
+            typeof cx === 'number' &&
+            typeof cy === 'number' &&
+            Number.isFinite(cx) &&
+            Number.isFinite(cy)
+          ) {
+            setHoveredForecastDot({ x: cx, y: cy, att });
+          }
+        }}
+        onMouseLeave={() => {
+          isHoveringInteractiveRef.current = false;
+          scheduleHideTooltip(60);
+        }}
+        onFocus={() => {
+          isHoveringInteractiveRef.current = true;
+          cancelHideTooltip();
+          if (
+            att &&
+            typeof cx === 'number' &&
+            typeof cy === 'number' &&
+            Number.isFinite(cx) &&
+            Number.isFinite(cy)
+          ) {
+            setHoveredForecastDot({ x: cx, y: cy, att });
+          }
+        }}
+        onBlur={() => {
+          isHoveringInteractiveRef.current = false;
+          scheduleHideTooltip(60);
+        }}
+      >
+        {/* Glow effect when active */}
+        {isActive && color ? (
+          <>
+            <circle cx={cx} cy={cy} r={8} fill={color} opacity={0.12} />
+            <circle cx={cx} cy={cy} r={5} fill={color} opacity={0.18} />
+          </>
+        ) : null}
+        <circle cx={cx} cy={cy} r={isActive ? 3 : 2} {...rest} />
+        {/* Larger invisible hit area for easier hover */}
+        <circle cx={cx} cy={cy} r={8} fill="transparent" />
+      </g>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="w-full md:flex-1 h-full flex items-center justify-center">
@@ -257,7 +423,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         hoveredDataPoint={hoveredChartData} // Pass hovered data to legend
       />
       {/* This div should grow to fill remaining space */}
-      <div className="flex-1 w-full">
+      <div className="relative flex-1 w-full">
         {/* Let ResponsiveContainer determine height based on parent */}
         <ResponsiveContainer>
           <ComposedChart
@@ -273,13 +439,26 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                 const currentHoveredData = state.activePayload[0]
                   .payload as MultiMarketChartDataPoint;
                 setHoveredChartData(currentHoveredData);
+                // If a tooltip is open and we're not directly over an interactive element,
+                // schedule hide. Only cancel when actually hovering dot/tooltip.
+                if (hoveredForecastDot !== null) {
+                  if (isHoveringInteractiveRef.current) {
+                    cancelHideTooltip();
+                  } else {
+                    scheduleHideTooltip(60);
+                  }
+                }
               } else if (hoveredChartData !== null) {
                 // Clear only if it was previously set, to avoid needless re-renders
                 setHoveredChartData(null);
+                scheduleHideTooltip(60);
               }
             }}
             onMouseLeave={() => {
               setHoveredChartData(null);
+              cancelHideTooltip();
+              setHoveredForecastDot(null);
+              isHoveringInteractiveRef.current = false;
             }}
           >
             <defs>
@@ -331,14 +510,14 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
               domain={yAxisConfig.domain}
               width={40}
             />
-            {/* Tooltip configured to show a custom cursor line */}
+            {/* Keep chart-level tooltip minimal so it doesn't compete with dot tooltips */}
             <Tooltip
-              content={() => null} // Still render no actual tooltip content
-              wrapperStyle={{ display: 'none' }} // Ensure no wrapper is rendered
+              content={() => null}
+              wrapperStyle={{ display: 'none' }}
               cursor={{
                 stroke: 'hsl(var(--muted-foreground) / 0.4)',
                 strokeDasharray: '3 3',
-              }} // Show a dashed vertical line
+              }}
             />
 
             {/* Dynamically render a Line for each marketId */}
@@ -374,7 +553,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                   data={dotsByMarketId[marketId] || []}
                   dataKey="y"
                   fill={getSeriesColorByIndex(index)}
-                  shape={(props: any) => <circle {...props} r={2} />}
+                  shape={(props: any) => <ForecastDotShape {...props} />}
                   fillOpacity={0.9}
                   stroke="none"
                   isAnimationActive={false}
@@ -399,6 +578,41 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
             )}
           </ComposedChart>
         </ResponsiveContainer>
+        {/* Absolutely positioned tooltip anchored to hovered forecast dot with fade in/out */}
+        <AnimatePresence>
+          {hoveredForecastDot ? (
+            <motion.div
+              key={
+                hoveredForecastDot.att.uid ||
+                hoveredForecastDot.att.id ||
+                `${hoveredForecastDot.x}-${hoveredForecastDot.y}`
+              }
+              className="absolute"
+              style={{
+                left: hoveredForecastDot.x,
+                top: hoveredForecastDot.y,
+                transform: 'translate(8px, 8px)',
+                zIndex: 60,
+              }}
+              onMouseEnter={() => {
+                isHoveringInteractiveRef.current = true;
+                cancelHideTooltip();
+              }}
+              onMouseLeave={() => {
+                isHoveringInteractiveRef.current = false;
+                scheduleHideTooltip(60);
+              }}
+              initial={{ opacity: 0, scale: 0.98, y: 2 }}
+              animate={{ opacity: 1, scale: 1, y: 2 }}
+              exit={{ opacity: 0, scale: 0.98, y: 2 }}
+              transition={{ duration: 0.12, ease: 'easeOut' }}
+            >
+              <div className="pointer-events-auto">
+                <ForecastTooltipContent att={hoveredForecastDot.att} />
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </div>
   );
