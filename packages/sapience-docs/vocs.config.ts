@@ -93,7 +93,6 @@ export default defineConfig({
         items: [
           { text: 'What is Sapience?', link: '/user-guide/introduction/what-is-sapience' },
           { text: 'Why Build on Sapience?', link: '/user-guide/introduction/why-build-on-sapience' },
-          { text: 'Origins: From Foil to Sapience', link: '/user-guide/introduction/origins-from-foil-to-sapience' },
         ],
       },
       {
@@ -142,7 +141,6 @@ export default defineConfig({
         items: [
           { text: 'What is Sapience?', link: '/user-guide/introduction/what-is-sapience' },
           { text: 'Why Build on Sapience?', link: '/user-guide/introduction/why-build-on-sapience' },
-          { text: 'Origins: From Foil to Sapience', link: '/user-guide/introduction/origins-from-foil-to-sapience' },
         ],
       },
       {
