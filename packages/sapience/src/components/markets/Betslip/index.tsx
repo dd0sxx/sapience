@@ -17,7 +17,7 @@ import {
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { usePrivy } from '@privy-io/react-auth';
+import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 import Image from 'next/image';
 import { useEffect, useMemo } from 'react';
@@ -37,6 +37,7 @@ import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import type { useQuoter } from '~/hooks/forms/useQuoter';
 import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
@@ -75,7 +76,8 @@ const Betslip = ({
 
   const isParlayMode = externalParlayMode;
   const isCompact = useIsBelow(1024);
-  const { login, authenticated } = usePrivy();
+  const { hasConnectedWallet } = useConnectedWallet();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
   const { address } = useAccount();
   const { sendCalls, isPending: isPendingWriteContract } =
     useSapienceWriteContract({
@@ -494,8 +496,10 @@ const Betslip = ({
   });
 
   const handleIndividualSubmit = () => {
-    if (!authenticated) {
-      login();
+    if (!hasConnectedWallet) {
+      try {
+        connectOrCreateWallet();
+      } catch {}
       return;
     }
 
@@ -664,8 +668,10 @@ const Betslip = ({
   };
 
   const handleParlaySubmit = () => {
-    if (!authenticated) {
-      login();
+    if (!hasConnectedWallet) {
+      try {
+        connectOrCreateWallet();
+      } catch {}
       return;
     }
 

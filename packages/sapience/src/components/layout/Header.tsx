@@ -1,6 +1,6 @@
 'use client';
 
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy, useWallets, useConnectOrCreateWallet } from '@privy-io/react-auth';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ import CollateralBalanceButton from './CollateralBalanceButton';
 // Chat button moved to app layout as a floating action button
 import { shortenAddress } from '~/lib/utils/util';
 import { useEnsName } from '~/components/shared/AddressDisplay';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -59,9 +60,10 @@ const NavLinks = ({
 }: NavLinksProps) => {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
-  const { ready, authenticated } = usePrivy();
+  const { ready } = usePrivy();
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
+  const { hasConnectedWallet } = useConnectedWallet();
   const linkClass = isMobileProp
     ? 'text-xl font-medium justify-start rounded-full'
     : 'text-base font-medium justify-start rounded-full';
@@ -80,7 +82,7 @@ const NavLinks = ({
 
   return (
     <>
-      {ready && authenticated && connectedWallet && (
+      {ready && hasConnectedWallet && connectedWallet && (
         <>
           <div className="flex w-fit md:hidden mt-5 ml-4">
             <Button
@@ -154,7 +156,7 @@ const NavLinks = ({
           </Button>
         </Link>
         {/* Mobile settings button when logged out, placed under links */}
-        {ready && !authenticated && (
+        {ready && !hasConnectedWallet && (
           <Link href="/settings" passHref className="flex w-fit md:hidden">
             <Button
               variant="ghost"
@@ -171,9 +173,11 @@ const NavLinks = ({
 };
 
 const Header = () => {
-  const { login, ready, authenticated, logout } = usePrivy();
+  const { ready, logout } = usePrivy();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
+  const { hasConnectedWallet } = useConnectedWallet();
   const { data: ensName } = useEnsName(connectedWallet?.address || '');
 
   const handleLogout = async () => {
@@ -238,7 +242,7 @@ const Header = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
-            {ready && !authenticated && (
+            {ready && !hasConnectedWallet && (
               <Link href="/settings" className="hidden md:block">
                 <Button
                   variant="outline"
@@ -250,10 +254,10 @@ const Header = () => {
                 </Button>
               </Link>
             )}
-            {ready && authenticated && (
+            {ready && hasConnectedWallet && (
               <CollateralBalanceButton className="hidden md:flex" />
             )}
-            {ready && authenticated && (
+            {ready && hasConnectedWallet && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -298,12 +302,16 @@ const Header = () => {
               </DropdownMenu>
             )}
             {/* Address now displayed inside the black default button on desktop */}
-            {ready && !authenticated && (
+            {ready && !hasConnectedWallet && (
               <Button
-                onClick={login}
+                onClick={() => {
+                  try {
+                    connectOrCreateWallet();
+                  } catch {}
+                }}
                 className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
               >
-                <span>Log in</span>
+                <span>Log In</span>
               </Button>
             )}
           </div>

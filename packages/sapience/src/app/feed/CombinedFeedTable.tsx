@@ -113,9 +113,16 @@ function createForecastRow(attestation: FormattedAttestation) {
   return ForecastRow;
 }
 
-export default function CombinedFeedTable({ rows }: { rows: FeedRow[] }) {
+export default function CombinedFeedTable({
+  rows,
+  forecasts: forecastsProp,
+}: {
+  rows: FeedRow[];
+  forecasts?: FormattedAttestation[];
+}) {
   const { marketGroups } = useSapience();
-  const { data: forecasts = [] } = useForecasts({});
+  const { data: forecastsHook = [] } = useForecasts({});
+  const forecasts = forecastsProp ?? forecastsHook;
 
   const forecastRows: FeedRow[] = useMemo(() => {
     if (!forecasts || forecasts.length === 0) return [];

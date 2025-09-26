@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import type { Address } from 'viem';
 import { Button } from '@sapience/ui/components/ui/button';
 import { RefreshCw, CandlestickChart } from 'lucide-react';
@@ -171,11 +172,11 @@ const WagerForm = ({
 };
 
 const MarketGroupPageContent = () => {
-  const { ready, authenticated } = usePrivy();
+  const { ready } = usePrivy();
   const { wallets } = useWallets();
   const connectedPrivyWallet = wallets[0];
-  const authenticatedAddress =
-    ready && authenticated ? connectedPrivyWallet?.address : undefined;
+  const { hasConnectedWallet } = useConnectedWallet();
+  const authenticatedAddress = ready && hasConnectedWallet ? connectedPrivyWallet?.address : undefined;
   const params = useParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -189,10 +190,10 @@ const MarketGroupPageContent = () => {
 
   // Ensure we don't show the positions tab as active when logged out
   useEffect(() => {
-    if (activeContentTab === 'positions' && !(ready && authenticated)) {
+    if (activeContentTab === 'positions' && !(ready && hasConnectedWallet)) {
       setActiveContentTab('all-positions');
     }
-  }, [activeContentTab, ready, authenticated]);
+  }, [activeContentTab, ready, hasConnectedWallet]);
 
   // Hash-driven tab selection: select forecasts when URL hash is #forecasts
   useEffect(() => {
@@ -253,7 +254,7 @@ const MarketGroupPageContent = () => {
     if (!ready) return; // wait for auth readiness
 
     const positionsVisible =
-      ready && authenticated && Boolean(connectedPrivyWallet?.address);
+      ready && hasConnectedWallet && Boolean(connectedPrivyWallet?.address);
     const firstVisible = positionsVisible
       ? 'positions'
       : hasWagers
@@ -267,7 +268,7 @@ const MarketGroupPageContent = () => {
     isLoadingAllGroupPositions,
     hasWagers,
     ready,
-    authenticated,
+    hasConnectedWallet,
     connectedPrivyWallet?.address,
   ]);
 
@@ -511,7 +512,7 @@ const MarketGroupPageContent = () => {
                       <div className="order-2 sm:order-1 max-w-full">
                         <TabsList className="h-auto p-0 bg-transparent max-w-full overflow-x-auto sm:overflow-visible whitespace-nowrap sm:whitespace-normal">
                           {ready &&
-                            authenticated &&
+                            hasConnectedWallet &&
                             connectedPrivyWallet?.address && (
                               <TabsTrigger
                                 value="positions"
@@ -661,7 +662,7 @@ const MarketGroupPageContent = () => {
                       </div>
                     </div>
                   </TabsContent>
-                  {ready && authenticated && connectedPrivyWallet?.address && (
+                  {ready && hasConnectedWallet && connectedPrivyWallet?.address && (
                     <TabsContent value="positions" className="mt-0">
                       <div className="pt-1 pb-4">
                         <UserPositionsTable
