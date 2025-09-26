@@ -82,7 +82,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       hideTooltipTimeoutRef.current = null;
     }
   };
-  const scheduleHideTooltip = (delayMs = 80) => {
+  const scheduleHideTooltip = (delayMs = 180) => {
     // Only schedule if not already scheduled and not over interactive region
     if (
       hideTooltipTimeoutRef.current == null &&
@@ -200,10 +200,10 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         y = percentageTimes100 / 100; // 0..1
       } else {
         const numericD18 = sqrtPriceX96ToPriceD18(BigInt(att.value));
-        // For numeric markets, sqrtPriceX96ToPriceD18 returns a value scaled by 1e36 of the raw unit.
-        // The chart lines are scaled to raw units (Wei / 1e18) by transformMarketGroupChartData,
-        // so here we must divide by 1e36 to place dots in the same scale as the lines.
-        y = Number(numericD18) / 1e36;
+        // For numeric markets, sqrtPriceX96ToPriceD18 returns a value with 18 decimals.
+        // Lines are scaled to raw units (Wei / 1e18) by transformMarketGroupChartData,
+        // so divide by 1e18 to place dots on the same scale as the lines.
+        y = Number(numericD18) / 1e18;
       }
 
       if (y == null || Number.isNaN(y)) continue;
@@ -255,9 +255,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
 
     if (classification === MarketGroupClassificationEnum.NUMERIC) {
       try {
-        const numericValue = Number(
-          sqrtPriceX96ToPriceD18(BigInt(att.value)) / BigInt(10 ** 36)
-        );
+        const numericD18 = sqrtPriceX96ToPriceD18(BigInt(att.value));
+        const numericValue = Number(numericD18) / 1e18; // convert D18 -> base units
         const hideQuote = (quoteTokenName || '').toUpperCase().includes('USD');
         const basePart = baseTokenName ? ` ${baseTokenName}` : '';
         const quotePart =
@@ -286,7 +285,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="shrink-0">{renderPredictionBadgeForAtt(att)}</div>
           <div className="grow flex justify-end">
-            <AddressDisplay address={att.attester} compact />
+            <AddressDisplay address={att.attester} compact disablePopover />
           </div>
         </div>
       </div>
@@ -308,6 +307,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     return (
       <g
         onMouseEnter={() => {
+          isHoveringInteractiveRef.current = true;
           cancelHideTooltip();
           if (
             att &&
@@ -321,7 +321,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         }}
         onMouseLeave={() => {
           isHoveringInteractiveRef.current = false;
-          scheduleHideTooltip(60);
+          scheduleHideTooltip(180);
         }}
         onFocus={() => {
           isHoveringInteractiveRef.current = true;
@@ -350,7 +350,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         ) : null}
         <circle cx={cx} cy={cy} r={isActive ? 3 : 2} {...rest} />
         {/* Larger invisible hit area for easier hover */}
-        <circle cx={cx} cy={cy} r={8} fill="transparent" />
+        <circle cx={cx} cy={cy} r={12} fill="transparent" />
       </g>
     );
   };
@@ -405,6 +405,45 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
 
   // duplicate declaration leftover from refactor — remove to avoid redeclaration
 
+  // Debug: log ranges for series and forecast dots to diagnose flat lines or mis-scaling
+  try {
+    // Log once per data change
+
+    console.log('[MarketGroupChart] classification/yAxis', {
+      classification,
+      yAxisDomain: yAxisConfig.domain,
+      hasIndexData,
+      latestIndexValue,
+    });
+    const seriesRanges = marketIds.map((id) => {
+      const values: number[] = [];
+      for (const p of scaledAndFilteredChartData) {
+        const v = (p.markets as any)?.[id];
+        if (typeof v === 'number' && Number.isFinite(v)) values.push(v);
+      }
+      const min = values.length ? Math.min(...values) : null;
+      const max = values.length ? Math.max(...values) : null;
+      return { marketId: id, count: values.length, min, max };
+    });
+
+    console.log('[MarketGroupChart] series ranges', seriesRanges);
+    const dotRanges = marketIds.map((id) => {
+      const arr = (dotsByMarketId[id] || []).map((d) => d.y);
+      const min = arr.length ? Math.min(...arr) : null;
+      const max = arr.length ? Math.max(...arr) : null;
+      return { marketId: id, count: arr.length, min, max };
+    });
+
+    console.log('[MarketGroupChart] forecast dot ranges', dotRanges);
+
+    console.log(
+      '[MarketGroupChart] sample points',
+      scaledAndFilteredChartData.slice(0, 3)
+    );
+  } catch (_) {
+    // ignore logging errors
+  }
+
   return (
     // Adjust main container for flex column layout and height
     // Ensure this component tries to fill the height allocated by the parent flex container
@@ -445,20 +484,19 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                   if (isHoveringInteractiveRef.current) {
                     cancelHideTooltip();
                   } else {
-                    scheduleHideTooltip(60);
+                    scheduleHideTooltip(180);
                   }
                 }
               } else if (hoveredChartData !== null) {
                 // Clear only if it was previously set, to avoid needless re-renders
                 setHoveredChartData(null);
-                scheduleHideTooltip(60);
+                scheduleHideTooltip(180);
               }
             }}
             onMouseLeave={() => {
               setHoveredChartData(null);
-              cancelHideTooltip();
-              setHoveredForecastDot(null);
               isHoveringInteractiveRef.current = false;
+              scheduleHideTooltip(200);
             }}
           >
             <defs>
@@ -487,12 +525,14 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
             />
             <XAxis
               dataKey="timestamp"
+              type="number"
               ticks={dailyTicks}
               axisLine={{ stroke: 'hsl(var(--border))' }}
               tickLine={false}
               tick={{ fill: 'hsl(var(--muted-foreground))' }}
               tickFormatter={formatTimestampCompact}
               fontSize={12}
+              minTickGap={24}
               dy={10} // Adjust vertical position of ticks
               domain={
                 effectiveMinTimestamp
@@ -514,10 +554,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
             <Tooltip
               content={() => null}
               wrapperStyle={{ display: 'none' }}
-              cursor={{
-                stroke: 'hsl(var(--muted-foreground) / 0.4)',
-                strokeDasharray: '3 3',
-              }}
+              cursor={false}
             />
 
             {/* Dynamically render a Line for each marketId */}
@@ -529,6 +566,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                 fill={`url(#marketGradient-${marketId})`}
                 stroke="none"
                 connectNulls
+                activeDot={false}
                 isAnimationActive={false}
               />
             ))}
@@ -541,6 +579,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                 stroke={getSeriesColorByIndex(index)} // Cycle through colors
                 strokeWidth={2}
                 dot={false}
+                activeDot={false}
                 connectNulls // Connect lines across null data points
                 isAnimationActive={false}
               />
@@ -572,6 +611,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                 strokeDasharray="5 5"
                 strokeOpacity={0.5}
                 dot={false}
+                activeDot={false}
                 connectNulls
                 isAnimationActive={false}
               />

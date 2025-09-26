@@ -247,6 +247,40 @@ export const useMarketGroupChartData = ({
           rawIndexCandles, // Pass the raw index data
           indexMultiplier // Pass the calculated multiplier
         );
+        // Debug instrumentation: log raw candles summary and processed ranges
+        try {
+          console.log('[useMarketGroupChartData] fetched candles summary', {
+            activeMarketIds,
+            chainId,
+            marketAddress,
+            markets: marketDataForProcessing.map((m) => ({
+              marketId: m.marketId,
+              count: m.candles?.length || 0,
+              first: m.candles?.[0]?.close,
+              last: m.candles?.[Math.max((m.candles?.length || 1) - 1, 0)]
+                ?.close,
+            })),
+            indexCount: rawIndexCandles?.length || 0,
+          });
+          const seriesRanges = activeMarketIds.map((id) => {
+            const idStr = String(id);
+            const values: number[] = [];
+            for (const p of processedData) {
+              const v = (p.markets as any)?.[idStr];
+              if (typeof v === 'number' && Number.isFinite(v)) values.push(v);
+            }
+            const min = values.length ? Math.min(...values) : null;
+            const max = values.length ? Math.max(...values) : null;
+            return { marketId: id, count: values.length, min, max };
+          });
+
+          console.log(
+            '[useMarketGroupChartData] processed ranges (pre-scale)',
+            seriesRanges
+          );
+        } catch (_) {
+          // ignore logging errors
+        }
         setChartData(processedData); // Set state with the new structure
       } catch (err) {
         console.error('Error fetching or processing candle data:', err);

@@ -24,7 +24,7 @@ import {
 import { ArrowUpDown, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
 import * as React from 'react';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { useReadContracts } from 'wagmi';
+import { useReadContracts, useAccount } from 'wagmi';
 import type { Abi } from 'abitype';
 import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
 // Minimal ABI for PredictionMarketUmaResolver.resolvePrediction(bytes)
@@ -93,6 +93,8 @@ export default function UserParlaysTable({
 }) {
   // ---
   const queryClient = useQueryClient();
+  const { address: connectedAddress } = useAccount();
+  const hasWallet = Boolean(connectedAddress);
   const { burn, isPending: isClaimPending } = usePredictionMarketWriteContract({
     successMessage: 'Claim submitted',
     fallbackErrorMessage: 'Claim failed',
@@ -715,7 +717,11 @@ export default function UserParlaysTable({
                   if (res.state === 'awaiting')
                     return <AwaitingSettlementBadge />;
                   if (res.state === 'claim') {
-                    return (
+                    const isOwnerConnected =
+                      connectedAddress &&
+                      connectedAddress.toLowerCase() ===
+                        String(account || '').toLowerCase();
+                    return isOwnerConnected ? (
                       <Button
                         size="sm"
                         onClick={() => burn(res.tokenId, ZERO_REF_CODE)}
@@ -723,6 +729,25 @@ export default function UserParlaysTable({
                       >
                         {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
                       </Button>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button size="sm" variant="outline" disabled>
+                                Claim Winnings
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-[220px]">
+                              {hasWallet
+                                ? 'You can only claim winnings from the account that owns this parlay.'
+                                : 'Connect your account to claim this parlay.'}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     );
                   }
                   if (res.state === 'lost') {
@@ -740,17 +765,43 @@ export default function UserParlaysTable({
                 })()}
               {row.original.status === 'won' &&
                 row.original.tokenIdToClaim !== undefined &&
-                claimableTokenIds.has(String(row.original.tokenIdToClaim)) && (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      burn(row.original.tokenIdToClaim!, ZERO_REF_CODE)
-                    }
-                    disabled={isClaimPending}
-                  >
-                    {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
-                  </Button>
-                )}
+                claimableTokenIds.has(String(row.original.tokenIdToClaim)) &&
+                (() => {
+                  const isOwnerConnected =
+                    connectedAddress &&
+                    connectedAddress.toLowerCase() ===
+                      String(account || '').toLowerCase();
+                  return isOwnerConnected ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        burn(row.original.tokenIdToClaim!, ZERO_REF_CODE)
+                      }
+                      disabled={isClaimPending}
+                    >
+                      {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
+                    </Button>
+                  ) : (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button size="sm" variant="outline" disabled>
+                              Claim Winnings
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-[220px]">
+                            {hasWallet
+                              ? 'You can only claim winnings from the account that owns this parlay.'
+                              : 'Connect your account to claim this parlay.'}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })()}
               {row.original.status === 'won' &&
                 (row.original.tokenIdToClaim === undefined ||
                   !claimableTokenIds.has(
@@ -777,7 +828,15 @@ export default function UserParlaysTable({
         ),
       },
     ],
-    [isClaimPending, burn, account, rowKeyToResolution, claimableTokenIds]
+    [
+      isClaimPending,
+      burn,
+      account,
+      rowKeyToResolution,
+      claimableTokenIds,
+      connectedAddress,
+      hasWallet,
+    ]
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([

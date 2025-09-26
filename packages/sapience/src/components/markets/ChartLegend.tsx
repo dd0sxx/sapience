@@ -42,10 +42,9 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   hoveredDataPoint,
 }) => {
   const MARKET_PREDICTION_LABEL = 'Market Prediction';
-  const displayDataPoint = hoveredDataPoint || latestDataPoint;
   const isMultipleChoice = Boolean(optionNames && optionNames.length > 1);
 
-  if (!displayDataPoint) {
+  if (!latestDataPoint && !hoveredDataPoint) {
     return null; // No data to display legend for
   }
 
@@ -58,8 +57,13 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   // Prepare items in the provided order to keep colors/labels consistent
   const items = marketIds.map((marketIdNum, index) => {
     const marketIdStr = String(marketIdNum);
-    const value = displayDataPoint.markets?.[marketIdStr];
-    return { marketIdNum, index, value };
+    const hoveredValue = hoveredDataPoint?.markets?.[marketIdStr];
+    const latestValue = latestDataPoint?.markets?.[marketIdStr];
+    const hasHoveredValue =
+      typeof hoveredValue === 'number' && Number.isFinite(hoveredValue);
+    const value = hasHoveredValue ? hoveredValue : latestValue;
+    const usingLatest = !hasHoveredValue;
+    return { marketIdNum, index, value, usingLatest };
   });
 
   return (
@@ -70,7 +74,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
           : 'flex flex-col items-start gap-y-1 pb-4 text-sm'
       }
     >
-      {items.map(({ marketIdNum, index, value }) => {
+      {items.map(({ marketIdNum, index, value, usingLatest }) => {
         const marketIdStr = String(marketIdNum);
         const color = lineColors[index % lineColors.length];
 
@@ -86,7 +90,10 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         if (isMultipleChoice) {
           label = baseLabel;
         } else {
-          label = hoveredDataPoint ? baseLabel : `Current ${baseLabel}`;
+          label =
+            hoveredDataPoint && !usingLatest
+              ? baseLabel
+              : `Current ${baseLabel}`;
         }
 
         const isPercentageMarket = yAxisConfig.unit === '%';
