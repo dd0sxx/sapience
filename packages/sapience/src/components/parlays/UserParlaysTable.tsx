@@ -630,7 +630,7 @@ export default function UserParlaysTable({
                     Won: <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
                     {viewerWager > 0 && (
                       <span className="text-xs text-green-600">
-                        {roi.toFixed(0)}%
+                        ({roi.toFixed(2)}%)
                       </span>
                     )}
                   </div>
