@@ -29,7 +29,8 @@ export interface ParlayModeRowProps {
 
 const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
   const { id, question, shortName, endTime, description } = condition;
-  const { addParlaySelection, parlaySelections } = useBetSlipContext();
+  const { addParlaySelection, removeParlaySelection, parlaySelections } =
+    useBetSlipContext();
 
   const displayQ = shortName || question;
 
@@ -45,21 +46,43 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
 
   const handleYes = React.useCallback(() => {
     if (!id) return;
+    const existing = parlaySelections.find((s) => s.conditionId === id);
+    if (existing && existing.prediction === true) {
+      removeParlaySelection(existing.id);
+      return;
+    }
     addParlaySelection({
       conditionId: id,
       question: displayQ,
       prediction: true,
     });
-  }, [id, displayQ, addParlaySelection]);
+  }, [
+    id,
+    displayQ,
+    parlaySelections,
+    removeParlaySelection,
+    addParlaySelection,
+  ]);
 
   const handleNo = React.useCallback(() => {
     if (!id) return;
+    const existing = parlaySelections.find((s) => s.conditionId === id);
+    if (existing && existing.prediction === false) {
+      removeParlaySelection(existing.id);
+      return;
+    }
     addParlaySelection({
       conditionId: id,
       question: displayQ,
       prediction: false,
     });
-  }, [id, displayQ, addParlaySelection]);
+  }, [
+    id,
+    displayQ,
+    parlaySelections,
+    removeParlaySelection,
+    addParlaySelection,
+  ]);
 
   return (
     <div className="border-b last:border-b-0 border-border">
