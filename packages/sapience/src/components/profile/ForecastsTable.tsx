@@ -102,7 +102,7 @@ const renderSubmittedCell = ({
     year: 'numeric',
     month: 'short',
     day: '2-digit',
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
     timeZoneName: 'short',
@@ -224,7 +224,6 @@ const renderQuestionCell = ({
     row.original,
     parentMarketAddress
   );
-  const marketIdHex = extractMarketIdHex(row.original);
 
   if (isMarketsLoading) {
     return <span className="text-muted-foreground">Loading question...</span>;
@@ -234,35 +233,29 @@ const renderQuestionCell = ({
     <span className="text-muted-foreground">Question not available</span>
   );
 
-  if (marketAddress && marketIdHex) {
-    const marketId = parseInt(marketIdHex, 16);
+  if (marketAddress) {
     const marketGroup = marketGroups.find(
       (group) => group.address?.toLowerCase() === marketAddress
     );
-    if (marketGroup) {
-      const market = marketGroup.markets?.find(
-        (m: { marketId: number }) => m.marketId === marketId
+    const chainShortName = marketGroup?.chainId
+      ? getChainShortName(marketGroup.chainId)
+      : 'base';
+    const questionText = marketGroup?.question
+      ? typeof marketGroup.question === 'string'
+        ? marketGroup.question
+        : String((marketGroup as any).question?.value || marketGroup.question)
+      : undefined;
+    if (questionText) {
+      content = (
+        <Link
+          href={`/markets/${chainShortName}:${marketAddress}#forecasts`}
+          className="group"
+        >
+          <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+            {questionText}
+          </span>
+        </Link>
       );
-      if (market && market.question) {
-        const chainShortName = marketGroup.chainId
-          ? getChainShortName(marketGroup.chainId)
-          : 'base';
-        const questionText =
-          typeof market.question === 'string'
-            ? market.question
-            : String((market as any).question?.value || market.question);
-        // Link to the market group page, not the single market page, and select forecasts tab
-        content = (
-          <Link
-            href={`/markets/${chainShortName}:${marketAddress}#forecasts`}
-            className="group"
-          >
-            <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
-              {questionText}
-            </span>
-          </Link>
-        );
-      }
     }
   }
 

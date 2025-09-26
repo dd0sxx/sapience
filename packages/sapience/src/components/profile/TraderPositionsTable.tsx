@@ -612,11 +612,7 @@ export default function TraderPositionsTable({
                             position.market?.marketGroup?.collateralDecimals ||
                             18
                           }
-                          onSuccess={() => {
-                            console.log(
-                              `Settle action for position ${position.positionId} initiated.`
-                            );
-                          }}
+                          onSuccess={() => {}}
                         />
                       ) : (
                         <TooltipProvider>
@@ -645,11 +641,7 @@ export default function TraderPositionsTable({
                           position={position}
                           marketAddress={marketAddress}
                           chainId={position.market?.marketGroup?.chainId || 0}
-                          onSuccess={() => {
-                            console.log(
-                              `Close action for position ${position.positionId} sent.`
-                            );
-                          }}
+                          onSuccess={() => {}}
                         />
                       ) : isClosed ? (
                         (() => {

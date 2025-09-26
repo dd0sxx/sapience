@@ -573,11 +573,7 @@ export default function LpPositionsTable({
                         collateralDecimals={
                           marketGroup?.collateralDecimals || 18
                         }
-                        onSuccess={() => {
-                          console.log(
-                            `Settle action for LP position ${position.positionId} initiated. Consider a data refetch.`
-                          );
-                        }}
+                        onSuccess={() => {}}
                       />
                     ) : (
                       <TooltipProvider>

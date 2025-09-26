@@ -1,0 +1,336 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { graphqlRequest } from '@sapience/ui/lib';
+import type { Transaction as TransactionType } from '@sapience/ui/types';
+import CombinedFeedTable from './CombinedFeedTable';
+import type { FeedRow } from './FeedTable';
+import {
+  TransactionRow,
+  MintParlayNFTTransactionRow,
+  BurnParlayNFTTransactionRow,
+  type UiTransaction,
+} from '~/components/markets/DataDrawer/TransactionCells';
+
+type FeedTransaction = Pick<
+  TransactionType,
+  'id' | 'type' | 'createdAt' | 'collateral'
+> & {
+  collateralTransfer?: { collateral?: string | null } | null;
+  event?: { transactionHash?: string | null; logData?: any } | null;
+  position?: {
+    owner?: string | null;
+    positionId?: string | number | null;
+    isLP?: boolean | null;
+    market?: {
+      optionName?: string | null;
+      marketId?: string | number | null;
+      marketGroup?: {
+        chainId?: number | null;
+        address?: string | null;
+        collateralSymbol?: string | null;
+        collateralDecimals?: number | null;
+        question?: string | null;
+      } | null;
+    } | null;
+  } | null;
+};
+
+const FEED_QUERY = /* GraphQL */ `
+  query FeedTransactions($take: Int!) {
+    transactions(orderBy: { createdAt: desc }, take: $take) {
+      id
+      type
+      createdAt
+      collateral
+      collateralTransfer {
+        collateral
+      }
+      event {
+        transactionHash
+        logData
+      }
+      position {
+        owner
+        positionId
+        isLP
+        market {
+          question
+          optionName
+          marketId
+          marketGroup {
+            chainId
+            address
+            collateralSymbol
+            collateralDecimals
+            question
+          }
+        }
+      }
+    }
+  }
+`;
+
+function pickRowComponent(tx: UiTransaction) {
+  const t = (tx.type || '').toLowerCase();
+  if (
+    t === 'mintparlaynfts' ||
+    t === 'mintparlaynft' ||
+    t === 'mint_parlay_nfts'
+  ) {
+    return MintParlayNFTTransactionRow;
+  }
+  if (
+    t === 'burnparlaynfts' ||
+    t === 'burnparlaynft' ||
+    t === 'burn_parlay_nfts'
+  ) {
+    return BurnParlayNFTTransactionRow;
+  }
+  return TransactionRow;
+}
+
+type PredictedOutcome = {
+  conditionId: string;
+  prediction: boolean;
+  condition?: {
+    shortName?: string | null;
+    question?: string | null;
+    endTime?: number | null;
+  } | null;
+};
+
+export default function FeedPage() {
+  const [rows, setRows] = useState<FeedRow[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [firstLoadComplete, setFirstLoadComplete] = useState(false);
+  const intervalRef = useRef<number | null>(null);
+
+  const buildRows = useCallback(
+    (
+      transactions: FeedTransaction[],
+      parlayPredictionsByKey: Map<string, PredictedOutcome[]>
+    ) => {
+      const built: FeedRow[] = transactions.flatMap<FeedRow>((tx) => {
+        const collateralAssetTicker =
+          tx.position?.market?.marketGroup?.collateralSymbol || null;
+        const mg = tx.position?.market?.marketGroup as any;
+        let sortedMarketsForColors: any[] = [];
+        if (mg?.markets && Array.isArray(mg.markets)) {
+          sortedMarketsForColors = [...mg.markets].sort(
+            (a: any, b: any) =>
+              Number(a?.marketId ?? 0) - Number(b?.marketId ?? 0)
+          );
+        } else {
+          const cur = tx.position?.market;
+          if (cur) sortedMarketsForColors = [cur];
+        }
+        const lowerType = String(tx.type || '').toLowerCase();
+        const isMintParlay =
+          lowerType === 'mintparlaynfts' ||
+          lowerType === 'mintparlaynft' ||
+          lowerType === 'mint_parlay_nfts';
+        if (!isMintParlay) {
+          const Comp = pickRowComponent(tx as unknown as UiTransaction);
+          return [
+            {
+              Comp,
+              key: tx.id,
+              tx: tx as unknown as UiTransaction,
+              collateralAssetTicker,
+              sortedMarketsForColors,
+            } as FeedRow,
+          ];
+        }
+        const logData: any = (tx as any)?.event?.logData || {};
+        const maker =
+          typeof logData?.maker === 'string' ? logData.maker : undefined;
+        const taker =
+          typeof logData?.taker === 'string' ? logData.taker : undefined;
+        const makerNftTokenId = logData?.makerNftTokenId;
+        const takerNftTokenId = logData?.takerNftTokenId;
+        const makerCollateral = logData?.makerCollateral;
+        const takerCollateral = logData?.takerCollateral;
+        const parlayKey = `${String(makerNftTokenId ?? '')}-${String(takerNftTokenId ?? '')}`;
+        const enrichedOutcomes = (() => {
+          const evOutcomes: PredictedOutcome[] | undefined = Array.isArray(
+            logData?.predictedOutcomes
+          )
+            ? (logData.predictedOutcomes as PredictedOutcome[])
+            : undefined;
+          if (evOutcomes && evOutcomes.length > 0) return evOutcomes;
+          const fromUserParlays = parlayPredictionsByKey.get(parlayKey);
+          return fromUserParlays && fromUserParlays.length > 0
+            ? fromUserParlays
+            : undefined;
+        })();
+        const Comp = MintParlayNFTTransactionRow;
+        const makerTx: UiTransaction = {
+          ...(tx as any),
+          type: 'Parlay',
+          position: {
+            ...(tx as any)?.position,
+            owner: maker || (tx as any)?.position?.owner || null,
+            positionId:
+              makerNftTokenId ?? (tx as any)?.position?.positionId ?? null,
+            collateral:
+              makerCollateral ?? (tx as any)?.position?.collateral ?? null,
+          },
+          event: {
+            ...(tx as any)?.event,
+            logData: {
+              ...(tx as any)?.event?.logData,
+              ...(enrichedOutcomes
+                ? { predictedOutcomes: enrichedOutcomes }
+                : {}),
+            },
+          },
+        } as UiTransaction;
+        const takerTx: UiTransaction = {
+          ...(tx as any),
+          type: 'Anti-Parlay',
+          position: {
+            ...(tx as any)?.position,
+            owner: taker || (tx as any)?.position?.owner || null,
+            positionId:
+              takerNftTokenId ?? (tx as any)?.position?.positionId ?? null,
+            collateral:
+              takerCollateral ?? (tx as any)?.position?.collateral ?? null,
+          },
+          event: {
+            ...(tx as any)?.event,
+            logData: {
+              ...(tx as any)?.event?.logData,
+              ...(enrichedOutcomes
+                ? { predictedOutcomes: enrichedOutcomes }
+                : {}),
+            },
+          },
+        } as UiTransaction;
+        return [
+          {
+            Comp,
+            key: `${tx.id}-maker`,
+            tx: makerTx,
+            collateralAssetTicker: 'testUSDe',
+            sortedMarketsForColors,
+          } as FeedRow,
+          {
+            Comp,
+            key: `${tx.id}-taker`,
+            tx: takerTx,
+            collateralAssetTicker: 'testUSDe',
+            sortedMarketsForColors,
+          } as FeedRow,
+        ];
+      });
+      return built;
+    },
+    []
+  );
+
+  const fetchAndBuild = useCallback(async () => {
+    try {
+      setErrorMessage(null);
+      const res = await graphqlRequest<{ transactions: FeedTransaction[] }>(
+        FEED_QUERY,
+        { take: 100 }
+      );
+      const transactions = res.transactions || [];
+
+      const makerSet = new Set<string>();
+      for (const tx of transactions) {
+        const t = String(tx.type || '').toLowerCase();
+        if (
+          t === 'mintparlaynfts' ||
+          t === 'mintparlaynft' ||
+          t === 'mint_parlay_nfts'
+        ) {
+          const maker = (tx as any)?.event?.logData?.maker;
+          if (maker && typeof maker === 'string')
+            makerSet.add(maker.toLowerCase());
+        }
+      }
+
+      const USER_PARLAYS_QUERY = /* GraphQL */ `
+        query UserParlays($address: String!, $take: Int, $skip: Int) {
+          userParlays(address: $address, take: $take, skip: $skip) {
+            makerNftTokenId
+            takerNftTokenId
+            predictedOutcomes {
+              conditionId
+              prediction
+              condition {
+                shortName
+                question
+                endTime
+              }
+            }
+          }
+        }
+      `;
+
+      const parlayPredictionsByKey = new Map<string, PredictedOutcome[]>();
+      const makerArr = Array.from(makerSet);
+      if (makerArr.length > 0) {
+        const parlayLists = await Promise.all(
+          makerArr.map((address) =>
+            graphqlRequest<{
+              userParlays: Array<{
+                makerNftTokenId: string;
+                takerNftTokenId: string;
+                predictedOutcomes: PredictedOutcome[];
+              }>;
+            }>(USER_PARLAYS_QUERY, { address, take: 100, skip: 0 }).catch(
+              () => ({ userParlays: [] })
+            )
+          )
+        );
+        for (const res of parlayLists) {
+          const list = res?.userParlays || [];
+          for (const p of list) {
+            const key = `${String(p.makerNftTokenId)}-${String(p.takerNftTokenId)}`;
+            if (!parlayPredictionsByKey.has(key))
+              parlayPredictionsByKey.set(key, p.predictedOutcomes || []);
+          }
+        }
+      }
+
+      const built = buildRows(transactions, parlayPredictionsByKey);
+      setRows(built);
+      if (!firstLoadComplete) setFirstLoadComplete(true);
+    } catch (e: any) {
+      setErrorMessage(e?.message || 'Failed to load transactions.');
+    }
+  }, [buildRows, firstLoadComplete]);
+
+  useEffect(() => {
+    fetchAndBuild();
+    if (intervalRef.current != null) window.clearInterval(intervalRef.current);
+    intervalRef.current = window.setInterval(fetchAndBuild, 5000);
+    return () => {
+      if (intervalRef.current != null)
+        window.clearInterval(intervalRef.current);
+    };
+  }, [fetchAndBuild]);
+
+  return (
+    <div className="mt-24 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6">
+      <div className="mx-auto w-full max-w-7xl">
+        <div className="rounded border bg-card">
+          {errorMessage ? (
+            <div className="px-4 py-3 text-sm text-destructive">
+              {errorMessage}
+            </div>
+          ) : null}
+          <CombinedFeedTable rows={rows} />
+          {firstLoadComplete && rows.length === 0 ? (
+            <div className="px-4 py-8 text-center text-muted-foreground">
+              No transactions found.
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
