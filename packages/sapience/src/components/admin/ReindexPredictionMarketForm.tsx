@@ -43,7 +43,7 @@ const ReindexPredictionMarketForm = () => {
         clearExisting,
       });
 
-      const timeRange = startTimestamp 
+      const timeRange = startTimestamp
         ? `from ${new Date(Number(startTimestamp) * 1000).toLocaleDateString()}`
         : 'last 2 days (default)';
 
@@ -72,7 +72,7 @@ const ReindexPredictionMarketForm = () => {
   // Helper function to set common time ranges
   const setTimeRange = (hours: number) => {
     const now = Math.floor(Date.now() / 1000);
-    const start = now - (hours * 60 * 60);
+    const start = now - hours * 60 * 60;
     setStartTimestamp(start.toString());
     setEndTimestamp('');
   };
@@ -190,7 +190,8 @@ const ReindexPredictionMarketForm = () => {
         </label>
       </div>
       <p className="text-sm text-muted-foreground">
-        ⚠️ Warning: This will delete all existing parlays and events for the selected chain before reindexing.
+        ⚠️ Warning: This will delete all existing parlays and events for the
+        selected chain before reindexing.
       </p>
 
       <Button type="submit" disabled={isLoading} className="w-full">

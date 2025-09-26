@@ -10,6 +10,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Scatter,
 } from 'recharts';
 
 import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
@@ -17,16 +18,23 @@ import LottieLoader from '../shared/LottieLoader';
 import ChartLegend from './ChartLegend';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import {
+  useForecasts,
+  type FormattedAttestation,
+} from '~/hooks/graphql/useForecasts';
+import {
   transformMarketGroupChartData,
   type MultiMarketChartDataPoint,
   getEffectiveMinTimestampFromData,
 } from '~/lib/utils/chartUtils'; // Added for type safety and transformer
-import { getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
+import { getYAxisConfig, sqrtPriceX96ToPriceD18 } from '~/lib/utils/util'; // Import moved functions
 import {
   CHART_INDEX_COLOR,
   CHART_SERIES_COLORS,
   getSeriesColorByIndex,
 } from '~/lib/theme/chartColors';
+import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
+import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
+import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 
 // Colors come from centralized theme
 
@@ -37,6 +45,8 @@ interface MarketGroupChartProps {
   market: MarketGroupType | null | undefined; // Use GraphQL type
   minTimestamp?: number;
   optionNames?: string[] | null;
+  showForecastDots?: boolean;
+  forecastAttester?: string;
 }
 
 const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
@@ -46,6 +56,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   market,
   minTimestamp,
   optionNames,
+  showForecastDots,
+  forecastAttester,
 }) => {
   const { chartData, isLoading, isError, error } = useMarketGroupChartData({
     chainShortName,
@@ -56,6 +68,17 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   });
   const [hoveredChartData, setHoveredChartData] =
     useState<MultiMarketChartDataPoint | null>(null); // New state for hovered data
+
+  // Forecasts: fetch (before any early returns to keep hooks order stable)
+  const { data: forecasts } = useForecasts({
+    marketAddress,
+    attesterAddress: forecastAttester,
+    options: {
+      staleTime: 10000,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    },
+  });
 
   // Compute effective min timestamp via shared helper (starts at first trade and respects provided min)
   const effectiveMinTimestamp = useMemo(
@@ -114,6 +137,58 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     return `${month}/${day}`;
   };
 
+  // Prepare forecast dots BEFORE any early returns so hooks order is stable
+  // Compute classification once; guard against undefined by passing empty object
+  const classification = useMemo(
+    () => getMarketGroupClassification(market || {}),
+    [market]
+  );
+
+  const dotsByMarketId = useMemo(() => {
+    if (!forecasts || forecasts.length === 0)
+      return {} as Record<
+        number,
+        { timestamp: number; y: number; att: FormattedAttestation }[]
+      >;
+
+    const result: Record<
+      number,
+      { timestamp: number; y: number; att: FormattedAttestation }[]
+    > = {};
+
+    for (const att of forecasts) {
+      if (!att.marketId) continue;
+      const marketIdNum = parseInt(att.marketId, 16);
+      if (!marketIds.includes(marketIdNum)) continue;
+
+      let y: number | null = null;
+      if (
+        classification === MarketGroupClassificationEnum.YES_NO ||
+        market?.baseTokenName === 'Yes' ||
+        classification === MarketGroupClassificationEnum.MULTIPLE_CHOICE
+      ) {
+        const priceD18 = sqrtPriceX96ToPriceD18(BigInt(att.value));
+        const yesPriceD18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
+        const percentageTimes100 =
+          Number((priceD18 * 10000n) / yesPriceD18) / 100; // 0..100
+        y = percentageTimes100 / 100; // 0..1
+      } else {
+        const numericD18 = sqrtPriceX96ToPriceD18(BigInt(att.value));
+        // For numeric markets, sqrtPriceX96ToPriceD18 returns a value scaled by 1e36 of the raw unit.
+        // The chart lines are scaled to raw units (Wei / 1e18) by transformMarketGroupChartData,
+        // so here we must divide by 1e36 to place dots in the same scale as the lines.
+        y = Number(numericD18) / 1e36;
+      }
+
+      if (y == null || Number.isNaN(y)) continue;
+      const point = { timestamp: att.rawTime, y, att };
+      if (!result[marketIdNum]) result[marketIdNum] = [];
+      result[marketIdNum].push(point);
+    }
+
+    return result;
+  }, [forecasts, marketIds, market, classification]);
+
   if (isLoading) {
     return (
       <div className="w-full md:flex-1 h-full flex items-center justify-center">
@@ -161,6 +236,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     scaledAndFilteredChartData.length > 0
       ? scaledAndFilteredChartData[scaledAndFilteredChartData.length - 1]
       : null;
+
+  // duplicate declaration leftover from refactor — remove to avoid redeclaration
 
   return (
     // Adjust main container for flex column layout and height
@@ -289,6 +366,20 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                 isAnimationActive={false}
               />
             ))}
+
+            {showForecastDots !== false &&
+              marketIds.map((marketId, index) => (
+                <Scatter
+                  key={`forecast-dots-${marketId}`}
+                  data={dotsByMarketId[marketId] || []}
+                  dataKey="y"
+                  fill={getSeriesColorByIndex(index)}
+                  shape={(props: any) => <circle {...props} r={2} />}
+                  fillOpacity={0.9}
+                  stroke="none"
+                  isAnimationActive={false}
+                />
+              ))}
 
             {/* Render index line if data exists and toggle is on */}
             {hasIndexData && (

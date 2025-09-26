@@ -118,6 +118,10 @@ export const useMarketGroupChartData = ({
   const [errorCandles, setErrorCandles] = useState<Error | null>(null);
 
   const chainId = getChainIdFromShortName(chainShortName); // Calculate chainId outside useEffect
+  // Create a stable key so identical contents do not trigger refetch due to new array refs
+  const activeMarketIdsKey = Array.isArray(activeMarketIds)
+    ? activeMarketIds.join(',')
+    : '';
 
   // Fetch Candle Data based on received activeMarketIds
   useEffect(() => {
@@ -260,7 +264,7 @@ export const useMarketGroupChartData = ({
 
     fetchCandles();
   }, [
-    activeMarketIds,
+    activeMarketIdsKey,
     chainId,
     marketAddress,
     propFromTimestamp,

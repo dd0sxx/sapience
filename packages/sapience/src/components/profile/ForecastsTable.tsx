@@ -251,9 +251,10 @@ const renderQuestionCell = ({
           typeof market.question === 'string'
             ? market.question
             : String((market as any).question?.value || market.question);
+        // Link to the market group page, not the single market page, and select forecasts tab
         content = (
           <Link
-            href={`/markets/${chainShortName}:${marketAddress}/${marketId}`}
+            href={`/markets/${chainShortName}:${marketAddress}#forecasts`}
             className="group"
           >
             <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">

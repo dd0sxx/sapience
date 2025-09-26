@@ -449,7 +449,8 @@ const Admin = () => {
   const [createConditionOpen, setCreateConditionOpen] = useState(false);
   const [rfqCsvImportOpen, setRfqCsvImportOpen] = useState(false);
   const [clCsvImportOpen, setClCsvImportOpen] = useState(false);
-  const [predictionMarketReindexOpen, setPredictionMarketReindexOpen] = useState(false);
+  const [predictionMarketReindexOpen, setPredictionMarketReindexOpen] =
+    useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState(
@@ -543,8 +544,8 @@ const Admin = () => {
               <ReindexAccuracyForm />
             </DialogContent>
           </Dialog>
-          <Dialog 
-            open={predictionMarketReindexOpen} 
+          <Dialog
+            open={predictionMarketReindexOpen}
             onOpenChange={setPredictionMarketReindexOpen}
           >
             <DialogTrigger asChild>

@@ -112,6 +112,12 @@ interface UseForecastsProps {
   attesterAddress?: string;
   chainId?: number;
   marketId?: number;
+  options?: {
+    staleTime?: number;
+    refetchOnMount?: boolean | 'always';
+    refetchOnWindowFocus?: boolean;
+    enabled?: boolean;
+  };
 }
 
 // Function to generate consistent query key for both useForecasts and prefetchForecasts
@@ -199,6 +205,7 @@ export const useForecasts = ({
   attesterAddress,
   chainId,
   marketId,
+  options,
 }: UseForecastsProps) => {
   const queryKey = generateForecastsQueryKey({
     marketAddress,
@@ -222,10 +229,13 @@ export const useForecasts = ({
         attesterAddress,
         marketId,
       }),
-    enabled: Boolean(schemaId),
+    enabled: options?.enabled ?? Boolean(schemaId),
     retry: 3,
     retryDelay: 1000,
     refetchInterval: 10000, // Refetch every 10 seconds
+    staleTime: options?.staleTime ?? 10000,
+    refetchOnMount: options?.refetchOnMount ?? false,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
   });
 
   // Transform raw attestations data into the proper format for the table
