@@ -180,7 +180,7 @@ const ProfilePageContent = () => {
   // No feature flag; nothing to monitor
 
   return (
-    <div className="container max-w-6xl mx-auto py-32 px-4">
+    <div className="container max-w-6xl mx-auto py-24 lg:py-32 px-4">
       <div className="mb-5 lg:mb-10">
         <ProfileHeader address={address} />
       </div>

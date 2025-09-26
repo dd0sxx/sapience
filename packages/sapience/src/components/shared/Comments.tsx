@@ -1,7 +1,5 @@
 'use client';
 
-import { blo } from 'blo';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef } from 'react';
 import { FrownIcon } from 'lucide-react';
@@ -15,6 +13,7 @@ import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18, getChainShortName } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 
 // Helper function to check if a market is active
 function isMarketActive(market: any): boolean {
@@ -477,9 +476,8 @@ const Comments = ({
                           </span>
                           <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
                             <div className="relative">
-                              <Image
-                                alt={comment.address}
-                                src={blo(comment.address as `0x${string}`)}
+                              <EnsAvatar
+                                address={comment.address}
                                 className="w-5 h-5 rounded-sm ring-1 ring-border/50"
                                 width={20}
                                 height={20}

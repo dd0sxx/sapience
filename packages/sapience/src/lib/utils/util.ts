@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { createPublicClient, formatEther, http } from 'viem';
+import { createPublicClient, formatEther, http, type PublicClient } from 'viem';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
 import type { MarketType, TransactionType } from '@sapience/ui/types';
@@ -67,6 +67,33 @@ export const mainnetClient = createPublicClient({
       )
     : http('https://ethereum-rpc.publicnode.com'),
 });
+
+const publicClientCache: Map<number, PublicClient> = new Map();
+
+export function getPublicClientForChainId(chainId: number): PublicClient {
+  const cached = publicClientCache.get(chainId);
+  if (cached) return cached;
+
+  const chainObj = Object.values(chains).find(
+    (c: any) => c?.id === chainId
+  ) as any;
+
+  // Allow per-chain override via NEXT_PUBLIC_RPC_<CHAINID>
+  const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
+  const envUrl = process.env[envKey as string];
+
+  const defaultUrl =
+    envUrl ||
+    chainObj?.rpcUrls?.public?.http?.[0] ||
+    (chainId === 1 ? 'https://ethereum-rpc.publicnode.com' : undefined);
+
+  const client = createPublicClient({
+    chain: chainObj ?? mainnet,
+    transport: defaultUrl ? http(defaultUrl) : http(),
+  });
+  publicClientCache.set(chainId, client);
+  return client;
+}
 
 export const gweiToEther = (gweiValue: bigint): string => {
   // First, convert gwei to wei (multiply by 10^9)

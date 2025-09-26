@@ -39,6 +39,7 @@ import CollateralBalanceButton from './CollateralBalanceButton';
 import { shortenAddress } from '~/lib/utils/util';
 import { useEnsName } from '~/components/shared/AddressDisplay';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -288,9 +289,28 @@ const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    className="rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 ml-1.5 md:ml-0 gap-2"
+                    className="rounded-full h-10 w-10 md:h-9 md:w-auto ml-1.5 md:ml-0 gap-2 p-0 md:pl-2 md:pr-3 overflow-hidden"
                   >
-                    <User className="h-5 w-5" />
+                    {connectedWallet?.address ? (
+                      <>
+                        {/* Mobile: avatar fills the entire circular button */}
+                        <EnsAvatar
+                          address={connectedWallet.address}
+                          className="h-full w-full rounded-full md:hidden"
+                          width={40}
+                          height={40}
+                        />
+                        {/* Desktop: small avatar next to address */}
+                        <EnsAvatar
+                          address={connectedWallet.address}
+                          className="hidden md:inline-flex h-6.5 w-6.5 rounded-full"
+                          width={24}
+                          height={24}
+                        />
+                      </>
+                    ) : (
+                      <User className="h-5 w-5" />
+                    )}
                     {connectedWallet?.address && (
                       <span className="hidden md:inline text-sm">
                         {ensName || shortenAddress(connectedWallet.address)}

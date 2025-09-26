@@ -3,12 +3,10 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import Image from 'next/image';
 import { formatEther } from 'viem';
 import { formatDistanceToNow } from 'date-fns';
 
 import type { Position as PositionType } from '@sapience/ui/types/graphql';
-import { blo } from 'blo';
 import {
   Table,
   TableBody,
@@ -26,6 +24,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useAllPositions } from '~/hooks/graphql/usePositions';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
@@ -394,9 +393,8 @@ const WagersTable: React.FC<WagersTableProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 {position.owner ? (
-                  <Image
-                    alt={position.owner}
-                    src={blo(position.owner as `0x${string}`)}
+                  <EnsAvatar
+                    address={position.owner}
                     className="w-5 h-5 rounded-sm ring-1 ring-border/50"
                     width={20}
                     height={20}
