@@ -194,6 +194,22 @@ const MarketGroupPageContent = () => {
     }
   }, [activeContentTab, ready, authenticated]);
 
+  // Hash-driven tab selection: select forecasts when URL hash is #forecasts
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const applyHash = () => {
+      if (window.location.hash === '#forecasts') {
+        setActiveContentTab('forecasts');
+      }
+    };
+    // Apply on mount and when navigating client-side
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => {
+      window.removeEventListener('hashchange', applyHash);
+    };
+  }, []);
+
   const handleUserPositionsRefetch = useCallback(() => {
     setUserPositionsTrigger((prev) => prev + 1);
   }, []);
@@ -244,7 +260,7 @@ const MarketGroupPageContent = () => {
         ? 'all-positions'
         : 'forecasts';
 
-    setActiveContentTab(firstVisible);
+    setActiveContentTab((prev) => (prev ? prev : firstVisible));
     setDidSetDefaultTab(true);
   }, [
     didSetDefaultTab,
@@ -255,10 +271,12 @@ const MarketGroupPageContent = () => {
     connectedPrivyWallet?.address,
   ]);
 
-  // Find markets grouped by common end time
-  const marketGroupByEndTime = marketGroupData?.markets
-    ? getMarketsGroupedByEndTime(marketGroupData.markets)
-    : null;
+  // Find markets grouped by common end time (memoized to keep stable refs across re-renders)
+  const marketGroupByEndTime = useMemo(() => {
+    return marketGroupData?.markets
+      ? getMarketsGroupedByEndTime(marketGroupData.markets)
+      : null;
+  }, [marketGroupData?.markets]);
 
   // Find the active market from the group with the next common end time
   const activeMarket = useMemo(() => {

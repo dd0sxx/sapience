@@ -59,7 +59,6 @@ export interface MarketWithContext extends GraphQLMarketType {
   collateralAsset: string;
   categorySlug: string;
   categoryId: string;
-  // currentPrice?: string | null; // Removed
 }
 
 // Interface for the final grouped market data structure
@@ -79,8 +78,6 @@ interface GroupedMarketGroup {
   marketClassification?: MarketGroupClassification;
   displayUnit?: string;
 }
-
-// FocusAreaFilter extracted to its own file
 
 // Helper function to determine the day for a given timestamp
 const getDayKey = (timestamp: number): string => {
@@ -480,8 +477,18 @@ const MarketsPage = () => {
       (c) => c.public
     );
     if (publicConditions.length === 0) return [] as ConditionType[];
+    const nowSec = Math.floor(Date.now() / 1000);
     const lower = debouncedSearchTerm.toLowerCase();
     return publicConditions.filter((c) => {
+      // Respect Active/All: only exclude ended when Active
+      if (
+        statusFilter === 'active' &&
+        typeof c.endTime === 'number' &&
+        c.endTime > 0 &&
+        c.endTime <= nowSec
+      ) {
+        return false;
+      }
       // filter by category
       if (selectedCategorySlug && c.category?.slug !== selectedCategorySlug) {
         return false;
@@ -498,7 +505,7 @@ const MarketsPage = () => {
       if (Array.isArray(c.similarMarkets)) haystacks.push(...c.similarMarkets);
       return haystacks.some((h) => h.toLowerCase().includes(lower));
     });
-  }, [allConditions, selectedCategorySlug, debouncedSearchTerm]);
+  }, [allConditions, selectedCategorySlug, debouncedSearchTerm, statusFilter]);
 
   const rfqConditionsByDay = React.useMemo(() => {
     if (!filteredRfqConditions || filteredRfqConditions.length === 0)
@@ -522,23 +529,30 @@ const MarketsPage = () => {
         (c) => typeof c.endTime === 'number' && c.endTime > 0
       ) as Array<ConditionType & { endTime: number }>;
       if (withEnds.length > 0) {
-        const earliest = [...withEnds].sort((a, b) => a.endTime - b.endTime)[0]
-          .endTime;
-        result[dayKey] = earliest;
+        if (statusFilter === 'all') {
+          const latest = [...withEnds].sort((a, b) => b.endTime - a.endTime)[0]
+            .endTime;
+          result[dayKey] = latest;
+        } else {
+          const earliest = [...withEnds].sort(
+            (a, b) => a.endTime - b.endTime
+          )[0].endTime;
+          result[dayKey] = earliest;
+        }
       } else {
         result[dayKey] = Math.floor(Date.now() / 1000);
       }
     });
     return result;
-  }, [rfqConditionsByDay]);
+  }, [rfqConditionsByDay, statusFilter]);
 
   const sortedRfqDays = React.useMemo(() => {
     return Object.keys(rfqConditionsByDay).sort((a, b) => {
       const timeA = rfqDayEndTimes[a] ?? 0;
       const timeB = rfqDayEndTimes[b] ?? 0;
-      return timeA - timeB;
+      return statusFilter === 'all' ? timeB - timeA : timeA - timeB;
     });
-  }, [rfqConditionsByDay, rfqDayEndTimes]);
+  }, [rfqConditionsByDay, rfqDayEndTimes, statusFilter]);
 
   // Create a key that changes whenever filters change to force complete re-render
   const filterKey = React.useMemo(() => {
@@ -610,47 +624,49 @@ const MarketsPage = () => {
 
   // Render content once both are loaded
   return (
-    <div className="relative flex flex-col lg:flex-row items-start">
+    <div className="relative w-full max-w-full overflow-x-hidden flex flex-col lg:flex-row items-start">
       {/* Render only one betslip instance based on viewport */}
       {isMobile ? (
         <div className="block lg:hidden">
-          <Betslip isParlayMode={parlayMode} />
+          <Betslip
+            isParlayMode={parlayMode}
+            onParlayModeChange={handleParlayModeChange}
+          />
         </div>
       ) : null}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-6 pr-0 lg:pr-12">
-        {/* Add Text Filter Input with inline filter button for mobile */}
-        <div className="bg-background/90 pt-2">
+      <div className="flex-1 min-w-0 max-w-full overflow-x-hidden flex flex-col gap-6 pr-0 lg:pr-6">
+        {/* Top controls section with simplified spacing */}
+        <div className="bg-background/90 w-full max-w-full box-border py-3 md:py-2 px-0 md:px-0 min-w-0">
           <SearchBar
             isMobile={isMobile}
             value={searchTerm}
             onChange={handleSearchChange}
           />
-          <div className="pt-4 md:pt-5">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-            >
-              <FocusAreaFilter
-                selectedCategorySlug={selectedCategorySlug}
-                handleCategoryClick={handleCategoryClick}
-                statusFilter={statusFilter}
-                handleStatusFilterClick={handleStatusFilterClick}
-                parlayMode={parlayMode}
-                onParlayModeChange={handleParlayModeChange}
-                isLoadingCategories={isLoadingCategories}
-                categories={categories}
-                getCategoryStyle={getCategoryStyle}
-                containerClassName="px-0 md:px-0 py-0 w-full"
-              />
-            </motion.div>
-          </div>
+          <motion.div
+            className="mt-3"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <FocusAreaFilter
+              selectedCategorySlug={selectedCategorySlug}
+              handleCategoryClick={handleCategoryClick}
+              statusFilter={statusFilter}
+              handleStatusFilterClick={handleStatusFilterClick}
+              parlayMode={parlayMode}
+              onParlayModeChange={handleParlayModeChange}
+              isLoadingCategories={isLoadingCategories}
+              categories={categories}
+              getCategoryStyle={getCategoryStyle}
+              containerClassName="px-0 md:px-0 py-0 w-full max-w-full box-border"
+            />
+          </motion.div>
         </div>
 
         {/* Results area */}
-        <div className="relative min-h-[300px]">
+        <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
           {!parlayMode ? (
             <AnimatePresence mode="wait" key={filterKey}>
               {groupedMarketGroups.length === 0 && (
@@ -772,7 +788,11 @@ const MarketsPage = () => {
                         </h3>
                         <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
                           {[...(rfqConditionsByDay[dayKey] || [])]
-                            .sort((a, b) => (a.endTime ?? 0) - (b.endTime ?? 0))
+                            .sort((a, b) => {
+                              const aT = a.endTime ?? 0;
+                              const bT = b.endTime ?? 0;
+                              return statusFilter === 'all' ? bT - aT : aT - bT;
+                            })
                             .map((c) => {
                               const categorySlug = c.category?.slug || '';
                               const styleInfo = categorySlug
@@ -801,10 +821,14 @@ const MarketsPage = () => {
 
       {/* Desktop/Tablet sticky betslip sidebar */}
       {!isMobile ? (
-        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24">
+        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-0">
           <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
-              <Betslip variant="panel" isParlayMode={parlayMode} />
+              <Betslip
+                variant="panel"
+                isParlayMode={parlayMode}
+                onParlayModeChange={handleParlayModeChange}
+              />
             </div>
           </div>
         </div>

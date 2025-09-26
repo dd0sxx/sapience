@@ -318,10 +318,10 @@ const MarketGroupsRow = ({
         />
 
         {/* Content Container */}
-        <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-6 md:py-2 gap-3">
+        <div className="relative flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-6 md:py-2 gap-3">
           {/* Left Side: Question + Prediction */}
-          <div className="flex-grow">
-            <h3 className="text-md mb-1.5">
+          <div className="flex-grow pr-24 md:pr-0">
+            <h3 className="text-md mb-1.5 break-words">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}`}
                 className="group"
@@ -342,10 +342,28 @@ const MarketGroupsRow = ({
             )}
           </div>
 
+          {/* Mobile-only floating sparkline (top-right) */}
+          {hasSparklineData && (
+            <div className="absolute right-4 top-6 md:hidden">
+              <Link
+                href={`/markets/${chainShortName}:${marketAddress}`}
+                className="block w-[80px] h-[40px]"
+                aria-label="View market group"
+              >
+                <MarketGroupSparkline
+                  marketIds={marketIds}
+                  rawChartData={chartData}
+                  marketClassification={marketClassification}
+                  minTimestamp={minSparklineTimestamp}
+                />
+              </Link>
+            </div>
+          )}
+
           {/* Right Side: Sparkline + Action Buttons */}
-          <div className="flex flex-row-reverse md:flex-row items-center gap-5 md:items-center md:gap-6 md:ml-6 w-full md:w-auto">
+          <div className="relative flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-6 md:ml-6 w-full md:w-auto">
             {hasSparklineData && (
-              <div className="block w-[80px] h-[40px] shrink-0">
+              <div className="hidden md:block w-[80px] h-[40px] shrink-0">
                 <Link
                   href={`/markets/${chainShortName}:${marketAddress}`}
                   className="block w-full h-full"

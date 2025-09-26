@@ -259,7 +259,7 @@ const MarketPageContent = () => {
     availableMarkets.length > 0;
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-16">
+    <div className="flex flex-col w-full min-h-[100dvh] pt-16">
       <div className="flex flex-col w-full">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div className="mt-2 mb-6">
@@ -340,7 +340,7 @@ const MarketPageContent = () => {
           <div className="flex flex-col gap-4 lg:gap-8 xl:gap-6">
             {/* Top Row: Chart, and either OrderBook+Forms or MarketStatusDisplay */}
             {isExpired ? (
-              <div className="flex flex-col gap-6 lg:flex-row lg:gap-8 xl:gap-6">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-6">
                 {/* Chart Column */}
                 <div className="flex flex-col w-full relative flex-1 min-w-0 h-[320px] md:h-[460px]">
                   <div className="w-full flex-1 relative bg-card border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
@@ -380,7 +380,7 @@ const MarketPageContent = () => {
                   </div>
                 </div>
                 {/* Status Column (replaces OrderBook + Forms) */}
-                <div className="w-full lg:w-[340px] lg:shrink-0 order-2">
+                <div className="w-full lg:w-[340px] lg:shrink-0 order-2 lg:sticky lg:top-16 self-start">
                   <div className="h-[460px]">
                     <MarketStatusDisplay
                       marketGroupData={statusGroup as any}
@@ -390,7 +390,7 @@ const MarketPageContent = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-6 lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
                 {/* Chart Column */}
                 <div className="flex flex-col w-full relative xl:col-span-6 h-[320px] md:h-[460px]">
                   <div className="w-full flex-1 relative bg-card border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
@@ -450,7 +450,7 @@ const MarketPageContent = () => {
                 </div>
 
                 {/* Forms Column */}
-                <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2">
+                <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 lg:sticky lg:top-16 xl:sticky xl:top-16 self-start">
                   <div className="bg-card rounded border border-border shadow-sm overflow-auto lg:h-[460px]">
                     <div className="w-full">
                       {!positionId && (

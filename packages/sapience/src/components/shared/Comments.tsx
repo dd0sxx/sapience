@@ -413,9 +413,9 @@ const Comments = ({
                         {/* Question and Prediction */}
                         <div className="space-y-3">
                           <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
-                            {comment.marketAddress && comment.marketId ? (
+                            {comment.marketAddress ? (
                               <Link
-                                href={`/markets/${comment.chainShortName || 'base'}:${comment.marketAddress.toLowerCase()}/${comment.marketId}`}
+                                href={`/markets/${comment.chainShortName || 'arb1'}:${comment.marketAddress.toLowerCase()}#forecasts`}
                                 className="group"
                               >
                                 <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">

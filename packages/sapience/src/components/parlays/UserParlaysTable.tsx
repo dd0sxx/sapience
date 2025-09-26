@@ -21,20 +21,41 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
 import * as React from 'react';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import { useReadContracts } from 'wagmi';
+import type { Abi } from 'abitype';
+import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
+// Minimal ABI for PredictionMarketUmaResolver.resolvePrediction(bytes)
+const UMA_RESOLVER_MIN_ABI = [
+  {
+    type: 'function',
+    name: 'resolvePrediction',
+    stateMutability: 'view',
+    inputs: [{ name: 'encodedPredictedOutcomes', type: 'bytes' }],
+    outputs: [
+      { name: 'isValid', type: 'bool' },
+      { name: 'error', type: 'uint8' },
+      { name: 'makerWon', type: 'bool' },
+    ],
+  },
+] as const;
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
 import { useUserParlays } from '~/hooks/graphql/useUserParlays';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import ShareDialog from '~/components/shared/ShareDialog';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import AwaitingSettlementBadge from '~/components/shared/AwaitingSettlementBadge';
 
 function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
   const [nowMs, setNowMs] = React.useState(() => Date.now());
@@ -42,13 +63,23 @@ function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
     const id = setInterval(() => setNowMs(Date.now()), 60_000);
     return () => clearInterval(id);
   }, []);
-  const days = Math.max(
-    1,
-    Math.ceil((endsAtMs - nowMs) / (1000 * 60 * 60 * 24))
-  );
+  const isPast = endsAtMs <= nowMs;
+  if (isPast) {
+    return <AwaitingSettlementBadge />;
+  }
+  const msLeft = Math.max(0, endsAtMs - nowMs);
+  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+  const label =
+    daysLeft >= 1 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'}` : '<1 day';
   return (
-    <Button size="sm" variant="outline" disabled>
-      {`Ends In ${days} Days`}
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="whitespace-nowrap"
+      disabled
+    >
+      {`Settles in ${label}`}
     </Button>
   );
 }
@@ -61,9 +92,16 @@ export default function UserParlaysTable({
   showHeaderText?: boolean;
 }) {
   // ---
+  const queryClient = useQueryClient();
   const { burn, isPending: isClaimPending } = usePredictionMarketWriteContract({
     successMessage: 'Claim submitted',
     fallbackErrorMessage: 'Claim failed',
+    onSuccess: () => {
+      const addr = String(account || '').toLowerCase();
+      queryClient
+        .invalidateQueries({ queryKey: ['userParlays', addr] })
+        .catch(() => {});
+    },
   });
   type UILeg = { question: string; choice: 'Yes' | 'No' };
   type UIParlay = {
@@ -78,6 +116,10 @@ export default function UserParlaysTable({
     makerCollateralWei?: bigint; // user's wager if they are maker
     takerCollateralWei?: bigint; // user's wager if they are taker
     userPnL: string; // user's PnL in wei for settled parlays
+    addressRole: 'maker' | 'taker' | 'unknown';
+    counterpartyAddress?: Address | null;
+    chainId: number;
+    marketAddress: Address;
   };
 
   // Fetch real data
@@ -153,8 +195,31 @@ export default function UserParlaysTable({
         }
       }
 
+      // Choose positionId based on the profile address' role
+      const positionId = userIsMaker
+        ? Number(p.makerNftTokenId)
+        : userIsTaker
+          ? Number(p.takerNftTokenId)
+          : p.makerNftTokenId
+            ? Number(p.makerNftTokenId)
+            : p.id;
+      // Choose wager based on the profile address' role
+      const viewerMakerCollateralWei = (() => {
+        try {
+          return p.makerCollateral ? BigInt(p.makerCollateral) : undefined;
+        } catch {
+          return undefined;
+        }
+      })();
+      const viewerTakerCollateralWei = (() => {
+        try {
+          return p.takerCollateral ? BigInt(p.takerCollateral) : undefined;
+        } catch {
+          return undefined;
+        }
+      })();
       return {
-        positionId: p.makerNftTokenId ? Number(p.makerNftTokenId) : p.id,
+        positionId,
         legs,
         direction: 'Long' as const,
         endsAt: endsAtSec ? endsAtSec * 1000 : Date.now(),
@@ -168,21 +233,19 @@ export default function UserParlaysTable({
             return 0n;
           }
         })(),
-        makerCollateralWei: (() => {
-          try {
-            return p.makerCollateral ? BigInt(p.makerCollateral) : undefined;
-          } catch {
-            return undefined;
-          }
-        })(),
-        takerCollateralWei: (() => {
-          try {
-            return p.takerCollateral ? BigInt(p.takerCollateral) : undefined;
-          } catch {
-            return undefined;
-          }
-        })(),
+        makerCollateralWei: viewerMakerCollateralWei,
+        takerCollateralWei: viewerTakerCollateralWei,
         userPnL, // Add PnL to the row data
+        addressRole: userIsMaker ? ('maker' as const) : userIsTaker ? ('taker' as const) : ('unknown' as const),
+        counterpartyAddress:
+          (userIsMaker
+            ? (p.taker as Address | undefined)
+            : userIsTaker
+              ? (p.maker as Address | undefined)
+              : undefined) ?? null,
+        chainId: Number(p.chainId || 42161),
+        marketAddress: (p.marketAddress ||
+          '0x8D1D1946cBc56F695584761d25D13F174906671C') as Address,
       };
     });
 
@@ -217,6 +280,229 @@ export default function UserParlaysTable({
 
     return parlayRows;
   }, [data, viewer]);
+  // Detect claimability by checking on-chain ownerOf for the potential claim tokenIds
+  const tokenIdsToCheck = React.useMemo(
+    () =>
+      rows
+        .filter((r) => r.status === 'won' && r.tokenIdToClaim !== undefined)
+        .map((r) => r.tokenIdToClaim!),
+    [rows]
+  );
+  const ownerReads = React.useMemo(
+    () =>
+      tokenIdsToCheck.map((tokenId) => ({
+        // Fallback to default market address if we can't find a matching row (should not happen)
+        address:
+          rows.find((r) => r.tokenIdToClaim === tokenId)?.marketAddress ||
+          '0x8D1D1946cBc56F695584761d25D13F174906671C',
+        abi: PredictionMarket.abi as unknown as Abi,
+        functionName: 'ownerOf',
+        args: [tokenId],
+        chainId:
+          rows.find((r) => r.tokenIdToClaim === tokenId)?.chainId || 42161,
+      })),
+    [tokenIdsToCheck, rows]
+  );
+  const ownersResult = useReadContracts({
+    contracts: ownerReads,
+    query: { enabled: ownerReads.length > 0 },
+  });
+  const claimableTokenIds = React.useMemo(() => {
+    const set = new Set<string>();
+    const viewerAddr = String(account || '').toLowerCase();
+    const items = ownersResult?.data || [];
+    items.forEach((item, idx) => {
+      if (item && item.status === 'success') {
+        const owner = String(item.result || '').toLowerCase();
+        if (owner && owner === viewerAddr) {
+          set.add(String(tokenIdsToCheck[idx]));
+        }
+      }
+    });
+    return set;
+  }, [ownersResult?.data, tokenIdsToCheck, account]);
+
+  // On-chain resolution for active rows that have passed end time
+  type ChainResolutionState =
+    | { state: 'awaiting' }
+    | { state: 'claim'; tokenId: bigint }
+    | { state: 'lost' }
+    | { state: 'claimed' };
+
+  const nowMs = Date.now();
+  const rowsNeedingResolution = React.useMemo(() => {
+    return rows.filter(
+      (r) =>
+        r.status === 'active' &&
+        r.endsAt <= nowMs &&
+        r.addressRole !== 'unknown'
+    );
+  }, [rows, nowMs]);
+
+  const viewerTokenInfo = React.useMemo(
+    () =>
+      rowsNeedingResolution.map((r) => ({
+        rowKey: r.positionId,
+        tokenId:
+          r.addressRole === 'maker'
+            ? BigInt(r.positionId) // positionId chosen from maker/taker id earlier
+            : BigInt(r.positionId),
+        // Note: positionId was set to the viewer-relevant NFT id earlier
+        marketAddress: r.marketAddress,
+        chainId: r.chainId,
+      })),
+    [rowsNeedingResolution]
+  );
+
+  // Phase 1: ownerOf(viewerTokenId)
+  const activeOwnerReads = React.useMemo(
+    () =>
+      viewerTokenInfo.map((info) => ({
+        address: info.marketAddress,
+        abi: PredictionMarket.abi as unknown as Abi,
+        functionName: 'ownerOf',
+        args: [info.tokenId],
+        chainId: info.chainId,
+      })),
+    [viewerTokenInfo]
+  );
+  const activeOwners = useReadContracts({
+    contracts: activeOwnerReads,
+    query: { enabled: activeOwnerReads.length > 0 },
+  });
+
+  // Derive which rows are still owned by the viewer
+  const ownedRowEntries = React.useMemo(() => {
+    const out: {
+      rowKey: number;
+      tokenId: bigint;
+      marketAddress: Address;
+      chainId: number;
+    }[] = [];
+    const items = activeOwners?.data || [];
+    const viewerAddr = viewer;
+    items.forEach((item, idx) => {
+      const info = viewerTokenInfo[idx];
+      if (!info) return;
+      if (item && item.status === 'success') {
+        const owner = String(item.result || '').toLowerCase();
+        if (owner && owner === viewerAddr) {
+          out.push({
+            rowKey: info.rowKey,
+            tokenId: info.tokenId,
+            marketAddress: info.marketAddress,
+            chainId: info.chainId,
+          });
+        }
+      }
+    });
+    return out;
+  }, [activeOwners?.data, viewer, viewerTokenInfo]);
+
+  // Phase 2: getPrediction(tokenId) to obtain resolver + encodedPredictedOutcomes
+  const getPredictionReads = React.useMemo(
+    () =>
+      ownedRowEntries.map((e) => ({
+        address: e.marketAddress,
+        abi: PredictionMarket.abi as unknown as Abi,
+        functionName: 'getPrediction',
+        args: [e.tokenId],
+        chainId: e.chainId,
+      })),
+    [ownedRowEntries]
+  );
+  const predictionDatas = useReadContracts({
+    contracts: getPredictionReads,
+    query: { enabled: getPredictionReads.length > 0 },
+  });
+
+  // Phase 3: resolver.resolvePrediction(encodedPredictedOutcomes)
+  const resolverReads = React.useMemo(() => {
+    const calls: any[] = [];
+    const preds = predictionDatas?.data || [];
+    preds.forEach((item: any, idx: number) => {
+      if (!item || item.status !== 'success') return;
+      try {
+        const result = item.result;
+        const resolver: Address = result.resolver as Address;
+        const encoded = result.encodedPredictedOutcomes as `0x${string}`;
+        const base = ownedRowEntries[idx];
+        if (resolver && encoded && base) {
+          calls.push({
+            address: resolver,
+            abi: UMA_RESOLVER_MIN_ABI as unknown as Abi,
+            functionName: 'resolvePrediction',
+            args: [encoded],
+            chainId: base.chainId,
+          });
+        }
+      } catch {
+        // ignore mis-shaped result
+      }
+    });
+    return calls;
+  }, [predictionDatas?.data, ownedRowEntries]);
+  const resolverResults = useReadContracts({
+    contracts: resolverReads,
+    query: { enabled: resolverReads.length > 0 },
+  });
+
+  // Build a map from rowKey -> ChainResolutionState
+  const rowKeyToResolution = React.useMemo(() => {
+    const map = new Map<number, ChainResolutionState>();
+    // default: if we attempted ownerOf but do not own, consider 'claimed'
+    viewerTokenInfo.forEach((info, idx) => {
+      const ownerItem = activeOwners?.data?.[idx];
+      if (!ownerItem || ownerItem.status !== 'success') return;
+      const owner = String(ownerItem.result || '').toLowerCase();
+      if (!owner || owner !== viewer) {
+        map.set(info.rowKey, { state: 'claimed' });
+      }
+    });
+
+    const res = resolverResults?.data || [];
+    for (let i = 0; i < res.length; i++) {
+      const base = ownedRowEntries[i];
+      const resItem = res[i];
+      if (!base || !resItem) continue;
+      const rowKey = base.rowKey;
+      if (resItem.status !== 'success') {
+        // couldn't resolve yet → awaiting
+        if (!map.has(rowKey)) map.set(rowKey, { state: 'awaiting' });
+        continue;
+      }
+      try {
+        const tuple = resItem.result as any; // [isValid, error, makerWon]
+        const isValid = Boolean(tuple?.[0]);
+        const makerWon = Boolean(tuple?.[2]);
+        if (!isValid) {
+          map.set(rowKey, { state: 'awaiting' });
+          continue;
+        }
+        // Determine if viewer is winner
+        const row = rows.find((r) => r.positionId === rowKey);
+        if (!row) continue;
+        const viewerIsMaker = row.addressRole === 'maker';
+        const viewerWon = viewerIsMaker ? makerWon : !makerWon;
+        map.set(
+          rowKey,
+          viewerWon
+            ? { state: 'claim', tokenId: base.tokenId }
+            : { state: 'lost' }
+        );
+      } catch {
+        if (!map.has(rowKey)) map.set(rowKey, { state: 'awaiting' });
+      }
+    }
+    return map;
+  }, [
+    viewerTokenInfo,
+    activeOwners?.data,
+    resolverResults?.data,
+    predictionDatas?.data,
+    rows,
+    viewer,
+  ]);
 
   // Keep Share dialog open state outside of row to survive re-renders
   const [openShareParlayId, setOpenShareParlayId] = React.useState<
@@ -233,6 +519,8 @@ export default function UserParlaysTable({
       {
         id: 'positionId',
         accessorFn: (row) => row.positionId,
+        sortingFn: (rowA, rowB) =>
+          rowA.original.createdAt - rowB.original.createdAt,
         size: 360,
         minSize: 260,
         maxSize: 420,
@@ -281,6 +569,15 @@ export default function UserParlaysTable({
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <span>created at {created}</span>
               </div>
+              {row.original.counterpartyAddress && (
+                <div className="text-sm text-muted-foreground flex items-baseline gap-1.5 mt-0.5">
+                  <span>with</span>
+                  <AddressDisplay
+                    address={row.original.counterpartyAddress}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           );
         },
@@ -289,15 +586,12 @@ export default function UserParlaysTable({
         id: 'wager',
         accessorFn: (row) => {
           // Show the viewer's contributed collateral as the wager
-          const viewerWagerWei = (() => {
-            // Prefer makerCollateral for makers; takerCollateral for takers — both may be present
-            if (row.makerCollateralWei && row.takerCollateralWei) {
-              // If both present, wager is the one associated with the viewer; but accessorFn lacks viewer context
-              // Fall back to makerCollateral (most users will be makers submitting wagers)
-              return row.makerCollateralWei;
-            }
-            return row.makerCollateralWei ?? row.takerCollateralWei ?? 0n;
-          })();
+          const viewerWagerWei =
+            row.addressRole === 'maker'
+              ? (row.makerCollateralWei ?? 0n)
+              : row.addressRole === 'taker'
+                ? (row.takerCollateralWei ?? 0n)
+                : (row.makerCollateralWei ?? row.takerCollateralWei ?? 0n);
           return Number(formatEther(viewerWagerWei));
         },
         size: 260,
@@ -333,19 +627,14 @@ export default function UserParlaysTable({
           const totalPayout = Number(
             formatEther(row.original.totalPayoutWei || 0n)
           );
-          const viewerWagerWei = (() => {
-            if (
-              row.original.makerCollateralWei &&
-              row.original.takerCollateralWei
-            ) {
-              return row.original.makerCollateralWei;
-            }
-            return (
-              row.original.makerCollateralWei ??
-              row.original.takerCollateralWei ??
-              0n
-            );
-          })();
+          const viewerWagerWei =
+            row.original.addressRole === 'maker'
+              ? (row.original.makerCollateralWei ?? 0n)
+              : row.original.addressRole === 'taker'
+                ? (row.original.takerCollateralWei ?? 0n)
+                : (row.original.makerCollateralWei ??
+                  row.original.takerCollateralWei ??
+                  0n);
           const viewerWager = Number(formatEther(viewerWagerWei));
           return (
             <div>
@@ -370,35 +659,42 @@ export default function UserParlaysTable({
         header: () => null,
         cell: ({ row }) => (
           <div className="space-y-1">
-            {row.original.direction === 'Long' ? null : (
+            {row.original.addressRole === 'taker' && (
               <div className="mb-1">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge variant="default">Anti-Parlay</Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>One or more of these conditions will not be met.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline">Anti-Parlay</Badge>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Anti-Parlay details"
+                          className="inline-flex items-center justify-center h-5 w-5 text-muted-foreground hover:text-foreground"
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          This position is that one or more of these conditions
+                          will not be met.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             )}
-            {row.original.legs.map((leg, idx) => (
-              <div key={idx} className="text-sm flex items-center gap-2">
-                <span className="font-medium">{leg.question}</span>
-                <Badge
-                  variant="outline"
-                  className={
-                    leg.choice === 'Yes'
-                      ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0'
-                      : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'
-                  }
-                >
-                  {leg.choice}
-                </Badge>
-              </div>
-            ))}
+            <ParlayLegsList
+              legs={row.original.legs.map((l) => ({
+                shortName: l.question,
+                question: l.question,
+                conditionId: /^0x[0-9a-fA-F]{64}$/.test(String(l.question))
+                  ? l.question
+                  : undefined,
+                choice: l.choice,
+              }))}
+            />
           </div>
         ),
       },
@@ -412,11 +708,45 @@ export default function UserParlaysTable({
         cell: ({ row }) => (
           <div className="whitespace-nowrap xl:mt-0">
             <div className="flex items-center gap-2 justify-start xl:justify-end">
-              {row.original.status === 'active' && (
-                <EndsInButton endsAtMs={row.original.endsAt} />
-              )}
+              {row.original.status === 'active' &&
+                row.original.endsAt > Date.now() && (
+                  <EndsInButton endsAtMs={row.original.endsAt} />
+                )}
+              {row.original.status === 'active' &&
+                row.original.endsAt <= Date.now() &&
+                row.original.addressRole !== 'unknown' &&
+                (() => {
+                  const res = rowKeyToResolution.get(row.original.positionId);
+                  if (!res) return <AwaitingSettlementBadge />;
+                  if (res.state === 'awaiting')
+                    return <AwaitingSettlementBadge />;
+                  if (res.state === 'claim') {
+                    return (
+                      <Button
+                        size="sm"
+                        onClick={() => burn(res.tokenId, ZERO_REF_CODE)}
+                        disabled={isClaimPending}
+                      >
+                        {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
+                      </Button>
+                    );
+                  }
+                  if (res.state === 'lost') {
+                    return (
+                      <Button size="sm" variant="outline" disabled>
+                        Parlay Lost
+                      </Button>
+                    );
+                  }
+                  return (
+                    <Button size="sm" variant="outline" disabled>
+                      Claimed
+                    </Button>
+                  );
+                })()}
               {row.original.status === 'won' &&
-                row.original.tokenIdToClaim !== undefined && (
+                row.original.tokenIdToClaim !== undefined &&
+                claimableTokenIds.has(String(row.original.tokenIdToClaim)) && (
                   <Button
                     size="sm"
                     onClick={() =>
@@ -425,6 +755,15 @@ export default function UserParlaysTable({
                     disabled={isClaimPending}
                   >
                     {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
+                  </Button>
+                )}
+              {row.original.status === 'won' &&
+                (row.original.tokenIdToClaim === undefined ||
+                  !claimableTokenIds.has(
+                    String(row.original.tokenIdToClaim)
+                  )) && (
+                  <Button size="sm" variant="outline" disabled>
+                    Claimed
                   </Button>
                 )}
               {row.original.status === 'lost' && (
@@ -444,7 +783,7 @@ export default function UserParlaysTable({
         ),
       },
     ],
-    [isClaimPending, burn, account]
+    [isClaimPending, burn, account, rowKeyToResolution, claimableTokenIds]
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([

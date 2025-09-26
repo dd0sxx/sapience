@@ -1,6 +1,7 @@
 'use client';
 import { type UseFormReturn } from 'react-hook-form';
 import { Button } from '@/sapience/ui/index';
+import { SquareStackIcon } from 'lucide-react';
 import Image from 'next/image';
 
 import BetslipSinglesForm from './BetslipSinglesForm';
@@ -11,6 +12,7 @@ import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
+  onParlayModeChange?: (enabled: boolean) => void;
   individualMethods: UseFormReturn<{
     positions: Record<
       string,
@@ -44,6 +46,7 @@ interface BetslipContentProps {
 
 export const BetslipContent = ({
   isParlayMode,
+  onParlayModeChange,
   individualMethods,
   parlayMethods,
   handleIndividualSubmit,
@@ -106,11 +109,21 @@ export const BetslipContent = ({
               : betSlipPositions.length === 0
           ) ? (
             <div className="w-full h-full flex items-center justify-center text-center">
-              <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-3">
                 <Image src="/usde.svg" alt="USDe" width={42} height={42} />
-                <p className="text-base text-muted-foreground max-w-[180px] mx-auto">
+                <p className="text-base text-muted-foreground max-w-[180px] mx-auto mb-2">
                   {'Add predictions to see your potential winnings'}
                 </p>
+                <Button
+                  variant={effectiveParlayMode ? 'secondary' : 'default'}
+                  size="xs"
+                  onClick={() => onParlayModeChange?.(!effectiveParlayMode)}
+                >
+                  <SquareStackIcon className="h-3 w-3" />
+                  {effectiveParlayMode
+                    ? 'Disable Parlay Mode'
+                    : 'Enable Parlay Mode'}
+                </Button>
               </div>
             </div>
           ) : !effectiveParlayMode ? (
