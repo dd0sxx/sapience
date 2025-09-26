@@ -13,13 +13,11 @@ export async function reindexPredictionMarket(
   try {
     console.log(
       `[PredictionMarket Reindex] Reindexing prediction market events on chain ${chainId} from ${
-        startTimestamp 
-          ? new Date(startTimestamp * 1000).toISOString() 
+        startTimestamp
+          ? new Date(startTimestamp * 1000).toISOString()
           : 'beginning'
       } to ${
-        endTimestamp 
-          ? new Date(endTimestamp * 1000).toISOString() 
-          : 'now'
+        endTimestamp ? new Date(endTimestamp * 1000).toISOString() : 'now'
       }`
     );
 
@@ -30,12 +28,12 @@ export async function reindexPredictionMarket(
       console.log(
         `[PredictionMarket Reindex] Clearing existing parlay and prediction market event data for chain ${chainId}`
       );
-      
+
       // Delete parlays for this chain
       const deletedParlays = await prisma.parlay.deleteMany({
         where: { chainId },
       });
-      
+
       // Delete events that are prediction market related (marketGroupId is null for these events)
       const deletedEvents = await prisma.event.deleteMany({
         where: {
@@ -43,8 +41,8 @@ export async function reindexPredictionMarket(
           // Additional filter to ensure we only delete prediction market events
           logData: {
             path: ['eventType'],
-            string_contains: 'Prediction'
-          }
+            string_contains: 'Prediction',
+          },
         },
       });
 
@@ -67,7 +65,8 @@ export async function reindexPredictionMarket(
     const indexer = new PredictionMarketIndexer(chainId);
 
     // Use default timestamps if not provided
-    const startTime = startTimestamp || Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60; // Default to 2 days ago
+    const startTime =
+      startTimestamp || Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60; // Default to 2 days ago
     const endTime = endTimestamp || Math.floor(Date.now() / 1000);
 
     console.log(
@@ -84,19 +83,19 @@ export async function reindexPredictionMarket(
       console.log(
         `[PredictionMarket Reindex] Successfully completed prediction market reindexing for chain ${chainId}`
       );
-      
+
       // Log some statistics
       const parlayCount = await prisma.parlay.count({
         where: { chainId },
       });
-      
+
       const eventCount = await prisma.event.count({
         where: {
           marketGroupId: null,
           logData: {
             path: ['eventType'],
-            string_contains: 'Prediction'
-          }
+            string_contains: 'Prediction',
+          },
         },
       });
 
