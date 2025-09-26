@@ -107,7 +107,6 @@ export class PnLResolver {
 
     const aggregated = new Map<string, number>();
 
-    // Process market-based PnL (from precomputed table)
     for (const r of marketPnL) {
       const owner = (r.owner || '').toLowerCase();
       if (!owner) continue;
@@ -118,10 +117,8 @@ export class PnLResolver {
       aggregated.set(owner, (aggregated.get(owner) || 0) + val);
     }
 
-    // Process parlay-based PnL (calculated directly)
     for (const r of parlayPnL) {
       const owner = r.owner.toLowerCase();
-      // For parlays, assume 18 decimals (USDe) - could be made more sophisticated
       const divisor = Math.pow(10, 18);
       const val = parseFloat(r.totalPnL) / divisor;
       if (!Number.isFinite(val)) continue;
