@@ -25,7 +25,6 @@ import {
 } from '~/hooks/graphql/useForecasts';
 import {
   transformMarketGroupChartData,
-  type MultiMarketChartDataPoint,
   getEffectiveMinTimestampFromData,
 } from '~/lib/utils/chartUtils';
 import { getYAxisConfig, sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
@@ -67,8 +66,6 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     quoteTokenName: market?.quoteTokenName ?? undefined,
     hasResource: !!market?.resource,
   });
-  const [hoveredChartData, setHoveredChartData] =
-    useState<MultiMarketChartDataPoint | null>(null); // New state for hovered data
   const [hoveredForecastDot, setHoveredForecastDot] = useState<{
     x: number;
     y: number;
@@ -459,7 +456,6 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         indexLineColor={CHART_INDEX_COLOR}
         yAxisConfig={yAxisConfig}
         optionNames={optionNames}
-        hoveredDataPoint={hoveredChartData} // Pass hovered data to legend
       />
       {/* This div should grow to fill remaining space */}
       <div className="relative flex-1 w-full">
@@ -468,33 +464,18 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
           <ComposedChart
             data={scaledAndFilteredChartData}
             margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
-            onMouseMove={(state) => {
-              if (
-                state.isTooltipActive &&
-                state.activePayload &&
-                state.activePayload.length > 0
-              ) {
-                // The payload here is the raw data point from scaledAndFilteredChartData
-                const currentHoveredData = state.activePayload[0]
-                  .payload as MultiMarketChartDataPoint;
-                setHoveredChartData(currentHoveredData);
-                // If a tooltip is open and we're not directly over an interactive element,
-                // schedule hide. Only cancel when actually hovering dot/tooltip.
-                if (hoveredForecastDot !== null) {
-                  if (isHoveringInteractiveRef.current) {
-                    cancelHideTooltip();
-                  } else {
-                    scheduleHideTooltip(180);
-                  }
+            onMouseMove={() => {
+              // If a tooltip is open and we're not directly over an interactive element,
+              // schedule hide. Only cancel when actually hovering dot/tooltip.
+              if (hoveredForecastDot !== null) {
+                if (isHoveringInteractiveRef.current) {
+                  cancelHideTooltip();
+                } else {
+                  scheduleHideTooltip(180);
                 }
-              } else if (hoveredChartData !== null) {
-                // Clear only if it was previously set, to avoid needless re-renders
-                setHoveredChartData(null);
-                scheduleHideTooltip(180);
               }
             }}
             onMouseLeave={() => {
-              setHoveredChartData(null);
               isHoveringInteractiveRef.current = false;
               scheduleHideTooltip(200);
             }}
@@ -526,6 +507,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
             <XAxis
               dataKey="timestamp"
               type="number"
+              scale="time"
               ticks={dailyTicks}
               axisLine={{ stroke: 'hsl(var(--border))' }}
               tickLine={false}
@@ -536,8 +518,24 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
               dy={10} // Adjust vertical position of ticks
               domain={
                 effectiveMinTimestamp
-                  ? [effectiveMinTimestamp, 'auto']
-                  : ['auto', 'auto']
+                  ? [
+                      effectiveMinTimestamp,
+                      scaledAndFilteredChartData.length > 0
+                        ? scaledAndFilteredChartData[
+                            scaledAndFilteredChartData.length - 1
+                          ].timestamp
+                        : 'auto',
+                    ]
+                  : [
+                      scaledAndFilteredChartData.length > 0
+                        ? scaledAndFilteredChartData[0].timestamp
+                        : 'auto',
+                      scaledAndFilteredChartData.length > 0
+                        ? scaledAndFilteredChartData[
+                            scaledAndFilteredChartData.length - 1
+                          ].timestamp
+                        : 'auto',
+                    ]
               }
             />
             <YAxis
@@ -561,7 +559,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
             {marketIds.map((marketId) => (
               <Area
                 key={`area-${marketId}`}
-                type="monotone"
+                type="stepAfter"
                 dataKey={`markets.${marketId}`}
                 fill={`url(#marketGradient-${marketId})`}
                 stroke="none"
@@ -573,7 +571,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
             {marketIds.map((marketId, index) => (
               <Line
                 key={marketId} // Use marketId as key
-                type="monotone"
+                type="stepAfter"
                 dataKey={`markets.${marketId}`} // Dynamic dataKey
                 name="Prediction Market" // Updated general name
                 stroke={getSeriesColorByIndex(index)} // Cycle through colors
@@ -603,7 +601,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
             {hasIndexData && (
               <Line
                 key="indexClose"
-                type="monotone"
+                type="stepAfter"
                 dataKey="indexClose"
                 name="Index"
                 stroke={CHART_INDEX_COLOR}

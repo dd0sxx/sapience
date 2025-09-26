@@ -26,7 +26,6 @@ interface ChartLegendProps {
   indexLineColor: string;
   yAxisConfig: YAxisConfig;
   optionNames?: string[] | null;
-  hoveredDataPoint?: MultiMarketChartDataPoint | null;
 }
 
 const ChartLegend: React.FC<ChartLegendProps> = ({
@@ -39,12 +38,11 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   indexLineColor,
   yAxisConfig,
   optionNames,
-  hoveredDataPoint,
 }) => {
   const MARKET_PREDICTION_LABEL = 'Market Prediction';
   const isMultipleChoice = Boolean(optionNames && optionNames.length > 1);
 
-  if (!latestDataPoint && !hoveredDataPoint) {
+  if (!latestDataPoint) {
     return null; // No data to display legend for
   }
 
@@ -57,13 +55,8 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   // Prepare items in the provided order to keep colors/labels consistent
   const items = marketIds.map((marketIdNum, index) => {
     const marketIdStr = String(marketIdNum);
-    const hoveredValue = hoveredDataPoint?.markets?.[marketIdStr];
-    const latestValue = latestDataPoint?.markets?.[marketIdStr];
-    const hasHoveredValue =
-      typeof hoveredValue === 'number' && Number.isFinite(hoveredValue);
-    const value = hasHoveredValue ? hoveredValue : latestValue;
-    const usingLatest = !hasHoveredValue;
-    return { marketIdNum, index, value, usingLatest };
+    const value = latestDataPoint?.markets?.[marketIdStr];
+    return { marketIdNum, index, value };
   });
 
   return (
@@ -74,7 +67,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
           : 'flex flex-col items-start gap-y-1 pb-4 text-sm'
       }
     >
-      {items.map(({ marketIdNum, index, value, usingLatest }) => {
+      {items.map(({ marketIdNum, index, value }) => {
         const marketIdStr = String(marketIdNum);
         const color = lineColors[index % lineColors.length];
 
@@ -90,10 +83,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         if (isMultipleChoice) {
           label = baseLabel;
         } else {
-          label =
-            hoveredDataPoint && !usingLatest
-              ? baseLabel
-              : `Current ${baseLabel}`;
+          label = `Current ${baseLabel}`;
         }
 
         const isPercentageMarket = yAxisConfig.unit === '%';
@@ -126,12 +116,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
             style={{ backgroundColor: indexLineColor, opacity: 0.7 }} // Match line style
           />
           <span className="font-medium text-foreground">
-            {formatValue(
-              hoveredDataPoint &&
-                typeof hoveredDataPoint.indexClose === 'number'
-                ? hoveredDataPoint.indexClose
-                : latestIndexValue
-            )}
+            {formatValue(latestIndexValue)}
           </span>
           <span className="text-muted-foreground">Index</span>
           <TooltipProvider>
