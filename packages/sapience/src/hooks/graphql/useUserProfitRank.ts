@@ -39,16 +39,19 @@ export const useUserProfitRank = (ownerAddress?: string) => {
       );
 
       const entries = data?.allTimeProfitLeaderboard || [];
-      
+
       // Sort by totalPnL descending
       const sortedEntries = entries.sort((a, b) => b.totalPnL - a.totalPnL);
 
       const totalParticipants = sortedEntries.length;
-      const index = sortedEntries.findIndex((e) => e.owner.toLowerCase() === addressLc);
-      const userEntry = sortedEntries.find((e) => e.owner.toLowerCase() === addressLc);
+      const index = sortedEntries.findIndex(
+        (e) => e.owner.toLowerCase() === addressLc
+      );
+      const userEntry = sortedEntries.find(
+        (e) => e.owner.toLowerCase() === addressLc
+      );
       const totalPnL = userEntry?.totalPnL || 0;
       const rank = index >= 0 ? index + 1 : null;
-
 
       return { totalPnL, rank, totalParticipants };
     },

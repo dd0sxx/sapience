@@ -167,12 +167,17 @@ export default function UserParlaysTable({
 
       // Calculate PnL for settled parlays
       let userPnL = '0';
-      if (!isActive && p.makerCollateral && p.takerCollateral && p.totalCollateral) {
+      if (
+        !isActive &&
+        p.makerCollateral &&
+        p.takerCollateral &&
+        p.totalCollateral
+      ) {
         try {
           const makerCollateral = BigInt(p.makerCollateral);
           const takerCollateral = BigInt(p.takerCollateral);
           const totalCollateral = BigInt(p.totalCollateral);
-          
+
           if (userIsMaker) {
             if (p.makerWon) {
               // Maker won: profit = totalCollateral - makerCollateral
@@ -235,8 +240,12 @@ export default function UserParlaysTable({
         })(),
         makerCollateralWei: viewerMakerCollateralWei,
         takerCollateralWei: viewerTakerCollateralWei,
-        userPnL, 
-        addressRole: userIsMaker ? ('maker' as const) : userIsTaker ? ('taker' as const) : ('unknown' as const),
+        userPnL,
+        addressRole: userIsMaker
+          ? ('maker' as const)
+          : userIsTaker
+            ? ('taker' as const)
+            : ('unknown' as const),
         counterpartyAddress:
           (userIsMaker
             ? (p.taker as Address | undefined)
@@ -248,7 +257,6 @@ export default function UserParlaysTable({
           '0x8D1D1946cBc56F695584761d25D13F174906671C') as Address,
       };
     });
-
 
     return parlayRows;
   }, [data, viewer]);
@@ -610,7 +618,7 @@ export default function UserParlaysTable({
           const viewerWager = Number(formatEther(viewerWagerWei));
           const pnlValue = Number(formatEther(BigInt(row.original.userPnL)));
           const roi = viewerWager > 0 ? (pnlValue / viewerWager) * 100 : 0;
-          
+
           return (
             <div>
               <div className="whitespace-nowrap">
@@ -619,12 +627,21 @@ export default function UserParlaysTable({
               {isClosed ? (
                 <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
                   {row.original.status === 'won' ? 'Won:' : 'Lost:'}{' '}
-                  <span className={row.original.status === 'won' ? 'text-green-600' : 'text-red-600'}>
+                  <span
+                    className={
+                      row.original.status === 'won'
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }
+                  >
                     <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
                   </span>
                   {viewerWager > 0 && (
-                    <span className={`text-xs ${row.original.status === 'won' ? 'text-green-600' : 'text-red-600'}`}>
-                      ({roi > 0 ? '+' : ''}{roi.toFixed(0)}%)
+                    <span
+                      className={`text-xs ${row.original.status === 'won' ? 'text-green-600' : 'text-red-600'}`}
+                    >
+                      ({roi > 0 ? '+' : ''}
+                      {roi.toFixed(0)}%)
                     </span>
                   )}
                 </div>
