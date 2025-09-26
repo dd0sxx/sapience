@@ -1,10 +1,8 @@
 'use client';
 
 import { Badge } from '@sapience/ui/components/ui/badge';
-import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { blo } from 'blo';
 import { formatDistanceToNow } from 'date-fns';
 import { formatEther } from 'viem';
 
@@ -15,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -299,9 +298,8 @@ export function TransactionOwnerCell({ tx }: { tx: UiTransaction }) {
     <div>
       <div className="flex items-center gap-2 min-w-0">
         {owner ? (
-          <Image
-            alt={owner}
-            src={blo(owner as `0x${string}`)}
+          <EnsAvatar
+            address={owner}
             className="w-4 h-4 rounded-sm ring-1 ring-border/50 shrink-0"
             width={16}
             height={16}

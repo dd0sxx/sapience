@@ -16,12 +16,10 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import Link from 'next/link';
-import Image from 'next/image';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
-import { blo } from 'blo';
 import {
   flexRender,
   getCoreRowModel,
@@ -34,6 +32,7 @@ import React from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, InfoIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SharePositionDialog from '../markets/SharePositionDialog';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionRange from '~/components/shared/PositionRange';
@@ -517,9 +516,8 @@ export default function LpPositionsTable({
           cell: ({ row }: { row: { original: PositionType } }) => (
             <div className="flex items-center gap-2">
               {row.original.owner ? (
-                <Image
-                  alt={row.original.owner}
-                  src={blo(row.original.owner as `0x${string}`)}
+                <EnsAvatar
+                  address={row.original.owner}
                   className="w-5 h-5 rounded-sm ring-1 ring-border/50"
                   width={20}
                   height={20}
