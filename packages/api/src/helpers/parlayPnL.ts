@@ -1,4 +1,5 @@
 import prisma from '../db';
+import { ParlayStatus } from '../../generated/prisma';
 
 export interface ParlayPnLEntry {
   owner: string;
@@ -6,23 +7,29 @@ export interface ParlayPnLEntry {
   parlayCount: number;
 }
 
-
 export async function calculateParlayPnL(
   chainId?: number,
   marketAddress?: string,
   owners?: string[]
 ): Promise<ParlayPnLEntry[]> {
-  const whereClause: any = {
-    status: { in: ['settled', 'consolidated'] },
+  const whereClause: {
+    status: { in: ParlayStatus[] };
+    makerWon: { not: null };
+    chainId?: number;
+    marketAddress?: string;
+  } = {
+    status: { in: [ParlayStatus.settled, ParlayStatus.consolidated] },
     makerWon: { not: null },
   };
-  
+
   if (chainId) whereClause.chainId = chainId;
   if (marketAddress) whereClause.marketAddress = marketAddress.toLowerCase();
 
   const parlays = await prisma.parlay.findMany({ where: whereClause });
 
-  const mintTimestamps = Array.from(new Set(parlays.map(p => BigInt(p.mintedAt))));
+  const mintTimestamps = Array.from(
+    new Set(parlays.map((p) => BigInt(p.mintedAt)))
+  );
   const mintEvents = await prisma.event.findMany({
     where: {
       marketGroupId: null,
@@ -33,17 +40,27 @@ export async function calculateParlayPnL(
   const mintEventMap = new Map();
   for (const event of mintEvents) {
     try {
-      const data = event.logData as any;
+      const data = event.logData as {
+        eventType?: string;
+        makerNftTokenId?: string;
+        takerNftTokenId?: string;
+        makerCollateral?: string;
+        takerCollateral?: string;
+        totalCollateral?: string;
+      };
       if (data.eventType === 'PredictionMinted') {
         const key = `${data.makerNftTokenId}-${data.takerNftTokenId}`;
         mintEventMap.set(key, data);
       }
-    } catch (e) {
+    } catch {
       continue;
     }
   }
 
-  const ownerStats = new Map<string, { totalPnL: bigint; parlayCount: number }>();
+  const ownerStats = new Map<
+    string,
+    { totalPnL: bigint; parlayCount: number }
+  >();
 
   for (const parlay of parlays) {
     const mintKey = `${parlay.makerNftTokenId}-${parlay.takerNftTokenId}`;
@@ -57,7 +74,7 @@ export async function calculateParlayPnL(
     const totalCollateral = BigInt(mintData.totalCollateral || '0');
 
     if (owners?.length) {
-      const ownerSet = new Set(owners.map(o => o.toLowerCase()));
+      const ownerSet = new Set(owners.map((o) => o.toLowerCase()));
       if (!ownerSet.has(maker) && !ownerSet.has(taker)) continue;
     }
 
@@ -73,14 +90,14 @@ export async function calculateParlayPnL(
 
     if (parlay.makerWon) {
       // Maker wins: profit = totalCollateral - makerCollateral
-      makerStats.totalPnL += (totalCollateral - makerCollateral);
+      makerStats.totalPnL += totalCollateral - makerCollateral;
       makerStats.parlayCount++;
       // Taker loses: loss = -takerCollateral
       takerStats.totalPnL -= takerCollateral;
       takerStats.parlayCount++;
     } else {
-      // Taker wins: profit = totalCollateral - takerCollateral  
-      takerStats.totalPnL += (totalCollateral - takerCollateral);
+      // Taker wins: profit = totalCollateral - takerCollateral
+      takerStats.totalPnL += totalCollateral - takerCollateral;
       takerStats.parlayCount++;
       // Maker loses: loss = -makerCollateral
       makerStats.totalPnL -= makerCollateral;

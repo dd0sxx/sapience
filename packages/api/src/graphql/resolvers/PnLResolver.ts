@@ -60,19 +60,18 @@ export class PnLResolver {
   ): Promise<PnLType[]> {
     // Get parlay PnL directly from calculation
     const parlayPnL = await calculateParlayPnL(chainId, marketAddress);
-    
-    
+
     const mg = await prisma.marketGroup.findFirst({
       where: { chainId, address: marketAddress.toLowerCase() },
     });
     const decimals = mg?.collateralDecimals ?? 18;
-    
+
     return parlayPnL.map((r) => ({
       marketId: 0, // parlays don't have marketId, use 0 as placeholder
       owner: r.owner,
-      totalDeposits: '0', 
-      totalWithdrawals: '0', 
-      openPositionsPnL: '0', 
+      totalDeposits: '0',
+      totalWithdrawals: '0',
+      openPositionsPnL: '0',
       totalPnL: r.totalPnL,
       positions: [],
       positionCount: r.parlayCount,
@@ -89,12 +88,11 @@ export class PnLResolver {
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
     if (existing) return existing;
 
-    
     const [marketPnL, parlayPnL] = await Promise.all([
       prisma.ownerMarketRealizedPnl.findMany(),
-      calculateParlayPnL(), 
+      calculateParlayPnL(),
     ]);
-    
+
     const mgList = await prisma.marketGroup.findMany({
       select: { chainId: true, address: true, collateralDecimals: true },
     });
@@ -108,7 +106,7 @@ export class PnLResolver {
     }
 
     const aggregated = new Map<string, number>();
-    
+
     // Process market-based PnL (from precomputed table)
     for (const r of marketPnL) {
       const owner = (r.owner || '').toLowerCase();
