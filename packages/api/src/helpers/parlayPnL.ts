@@ -6,19 +6,12 @@ export interface ParlayPnLEntry {
   parlayCount: number;
 }
 
-/**
- * Super simple parlay PnL calculation using PredictionBurned events
- * We need to track what each person put in vs what they got out
- * - Winner gets totalCollateral (their profit = totalCollateral - their_stake)
- * - Loser gets 0 (their loss = 0 - their_stake = -their_stake)
- */
+
 export async function calculateParlayPnL(
   chainId?: number,
   marketAddress?: string,
   owners?: string[]
 ): Promise<ParlayPnLEntry[]> {
-  // We need both PredictionMinted (to get stakes) and PredictionBurned (to get outcomes)
-  // Let's get settled parlays from the parlay table and their corresponding events
   const whereClause: any = {
     status: { in: ['settled', 'consolidated'] },
     makerWon: { not: null },
@@ -29,7 +22,6 @@ export async function calculateParlayPnL(
 
   const parlays = await prisma.parlay.findMany({ where: whereClause });
 
-  // Get mint events to find original stakes
   const mintTimestamps = Array.from(new Set(parlays.map(p => BigInt(p.mintedAt))));
   const mintEvents = await prisma.event.findMany({
     where: {
@@ -38,7 +30,6 @@ export async function calculateParlayPnL(
     },
   });
 
-  // Build lookup map for mint data
   const mintEventMap = new Map();
   for (const event of mintEvents) {
     try {
@@ -65,13 +56,11 @@ export async function calculateParlayPnL(
     const takerCollateral = BigInt(mintData.takerCollateral || '0');
     const totalCollateral = BigInt(mintData.totalCollateral || '0');
 
-    // Filter by owners if specified
     if (owners?.length) {
       const ownerSet = new Set(owners.map(o => o.toLowerCase()));
       if (!ownerSet.has(maker) && !ownerSet.has(taker)) continue;
     }
 
-    // Initialize stats
     if (!ownerStats.has(maker)) {
       ownerStats.set(maker, { totalPnL: 0n, parlayCount: 0 });
     }
@@ -99,7 +88,6 @@ export async function calculateParlayPnL(
     }
   }
 
-  // Convert to result format
   return Array.from(ownerStats.entries()).map(([owner, stats]) => ({
     owner,
     totalPnL: stats.totalPnL.toString(),

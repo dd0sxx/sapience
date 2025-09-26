@@ -89,10 +89,10 @@ export class PnLResolver {
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
     if (existing) return existing;
 
-    // Get market PnL from precomputed table and parlay PnL directly
+    
     const [marketPnL, parlayPnL] = await Promise.all([
       prisma.ownerMarketRealizedPnl.findMany(),
-      calculateParlayPnL(), // Calculate all parlay PnL
+      calculateParlayPnL(), 
     ]);
     
     const mgList = await prisma.marketGroup.findMany({
