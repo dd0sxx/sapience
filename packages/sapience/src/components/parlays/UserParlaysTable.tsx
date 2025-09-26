@@ -625,28 +625,18 @@ export default function UserParlaysTable({
                 <NumberDisplay value={viewerWager} /> {symbol}
               </div>
               {isClosed ? (
-                <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
-                  {row.original.status === 'won' ? 'Won:' : 'Lost:'}{' '}
-                  <span
-                    className={
-                      row.original.status === 'won'
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }
-                  >
-                    <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
-                  </span>
-                  {viewerWager > 0 && (
-                    <span
-                      className={`text-xs ${row.original.status === 'won' ? 'text-green-600' : 'text-red-600'}`}
-                    >
-                      ({roi > 0 ? '+' : ''}
-                      {roi.toFixed(0)}%)
-                    </span>
-                  )}
-                </div>
+                row.original.status === 'won' ? (
+                  <div className="text-sm text-muted-foreground mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
+                    Won: <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
+                    {viewerWager > 0 && (
+                      <span className="text-xs text-green-600">
+                        {roi.toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                ) : null
               ) : (
-                <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
+                <div className="text-sm text-muted-foreground mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
                   To Win: <NumberDisplay value={totalPayout} /> {symbol}
                 </div>
               )}
