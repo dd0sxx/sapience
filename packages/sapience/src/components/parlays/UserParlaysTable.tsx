@@ -608,12 +608,27 @@ export default function UserParlaysTable({
                   row.original.takerCollateralWei ??
                   0n);
           const viewerWager = Number(formatEther(viewerWagerWei));
+          const pnlValue = Number(formatEther(BigInt(row.original.userPnL)));
+          const roi = viewerWager > 0 ? (pnlValue / viewerWager) * 100 : 0;
+          
           return (
             <div>
               <div className="whitespace-nowrap">
                 <NumberDisplay value={viewerWager} /> {symbol}
               </div>
-              {!isClosed && (
+              {isClosed ? (
+                <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
+                  {row.original.status === 'won' ? 'Won:' : 'Lost:'}{' '}
+                  <span className={row.original.status === 'won' ? 'text-green-600' : 'text-red-600'}>
+                    <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
+                  </span>
+                  {viewerWager > 0 && (
+                    <span className={`text-xs ${row.original.status === 'won' ? 'text-green-600' : 'text-red-600'}`}>
+                      ({roi > 0 ? '+' : ''}{roi.toFixed(0)}%)
+                    </span>
+                  )}
+                </div>
+              ) : (
                 <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
                   To Win: <NumberDisplay value={totalPayout} /> {symbol}
                 </div>
