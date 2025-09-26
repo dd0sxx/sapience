@@ -205,11 +205,9 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         const chunk = blocks.slice(i, i + CHUNK_SIZE);
         const fromBlock = chunk[0];
         const toBlock = chunk[chunk.length - 1];
-
-        console.log(
-          `[PredictionMarketIndexer] Processing chunk: blocks ${fromBlock} to ${toBlock} (${chunk.length} blocks)`
-        );
-
+        
+        console.log(`[PredictionMarketIndexer] Processing chunk: blocks ${fromBlock} to ${toBlock} (${chunk.length} blocks)`);
+        
         try {
           // Single efficient query for the entire chunk
           const logs = await this.client.getLogs({
@@ -218,9 +216,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
             toBlock: BigInt(toBlock),
           });
 
-          console.log(
-            `[PredictionMarketIndexer] Found ${logs.length} logs in chunk ${fromBlock}-${toBlock}`
-          );
+          console.log(`[PredictionMarketIndexer] Found ${logs.length} logs in chunk ${fromBlock}-${toBlock}`);
 
           // Process all logs in this chunk
           for (const log of logs) {
@@ -240,22 +236,15 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
               // Continue processing other logs
             }
           }
-
+          
           processedBlocks += chunk.length;
-          console.log(
-            `[PredictionMarketIndexer] Progress: ${processedBlocks}/${blocks.length} blocks (${Math.round((processedBlocks / blocks.length) * 100)}%)`
-          );
+          console.log(`[PredictionMarketIndexer] Progress: ${processedBlocks}/${blocks.length} blocks (${Math.round(processedBlocks/blocks.length*100)}%)`);
         } catch (chunkError) {
-          console.error(
-            `[PredictionMarketIndexer] Error processing chunk ${fromBlock}-${toBlock}:`,
-            chunkError
-          );
+          console.error(`[PredictionMarketIndexer] Error processing chunk ${fromBlock}-${toBlock}:`, chunkError);
           Sentry.captureException(chunkError);
-
-          // fallback
-          console.log(
-            `[PredictionMarketIndexer] Falling back to individual block processing for chunk ${fromBlock}-${toBlock}`
-          );
+          
+          // fallback 
+          console.log(`[PredictionMarketIndexer] Falling back to individual block processing for chunk ${fromBlock}-${toBlock}`);
           for (const blockNumber of chunk) {
             await this.indexBlock(blockNumber);
           }
@@ -265,10 +254,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
       return true;
     } catch (error) {
-      console.error(
-        '[PredictionMarketIndexer] Error in optimized indexing:',
-        error
-      );
+      console.error('[PredictionMarketIndexer] Error in optimized indexing:', error);
       Sentry.captureException(error);
       return false;
     }
@@ -395,7 +381,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         console.log(
           `[PredictionMarketIndexer] Event already exists tx=${uniqueEventKey.transactionHash} block=${uniqueEventKey.blockNumber} logIndex=${uniqueEventKey.logIndex}`
         );
-
+        
         // For reindexing: still check if parlay needs to be created (might be missing due to old bug)
         const existingParlay = await prisma.parlay.findFirst({
           where: {
@@ -482,7 +468,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         );
       }
 
-      // Create Parlay
+      // Create Parlay 
       await prisma.parlay.create({
         data: {
           chainId: this.chainId,
