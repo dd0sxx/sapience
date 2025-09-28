@@ -389,7 +389,12 @@ export function useOrderBookData({
   // 5. Derive Order Book Levels from Processed Data
   useEffect(() => {
     if (!processedPoolData || !pool) {
-      setOrderBookData({ asks: [], bids: [], lastPrice: null });
+      setOrderBookData({
+        asks: [],
+        bids: [],
+        lastPrice: null,
+        lastPriceRaw: null,
+      });
       return;
     }
 
@@ -485,13 +490,23 @@ export function useOrderBookData({
           return; // Exit after processing with nearest tick
         }
         console.warn('[useOrderBookData] Could not find nearest tick.');
-        setOrderBookData({ asks: [], bids: [], lastPrice: null });
+        setOrderBookData({
+          asks: [],
+          bids: [],
+          lastPrice: null,
+          lastPriceRaw: null,
+        });
         return; // Still couldn't find a reference point
       }
       console.warn(
         '[useOrderBookData] Cannot derive order book without current/reference tick.'
       );
-      setOrderBookData({ asks: [], bids: [], lastPrice: null });
+      setOrderBookData({
+        asks: [],
+        bids: [],
+        lastPrice: null,
+        lastPriceRaw: null,
+      });
       return; // Cannot proceed without current tick
     }
 
