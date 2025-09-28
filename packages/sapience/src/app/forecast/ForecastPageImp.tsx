@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/sapience/ui/index';
+} from '@sapience/ui/components/ui/tooltip';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import PredictForm from '~/components/markets/forms/ForecastForm';
@@ -31,20 +31,6 @@ const TabsHeader = ({
   isAskTooltipOpen,
   setIsAskTooltipOpen,
 }: TabsHeaderProps) => {
-  const closeTimeoutRef = useRef<number | null>(null);
-
-  const handleTapOpen = () => {
-    if (closeTimeoutRef.current) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    setIsAskTooltipOpen(true);
-    closeTimeoutRef.current = window.setTimeout(() => {
-      setIsAskTooltipOpen(false);
-      closeTimeoutRef.current = null;
-    }, 1500);
-  };
-
   return (
     <div className="border-b border-border bg-background border-t border-border">
       <div className="flex">
@@ -57,11 +43,7 @@ const TabsHeader = ({
         <TooltipProvider>
           <Tooltip open={isAskTooltipOpen} onOpenChange={setIsAskTooltipOpen}>
             <TooltipTrigger asChild>
-              <div
-                className="flex-1"
-                onClick={handleTapOpen}
-                onTouchStart={handleTapOpen}
-              >
+              <div className="flex-1">
                 <button
                   type="button"
                   disabled
