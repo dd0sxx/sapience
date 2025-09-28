@@ -115,6 +115,7 @@ export default defineConfig({
         ],
       },
       { text: "FAQ", link: "/faq" },
+      { text: "Storybook", link: "/storybook" },
       { text: "Contributing", link: "/contributing" },
     ],
     "/user-guide": [
