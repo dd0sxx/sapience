@@ -86,6 +86,7 @@ const Betslip = ({
       },
       successMessage: 'Your prediction has been submitted.',
       fallbackErrorMessage: 'Failed to submit prediction',
+      redirectProfileAnchor: 'trades',
     });
   const queryClient = useQueryClient();
   const { toast } = useToast();
