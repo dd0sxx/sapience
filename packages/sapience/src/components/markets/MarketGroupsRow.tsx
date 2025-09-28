@@ -333,32 +333,32 @@ const MarketGroupsRow = ({
             </h3>
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
-              <div className="text-xs text-muted-foreground">
-                <span className="text-muted-foreground">
-                  Market Prediction:{' '}
-                </span>
-                <MarketPrediction />
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">
+                    Market Prediction:{' '}
+                  </span>
+                  <MarketPrediction />
+                </div>
+                {hasSparklineData && (
+                  <Link
+                    href={`/markets/${chainShortName}:${marketAddress}`}
+                    className="md:hidden inline-block w-[72px] h-[18px]"
+                    aria-label="View market group"
+                  >
+                    <MarketGroupSparkline
+                      marketIds={marketIds}
+                      rawChartData={chartData}
+                      marketClassification={marketClassification}
+                      minTimestamp={minSparklineTimestamp}
+                      width={72}
+                      height={18}
+                    />
+                  </Link>
+                )}
               </div>
             )}
           </div>
-
-          {/* Mobile-only floating sparkline (top-right) */}
-          {hasSparklineData && (
-            <div className="absolute right-4 top-6 md:hidden">
-              <Link
-                href={`/markets/${chainShortName}:${marketAddress}`}
-                className="block w-[80px] h-[40px]"
-                aria-label="View market group"
-              >
-                <MarketGroupSparkline
-                  marketIds={marketIds}
-                  rawChartData={chartData}
-                  marketClassification={marketClassification}
-                  minTimestamp={minSparklineTimestamp}
-                />
-              </Link>
-            </div>
-          )}
 
           {/* Right Side: Sparkline + Action Buttons */}
           <div className="relative flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-6 md:ml-6 w-full md:w-auto">
