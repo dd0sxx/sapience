@@ -17,7 +17,6 @@ export default defineConfig({
       link: "/getting-started/what-is-sapience",
       match: "/guides",
     },
-    { text: "Storybook", link: "/storybook" },
   ],
   banner: {
     dismissable: "false" as unknown as boolean,
@@ -84,6 +83,7 @@ export default defineConfig({
             link: "/guides/trading-auction-intent-markets",
           },
           { text: "Custom Trading App", link: "/guides/custom-trading-app" },
+          { text: "UI components", link: "/storybook" },
           {
             text: "Dashboards, Games, and more",
             link: "/guides/design-dashboards-games",
@@ -115,7 +115,6 @@ export default defineConfig({
         ],
       },
       { text: "FAQ", link: "/faq" },
-      { text: "Storybook", link: "/storybook" },
       { text: "Contributing", link: "/contributing" },
     ],
     "/user-guide": [
