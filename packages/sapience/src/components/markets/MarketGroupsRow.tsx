@@ -95,8 +95,8 @@ const MarketGroupsRow = ({
       Object.entries(latestDataPoint.markets).forEach(
         ([marketIdStr, value]) => {
           if (typeof value === 'number') {
-            // Scale down from Wei (divide by 1e18) to get decimal value between 0-1
-            prices[parseInt(marketIdStr)] = value / 1e18;
+            // Values are already scaled to base units (0-1 for prob, numeric already in display units)
+            prices[parseInt(marketIdStr)] = value;
           }
         }
       );
