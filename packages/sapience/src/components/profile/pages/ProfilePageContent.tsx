@@ -11,6 +11,12 @@ import {
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
 
+import {
+  Telescope,
+  SquareStackIcon,
+  ArrowLeftRightIcon,
+  DropletsIcon,
+} from 'lucide-react';
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
 import ClosedTraderPositionsTable from '~/components/profile/ClosedTraderPositionsTable';
@@ -24,6 +30,7 @@ import { SCHEMA_UID } from '~/lib/constants/eas';
 import LottieLoader from '~/components/shared/LottieLoader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
 import ProfileStats from '~/components/profile/ProfileStats';
+import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 
 const TAB_VALUES = ['trades', 'parlays', 'lp', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -186,6 +193,17 @@ const ProfilePageContent = () => {
       </div>
 
       <div className="mb-5">
+        {hasLoadedOnce ? (
+          <ProfileQuickMetrics
+            address={address}
+            forecastsCount={attestations?.length ?? 0}
+            positions={positionsData ?? []}
+            parlays={parlays ?? []}
+          />
+        ) : null}
+      </div>
+
+      <div className="mb-5">
         <ProfileStats address={address} />
       </div>
 
@@ -200,15 +218,19 @@ const ProfilePageContent = () => {
           >
             <TabsList className="grid w-full grid-cols-1 lg:grid-cols-4 h-auto gap-2 mb-5">
               <TabsTrigger className="w-full" value="trades">
+                <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
                 Trades
               </TabsTrigger>
               <TabsTrigger className="w-full" value="parlays">
+                <SquareStackIcon className="h-4 w-4 mr-2" />
                 Parlays
               </TabsTrigger>
               <TabsTrigger className="w-full" value="lp">
+                <DropletsIcon className="h-4 w-4 mr-2" />
                 Liquidity
               </TabsTrigger>
               <TabsTrigger className="w-full" value="forecasts">
+                <Telescope className="h-4 w-4 mr-2" />
                 Forecasts
               </TabsTrigger>
             </TabsList>

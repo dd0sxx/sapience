@@ -318,7 +318,7 @@ const MarketGroupsRow = ({
         />
 
         {/* Content Container */}
-        <div className="relative flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-6 md:py-2 gap-3">
+        <div className="relative flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-4 md:py-2 gap-3">
           {/* Left Side: Question + Prediction */}
           <div className="flex-grow pr-24 md:pr-0">
             <h3 className="text-md mb-1.5 break-words">
