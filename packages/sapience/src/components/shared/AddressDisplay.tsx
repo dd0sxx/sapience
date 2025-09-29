@@ -153,7 +153,13 @@ const AddressDisplay = ({
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
               >
-                <Image src="/zerion.svg" alt="Zerion" width={12} height={12} />
+                <Image
+                  src="/zerion.svg"
+                  alt="Zerion"
+                  width={12}
+                  height={12}
+                  className="dark:invert dark:brightness-90"
+                />
                 <span className="font-medium">Zerion</span>
               </a>
               <a
@@ -167,7 +173,7 @@ const AddressDisplay = ({
                   alt="DeBank"
                   width={12}
                   height={12}
-                  className="grayscale brightness-50"
+                  className="grayscale brightness-50 dark:invert dark:brightness-90"
                 />
                 <span className="font-medium">DeBank</span>
               </a>
@@ -182,6 +188,7 @@ const AddressDisplay = ({
                   alt="Arkm Explorer"
                   width={12}
                   height={12}
+                  className="dark:invert dark:brightness-90"
                 />
                 <span className="font-medium">Arkham Intel</span>
               </a>
@@ -196,6 +203,7 @@ const AddressDisplay = ({
                   alt="Blockscan"
                   width={12}
                   height={12}
+                  className="dark:invert dark:brightness-90"
                 />
                 <span className="font-medium">Blockscan</span>
               </a>

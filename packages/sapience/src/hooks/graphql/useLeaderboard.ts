@@ -24,7 +24,7 @@ const useAllTimeLeaderboard = () => {
         const data = await graphqlRequest<{
           allTimeProfitLeaderboard: AggregatedLeaderboardEntry[];
         }>(GET_ALL_TIME_PROFIT_LEADERBOARD);
-        return (data?.allTimeProfitLeaderboard || []).slice(0, 10);
+        return (data?.allTimeProfitLeaderboard || []).slice(0, 100);
       } catch (error) {
         console.error('Error in useAllTimeLeaderboard:', error);
         return [];

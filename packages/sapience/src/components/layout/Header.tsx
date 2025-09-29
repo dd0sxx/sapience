@@ -134,6 +134,15 @@ const NavLinks = ({
             Forecasting
           </Button>
         </Link>
+        <Link href="/feed" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/feed', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Activity Feed
+          </Button>
+        </Link>
         <Link href="/vaults" passHref className="flex w-fit">
           <Button
             variant="ghost"
@@ -289,14 +298,14 @@ const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    className="rounded-full h-10 w-10 md:h-9 md:w-auto ml-1.5 md:ml-0 gap-2 p-0 md:pl-2 md:pr-3 overflow-hidden"
+                    className="rounded-sm md:rounded-full h-10 w-10 md:h-9 md:w-auto ml-1.5 md:ml-0 gap-2 p-0 md:pl-2 md:pr-3 overflow-hidden"
                   >
                     {connectedWallet?.address ? (
                       <>
                         {/* Mobile: avatar fills the entire circular button */}
                         <EnsAvatar
                           address={connectedWallet.address}
-                          className="h-full w-full rounded-full md:hidden"
+                          className="h-full w-full ring-inset md:hidden"
                           width={40}
                           height={40}
                         />

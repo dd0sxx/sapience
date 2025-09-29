@@ -66,7 +66,8 @@ const MarketCard = ({
       Object.entries(latestDataPoint.markets).forEach(
         ([marketIdStr, value]) => {
           if (typeof value === 'number') {
-            prices[parseInt(marketIdStr)] = value / 1e18;
+            // Values are already scaled to base units (0-1 for prob, numeric already in display units)
+            prices[parseInt(marketIdStr)] = value;
           }
         }
       );

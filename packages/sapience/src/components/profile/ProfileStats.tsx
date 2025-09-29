@@ -37,7 +37,7 @@ const StatTile = ({
             <div className="text-sm text-muted-foreground font-medium mb-0.5">
               {label}
             </div>
-            <div className="flex items-baseline gap-2">
+            <div className="flex flex-col items-start gap-1 md:flex-row md:items-baseline md:gap-2">
               <div className="text-xl md:text-2xl font-heading font-normal">
                 {value}
               </div>

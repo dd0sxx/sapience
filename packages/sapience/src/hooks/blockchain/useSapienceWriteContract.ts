@@ -1,9 +1,16 @@
-import { useCallback, useMemo, useState } from 'react';
+'use client';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { useTransactionReceipt } from 'wagmi';
-import { useWriteContract, useSendCalls, useConnectorClient } from 'wagmi';
+import {
+  useWriteContract,
+  useSendCalls,
+  useConnectorClient,
+  useAccount,
+} from 'wagmi';
 import type { Hash } from 'viem';
 import { encodeFunctionData } from 'viem';
 import { useWallets, usePrivy } from '@privy-io/react-auth';
+import { useRouter } from 'next/navigation';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { waitForCallsStatus } from 'viem/actions';
@@ -19,6 +26,7 @@ interface useSapienceWriteContractProps {
   onTxHash?: (txHash: Hash) => void;
   successMessage?: string;
   fallbackErrorMessage?: string;
+  redirectProfileAnchor?: 'trades' | 'parlays' | 'lp' | 'forecasts';
 }
 
 export function useSapienceWriteContract({
@@ -27,6 +35,7 @@ export function useSapienceWriteContract({
   onTxHash,
   successMessage,
   fallbackErrorMessage = 'Transaction failed',
+  redirectProfileAnchor,
 }: useSapienceWriteContractProps) {
   const { data: client } = useConnectorClient();
   const [txHash, setTxHash] = useState<Hash | undefined>(undefined);
@@ -35,6 +44,10 @@ export function useSapienceWriteContract({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const { wallets } = useWallets();
   const { user, login } = usePrivy();
+  const { address: wagmiAddress } = useAccount();
+  const router = useRouter();
+  const didRedirectRef = useRef(false);
+  const didShowSuccessToastRef = useRef(false);
   const embeddedWallet = useMemo(() => {
     const match = wallets?.find(
       (wallet) => (wallet as any)?.walletClientType === 'privy'
@@ -49,7 +62,8 @@ export function useSapienceWriteContract({
       if (!login) return false;
       await Promise.resolve(login());
       return Boolean(user?.wallet?.id);
-    } catch {
+    } catch (e) {
+      console.error(e);
       return false;
     }
   }, [isEmbeddedWallet, login, user?.wallet?.id]);
@@ -89,6 +103,23 @@ export function useSapienceWriteContract({
     reset: resetCalls,
   } = useSendCalls();
 
+  const maybeRedirectToProfile = useCallback(() => {
+    if (!redirectProfileAnchor) return; // Opt-in only
+    if (didRedirectRef.current) return; // Guard against double navigation
+    if (typeof window === 'undefined') return; // SSR safety
+
+    try {
+      const connectedAddress = wagmiAddress || (wallets?.[0] as any)?.address;
+      if (!connectedAddress) return; // No address available yet
+      const addressLower = String(connectedAddress).toLowerCase();
+      didRedirectRef.current = true;
+      router.push(`/profile/${addressLower}#${redirectProfileAnchor}`);
+    } catch (e) {
+      console.error(e);
+      // noop on navigation errors
+    }
+  }, [redirectProfileAnchor, wallets, wagmiAddress, router]);
+
   // Custom write contract function that handles chain validation
   const sapienceWriteContract = useCallback(
     async (...args: Parameters<typeof writeContractAsync>) => {
@@ -102,6 +133,8 @@ export function useSapienceWriteContract({
         // Reset state
         setTxHash(undefined);
         resetWrite();
+        didRedirectRef.current = false;
+        didShowSuccessToastRef.current = false;
 
         // Validate and switch chain if needed
         await validateAndSwitchChain(_chainId);
@@ -164,21 +197,50 @@ export function useSapienceWriteContract({
             data?.transactionHash ||
             data?.txHash;
           if (maybeHash) {
+            // Redirect as soon as a tx hash is known
+            maybeRedirectToProfile();
+            // Show success toast after navigation so it appears on profile
+            try {
+              toast({
+                title: successTitle,
+                description: formatSuccessDescription(successMessage),
+                duration: 5000,
+              });
+              didShowSuccessToastRef.current = true;
+            } catch (e) {
+              console.error(e);
+            }
             onTxHash?.(maybeHash as Hash);
             setTxHash(maybeHash as Hash);
             setIsSubmitting(false);
           } else {
+            // No hash available; redirect before showing success toast
+            maybeRedirectToProfile();
             toast({
               title: successTitle,
               description: formatSuccessDescription(successMessage),
               duration: 5000,
             });
             onSuccess?.(undefined as any);
+            didShowSuccessToastRef.current = true;
             setIsSubmitting(false);
           }
         } else {
           // Execute the transaction and set hash when resolved
           const hash = await writeContractAsync(...args);
+          // Redirect as soon as a tx hash is known
+          maybeRedirectToProfile();
+          // Show success toast after navigation so it appears on profile
+          try {
+            toast({
+              title: successTitle,
+              description: formatSuccessDescription(successMessage),
+              duration: 5000,
+            });
+            didShowSuccessToastRef.current = true;
+          } catch (e) {
+            console.error(e);
+          }
           onTxHash?.(hash);
           setTxHash(hash);
         }
@@ -204,6 +266,7 @@ export function useSapienceWriteContract({
       onError,
       onTxHash,
       user,
+      maybeRedirectToProfile,
     ]
   );
 
@@ -220,6 +283,8 @@ export function useSapienceWriteContract({
         // Reset state
         setTxHash(undefined);
         resetCalls();
+        didRedirectRef.current = false;
+        didShowSuccessToastRef.current = false;
 
         // Validate and switch chain if needed
         await validateAndSwitchChain(_chainId);
@@ -287,16 +352,33 @@ export function useSapienceWriteContract({
             const result = await waitForCallsStatus(client!, { id: data.id });
             const transactionHash = result?.receipts?.[0]?.transactionHash;
             if (transactionHash) {
+              // Redirect as soon as a tx hash is known
+              maybeRedirectToProfile();
+              // Show success toast after navigation so it appears on profile
+              try {
+                toast({
+                  title: successTitle,
+                  description: formatSuccessDescription(successMessage),
+                  duration: 5000,
+                });
+                didShowSuccessToastRef.current = true;
+              } catch (e) {
+                console.error(e);
+              }
               onTxHash?.(transactionHash);
               setTxHash(transactionHash);
+              setIsSubmitting(false);
             } else {
               // No tx hash available from aggregator; consider operation successful.
+              // Redirect before showing success toast
+              maybeRedirectToProfile();
               toast({
                 title: successTitle,
                 description: formatSuccessDescription(successMessage),
                 duration: 5000,
               });
               onSuccess?.(undefined as any);
+              didShowSuccessToastRef.current = true;
             }
           } else {
             // Embedded path or fallback path without aggregator id.
@@ -305,28 +387,48 @@ export function useSapienceWriteContract({
               data?.transactionHash ||
               data?.txHash;
             if (transactionHash) {
+              // Redirect as soon as a tx hash is known
+              maybeRedirectToProfile();
+              // Show success toast after navigation so it appears on profile
+              try {
+                toast({
+                  title: successTitle,
+                  description: formatSuccessDescription(successMessage),
+                  duration: 5000,
+                });
+                didShowSuccessToastRef.current = true;
+              } catch (e) {
+                console.error(e);
+              }
               onTxHash?.(transactionHash);
               setTxHash(transactionHash);
               setIsSubmitting(false);
               return;
             }
             // Fallback path without aggregator id.
+            // Redirect before showing success toast
+            maybeRedirectToProfile();
             toast({
               title: successTitle,
               description: formatSuccessDescription(successMessage),
               duration: 5000,
             });
             onSuccess?.(undefined as any);
+            didShowSuccessToastRef.current = true;
             setIsSubmitting(false);
           }
-        } catch {
+        } catch (e) {
+          console.error(e);
           // `wallet_getCallsStatus` unsupported or failed; assume success since `sendCalls` resolved.
+          // Redirect before showing success toast
+          maybeRedirectToProfile();
           toast({
             title: successTitle,
             description: formatSuccessDescription(successMessage),
             duration: 5000,
           });
           onSuccess?.(undefined as any);
+          didShowSuccessToastRef.current = true;
           setIsSubmitting(false);
         }
       } catch (error) {
@@ -352,21 +454,25 @@ export function useSapienceWriteContract({
       onTxHash,
       isEmbeddedWallet,
       user,
+      maybeRedirectToProfile,
     ]
   );
 
   const handleTxSuccess = useCallback(
     (receipt: ReturnType<typeof useTransactionReceipt>['data']) => {
       if (!txHash) return;
-
-      toast({
-        title: successTitle,
-        description: formatSuccessDescription(successMessage),
-        duration: 5000,
-      });
+      // Avoid duplicate success toast if already shown after redirect
+      if (!didShowSuccessToastRef.current) {
+        toast({
+          title: successTitle,
+          description: formatSuccessDescription(successMessage),
+          duration: 5000,
+        });
+      }
       onSuccess?.(receipt);
       setTxHash(undefined);
       setIsSubmitting(false);
+      didShowSuccessToastRef.current = false;
     },
     [txHash, toast, successMessage, onSuccess]
   );

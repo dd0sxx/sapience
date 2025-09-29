@@ -95,8 +95,8 @@ const MarketGroupsRow = ({
       Object.entries(latestDataPoint.markets).forEach(
         ([marketIdStr, value]) => {
           if (typeof value === 'number') {
-            // Scale down from Wei (divide by 1e18) to get decimal value between 0-1
-            prices[parseInt(marketIdStr)] = value / 1e18;
+            // Values are already scaled to base units (0-1 for prob, numeric already in display units)
+            prices[parseInt(marketIdStr)] = value;
           }
         }
       );
@@ -318,9 +318,9 @@ const MarketGroupsRow = ({
         />
 
         {/* Content Container */}
-        <div className="relative flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-6 md:py-2 gap-3">
+        <div className="relative flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-4 md:py-2 gap-3">
           {/* Left Side: Question + Prediction */}
-          <div className="flex-grow pr-24 md:pr-0">
+          <div className="flex-grow pr-0">
             <h3 className="text-md mb-1.5 break-words">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}`}
@@ -333,32 +333,16 @@ const MarketGroupsRow = ({
             </h3>
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
-              <div className="text-xs text-muted-foreground">
-                <span className="text-muted-foreground">
-                  Market Prediction:{' '}
-                </span>
-                <MarketPrediction />
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">
+                    Market Prediction:{' '}
+                  </span>
+                  <MarketPrediction />
+                </div>
               </div>
             )}
           </div>
-
-          {/* Mobile-only floating sparkline (top-right) */}
-          {hasSparklineData && (
-            <div className="absolute right-4 top-6 md:hidden">
-              <Link
-                href={`/markets/${chainShortName}:${marketAddress}`}
-                className="block w-[80px] h-[40px]"
-                aria-label="View market group"
-              >
-                <MarketGroupSparkline
-                  marketIds={marketIds}
-                  rawChartData={chartData}
-                  marketClassification={marketClassification}
-                  minTimestamp={minSparklineTimestamp}
-                />
-              </Link>
-            </div>
-          )}
 
           {/* Right Side: Sparkline + Action Buttons */}
           <div className="relative flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-6 md:ml-6 w-full md:w-auto">
