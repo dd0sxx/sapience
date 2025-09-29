@@ -26,6 +26,7 @@ import {
 import { getChainShortName } from '~/lib/utils/util';
 import SharePositionDialog from '~/components/markets/SharePositionDialog';
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import { MINIMUM_POSITION_WIN } from '~/lib/constants/numbers';
 
 interface ClosedTraderPositionsTableProps {
   positions: PositionType[];
@@ -80,10 +81,12 @@ export default function ClosedTraderPositionsTable({
     link?: string;
     question: string;
     symbol: string;
+    decimals: number;
     entry: number;
     exit: number;
     realized: number;
     closedAt?: Date;
+    isLost: boolean;
   }
 
   const rows: RowData[] = useMemo(() => {
@@ -105,6 +108,15 @@ export default function ClosedTraderPositionsTable({
         decimals
       );
       const realized = exit - entry;
+      let minWinThreshold = 0;
+      try {
+        minWinThreshold = Number(
+          formatUnits(MINIMUM_POSITION_WIN, decimals as number)
+        );
+      } catch {
+        minWinThreshold = 0.01; // fallback for typical 18 decimals
+      }
+      const isLost = exit < minWinThreshold;
 
       return {
         id: p.id,
@@ -113,10 +125,12 @@ export default function ClosedTraderPositionsTable({
         link,
         question,
         symbol,
+        decimals,
         entry,
         exit,
         realized,
         closedAt,
+        isLost,
       };
     });
   }, [positions]);
@@ -347,17 +361,23 @@ export default function ClosedTraderPositionsTable({
         const r = row.original;
         return (
           <div className="whitespace-nowrap text-right">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-              onClick={() => {
-                setSelectedPositionSnapshot(r.position);
-                setOpenSharePositionId(r.positionId || null);
-                // ---
-              }}
-            >
-              Share
-            </button>
+            {r.isLost ? (
+              <Button size="sm" variant="outline" disabled>
+                Wager Lost
+              </Button>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                onClick={() => {
+                  setSelectedPositionSnapshot(r.position);
+                  setOpenSharePositionId(r.positionId || null);
+                  // ---
+                }}
+              >
+                Share
+              </button>
+            )}
           </div>
         );
       },

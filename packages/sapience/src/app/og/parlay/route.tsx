@@ -2,17 +2,20 @@ import { ImageResponse } from 'next/og';
 import {
   WIDTH,
   HEIGHT,
+  getScale,
   normalizeText,
   loadFontData,
   fontsFromData,
   commonAssets,
   Background,
-  Header,
   Footer,
   baseContainerStyle,
+  contentContainerStyle,
   addThousandsSeparators,
   Pill,
-  WagerToWin,
+  PredictionsLabel,
+  computePotentialReturn,
+  buildCacheHeaders,
 } from '../_shared';
 
 export const runtime = 'edge';
@@ -40,7 +43,7 @@ export async function GET(req: Request) {
     const addr = /^0x[a-f0-9]{40}$/.test(cleanedAddr) ? cleanedAddr : '';
 
     // Shared assets and fonts
-    const { logoUrl, bgUrl } = commonAssets(req);
+    const { bgUrl } = commonAssets(req);
 
     // Parse legs passed as repeated `leg` params: text|Yes or text|No
     const rawLegs = searchParams.getAll('leg').slice(0, 12); // safety cap
@@ -54,86 +57,92 @@ export async function GET(req: Request) {
 
     const fonts = await loadFontData(req);
 
+    const width = WIDTH;
+    const height = HEIGHT;
+    const scale = getScale(width);
+    // Note: next/og ImageResponse custom headers can cause non-image responses for next/image fetch.
+    // Skip attaching headers directly to ImageResponse to ensure proper content-type.
+
+    const potentialReturn = computePotentialReturn(wager, payout);
+
+    // Always render blockie based on full address in shared component; no ENS avatar
+
     return new ImageResponse(
       (
-        <div style={baseContainerStyle}>
-          <Background bgUrl={bgUrl} />
-          <Header logoUrl={logoUrl} />
+        <div style={baseContainerStyle(scale)}>
+          <Background bgUrl={bgUrl} scale={scale} />
 
-          <div style={{ display: 'flex', gap: 28, alignItems: 'stretch' }}>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                flex: 1,
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  fontSize: 24,
-                  opacity: 0.9,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Predictions
-              </div>
-              {legs.length > 0 && (
-                <>
-                  <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-                  >
-                    {legs.map((leg, idx) => {
-                      const isYes = leg.choice === 'Yes';
-                      return (
-                        <div
-                          key={idx}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 12,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: 'flex',
-                              fontSize: 28,
-                              lineHeight: 1.25,
-                              fontWeight: 600,
-                              letterSpacing: -0.3,
-                              opacity: 0.95,
-                            }}
-                          >
-                            {leg.text}
+          <div style={contentContainerStyle(scale)}>
+            <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 28 * scale, alignItems: 'stretch', width: '100%' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16 * scale,
+                    flex: 1,
+                  }}
+                >
+                  <PredictionsLabel scale={scale} count={legs.length} />
+                  {legs.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 * scale }}>
+                      {legs.map((leg, idx) => {
+                        const isYes = leg.choice === 'Yes';
+                        return (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 16 * scale }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                fontSize: 38 * scale,
+                                lineHeight: `${48 * scale}px`,
+                                fontWeight: 700,
+                                letterSpacing: -0.16 * scale,
+                                color: '#F6F7F9',
+                              }}
+                            >
+                              {leg.text}
+                            </div>
+                            <Pill text={leg.choice} tone={isYes ? 'success' : 'danger'} scale={scale} />
                           </div>
-                          <Pill
-                            text={leg.choice}
-                            tone={isYes ? 'success' : 'danger'}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            {(wager || payout) && (
-              <WagerToWin wager={wager} payout={payout} symbol={symbol} />
-            )}
-          </div>
 
-          <Footer addr={addr} />
+            <Footer addr={addr} wager={wager} payout={payout} symbol={symbol} potentialReturn={potentialReturn} scale={scale} />
+          </div>
         </div>
       ),
       {
-        width: WIDTH,
-        height: HEIGHT,
+        width,
+        height,
         fonts: fontsFromData(fonts),
       }
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return new Response(`OG route error: ${message}`, { status: 500 });
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#040613',
+            color: '#F6F7F9',
+            fontFamily:
+              'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
+          }}
+        >
+          <div style={{ display: 'flex', fontSize: 28, opacity: 0.86 }}>Error: {message}</div>
+        </div>
+      ),
+      { width: WIDTH, height: HEIGHT }
+    );
   }
 }
