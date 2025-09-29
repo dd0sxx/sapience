@@ -587,19 +587,15 @@ contract PredictionMarket is
         userCollateralDeposits[maker] += makerCollateral;
         userCollateralDeposits[taker] += takerCollateral;
 
-        // 4- Mint NFTs and set prediction
-        _safeMint(maker, makerNftTokenId);
-        _safeMint(taker, takerNftTokenId);
-
-        // 5- Set NFT mappings
+        // 4- Set NFT mappings before minting (needed for _update override)
         nftToPredictionId[makerNftTokenId] = predictionId;
         nftToPredictionId[takerNftTokenId] = predictionId;
 
-        // 6- Add to auxiliary mappings
-        nftByMakerAddress[maker].add(makerNftTokenId);
-        nftByTakerAddress[taker].add(takerNftTokenId);
+        // 5- Mint NFTs
+        _safeMint(maker, makerNftTokenId);
+        _safeMint(taker, takerNftTokenId);
 
-        // 7- Emit prediction minted event
+        // 6- Emit prediction minted event
         emit PredictionMinted(
             maker,
             taker,
