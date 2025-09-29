@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vocs dev",
-    "build": "vocs build",
+    "build:vocs": "vocs build",
+    "build:storybook": "cd ../ui && pnpm build-storybook && mkdir -p ../sapience-docs/docs/public && cp -r storybook-static ../sapience-docs/docs/public/components-storybook",
+    "build": "pnpm build:vocs && pnpm build:storybook",
     "preview": "vocs preview"
   },
   "dependencies": {
