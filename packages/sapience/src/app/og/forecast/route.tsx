@@ -10,11 +10,7 @@ import {
   Background,
   baseContainerStyle,
   contentContainerStyle,
-  PredictionsLabel,
-  Pill,
-  Footer,
-  addThousandsSeparators,
-  computePotentialReturn,
+  ForecastFooter,
 } from '../_shared';
 
 export const runtime = 'edge';
@@ -31,39 +27,51 @@ export async function GET(req: Request) {
     }
 
     const question =
-      normalizeText(searchParams.get('q'), 160) || 'Trade on Sapience';
-    const wagerRaw = normalizeText(searchParams.get('wager'), 32);
-    const payoutRaw = normalizeText(searchParams.get('payout'), 32);
-    const wager = addThousandsSeparators(wagerRaw);
-    const payout = addThousandsSeparators(payoutRaw);
-    const symbol = normalizeText(searchParams.get('symbol'), 16);
-    const dir = normalizeText(searchParams.get('dir'), 16);
+      normalizeText(searchParams.get('q'), 160) || 'Forecast on Sapience';
 
-    // Validate and normalize Ethereum address
+    // Optional raw timestamps (unix seconds) for consistent, server-side formatting
+    const endTs = Number(searchParams.get('end') || '');
+    const createdTs = Number(searchParams.get('created') || '');
+
+    // Fallback string params (already formatted by client) remain supported
+    const resolutionParam = normalizeText(searchParams.get('res'), 48);
+    const horizonParam = normalizeText(searchParams.get('hor'), 48);
+    const oddsRaw = normalizeText(searchParams.get('odds'), 8);
+    const odds = oddsRaw ? `${oddsRaw.replace(/%/g, '')}%` : '';
+
+    // Local helpers to format dates without external deps
+    const formatShortDate = (tsSec: number): string => {
+      if (!Number.isFinite(tsSec) || tsSec <= 0) return '';
+      const d = new Date(Math.floor(tsSec) * 1000);
+      try {
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          timeZone: 'UTC',
+        }).format(d);
+      } catch {
+        return d.toISOString().slice(0, 10);
+      }
+    };
+
+    const formatHorizonDays = (fromTsSec: number, toTsSec: number): string => {
+      if (!Number.isFinite(fromTsSec) || !Number.isFinite(toTsSec)) return '';
+      if (fromTsSec <= 0 || toTsSec <= 0) return '';
+      const diffMs =
+        Math.abs(Math.floor(toTsSec) - Math.floor(fromTsSec)) * 1000;
+      const days = Math.max(0, Math.round(diffMs / (24 * 60 * 60 * 1000)));
+      return `${days} ${days === 1 ? 'day' : 'days'}`;
+    };
+
+    // Prefer server-side computed values when timestamps are provided
+    const resolution = endTs ? formatShortDate(endTs) : resolutionParam;
+    const horizon =
+      endTs && createdTs ? formatHorizonDays(createdTs, endTs) : horizonParam;
+
     const rawAddr = (searchParams.get('addr') || '').toString();
     const cleanedAddr = rawAddr.replace(/\s/g, '').toLowerCase();
     const addr = /^0x[a-f0-9]{40}$/.test(cleanedAddr) ? cleanedAddr : '';
-
-    const lowerDir = (dir || '').toLowerCase();
-    const yesNoLabel = lowerDir.includes('on yes')
-      ? 'Yes'
-      : lowerDir.includes('on no')
-        ? 'No'
-        : '';
-    const longShortLabel =
-      lowerDir === 'long' ? 'Long' : lowerDir === 'short' ? 'Short' : '';
-
-    // Closed trades (shared from the closed positions table) include explicit entry/exit params
-    // Use that as a signal to suppress the Yes/No pill on share cards (keep Long/Short for linear)
-    const isClosedShareCard = Boolean(
-      (searchParams.get('exit') || '').length ||
-        (searchParams.get('entry') || '').length ||
-        ['1', 'true', 'yes', 'closed'].includes(
-          (searchParams.get('closed') || '').toLowerCase()
-        )
-    );
-    const shouldShowPill =
-      (yesNoLabel || longShortLabel) && !(isClosedShareCard && !!yesNoLabel);
 
     const { bgUrl } = commonAssets(req);
     const fonts = await loadFontData(req);
@@ -71,16 +79,10 @@ export async function GET(req: Request) {
     const width = WIDTH;
     const height = HEIGHT;
     const scale = getScale(width);
-    // Note: next/og ImageResponse does not support custom headers reliably across runtimes.
-    // We omit explicit cache headers here to avoid invalid responses for next/image.
-
-    const potentialReturn = computePotentialReturn(wager, payout);
-
-    // Always render blockie based on full address in shared component; no ENS avatar
 
     return new ImageResponse(
       (
-        <div style={baseContainerStyle(scale)}>
+        <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
 
           <div style={contentContainerStyle(scale)}>
@@ -92,13 +94,22 @@ export async function GET(req: Request) {
                   gap: 16 * scale,
                 }}
               >
-                <PredictionsLabel scale={scale} count={1} />
                 <div
                   style={{
                     display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: 12 * scale,
+                    fontSize: 24 * scale,
+                    lineHeight: `${30 * scale}px`,
+                    fontWeight: 600,
+                    color: 'rgba(255,255,255,0.64)',
+                  }}
+                >
+                  Prediction Market
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 20 * scale,
                   }}
                 >
                   <div
@@ -113,29 +124,15 @@ export async function GET(req: Request) {
                   >
                     {question}
                   </div>
-                  {shouldShowPill && (
-                    <div style={{ display: 'flex', marginTop: 8 * scale }}>
-                      <Pill
-                        text={yesNoLabel || longShortLabel}
-                        tone={
-                          yesNoLabel === 'Yes' || longShortLabel === 'Long'
-                            ? 'success'
-                            : 'danger'
-                        }
-                        scale={scale}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
 
-            <Footer
+            <ForecastFooter
               addr={addr}
-              wager={wager}
-              payout={payout}
-              symbol={symbol}
-              potentialReturn={potentialReturn}
+              resolution={resolution}
+              horizon={horizon}
+              odds={odds}
               scale={scale}
             />
           </div>

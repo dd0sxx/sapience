@@ -148,9 +148,11 @@ export function Header({
 export function PredictionsLabel({
   scale = 1,
   count,
+  against = false,
 }: {
   scale?: number;
   count?: number;
+  against?: boolean;
 }) {
   return (
     <div
@@ -162,7 +164,13 @@ export function PredictionsLabel({
         color: 'rgba(255,255,255,0.64)',
       }}
     >
-      {count === 1 ? 'Prediction' : 'Predictions'}
+      {against
+        ? count === 1
+          ? 'Prediction Against'
+          : 'Predictions Against'
+        : count === 1
+          ? 'Prediction'
+          : 'Predictions'}
     </div>
   );
 }
@@ -286,7 +294,7 @@ export function StatsRow({
   const valueStyle: React.CSSProperties = {
     display: 'flex',
     fontSize: 32 * scale,
-    lineHeight: `${40 * scale}px`,
+    lineHeight: `${32 * scale}px`,
     fontWeight: 800,
     color: '#FFFFFF',
   };
@@ -295,7 +303,11 @@ export function StatsRow({
     flexDirection: 'column',
     flex: 1,
   };
-  const symbolText = 'testUSDe';
+  const normalizedSymbol = (_symbol || '').trim();
+  const symbolText =
+    !normalizedSymbol || normalizedSymbol.toLowerCase() === 'usde'
+      ? 'testUSDe'
+      : normalizedSymbol;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <div
@@ -310,22 +322,23 @@ export function StatsRow({
             <FooterLabel scale={scale}>Wagered</FooterLabel>
           </div>
           <div
-            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
+            style={{ display: 'flex', alignItems: 'flex-end', gap: 8 * scale }}
           >
             <div style={valueStyle}>{wager}</div>
-            {
+            {symbolText ? (
               <div
                 style={{
                   display: 'flex',
                   fontSize: 24 * scale,
-                  lineHeight: `${30 * scale}px`,
+                  marginTop: 0,
+                  lineHeight: `${24 * scale}px`,
                   fontWeight: 600,
                   color: '#FFFFFF',
                 }}
               >
                 {symbolText}
               </div>
-            }
+            ) : null}
           </div>
         </div>
         <div style={colStyle}>
@@ -333,22 +346,23 @@ export function StatsRow({
             <FooterLabel scale={scale}>To Win</FooterLabel>
           </div>
           <div
-            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
+            style={{ display: 'flex', alignItems: 'flex-end', gap: 8 * scale }}
           >
             <div style={valueStyle}>{payout}</div>
-            {
+            {symbolText ? (
               <div
                 style={{
                   display: 'flex',
                   fontSize: 24 * scale,
-                  lineHeight: `${30 * scale}px`,
+                  marginTop: 0,
+                  lineHeight: `${24 * scale}px`,
                   fontWeight: 600,
                   color: '#FFFFFF',
                 }}
               >
                 {symbolText}
               </div>
-            }
+            ) : null}
           </div>
         </div>
         {potentialReturn ? (
@@ -424,11 +438,15 @@ export function Footer({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 16 * scale,
-        marginLeft: -8 * scale,
-        marginRight: -8 * scale,
+        // Shift footer content left by avatar width + gap so StatsRow left aligns with Predictions
+        marginLeft: -(180 + 34) * scale,
+        // Reduce right padding to give more room for StatsRow columns
+        marginRight: -40 * scale,
       }}
     >
-      <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
+      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
+        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
+      </div>
       <div
         style={{
           display: 'flex',
@@ -442,6 +460,331 @@ export function Footer({
           payout={payout}
           symbol={symbol}
           potentialReturn={potentialReturn}
+          scale={scale}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Liquidity share card stats row
+export function LiquidityStatsRow({
+  lowPrice,
+  highPrice,
+  symbol: _symbol,
+  scale = 1,
+}: {
+  lowPrice?: string | null;
+  highPrice?: string | null;
+  symbol?: string | null;
+  scale?: number;
+}) {
+  const labelWrapperStyle: React.CSSProperties = {
+    display: 'flex',
+    marginBottom: 6 * scale,
+  };
+  const valueStyle: React.CSSProperties = {
+    display: 'flex',
+    fontSize: 32 * scale,
+    lineHeight: `${32 * scale}px`,
+    fontWeight: 800,
+    color: '#FFFFFF',
+  };
+  const colStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+  };
+  const symbolText = 'testUSDe';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 28 * scale,
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={colStyle}>
+          <div style={labelWrapperStyle}>
+            <FooterLabel scale={scale}>Low Price</FooterLabel>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'flex-end', gap: 8 * scale }}
+          >
+            <div style={valueStyle}>{lowPrice}</div>
+            <div
+              style={{
+                display: 'flex',
+                fontSize: 24 * scale,
+                marginTop: 0,
+                lineHeight: `${24 * scale}px`,
+                fontWeight: 600,
+                color: '#FFFFFF',
+              }}
+            >
+              {symbolText}
+            </div>
+          </div>
+        </div>
+        <div style={colStyle}>
+          <div style={labelWrapperStyle}>
+            <FooterLabel scale={scale}>High Price</FooterLabel>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'flex-end', gap: 8 * scale }}
+          >
+            <div style={valueStyle}>{highPrice}</div>
+            <div
+              style={{
+                display: 'flex',
+                fontSize: 24 * scale,
+                marginTop: 0,
+                lineHeight: `${24 * scale}px`,
+                fontWeight: 600,
+                color: '#FFFFFF',
+              }}
+            >
+              {symbolText}
+            </div>
+          </div>
+        </div>
+        <div style={colStyle}>
+          <div style={labelWrapperStyle}>
+            <FooterLabel scale={scale}>Fee</FooterLabel>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                fontSize: 32 * scale,
+                lineHeight: `${40 * scale}px`,
+                fontWeight: 800,
+                color: '#22C55F',
+              }}
+            >
+              1%
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          marginTop: 16 * scale,
+          justifyContent: 'flex-start',
+          fontSize: 27 * scale,
+          lineHeight: `${36 * scale}px`,
+          fontWeight: 600,
+          color: 'rgba(255,255,255,0.56)',
+        }}
+      >
+        <span>Forecast the future on</span>
+        <span style={{ marginLeft: 6 * scale, color: '#FFFFFF' }}>
+          www.sapience.xyz
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function LiquidityFooter({
+  addr,
+  avatarUrl,
+  lowPrice,
+  highPrice,
+  symbol,
+  scale = 1,
+}: {
+  addr: string;
+  avatarUrl?: string | null;
+  lowPrice?: string | null;
+  highPrice?: string | null;
+  symbol?: string | null;
+  scale?: number;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16 * scale,
+        marginLeft: -(180 + 34) * scale,
+        marginRight: -40 * scale,
+      }}
+    >
+      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
+        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          minWidth: 0,
+          marginTop: -32 * scale,
+        }}
+      >
+        <LiquidityStatsRow
+          lowPrice={lowPrice || ''}
+          highPrice={highPrice || ''}
+          symbol={symbol || ''}
+          scale={scale}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Forecast share card stats row
+export function ForecastStatsRow({
+  resolution,
+  horizon,
+  odds,
+  scale = 1,
+}: {
+  resolution?: string | null;
+  horizon?: string | null;
+  odds?: string | null; // e.g., "89%" (we color based on numeric value)
+  scale?: number;
+}) {
+  const labelWrapperStyle: React.CSSProperties = {
+    display: 'flex',
+    marginBottom: 6 * scale,
+  };
+  const valueStyle: React.CSSProperties = {
+    display: 'flex',
+    fontSize: 32 * scale,
+    lineHeight: `${40 * scale}px`,
+    fontWeight: 800,
+    color: '#FFFFFF',
+  };
+  const colStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+  };
+  const oddsNumber = (() => {
+    if (!odds) return null;
+    const cleaned = String(odds).replace(/%/g, '').trim();
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+  })();
+  const oddsColor =
+    oddsNumber !== null && oddsNumber < 50 ? '#DD524C' : '#22C55F';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 28 * scale,
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={colStyle}>
+          <div style={labelWrapperStyle}>
+            <FooterLabel scale={scale}>Resolution</FooterLabel>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
+          >
+            <div style={valueStyle}>{resolution}</div>
+          </div>
+        </div>
+        <div style={colStyle}>
+          <div style={labelWrapperStyle}>
+            <FooterLabel scale={scale}>Horizon</FooterLabel>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
+          >
+            <div style={valueStyle}>{horizon}</div>
+          </div>
+        </div>
+        <div style={colStyle}>
+          <div style={labelWrapperStyle}>
+            <FooterLabel scale={scale}>Prediction</FooterLabel>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                fontSize: 32 * scale,
+                lineHeight: `${40 * scale}px`,
+                fontWeight: 800,
+                color: oddsColor,
+              }}
+            >
+              {odds ? `${odds} Chance` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          marginTop: 16 * scale,
+          justifyContent: 'flex-start',
+          fontSize: 27 * scale,
+          lineHeight: `${36 * scale}px`,
+          fontWeight: 600,
+          color: 'rgba(255,255,255,0.56)',
+        }}
+      >
+        <span>Forecast the future on</span>
+        <span style={{ marginLeft: 6 * scale, color: '#FFFFFF' }}>
+          www.sapience.xyz
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function ForecastFooter({
+  addr,
+  avatarUrl,
+  resolution,
+  horizon,
+  odds,
+  scale = 1,
+}: {
+  addr: string;
+  avatarUrl?: string | null;
+  resolution?: string | null;
+  horizon?: string | null;
+  odds?: string | null;
+  scale?: number;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16 * scale,
+        marginLeft: -(180 + 34) * scale,
+        marginRight: -40 * scale,
+      }}
+    >
+      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
+        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          minWidth: 0,
+          marginTop: -32 * scale,
+        }}
+      >
+        <ForecastStatsRow
+          resolution={resolution || ''}
+          horizon={horizon || ''}
+          odds={odds || ''}
           scale={scale}
         />
       </div>
@@ -470,10 +813,10 @@ export function contentContainerStyle(scale = 1): React.CSSProperties {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    paddingTop: (80 - 20) * scale,
-    paddingRight: (80 - 40) * scale,
+    paddingTop: (80 - 40) * scale,
+    paddingRight: 80 * scale,
     paddingBottom: (80 - 40) * scale,
-    paddingLeft: (80 - 40) * scale,
+    paddingLeft: 80 * scale,
     width: '100%',
     height: '100%',
   } as const;
@@ -582,7 +925,6 @@ export function Pill({
         color: t.fg,
         fontWeight: 700,
         border: t.border === 'none' ? 'none' : `2px solid ${t.border}`,
-        letterSpacing: 0.02 * scale + 'em',
         fontSize: 24 * scale,
       }}
     >

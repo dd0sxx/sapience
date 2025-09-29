@@ -36,6 +36,11 @@ export async function GET(req: Request) {
     const wager = addThousandsSeparators(wagerRaw);
     const payout = addThousandsSeparators(payoutRaw);
     const symbol = normalizeText(searchParams.get('symbol'), 16);
+    // Anti-parlay flag to change label to "Prediction Against"
+    const antiParam = normalizeText(searchParams.get('anti'), 16).toLowerCase();
+    const isAntiParlay = ['1', 'true', 'yes', 'anti', 'against'].includes(
+      antiParam
+    );
 
     // Validate and normalize Ethereum address (optional)
     const rawAddr = (searchParams.get('addr') || '').toString();
@@ -65,11 +70,9 @@ export async function GET(req: Request) {
 
     const potentialReturn = computePotentialReturn(wager, payout);
 
-    // Always render blockie based on full address in shared component; no ENS avatar
-
     return new ImageResponse(
       (
-        <div style={baseContainerStyle(scale)}>
+        <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
 
           <div style={contentContainerStyle(scale)}>
@@ -90,7 +93,11 @@ export async function GET(req: Request) {
                     flex: 1,
                   }}
                 >
-                  <PredictionsLabel scale={scale} count={legs.length} />
+                  <PredictionsLabel
+                    scale={scale}
+                    count={legs.length}
+                    against={isAntiParlay}
+                  />
                   {legs.length > 0 && (
                     <div
                       style={{
@@ -113,9 +120,16 @@ export async function GET(req: Request) {
                                   gap: 16 * scale,
                                 }}
                               >
-                                <FooterLabel scale={scale}>
-                                  and more...
-                                </FooterLabel>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    marginTop: -5 * scale,
+                                  }}
+                                >
+                                  <FooterLabel scale={scale}>
+                                    and more...
+                                  </FooterLabel>
+                                </div>
                               </div>
                             );
                           }

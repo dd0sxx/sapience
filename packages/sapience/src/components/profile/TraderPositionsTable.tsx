@@ -339,7 +339,10 @@ export default function TraderPositionsTable({
                     <PositionSummaryCell
                       position={position}
                       sortedMarketsForColors={summaryMarketsForColors}
-                      showOptionBadge={context !== 'data_drawer'}
+                      showOptionBadge={
+                        context !== 'data_drawer' &&
+                        Number(position.collateral || '0') !== 0
+                      }
                     />
                   ) : (
                     (() => {

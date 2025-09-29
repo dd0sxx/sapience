@@ -940,6 +940,9 @@ export default function UserParlaysTable({
           symbol="USDe"
           owner={String(account)}
           imagePath="/og/parlay"
+          extraParams={
+            selectedParlay.addressRole === 'taker' ? { anti: '1' } : undefined
+          }
           open={openShareParlayId !== null}
           onOpenChange={(next) => {
             if (!next) setOpenShareParlayId(null);
