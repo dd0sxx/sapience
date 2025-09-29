@@ -15,6 +15,7 @@ import {
 } from '~/components/markets/DataDrawer/TransactionCells';
 import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
+import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
 
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
@@ -97,6 +98,8 @@ const AuctionPageContent: React.FC = () => {
   const conditionMap = useMemo(() => {
     return new Map(conditions.map((c) => [c.id, c]));
   }, [conditions]);
+
+  // Note: bids are shown per auction via `AuctionBidsDialog` which fetches its own live data on demand.
 
   function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
@@ -213,7 +216,7 @@ const AuctionPageContent: React.FC = () => {
         ) : (
           <div className="rounded border bg-card">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm [&>thead>tr>th:nth-child(2)]:w-[320px] [&>tbody>tr>td:nth-child(2)]:w-[320px]">
+              <table className="w-full text-sm [&>thead>tr>th:nth-child(2)]:w-[320px] [&>tbody>tr>td:nth-child(2)]:w-[320px] [&>tbody>tr>td]:align-middle">
                 <thead className="bg-muted/30 text-muted-foreground">
                   <tr className="border-b">
                     <th className="px-4 py-3 text-left align-middle font-medium">
@@ -228,13 +231,15 @@ const AuctionPageContent: React.FC = () => {
                     <th className="px-4 py-3 text-left align-middle font-medium">
                       Address
                     </th>
+                    <th className="px-4 py-3 text-left align-middle font-medium"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {messages.map((m, idx) => {
                     const isStarted = m.type === 'auction.started';
+                    const isBids = m.type === 'auction.bids';
                     return (
-                      <tr key={idx} className="border-b align-top">
+                      <tr key={idx} className="border-b">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <TransactionTimeCell tx={toUiTx(m)} />
                         </td>
@@ -252,13 +257,46 @@ const AuctionPageContent: React.FC = () => {
                             <td className="px-4 py-3 whitespace-nowrap">
                               <TransactionOwnerCell tx={toUiTx(m)} />
                             </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {(() => {
+                                const auctionId =
+                                  (m as any)?.channel ||
+                                  ((m as any)?.data?.auctionId as string) ||
+                                  ((m as any)?.data?.payload
+                                    ?.auctionId as string) ||
+                                  ((m as any)?.auctionId as string) ||
+                                  null;
+                                return (
+                                  <AuctionBidsDialog
+                                    auctionId={auctionId}
+                                    makerWager={String(
+                                      (m as any)?.data?.wager ?? '0'
+                                    )}
+                                    collateralAssetTicker={
+                                      collateralAssetTicker
+                                    }
+                                  />
+                                );
+                              })()}
+                            </td>
                           </>
                         ) : (
-                          <td className="px-4 py-3" colSpan={3}>
-                            <pre className="text-xs whitespace-pre-wrap break-words">
-                              {JSON.stringify(m.data, null, 2)}
-                            </pre>
-                          </td>
+                          <>
+                            {isBids ? (
+                              <td
+                                className="px-4 py-3 text-muted-foreground"
+                                colSpan={4}
+                              >
+                                Bids update
+                              </td>
+                            ) : (
+                              <td className="px-4 py-3" colSpan={4}>
+                                <pre className="text-xs whitespace-pre-wrap break-words">
+                                  {JSON.stringify(m.data ?? m, null, 2) ?? '—'}
+                                </pre>
+                              </td>
+                            )}
+                          </>
                         )}
                       </tr>
                     );
