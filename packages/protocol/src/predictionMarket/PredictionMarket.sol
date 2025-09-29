@@ -484,6 +484,65 @@ contract PredictionMarket is
 
     // ============ Internal Functions ============
 
+    /// @dev Override ERC721 ownership update to keep auxiliary mappings and prediction parties in sync.
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override
+        returns (address from)
+    {
+        from = super._update(to, tokenId, auth);
+
+        uint256 predictionId = nftToPredictionId[tokenId];
+        if (predictionId == 0) {
+            return from;
+        }
+
+        IPredictionStructs.PredictionData storage prediction = predictions[predictionId];
+
+        bool isMakerToken = tokenId == prediction.makerNftTokenId;
+        bool isTakerToken = tokenId == prediction.takerNftTokenId;
+
+        // Keep role-based NFT ownership indexes in sync
+        if (from != address(0)) {
+            if (isMakerToken) {
+                nftByMakerAddress[from].remove(tokenId);
+            }
+            if (isTakerToken) {
+                nftByTakerAddress[from].remove(tokenId);
+            }
+        }
+        if (to != address(0)) {
+            if (isMakerToken) {
+                nftByMakerAddress[to].add(tokenId);
+            }
+            if (isTakerToken) {
+                nftByTakerAddress[to].add(tokenId);
+            }
+        }
+
+        // Update prediction parties on transfers (not on burn)
+        if (to != address(0)) {
+            if (isMakerToken) {
+                prediction.maker = to;
+            } else if (isTakerToken) {
+                prediction.taker = to;
+            }
+        }
+
+        // Move collateral deposit attribution on user-to-user transfers only
+        if (from != address(0) && to != address(0)) {
+            if (isMakerToken) {
+                userCollateralDeposits[from] -= prediction.makerCollateral;
+                userCollateralDeposits[to] += prediction.makerCollateral;
+            } else if (isTakerToken) {
+                userCollateralDeposits[from] -= prediction.takerCollateral;
+                userCollateralDeposits[to] += prediction.takerCollateral;
+            }
+        }
+
+        return from;
+    }
+
     function _isPrediction(uint256 id) internal view returns (bool) {
         return
             predictions[id].maker != address(0) &&
@@ -528,19 +587,15 @@ contract PredictionMarket is
         userCollateralDeposits[maker] += makerCollateral;
         userCollateralDeposits[taker] += takerCollateral;
 
-        // 4- Mint NFTs and set prediction
-        _safeMint(maker, makerNftTokenId);
-        _safeMint(taker, takerNftTokenId);
-
-        // 5- Set NFT mappings
+        // 4- Set NFT mappings before minting (needed for _update override)
         nftToPredictionId[makerNftTokenId] = predictionId;
         nftToPredictionId[takerNftTokenId] = predictionId;
 
-        // 6- Add to auxiliary mappings
-        nftByMakerAddress[maker].add(makerNftTokenId);
-        nftByTakerAddress[taker].add(takerNftTokenId);
+        // 5- Mint NFTs
+        _safeMint(maker, makerNftTokenId);
+        _safeMint(taker, takerNftTokenId);
 
-        // 7- Emit prediction minted event
+        // 6- Emit prediction minted event
         emit PredictionMinted(
             maker,
             taker,
