@@ -373,7 +373,7 @@ export function StatsRow({
             <div
               style={{
                 display: 'flex',
-                alignItems: 'baseline',
+                alignItems: 'flex-end',
                 gap: 8 * scale,
               }}
             >
@@ -382,7 +382,7 @@ export function StatsRow({
                   style={{
                     display: 'flex',
                     fontSize: 32 * scale,
-                    lineHeight: `${40 * scale}px`,
+                    lineHeight: `${32 * scale}px`,
                     fontWeight: 800,
                     color: returnColor,
                   }}
