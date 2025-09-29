@@ -80,7 +80,7 @@ export async function GET(req: Request) {
 
     return new ImageResponse(
       (
-        <div style={baseContainerStyle(scale)}>
+        <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
 
           <div style={contentContainerStyle(scale)}>
