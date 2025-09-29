@@ -46,7 +46,7 @@ export function ChatMessages({
   return (
     <div
       ref={scrollRef}
-      className={`overflow-y-auto overscroll-contain p-3 space-y-2 ${className}`}
+      className={`overflow-y-auto overscroll-contain p-3 space-y-3 ${className}`}
     >
       {messages.map((m) => (
         <div
@@ -63,9 +63,9 @@ export function ChatMessages({
                   <EnsAvatar
                     address={m.address}
                     alt={m.address}
-                    className="h-3 w-3 shrink-0"
-                    width={12}
-                    height={12}
+                    className="h-4 w-4 shrink-0"
+                    width={14}
+                    height={14}
                   />
                   <AddressDisplay
                     address={m.address}

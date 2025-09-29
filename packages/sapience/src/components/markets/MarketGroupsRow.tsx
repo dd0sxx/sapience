@@ -320,7 +320,7 @@ const MarketGroupsRow = ({
         {/* Content Container */}
         <div className="relative flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-4 md:py-2 gap-3">
           {/* Left Side: Question + Prediction */}
-          <div className="flex-grow pr-24 md:pr-0">
+          <div className="flex-grow pr-0">
             <h3 className="text-md mb-1.5 break-words">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}`}
@@ -340,22 +340,6 @@ const MarketGroupsRow = ({
                   </span>
                   <MarketPrediction />
                 </div>
-                {hasSparklineData && (
-                  <Link
-                    href={`/markets/${chainShortName}:${marketAddress}`}
-                    className="md:hidden inline-block w-[72px] h-[18px]"
-                    aria-label="View market group"
-                  >
-                    <MarketGroupSparkline
-                      marketIds={marketIds}
-                      rawChartData={chartData}
-                      marketClassification={marketClassification}
-                      minTimestamp={minSparklineTimestamp}
-                      width={72}
-                      height={18}
-                    />
-                  </Link>
-                )}
               </div>
             )}
           </div>

@@ -18,7 +18,7 @@ type SplineTopBackgroundProps = {
    */
   containerClassName?: string;
   /**
-   * Opacity applied to the Spline iframe content. Defaults to 0.5.
+   * Opacity applied to the Spline iframe content. Defaults to 0.33.
    */
   iframeOpacity?: number;
   /**
@@ -43,7 +43,7 @@ const SplineTopBackground = ({
   showLeftGradient = true,
   showTopFade = false,
   containerClassName,
-  iframeOpacity = 0.5,
+  iframeOpacity = 0.33,
   blendClassName,
   sceneUrl = 'https://my.spline.design/particlesfutarchy-SDhuN0OYiCRHRPt2fFec4bCm/',
   disableDefaultTransform = false,
