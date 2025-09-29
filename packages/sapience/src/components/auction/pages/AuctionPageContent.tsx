@@ -208,7 +208,7 @@ const AuctionPageContent: React.FC = () => {
 
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-16rem)] py-12">
-            <LottieLoader width={24} height={24} />
+            <LottieLoader width={32} height={32} />
             <div className="mt-3 text-sm text-muted-foreground">
               Waiting for events...
             </div>
@@ -226,6 +226,9 @@ const AuctionPageContent: React.FC = () => {
                       Predictions
                     </th>
                     <th className="px-4 py-3 text-left align-middle font-medium">
+                      Verifier
+                    </th>
+                    <th className="px-4 py-3 text-left align-middle font-medium">
                       Amount
                     </th>
                     <th className="px-4 py-3 text-left align-middle font-medium">
@@ -238,6 +241,7 @@ const AuctionPageContent: React.FC = () => {
                   {messages.map((m, idx) => {
                     const isStarted = m.type === 'auction.started';
                     const isBids = m.type === 'auction.bids';
+                    if (isBids) return null;
                     return (
                       <tr key={idx} className="border-b">
                         <td className="px-4 py-3 whitespace-nowrap">
@@ -247,6 +251,13 @@ const AuctionPageContent: React.FC = () => {
                           <>
                             <td className="px-4 py-3">
                               {renderPredictionsCell(m)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <img
+                                src="/uma.svg"
+                                alt="UMA"
+                                className="h-3 w-auto"
+                              />
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <TransactionAmountCell
@@ -282,20 +293,11 @@ const AuctionPageContent: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            {isBids ? (
-                              <td
-                                className="px-4 py-3 text-muted-foreground"
-                                colSpan={4}
-                              >
-                                Bids update
-                              </td>
-                            ) : (
-                              <td className="px-4 py-3" colSpan={4}>
-                                <pre className="text-xs whitespace-pre-wrap break-words">
-                                  {JSON.stringify(m.data ?? m, null, 2) ?? '—'}
-                                </pre>
-                              </td>
-                            )}
+                            <td className="px-4 py-3" colSpan={5}>
+                              <pre className="text-xs whitespace-pre-wrap break-words">
+                                {JSON.stringify(m.data ?? m, null, 2) ?? '—'}
+                              </pre>
+                            </td>
                           </>
                         )}
                       </tr>
