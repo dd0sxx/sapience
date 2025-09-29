@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import OgShareDialogBase from '~/components/shared/OgShareDialogBase';
+import OgShareDialogBase from '~/components/shared/OgShareDialog';
 
 interface ShareDialogProps {
   question: string;
