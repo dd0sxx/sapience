@@ -46,7 +46,7 @@ export default function ShareDialog(props: ShareDialogProps) {
     owner,
     extraParams,
     trigger,
-    imagePath = '/og/position',
+    imagePath = '/og/trade',
     title = 'Share',
     open: controlledOpen,
     onOpenChange,

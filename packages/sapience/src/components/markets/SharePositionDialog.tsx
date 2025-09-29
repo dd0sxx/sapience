@@ -158,11 +158,11 @@ export default function SharePositionDialog({
   ]);
 
   // Use relative URL for next/image to avoid remote host config
-  const imageSrc = `/og/position?${queryString}`;
+  const imageSrc = `/og/trade?${queryString}`;
 
   // Absolute URL for copying/opening in a new tab
   const shareUrl = useMemo(() => {
-    const base = `/og/position?${queryString}`;
+    const base = `/og/trade?${queryString}`;
     if (typeof window !== 'undefined') {
       return `${window.location.origin}${base}`;
     }

@@ -15,7 +15,7 @@ import {
   Pill,
   PredictionsLabel,
   computePotentialReturn,
-  buildCacheHeaders,
+  FooterLabel,
 } from '../_shared';
 
 export const runtime = 'edge';
@@ -74,7 +74,14 @@ export async function GET(req: Request) {
 
           <div style={contentContainerStyle(scale)}>
             <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: 28 * scale, alignItems: 'stretch', width: '100%' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 28 * scale,
+                  alignItems: 'stretch',
+                  width: '100%',
+                }}
+              >
                 <div
                   style={{
                     display: 'flex',
@@ -85,34 +92,77 @@ export async function GET(req: Request) {
                 >
                   <PredictionsLabel scale={scale} count={legs.length} />
                   {legs.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 * scale }}>
-                      {legs.map((leg, idx) => {
-                        const isYes = leg.choice === 'Yes';
-                        return (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 16 * scale }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12 * scale,
+                      }}
+                    >
+                      {legs
+                        .slice(0, Math.min(legs.length, 5))
+                        .map((leg, idx) => {
+                          const showAndMore = legs.length > 5 && idx === 4;
+                          if (showAndMore) {
+                            return (
+                              <div
+                                key="and-more"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 16 * scale,
+                                }}
+                              >
+                                <FooterLabel scale={scale}>
+                                  and more...
+                                </FooterLabel>
+                              </div>
+                            );
+                          }
+                          const isYes = leg.choice === 'Yes';
+                          return (
                             <div
+                              key={idx}
                               style={{
                                 display: 'flex',
-                                fontSize: 38 * scale,
-                                lineHeight: `${48 * scale}px`,
-                                fontWeight: 700,
-                                letterSpacing: -0.16 * scale,
-                                color: '#F6F7F9',
+                                alignItems: 'center',
+                                gap: 16 * scale,
                               }}
                             >
-                              {leg.text}
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  fontSize: 38 * scale,
+                                  lineHeight: `${48 * scale}px`,
+                                  fontWeight: 700,
+                                  letterSpacing: -0.16 * scale,
+                                  color: '#F6F7F9',
+                                }}
+                              >
+                                {leg.text}
+                              </div>
+                              <Pill
+                                text={leg.choice}
+                                tone={isYes ? 'success' : 'danger'}
+                                scale={scale}
+                              />
                             </div>
-                            <Pill text={leg.choice} tone={isYes ? 'success' : 'danger'} scale={scale} />
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            <Footer addr={addr} wager={wager} payout={payout} symbol={symbol} potentialReturn={potentialReturn} scale={scale} />
+            <Footer
+              addr={addr}
+              wager={wager}
+              payout={payout}
+              symbol={symbol}
+              potentialReturn={potentialReturn}
+              scale={scale}
+            />
           </div>
         </div>
       ),
@@ -139,7 +189,9 @@ export async function GET(req: Request) {
               'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
           }}
         >
-          <div style={{ display: 'flex', fontSize: 28, opacity: 0.86 }}>Error: {message}</div>
+          <div style={{ display: 'flex', fontSize: 28, opacity: 0.86 }}>
+            Error: {message}
+          </div>
         </div>
       ),
       { width: WIDTH, height: HEIGHT }

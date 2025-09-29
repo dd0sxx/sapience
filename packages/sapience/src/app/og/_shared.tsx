@@ -1,4 +1,4 @@
-import { blo } from 'blo';
+import { getBlockieSrc } from '~/lib/avatar';
 
 export const BASE_WIDTH = 1200;
 export const BASE_HEIGHT = 630;
@@ -89,7 +89,13 @@ export function formatMoney(numStr: string): string {
   return addThousandsSeparators(numStr);
 }
 
-export function Background({ bgUrl, scale = 1 }: { bgUrl: string; scale?: number }) {
+export function Background({
+  bgUrl,
+  scale = 1,
+}: {
+  bgUrl: string;
+  scale?: number;
+}) {
   return (
     <div
       style={{
@@ -119,7 +125,13 @@ export function Background({ bgUrl, scale = 1 }: { bgUrl: string; scale?: number
   );
 }
 
-export function Header({ logoUrl, scale = 1 }: { logoUrl: string; scale?: number }) {
+export function Header({
+  logoUrl,
+  scale = 1,
+}: {
+  logoUrl: string;
+  scale?: number;
+}) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
       <img
@@ -133,7 +145,13 @@ export function Header({ logoUrl, scale = 1 }: { logoUrl: string; scale?: number
   );
 }
 
-export function PredictionsLabel({ scale = 1, count }: { scale?: number; count?: number }) {
+export function PredictionsLabel({
+  scale = 1,
+  count,
+}: {
+  scale?: number;
+  count?: number;
+}) {
   return (
     <div
       style={{
@@ -154,14 +172,36 @@ function truncateAddress(addr: string): string {
   return addr.slice(0, 6) + '…' + addr.slice(-4);
 }
 
-export function BottomIdentity({ addr, avatarUrl, scale = 1 }: { addr: string; avatarUrl?: string | null; scale?: number }) {
+export function BottomIdentity({
+  addr,
+  avatarUrl,
+  scale = 1,
+}: {
+  addr: string;
+  avatarUrl?: string | null;
+  scale?: number;
+}) {
   const avatarSize = 144 * scale;
   const radius = 16 * scale;
   return (
-    <div style={{ display: 'flex', width: 180 * scale, flexDirection: 'column', alignItems: 'center' }}>
-      <div style={{ position: 'relative', width: avatarSize, height: avatarSize, display: 'flex' }}>
+    <div
+      style={{
+        display: 'flex',
+        width: 180 * scale,
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          width: avatarSize,
+          height: avatarSize,
+          display: 'flex',
+        }}
+      >
         <img
-          src={blo(addr as `0x${string}`)}
+          src={getBlockieSrc(addr)}
           alt=""
           width={avatarSize}
           height={avatarSize}
@@ -200,7 +240,7 @@ export function BottomIdentity({ addr, avatarUrl, scale = 1 }: { addr: string; a
         style={{
           display: 'flex',
           marginTop: 12 * scale,
-          fontSize: 18 * scale,
+          fontSize: 20 * scale,
           lineHeight: `${24 * scale}px`,
           fontWeight: 600,
           color: 'rgba(255,255,255,0.72)',
@@ -216,7 +256,7 @@ export function StatsRow({
   wager,
   payout,
   potentialReturn,
-  symbol,
+  symbol: _symbol,
   scale = 1,
 }: {
   wager?: string;
@@ -233,13 +273,14 @@ export function StatsRow({
   };
   const wagerNum = parseNumber(wager);
   const returnNum = parseNumber(potentialReturn);
-  const returnPercent = wagerNum > 0 && returnNum > 0 ? Math.round((returnNum / wagerNum) * 100) : null;
-  const labelStyle: React.CSSProperties = {
+  const returnPercent =
+    wagerNum > 0 && returnNum > 0
+      ? Math.round((returnNum / wagerNum) * 100)
+      : null;
+  const returnColor =
+    returnPercent !== null && returnPercent < 100 ? '#DD524C' : '#22C55F';
+  const labelWrapperStyle: React.CSSProperties = {
     display: 'flex',
-    fontSize: 24 * scale,
-    lineHeight: `${30 * scale}px`,
-    fontWeight: 600,
-    color: 'rgba(255,255,255,0.64)',
     marginBottom: 6 * scale,
   };
   const valueStyle: React.CSSProperties = {
@@ -249,28 +290,62 @@ export function StatsRow({
     fontWeight: 800,
     color: '#FFFFFF',
   };
-  const colStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', flex: 1 };
+  const colStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+  };
   const symbolText = 'testUSDe';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-      <div style={{ display: 'flex', gap: 28 * scale, justifyContent: 'space-between' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 28 * scale,
+          justifyContent: 'space-between',
+        }}
+      >
         <div style={colStyle}>
-          <div style={labelStyle}>Wagered</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}>
+          <div style={labelWrapperStyle}>
+            <FooterLabel scale={scale}>Wagered</FooterLabel>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
+          >
             <div style={valueStyle}>{wager}</div>
             {
-              <div style={{ display: 'flex', fontSize: 24 * scale, lineHeight: `${30 * scale}px`, fontWeight: 600, color: '#FFFFFF' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  fontSize: 24 * scale,
+                  lineHeight: `${30 * scale}px`,
+                  fontWeight: 600,
+                  color: '#FFFFFF',
+                }}
+              >
                 {symbolText}
               </div>
             }
           </div>
         </div>
         <div style={colStyle}>
-          <div style={labelStyle}>To Win</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}>
+          <div style={labelWrapperStyle}>
+            <FooterLabel scale={scale}>To Win</FooterLabel>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
+          >
             <div style={valueStyle}>{payout}</div>
             {
-              <div style={{ display: 'flex', fontSize: 24 * scale, lineHeight: `${30 * scale}px`, fontWeight: 600, color: '#FFFFFF' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  fontSize: 24 * scale,
+                  lineHeight: `${30 * scale}px`,
+                  fontWeight: 600,
+                  color: '#FFFFFF',
+                }}
+              >
                 {symbolText}
               </div>
             }
@@ -278,8 +353,16 @@ export function StatsRow({
         </div>
         {potentialReturn ? (
           <div style={colStyle}>
-            <div style={labelStyle}>Return</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}>
+            <div style={labelWrapperStyle}>
+              <FooterLabel scale={scale}>Return</FooterLabel>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: 8 * scale,
+              }}
+            >
               {returnPercent !== null ? (
                 <div
                   style={{
@@ -287,7 +370,7 @@ export function StatsRow({
                     fontSize: 32 * scale,
                     lineHeight: `${40 * scale}px`,
                     fontWeight: 800,
-                    color: '#22C55F',
+                    color: returnColor,
                   }}
                 >
                   {addThousandsSeparators(String(returnPercent))}%
@@ -309,7 +392,9 @@ export function StatsRow({
         }}
       >
         <span>Forecast the future on</span>
-        <span style={{ marginLeft: 6 * scale, color: '#FFFFFF' }}>www.sapience.xyz</span>
+        <span style={{ marginLeft: 6 * scale, color: '#FFFFFF' }}>
+          www.sapience.xyz
+        </span>
       </div>
     </div>
   );
@@ -333,9 +418,25 @@ export function Footer({
   scale?: number;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 28 * scale }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16 * scale,
+        marginLeft: -8 * scale,
+        marginRight: -8 * scale,
+      }}
+    >
       <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
-      <div style={{ display: 'flex', flex: 1, minWidth: 0, marginTop: -32 * scale }}>
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          minWidth: 0,
+          marginTop: -32 * scale,
+        }}
+      >
         <StatsRow
           wager={wager}
           payout={payout}
@@ -348,7 +449,7 @@ export function Footer({
   );
 }
 
-export function baseContainerStyle(scale = 1): React.CSSProperties {
+export function baseContainerStyle(): React.CSSProperties {
   return {
     width: '100%',
     height: '100%',
@@ -379,7 +480,13 @@ export function contentContainerStyle(scale = 1): React.CSSProperties {
 }
 
 // Typography primitives
-export function H1({ children, scale = 1 }: { children: React.ReactNode; scale?: number }) {
+export function H1({
+  children,
+  scale = 1,
+}: {
+  children: React.ReactNode;
+  scale?: number;
+}) {
   return (
     <div
       style={{
@@ -396,7 +503,13 @@ export function H1({ children, scale = 1 }: { children: React.ReactNode; scale?:
   );
 }
 
-export function SmallLabel({ children, scale = 1 }: { children: React.ReactNode; scale?: number }) {
+export function SmallLabel({
+  children,
+  scale = 1,
+}: {
+  children: React.ReactNode;
+  scale?: number;
+}) {
   return (
     <div
       style={{
@@ -405,6 +518,28 @@ export function SmallLabel({ children, scale = 1 }: { children: React.ReactNode;
         letterSpacing: 1 * scale,
         textTransform: 'uppercase',
         opacity: 0.64,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function FooterLabel({
+  children,
+  scale = 1,
+}: {
+  children: React.ReactNode;
+  scale?: number;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        fontSize: 24 * scale,
+        lineHeight: `${30 * scale}px`,
+        fontWeight: 600,
+        color: 'rgba(255,255,255,0.64)',
       }}
     >
       {children}
@@ -523,7 +658,12 @@ export function WagerToWin({
   if (!hasWager && !hasPayout) return null;
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', gap: 12 * scale, width: 420 * scale }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12 * scale,
+        width: 420 * scale,
+      }}
     >
       {hasWager ? (
         <div
@@ -556,7 +696,9 @@ export function WagerToWin({
             {payout}
           </div>
           {symbol ? (
-            <div style={{ fontSize: 26 * scale, opacity: 0.9, fontWeight: 600 }}>
+            <div
+              style={{ fontSize: 26 * scale, opacity: 0.9, fontWeight: 600 }}
+            >
               {symbol}
             </div>
           ) : null}
@@ -566,7 +708,10 @@ export function WagerToWin({
   );
 }
 
-export function computePotentialReturn(wager: string, payout: string): string | null {
+export function computePotentialReturn(
+  wager: string,
+  payout: string
+): string | null {
   const w = Number(String(wager || '0').replace(/,/g, ''));
   const p = Number(String(payout || '0').replace(/,/g, ''));
   if (!Number.isFinite(w) || !Number.isFinite(p)) return null;

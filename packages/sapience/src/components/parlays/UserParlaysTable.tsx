@@ -826,7 +826,9 @@ export default function UserParlaysTable({
                   <button
                     type="button"
                     className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                    onClick={() => setOpenShareParlayId(row.original.positionId)}
+                    onClick={() =>
+                      setOpenShareParlayId(row.original.positionId)
+                    }
                   >
                     Share
                   </button>

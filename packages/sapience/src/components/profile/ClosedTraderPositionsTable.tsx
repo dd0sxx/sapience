@@ -110,9 +110,7 @@ export default function ClosedTraderPositionsTable({
       const realized = exit - entry;
       let minWinThreshold = 0;
       try {
-        minWinThreshold = Number(
-          formatUnits(MINIMUM_POSITION_WIN, decimals as number)
-        );
+        minWinThreshold = Number(formatUnits(MINIMUM_POSITION_WIN, decimals));
       } catch {
         minWinThreshold = 0.01; // fallback for typical 18 decimals
       }
@@ -252,7 +250,7 @@ export default function ClosedTraderPositionsTable({
                 : 'descending'
           }
         >
-          Entry
+          Wager
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-1 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
@@ -289,7 +287,7 @@ export default function ClosedTraderPositionsTable({
                 : 'descending'
           }
         >
-          Exit
+          To Win
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-1 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (

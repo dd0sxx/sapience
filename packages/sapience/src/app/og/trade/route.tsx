@@ -14,10 +14,8 @@ import {
   Pill,
   Footer,
   addThousandsSeparators,
-  buildCacheHeaders,
   computePotentialReturn,
 } from '../_shared';
-// Removed ENS avatar usage to ensure blockie is generated from full address only
 
 export const runtime = 'edge';
 
@@ -75,7 +73,13 @@ export async function GET(req: Request) {
 
           <div style={contentContainerStyle(scale)}>
             <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 * scale }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16 * scale,
+                }}
+              >
                 <PredictionsLabel scale={scale} count={1} />
                 <div
                   style={{
@@ -102,7 +106,11 @@ export async function GET(req: Request) {
                     <div style={{ display: 'flex' }}>
                       <Pill
                         text={yesNoLabel || longShortLabel}
-                        tone={yesNoLabel === 'Yes' || longShortLabel === 'Long' ? 'success' : 'danger'}
+                        tone={
+                          yesNoLabel === 'Yes' || longShortLabel === 'Long'
+                            ? 'success'
+                            : 'danger'
+                        }
                         scale={scale}
                       />
                     </div>
@@ -145,7 +153,9 @@ export async function GET(req: Request) {
               'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
           }}
         >
-          <div style={{ display: 'flex', fontSize: 28, opacity: 0.86 }}>Error: {message}</div>
+          <div style={{ display: 'flex', fontSize: 28, opacity: 0.86 }}>
+            Error: {message}
+          </div>
         </div>
       ),
       { width: WIDTH, height: HEIGHT }
