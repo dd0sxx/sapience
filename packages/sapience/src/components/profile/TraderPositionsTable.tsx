@@ -32,7 +32,8 @@ import {
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SellPositionDialog from '../markets/SellPositionDialog';
-import SharePositionDialog from '../markets/SharePositionDialog';
+import ShareDialog from '~/components/shared/ShareDialog';
+import { buildTradeShareParams } from '~/lib/share/buildTradeShareParams';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -833,16 +834,22 @@ export default function TraderPositionsTable({
           </TableBody>
         </Table>
       </div>
-      {selectedPositionSnapshot && (
-        <SharePositionDialog
-          position={selectedPositionSnapshot}
-          open={openSharePositionId !== null}
-          onOpenChange={(next) => {
-            if (!next) setOpenSharePositionId(null);
-          }}
-          trigger={<span />}
-        />
-      )}
+      {selectedPositionSnapshot &&
+        (() => {
+          const params = buildTradeShareParams(selectedPositionSnapshot);
+          return (
+            <ShareDialog
+              imagePath="/og/trade"
+              title="Share Your Wager"
+              open={openSharePositionId !== null}
+              onOpenChange={(next) => {
+                if (!next) setOpenSharePositionId(null);
+              }}
+              trigger={<span />}
+              {...params}
+            />
+          );
+        })()}
     </div>
   );
 }

@@ -24,7 +24,8 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { getChainShortName } from '~/lib/utils/util';
-import SharePositionDialog from '~/components/markets/SharePositionDialog';
+import ShareDialog from '~/components/shared/ShareDialog';
+import { buildTradeShareParams } from '~/lib/share/buildTradeShareParams';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { MINIMUM_POSITION_WIN } from '~/lib/constants/numbers';
 
@@ -431,18 +432,25 @@ export default function ClosedTraderPositionsTable({
           ))}
         </TableBody>
       </Table>
-      {selectedPositionSnapshot && (
-        <SharePositionDialog
-          position={selectedPositionSnapshot}
-          wagerOverride={selectedRow?.entry}
-          payoutOverride={selectedRow?.exit}
-          open={openSharePositionId !== null}
-          onOpenChange={(next) => {
-            if (!next) setOpenSharePositionId(null);
-          }}
-          trigger={<span />}
-        />
-      )}
+      {selectedPositionSnapshot &&
+        (() => {
+          const params = buildTradeShareParams(selectedPositionSnapshot, {
+            wagerOverride: selectedRow?.entry,
+            payoutOverride: selectedRow?.exit,
+          });
+          return (
+            <ShareDialog
+              imagePath="/og/trade"
+              title="Share Your Wager"
+              open={openSharePositionId !== null}
+              onOpenChange={(next) => {
+                if (!next) setOpenSharePositionId(null);
+              }}
+              trigger={<span />}
+              {...params}
+            />
+          );
+        })()}
     </div>
   );
 }
