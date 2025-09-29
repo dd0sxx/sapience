@@ -5,6 +5,7 @@ import type { ChatMessage } from './types';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import LottieLoader from '~/components/shared/LottieLoader';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 
 type Props = {
   messages: ChatMessage[];
@@ -58,11 +59,20 @@ export function ChatMessages({
             m.address &&
             m.author === 'server' && (
               <div className="mb-0.5 opacity-80">
-                <AddressDisplay
-                  address={m.address}
-                  className="text-[10px]"
-                  compact
-                />
+                <div className="inline-flex items-center gap-1">
+                  <EnsAvatar
+                    address={m.address}
+                    alt={m.address}
+                    className="h-3 w-3 shrink-0"
+                    width={12}
+                    height={12}
+                  />
+                  <AddressDisplay
+                    address={m.address}
+                    className="text-[10px]"
+                    compact
+                  />
+                </div>
               </div>
             )
           )}

@@ -5,8 +5,10 @@ import { useMemo } from 'react';
 import { decodeAbiParameters } from 'viem';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/ui/lib';
-import { SquareStack as SquareStackIcon } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import { SquareStack as SquareStackIcon, Zap } from 'lucide-react';
+import { Button } from '@sapience/ui/components/ui/button';
+import Link from 'next/link';
+import LoaderWithMessage from '~/components/shared/LoaderWithMessage';
 import {
   TransactionTimeCell,
   TransactionAmountCell,
@@ -16,10 +18,6 @@ import {
 import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
 import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
-
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
-  ssr: false,
-});
 
 const AuctionPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed();
@@ -197,22 +195,32 @@ const AuctionPageContent: React.FC = () => {
   }
 
   return (
-    <div className="my-20 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6">
+    <div className="my-20 pt-1 px-3 md:px-6 lg:px-8 pr-4 md:pr-6 lg:pr-6">
       <div className="mx-auto w-full">
-        <div className="mt-3 mb-6 lg:mb-4">
+        <div className="mt-3 mb-6 lg:mb-4 flex items-end justify-between">
           <h1 className="text-xl font-medium inline-flex items-center gap-2">
             <SquareStackIcon className="h-5 w-5" aria-hidden="true" />
             <span>Parlay Auction Feed</span>
           </h1>
+          <Link href="/feed">
+            <Button
+              variant="default"
+              size="xs"
+              className="h-7 px-2 text-xs whitespace-nowrap shrink-0 inline-flex items-center gap-2 lg:h-8 lg:px-3 lg:text-sm"
+            >
+              <Zap className="h-4 w-4" />
+              Live Activity
+            </Button>
+          </Link>
         </div>
 
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-16rem)] py-12">
-            <LottieLoader width={32} height={32} />
-            <div className="mt-3 text-sm text-muted-foreground">
-              Waiting for events...
-            </div>
-          </div>
+          <LoaderWithMessage
+            width={32}
+            height={32}
+            message="Listening for auctions..."
+            className="min-h-[calc(100dvh-16rem)] py-12"
+          />
         ) : (
           <div className="rounded border bg-card">
             <div className="overflow-x-auto">
@@ -268,7 +276,7 @@ const AuctionPageContent: React.FC = () => {
                             <td className="px-4 py-3 whitespace-nowrap">
                               <TransactionOwnerCell tx={toUiTx(m)} />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
                               {(() => {
                                 const auctionId =
                                   (m as any)?.channel ||

@@ -134,6 +134,15 @@ const NavLinks = ({
             Forecasting
           </Button>
         </Link>
+        <Link href="/feed" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/feed', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Activity Feed
+          </Button>
+        </Link>
         <Link href="/vaults" passHref className="flex w-fit">
           <Button
             variant="ghost"

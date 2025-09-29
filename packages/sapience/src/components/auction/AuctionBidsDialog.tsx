@@ -67,7 +67,7 @@ const AuctionBidsDialog: React.FC<Props> = ({
           <DialogTitle>Bids</DialogTitle>
         </DialogHeader>
         {bids.length === 0 ? (
-          <div className="text-sm text-muted-foreground px-1 py-2">
+          <div className="text-sm text-muted-foreground px-1 py-6 text-center">
             No bids yet
           </div>
         ) : (
