@@ -816,13 +816,24 @@ export default function UserParlaysTable({
                   Parlay Lost
                 </Button>
               )}
-              <button
-                type="button"
-                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                onClick={() => setOpenShareParlayId(row.original.positionId)}
-              >
-                Share
-              </button>
+              {(() => {
+                // Hide Share button when a lost state is displayed
+                const res = rowKeyToResolution.get(row.original.positionId);
+                const isLostDisplayed =
+                  row.original.status === 'lost' || res?.state === 'lost';
+                if (isLostDisplayed) return null;
+                return (
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                    onClick={() =>
+                      setOpenShareParlayId(row.original.positionId)
+                    }
+                  >
+                    Share
+                  </button>
+                );
+              })()}
             </div>
           </div>
         ),
@@ -929,6 +940,9 @@ export default function UserParlaysTable({
           symbol="USDe"
           owner={String(account)}
           imagePath="/og/parlay"
+          extraParams={
+            selectedParlay.addressRole === 'taker' ? { anti: '1' } : undefined
+          }
           open={openShareParlayId !== null}
           onOpenChange={(next) => {
             if (!next) setOpenShareParlayId(null);

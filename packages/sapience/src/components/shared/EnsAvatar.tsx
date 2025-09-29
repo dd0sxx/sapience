@@ -1,8 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { blo } from 'blo';
 import { useEffect, useState } from 'react';
+import { getBlockieSrc } from '~/lib/avatar';
 import { cn } from '~/lib/utils/util';
 import { useEnsAvatar } from '~/hooks/useEnsAvatar';
 
@@ -38,7 +38,7 @@ export default function EnsAvatar({
     className
   );
 
-  const blockieSrc = blo(address as `0x${string}`);
+  const blockieSrc = getBlockieSrc(address);
 
   return (
     <div className={wrapperClass} style={{ width, height }}>

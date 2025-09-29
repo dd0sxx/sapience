@@ -19,14 +19,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import {
-  LogOut,
-  Menu,
-  User,
-  BookOpen,
-  Settings,
-  LineChart,
-} from 'lucide-react';
+import { LogOut, Menu, User, BookOpen, Settings } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -102,7 +95,7 @@ const NavLinks = ({
                 href={`/profile/${connectedWallet.address}`}
                 className="flex items-center gap-2"
               >
-                <LineChart className="h-4 w-4" />
+                <User className="h-4 w-4" />
                 <span className="relative top-[1px] md:top-0 text-sm mr-1">
                   Your Profile
                 </span>
@@ -335,7 +328,7 @@ const Header = () => {
                         href={`/profile/${connectedWallet.address}`}
                         className="flex items-center"
                       >
-                        <LineChart className="mr-0.5 opacity-75 h-4 w-4" />
+                        <User className="mr-0.5 opacity-75 h-4 w-4" />
                         <span>Your Profile</span>
                       </Link>
                     </DropdownMenuItem>

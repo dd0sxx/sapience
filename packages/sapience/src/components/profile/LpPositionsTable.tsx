@@ -31,7 +31,7 @@ import {
 import React from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, InfoIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
-import SharePositionDialog from '../markets/SharePositionDialog';
+import ShareDialog from '~/components/shared/ShareDialog';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -571,7 +571,16 @@ export default function LpPositionsTable({
                         collateralDecimals={
                           marketGroup?.collateralDecimals || 18
                         }
-                        onSuccess={() => {}}
+                        onSuccess={() => {
+                          console.log(
+                            'Liquidity position settled successfully',
+                            {
+                              positionId: position.positionId,
+                              marketAddress,
+                              chainId,
+                            }
+                          );
+                        }}
                       />
                     ) : (
                       <TooltipProvider>
@@ -635,7 +644,6 @@ export default function LpPositionsTable({
                     onClick={() => {
                       setSelectedPositionSnapshot(position);
                       setOpenSharePositionId(position.positionId);
-                      // ---
                     }}
                   >
                     Share
@@ -709,8 +717,49 @@ export default function LpPositionsTable({
         </Table>
       </div>
       {selectedPositionSnapshot && (
-        <SharePositionDialog
-          position={selectedPositionSnapshot}
+        <ShareDialog
+          question={
+            selectedPositionSnapshot.market?.question || 'Liquidity Position'
+          }
+          symbol={
+            selectedPositionSnapshot.market?.marketGroup?.collateralSymbol ||
+            'testUSDe'
+          }
+          owner={selectedPositionSnapshot.owner || undefined}
+          groupAddress={
+            selectedPositionSnapshot.market?.marketGroup?.address ?? undefined
+          }
+          marketId={selectedPositionSnapshot.market?.marketId ?? undefined}
+          positionId={selectedPositionSnapshot.positionId}
+          imagePath="/og/liquidity"
+          title="Share Liquidity"
+          extraParams={{
+            low: (() => {
+              try {
+                // Convert ticks to price if present; fall back to formatted values if available elsewhere
+                const { lowPriceTick } = selectedPositionSnapshot as any;
+                if (typeof lowPriceTick === 'number') {
+                  const price = 1.0001 ** lowPriceTick;
+                  return price.toFixed(price < 1 ? 4 : 2);
+                }
+              } catch (err) {
+                console.error('Error computing low price from tick', err);
+              }
+              return '0.00';
+            })(),
+            high: (() => {
+              try {
+                const { highPriceTick } = selectedPositionSnapshot as any;
+                if (typeof highPriceTick === 'number') {
+                  const price = 1.0001 ** highPriceTick;
+                  return price.toFixed(price < 1 ? 4 : 2);
+                }
+              } catch (err) {
+                console.error('Error computing high price from tick', err);
+              }
+              return '0.00';
+            })(),
+          }}
           open={openSharePositionId !== null}
           onOpenChange={(next) => {
             if (!next) setOpenSharePositionId(null);

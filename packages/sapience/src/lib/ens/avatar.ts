@@ -57,6 +57,17 @@ function toHttpFromIpfs(uri: string): string {
   return uri;
 }
 
+function sanitizeAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'http:' || u.protocol === 'https:') return u.toString();
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function hexPad64(n: bigint): string {
   const hex = n.toString(16);
   return hex.padStart(64, '0');
@@ -164,13 +175,13 @@ export async function getEnsAvatarUrlForAddress(
 
     // If direct URL/IPFS CID
     if (avatarText.startsWith('ipfs://') || avatarText.startsWith('http')) {
-      return toHttpFromIpfs(avatarText);
+      return sanitizeAvatarUrl(toHttpFromIpfs(avatarText));
     }
 
     // If NFT CAIP string
     const parsed = parseEnsAvatarCaip(avatarText);
     if (parsed) {
-      return await resolveNftImageUrl(parsed, addr);
+      return sanitizeAvatarUrl(await resolveNftImageUrl(parsed, addr));
     }
     return null;
   } catch {

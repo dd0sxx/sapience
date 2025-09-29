@@ -15,19 +15,13 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format, formatDistanceStrict } from 'date-fns';
 import Link from 'next/link';
 import React from 'react';
-import {
-  ExternalLinkIcon,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-} from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
-import { getAttestationViewURL } from '~/lib/constants/eas';
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 import { useSapience } from '~/lib/context/SapienceProvider';
 import {
@@ -37,6 +31,7 @@ import {
 } from '~/lib/utils/util';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import { MarketGroupClassification } from '~/lib/types';
+import ShareDialog from '~/components/shared/ShareDialog';
 
 // Helper function to extract market address from context or props
 // Since market address is not available in the attestation data directly,
@@ -279,28 +274,84 @@ const renderQuestionCell = ({
 
 const renderActionsCell = ({
   row,
-  chainId,
+  marketGroups,
+  isMarketsLoading,
+  parentMarketAddress,
 }: {
   row: { original: FormattedAttestation };
-  chainId?: number;
+  marketGroups: ReturnType<typeof useSapience>['marketGroups'];
+  isMarketsLoading: boolean;
+  parentMarketAddress?: string;
 }) => {
-  const viewUrl = getAttestationViewURL(chainId || 42161, row.original.uid);
+  const createdAt = new Date(Number(row.original.rawTime) * 1000);
+  const marketAddress = getMarketAddressForAttestation(
+    row.original,
+    parentMarketAddress
+  );
 
-  // Don't render the button if no EAS explorer is configured for this chain
-  if (!viewUrl) {
-    return <span className="text-muted-foreground text-xs">N/A</span>;
+  let questionText: string = 'Forecast on Sapience';
+  let resolutionDate: Date | null = null;
+  if (!isMarketsLoading && marketAddress) {
+    const marketGroup = marketGroups.find(
+      (group) => group.address?.toLowerCase() === marketAddress
+    );
+    if (marketGroup) {
+      const q = marketGroup.question as any;
+      questionText =
+        typeof q === 'string' ? q : String(q?.value || q || questionText);
+      const marketIdHex = extractMarketIdHex(row.original);
+      const marketId = marketIdHex ? parseInt(marketIdHex, 16) : undefined;
+      const market = marketGroup.markets?.find(
+        (m: { marketId: number }) => m.marketId === marketId
+      ) as any;
+      const endTs = Number(market?.endTimestamp || 0);
+      if (endTs > 0) {
+        resolutionDate = new Date(endTs * 1000);
+      }
+    }
   }
 
+  const resolutionStr = resolutionDate
+    ? format(resolutionDate, 'MMM d, yyyy')
+    : 'TBD';
+  const horizonStr = resolutionDate
+    ? formatDistanceStrict(createdAt, resolutionDate, { unit: 'day' })
+    : '—';
+
+  // Compute odds percentage like the Prediction cell
+  let oddsPercent: number | null = null;
+  try {
+    const priceD18 = sqrtPriceX96ToPriceD18(BigInt(row.original.value));
+    const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
+    const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
+    oddsPercent = Math.round(Number(percentageD2) / 100);
+  } catch (err) {
+    console.error('Failed to compute odds percentage from sqrtPriceX96', err);
+  }
+
+  const oddsStr = oddsPercent !== null ? `${oddsPercent}%` : '';
+
+  const createdTsSec = Math.floor(createdAt.getTime() / 1000);
+  const endTsSec = resolutionDate
+    ? Math.floor(resolutionDate.getTime() / 1000)
+    : null;
+
   return (
-    <a href={viewUrl} target="_blank" rel="noopener noreferrer">
-      <button
-        type="button"
-        className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border whitespace-nowrap"
-      >
-        View Attestation
-        <ExternalLinkIcon className="h-3.5 w-3.5 ml-1" />
-      </button>
-    </a>
+    <ShareDialog
+      title="Share"
+      question={questionText}
+      owner={row.original.attester}
+      imagePath="/og/forecast"
+      extraParams={{
+        // Human-readable fallbacks
+        res: resolutionStr,
+        hor: horizonStr,
+        odds: oddsStr,
+        // Raw timestamps for server-side computation
+        created: String(createdTsSec),
+        ...(endTsSec ? { end: String(endTsSec) } : {}),
+      }}
+    />
   );
 };
 
@@ -639,7 +690,12 @@ const ForecastsTable = ({
         id: 'actions',
         enableSorting: false,
         cell: (info) =>
-          renderActionsCell({ row: info.row, chainId: parentChainId }),
+          renderActionsCell({
+            row: info.row,
+            marketGroups,
+            isMarketsLoading,
+            parentMarketAddress,
+          }),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
