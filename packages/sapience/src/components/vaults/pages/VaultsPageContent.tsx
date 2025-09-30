@@ -14,6 +14,9 @@ import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import type { Address } from 'viem';
+import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
+import { useVaultQuotePublisher } from '~/hooks/data/useVaultQuotePublisher';
 
 // Shared Coming Soon Overlay Component
 const ComingSoonOverlay = () => (
@@ -61,6 +64,26 @@ const VaultsPageContent = () => {
   } = usePassiveLiquidityVault({
     vaultAddress: VAULT_ADDRESS,
     chainId: VAULT_CHAIN_ID,
+  });
+
+  // Live quote (WS) with on-chain fallback
+  const quote = useVaultShareQuoteWs({
+    chainId: VAULT_CHAIN_ID,
+    vaultAddress: VAULT_ADDRESS as Address,
+    onChainFallbackRay: pricePerShareRay ?? 10n ** 18n,
+  });
+
+  const effectivePpsRay =
+    quote?.pricePerShareRay && quote.pricePerShareRay > 0n
+      ? quote.pricePerShareRay
+      : pricePerShareRay && pricePerShareRay > 0n
+        ? pricePerShareRay
+        : 10n ** 18n;
+
+  // Manager action: publish current quote
+  const { publishQuote, isPublishing } = useVaultQuotePublisher({
+    chainId: VAULT_CHAIN_ID,
+    vaultAddress: VAULT_ADDRESS as Address,
   });
 
   // Form state
@@ -156,15 +179,11 @@ const VaultsPageContent = () => {
     if (!depositAmount || !assetDecimals) return 0n;
     try {
       const amountWei = parseUnits(depositAmount, assetDecimals);
-      const pps =
-        pricePerShareRay && pricePerShareRay > 0n
-          ? pricePerShareRay
-          : 10n ** 18n;
-      return (amountWei * 10n ** 18n) / pps;
+      return (amountWei * 10n ** 18n) / effectivePpsRay;
     } catch {
       return 0n;
     }
-  }, [depositAmount, assetDecimals, pricePerShareRay]);
+  }, [depositAmount, assetDecimals, effectivePpsRay]);
 
   const minDepositShares = estDepositShares;
 
@@ -172,15 +191,20 @@ const VaultsPageContent = () => {
     if (!withdrawAmount || !assetDecimals) return 0n;
     try {
       const sharesWei = parseUnits(withdrawAmount, assetDecimals);
-      const pps =
-        pricePerShareRay && pricePerShareRay > 0n
-          ? pricePerShareRay
-          : 10n ** 18n;
-      return (sharesWei * pps) / 10n ** 18n;
+      return (sharesWei * effectivePpsRay) / 10n ** 18n;
     } catch {
       return 0n;
     }
-  }, [withdrawAmount, assetDecimals, pricePerShareRay]);
+  }, [withdrawAmount, assetDecimals, effectivePpsRay]);
+
+  // Format ray to decimal string without precision loss (show 6 decimals)
+  const formatRay = (ray: bigint, decimals = 6) => {
+    const base = 10n ** 18n;
+    const integer = ray / base;
+    const frac = ray % base;
+    const fracStr = (base + frac).toString().slice(1).padStart(18, '0').slice(0, decimals);
+    return `${integer.toString()}.${fracStr}`;
+  };
 
   const minWithdrawAssets = estWithdrawAssets;
 
@@ -480,6 +504,10 @@ const VaultsPageContent = () => {
                         <p className="text-muted-foreground text-lg">
                           This vault is used to bid on parlay requests.
                         </p>
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          Live Price/Share: {formatRay(effectivePpsRay, 6)} testUSDe
+                          <span className="ml-2">· Source: {quote?.source ?? 'fallback'}</span>
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-muted-foreground">
@@ -498,6 +526,21 @@ const VaultsPageContent = () => {
 
                     {/* Deposit/Withdraw Tabs */}
                     {renderVaultForm()}
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isPublishing}
+                        onClick={async () => {
+                          const res = await publishQuote(effectivePpsRay);
+                          if (!res.ok) {
+                            console.error('Publish quote failed', res.error);
+                          }
+                        }}
+                      >
+                        {isPublishing ? 'Publishing Quote...' : 'Publish Quote'}
+                      </Button>
+                    </div>
                     {/* moved pending deposit cancel into deposit tab below button */}
                   </div>
                 </CardContent>

@@ -18,9 +18,17 @@ import {
 import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
 import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
+import { useVaultQuotesFeed } from '~/lib/auction/useVaultQuotesFeed';
 
 const AuctionPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed();
+  // Subscribe to a specific vault's quotes and merge into table feed.
+  const VAULT_CHAIN_ID = 42161;
+  const VAULT_ADDRESS = '0xD0Fd2e76dFB4449F422cdB2D0Bc3EA67A33b34b2';
+  const vaultQuoteMessages = useVaultQuotesFeed({
+    chainId: VAULT_CHAIN_ID,
+    vaultAddress: VAULT_ADDRESS as any,
+  });
 
   // Collect unique conditionIds from auction.started messages for enrichment
   const conditionIds = useMemo(() => {
@@ -214,7 +222,7 @@ const AuctionPageContent: React.FC = () => {
           </Link>
         </div>
 
-        {messages.length === 0 ? (
+        {messages.length === 0 && vaultQuoteMessages.length === 0 ? (
           <LoaderWithMessage
             width={32}
             height={32}
@@ -246,9 +254,12 @@ const AuctionPageContent: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {messages.map((m, idx) => {
+                  {[...vaultQuoteMessages, ...messages]
+                    .sort((a: any, b: any) => (b.time || 0) - (a.time || 0))
+                    .map((m: any, idx: number) => {
                     const isStarted = m.type === 'auction.started';
                     const isBids = m.type === 'auction.bids';
+                    const isVaultQuote = m.type === 'vault.quote';
                     if (isBids) return null;
                     return (
                       <tr key={idx} className="border-b">
@@ -297,6 +308,32 @@ const AuctionPageContent: React.FC = () => {
                                   />
                                 );
                               })()}
+                            </td>
+                          </>
+                        ) : isVaultQuote ? (
+                          <>
+                            <td className="px-4 py-3" colSpan={4}>
+                              <div className="flex items-center gap-3 text-muted-foreground">
+                                <span className="text-xs inline-flex items-center px-2 py-0.5 rounded border">Vault Quote</span>
+                                <span className="text-xs">Vault:</span>
+                                <span className="text-xs font-mono">{(m?.data?.vaultAddress as string)?.slice(0, 10)}…</span>
+                                <span className="text-xs">PPS:</span>
+                                <span className="text-xs font-mono">{(() => {
+                                  try {
+                                    const ray = BigInt(String(m?.data?.vaultCollateralPerShare ?? '0'));
+                                    const base = 10n ** 18n;
+                                    const integer = ray / base;
+                                    const frac = ray % base;
+                                    const fracStr = (base + frac).toString().slice(1).padStart(18, '0').slice(0, 6);
+                                    return `${integer.toString()}.${fracStr}`;
+                                  } catch {
+                                    return '0.0';
+                                  }
+                                })()}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <TransactionOwnerCell tx={toUiTx(m)} />
                             </td>
                           </>
                         ) : (
