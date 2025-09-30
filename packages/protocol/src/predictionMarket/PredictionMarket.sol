@@ -49,6 +49,7 @@ contract PredictionMarket is
     error OrderNotFound();
     error OrderExpired();
     error OrderNotExpired();
+    error InvalidMakerNonce();
 
     // ============ State Variables ============
     IPredictionStructs.Settings public config;
@@ -68,6 +69,9 @@ contract PredictionMarket is
 
     // Mapping to track total collateral deposited by each user
     mapping(address => uint256) private userCollateralDeposits;
+
+    // Sequential nonce for replay protection per maker address
+    mapping(address => uint256) public nonces;
 
     // ============ Limit Order ============
     uint256 private orderIdCounter = 1; // initialize the order id counter to 1 (zero means no order)
@@ -126,6 +130,10 @@ contract PredictionMarket is
             revert InvalidEncodedPredictedOutcomes();
 
         // 2- Confirm the taker signature is valid for this prediction (hash of predicted outcomes, taker collateral and maker collateral, resolver and maker address)
+        //    and enforce per-maker nonce replay protection
+        if (mintPredictionRequestData.makerNonce != nonces[mintPredictionRequestData.maker]) {
+            revert InvalidMakerNonce();
+        }
         bytes32 messageHash = keccak256(
             abi.encode(
                 mintPredictionRequestData.encodedPredictedOutcomes,
@@ -133,7 +141,8 @@ contract PredictionMarket is
                 mintPredictionRequestData.makerCollateral,
                 mintPredictionRequestData.resolver,
                 mintPredictionRequestData.maker,
-                mintPredictionRequestData.takerDeadline
+                mintPredictionRequestData.takerDeadline,
+                mintPredictionRequestData.makerNonce
             )
         );
 
@@ -161,7 +170,8 @@ contract PredictionMarket is
             }
         }
 
-        // 3- Collect collateral
+        // 3- Increment nonce and collect collateral
+        nonces[mintPredictionRequestData.maker]++;
         _safeTransferIn(
             config.collateralToken,
             mintPredictionRequestData.maker,

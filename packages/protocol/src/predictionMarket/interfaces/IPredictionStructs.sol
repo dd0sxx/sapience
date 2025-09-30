@@ -39,6 +39,7 @@ interface IPredictionStructs {
         uint256 takerCollateral;
         address maker;
         address taker;
+        uint256 makerNonce; // nonce to prevent signature replay per maker
         bytes takerSignature; // Taker is allowing just this prediction
         uint256 takerDeadline; // deadline for the taker signature
         bytes32 refCode;
