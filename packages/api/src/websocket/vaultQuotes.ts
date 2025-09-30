@@ -1,4 +1,4 @@
-import Sentry from 'src/instrument';
+import Sentry from '../instrument';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
 
 export type VaultQuoteRequestPayload = {
