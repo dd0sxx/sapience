@@ -196,7 +196,9 @@ contract PassiveLiquidityVault is
     // ============ Custom totals, Withdrawal and Deposit Functions ============
 
     function availableAssets() public view returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this));
+        uint256 balance = IERC20(asset()).balanceOf(address(this));
+        // Subtract unconfirmed assets (pending deposit requests)
+        return balance > unconfirmedAssets ? balance - unconfirmedAssets : 0;
     }
 
     function totalDeployed() external view returns (uint256) {
@@ -555,11 +557,13 @@ contract PassiveLiquidityVault is
     // ============ View Functions ============
 
     /**
-     * @notice Get available assets for withdrawals
-     * @return Available assets
+     * @notice Get available assets for withdrawals (excluding unconfirmed assets)
+     * @return Available assets minus unconfirmed assets from pending deposits
      */
     function _getAvailableAssets() internal view returns (uint256) {
-        return IERC20(asset()).balanceOf(address(this));
+        uint256 balance = IERC20(asset()).balanceOf(address(this));
+        // Subtract unconfirmed assets (pending deposit requests)
+        return balance > unconfirmedAssets ? balance - unconfirmedAssets : 0;
     }
 
     /**

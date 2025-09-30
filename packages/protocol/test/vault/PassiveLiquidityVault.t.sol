@@ -729,4 +729,79 @@ contract PassiveLiquidityVaultTest is Test {
         assertTrue(actualBalance >= expectedBalance - tolerance, "User balance too low");
         assertTrue(actualBalance <= expectedBalance + tolerance, "User balance too high");
     }
+
+    // Test that emergency withdrawal correctly excludes unconfirmed assets from share calculations
+    function testEmergencyWithdrawExcludesUnconfirmedAssets() public {
+        // Setup: user1 deposits and gets confirmed shares
+        uint256 user1DepositAmount = 1000e18;
+        _approveAndDeposit(user1, user1DepositAmount);
+        
+        // Get user1's shares
+        uint256 user1Shares = vault.balanceOf(user1);
+        assertGt(user1Shares, 0, "User1 should have shares");
+        
+        // Now user2 requests a deposit (assets transferred but shares not minted yet)
+        uint256 user2DepositAmount = 500e18;
+        vm.startPrank(user2);
+        asset.approve(address(vault), user2DepositAmount);
+        vault.requestDeposit(user2DepositAmount, user2DepositAmount);
+        vm.stopPrank();
+        
+        // At this point:
+        // - Vault has 1500e18 total balance (1000e18 confirmed + 500e18 unconfirmed)
+        // - user1 has all the shares
+        // - user2 has a pending deposit request with 500e18 unconfirmed assets
+        
+        uint256 vaultBalanceBeforeEmergency = asset.balanceOf(address(vault));
+        assertEq(vaultBalanceBeforeEmergency, user1DepositAmount + user2DepositAmount, "Vault should have both deposits");
+        
+        // Enable emergency mode
+        vm.prank(owner);
+        vault.toggleEmergencyMode();
+        assertTrue(vault.emergencyMode(), "Emergency mode should be enabled");
+        
+        // User1 does emergency withdrawal of all their shares
+        uint256 user1BalanceBefore = asset.balanceOf(user1);
+        
+        vm.prank(user1);
+        vault.emergencyWithdraw(user1Shares);
+        
+        uint256 user1BalanceAfter = asset.balanceOf(user1);
+        uint256 user1Received = user1BalanceAfter - user1BalanceBefore;
+        
+        // CRITICAL: user1 should receive based on availableAssets MINUS unconfirmedAssets
+        // availableAssets = vault balance - unconfirmedAssets = 1500e18 - 500e18 = 1000e18
+        // Since user1 owns 100% of shares, they should get ~1000e18, NOT 1500e18
+        
+        console.log("User1 received:", user1Received);
+        console.log("User1 deposited:", user1DepositAmount);
+        console.log("User2 unconfirmed:", user2DepositAmount);
+        console.log("Vault balance after:", asset.balanceOf(address(vault)));
+        
+        // User1 should receive approximately their original deposit (1000e18)
+        // NOT the full vault balance including unconfirmed assets
+        uint256 expectedMin = user1DepositAmount - 1e18; // Allow 1 token tolerance for rounding
+        uint256 expectedMax = user1DepositAmount + 1e18;
+        
+        assertTrue(user1Received >= expectedMin, "User1 received too little");
+        assertTrue(user1Received <= expectedMax, "User1 received too much - unconfirmed assets were included!");
+        
+        // User2's deposit should still be in the vault (protected)
+        uint256 vaultBalanceAfter = asset.balanceOf(address(vault));
+        uint256 expectedVaultBalance = user2DepositAmount; // Only user2's unconfirmed deposit remains
+        
+        // Allow small rounding tolerance
+        assertTrue(vaultBalanceAfter >= expectedVaultBalance - 1e18, "Vault should still have user2's unconfirmed deposit");
+        assertTrue(vaultBalanceAfter <= expectedVaultBalance + 1e18, "Vault balance higher than expected");
+        
+        // Verify user2's pending request is still intact
+        (address requestUser, bool isDeposit, uint256 requestShares, uint256 requestAssets, , bool processed) = vault.pendingRequests(user2);
+        assertEq(requestUser, user2, "User2's request should still exist");
+        assertTrue(isDeposit, "Should be a deposit request");
+        assertEq(requestAssets, user2DepositAmount, "User2's request assets should be intact");
+        assertFalse(processed, "User2's request should not be processed yet");
+        
+        console.log("SUCCESS: Emergency withdrawal correctly excluded unconfirmed assets");
+        console.log("User1 got their fair share without touching user2's pending deposit");
+    }
 }
