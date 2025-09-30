@@ -7,7 +7,7 @@ export type VaultQuoteRequestPayload = {
   collateralAmount?: string; // For deposit: input collateral, output shares
   sharesAmount?: string;     // For withdraw: input shares, output collateral
   operation: 'deposit' | 'withdraw';
-  requestId: string; // For correlating request/response
+  requestId : string; // For correlating request/response
 };
 
 export type VaultQuoteResponsePayload = {
@@ -22,12 +22,14 @@ export type VaultQuoteResponsePayload = {
 };
 
 export type ClientToServerMessage =
-  | { type: 'vault_quote.request'; payload: VaultQuoteRequestPayload }
-  | { type: 'vault_quote.response'; payload: VaultQuoteResponsePayload };
+  | { type: 'vault_quote.request'; payload: VaultQuoteRequestPayload };
+
+
+export type ServerToBotMessage = { type: 'vault_quote.requested'; payload: VaultQuoteRequestPayload };
+export type BotToServerMessage = { type: 'vault_quote.submit'; payload: VaultQuoteResponsePayload };
 
 export type ServerToClientMessage =
   | { type: 'vault_quote.ack'; payload: { ok?: boolean; error?: string } }
-  | { type: 'vault_quote.request'; payload: VaultQuoteRequestPayload }
   | { type: 'vault_quote.response'; payload: VaultQuoteResponsePayload };
 
 function safeParse<T = unknown>(data: RawData): T | null {
@@ -87,7 +89,7 @@ export function createVaultQuotesWebSocketServer() {
         return;
       }
 
-      const msg = safeParse<ClientToServerMessage>(data);
+      const msg = safeParse<ClientToServerMessage | ServerToClientMessage | BotToServerMessage>(data);
       if (!msg || typeof msg !== 'object' || !('type' in msg)) return;
 
 
@@ -132,7 +134,7 @@ export function createVaultQuotesWebSocketServer() {
 
         // Broadcast the request to all connected clients (bots)
         const requestMessage = {
-          type: 'vault_quote.request',
+          type: 'vault_quote.requested',
           payload: request
         };
         
@@ -162,7 +164,7 @@ export function createVaultQuotesWebSocketServer() {
         return;
       }
 
-      if (msg.type === 'vault_quote.response') {
+      if (msg.type === 'vault_quote.submit') {
         const response = msg.payload as VaultQuoteResponsePayload;
         
         // Validate response payload
