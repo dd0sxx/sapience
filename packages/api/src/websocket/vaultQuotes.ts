@@ -1,31 +1,34 @@
+import Sentry from 'src/instrument';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
-import { verifyMessage, type Abi } from 'viem';
-import { getProviderForChain } from '../utils/utils';
 
-type VaultKey = string; // `${chainId}:${vaultAddressLower}`
-
-export type PublishVaultQuotePayload = {
-  chainId: number;
-  vaultAddress: string; // 0x...
-  vaultCollateralPerShare: string | number; // 1e18-scaled as string preferred
-  timestamp: number; // ms since epoch
-  signedBy: string; // expected to be vault manager address
-  signature: string; // signature over canonical message
-};
-
-export type SubscribePayload = {
+export type VaultQuoteRequestPayload = {
   chainId: number;
   vaultAddress: string;
+  collateralAmount?: string; // For deposit: input collateral, output shares
+  sharesAmount?: string;     // For withdraw: input shares, output collateral
+  operation: 'deposit' | 'withdraw';
+  requestId: string; // For correlating request/response
+};
+
+export type VaultQuoteResponsePayload = {
+  requestId: string;
+  chainId: number;
+  vaultAddress: string;
+  operation: 'deposit' | 'withdraw';
+  inputAmount: string;
+  outputAmount: string;
+  price: string; // collateral per share
+  timestamp: number;
 };
 
 export type ClientToServerMessage =
-  | { type: 'vault_quote.subscribe'; payload: SubscribePayload }
-  | { type: 'vault_quote.unsubscribe'; payload: SubscribePayload }
-  | { type: 'vault_quote.publish'; payload: PublishVaultQuotePayload };
+  | { type: 'vault_quote.request'; payload: VaultQuoteRequestPayload }
+  | { type: 'vault_quote.response'; payload: VaultQuoteResponsePayload };
 
 export type ServerToClientMessage =
-  | { type: 'vault_quote.update'; payload: PublishVaultQuotePayload }
-  | { type: 'vault_quote.ack'; payload: { ok?: boolean; error?: string } };
+  | { type: 'vault_quote.ack'; payload: { ok?: boolean; error?: string } }
+  | { type: 'vault_quote.request'; payload: VaultQuoteRequestPayload }
+  | { type: 'vault_quote.response'; payload: VaultQuoteResponsePayload };
 
 function safeParse<T = unknown>(data: RawData): T | null {
   try {
@@ -35,56 +38,6 @@ function safeParse<T = unknown>(data: RawData): T | null {
   }
 }
 
-function makeKey(chainId: number, vaultAddress: string): VaultKey {
-  return `${chainId}:${vaultAddress.toLowerCase()}`;
-}
-
-function buildCanonicalMessage(payload: PublishVaultQuotePayload): string {
-  // Canonical message to be signed by vault manager/owner (EOA)
-  // Keep formatting stable for verification on relayer and producer
-  return [
-    'Sapience Vault Share Quote',
-    `Vault: ${payload.vaultAddress.toLowerCase()}`,
-    `ChainId: ${payload.chainId}`,
-    `CollateralPerShare: ${String(payload.vaultCollateralPerShare)}`,
-    `Timestamp: ${payload.timestamp}`,
-  ].join('\n');
-}
-
-const PASSIVE_VAULT_ABI: Abi = [
-  {
-    type: 'function',
-    name: 'manager',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ name: '', type: 'address' }],
-  },
-  {
-    type: 'function',
-    name: 'owner',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ name: '', type: 'address' }],
-  },
-];
-
-async function fetchAuthorizedSigners(
-  chainId: number,
-  vaultAddress: string
-): Promise<Set<string>> {
-  const client = getProviderForChain(chainId);
-  const addr = vaultAddress.toLowerCase() as `0x${string}`;
-  const manager = (await client
-    .readContract({
-      address: addr,
-      abi: PASSIVE_VAULT_ABI,
-      functionName: 'manager',
-    })
-    .catch(() => undefined)) as string | undefined;
-  const set = new Set<string>();
-  if (manager) set.add(manager.toLowerCase());
-  return set;
-}
 
 const RATE_LIMIT_WINDOW_MS = 10_000;
 const RATE_LIMIT_MAX_MESSAGES = 100;
@@ -92,51 +45,8 @@ const RATE_LIMIT_MAX_MESSAGES = 100;
 export function createVaultQuotesWebSocketServer() {
   const wss = new WebSocketServer({ noServer: true });
 
-  // Subscriptions per vault key
-  const subs = new Map<VaultKey, Set<WebSocket>>();
-  const latestQuoteByKey = new Map<VaultKey, PublishVaultQuotePayload>();
-  const signerCache = new Map<
-    VaultKey,
-    { signers: Set<string>; fetchedAt: number }
-  >();
-
-  function subscribe(key: VaultKey, ws: WebSocket) {
-    if (!subs.has(key)) subs.set(key, new Set());
-    subs.get(key)!.add(ws);
-  }
-  function unsubscribe(key: VaultKey, ws: WebSocket) {
-    const set = subs.get(key);
-    if (!set) return;
-    set.delete(ws);
-    if (set.size === 0) subs.delete(key);
-  }
-  function unsubscribeAll(ws: WebSocket) {
-    for (const [k, set] of subs.entries()) {
-      if (set.has(ws)) {
-        set.delete(ws);
-        if (set.size === 0) subs.delete(k);
-      }
-    }
-  }
-  function broadcast(key: VaultKey, message: ServerToClientMessage) {
-    const set = subs.get(key);
-    if (!set || set.size === 0) return 0;
-    const str = JSON.stringify(message);
-    let n = 0;
-    set.forEach((ws) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        try {
-          ws.send(str);
-          n++;
-        } catch {
-          set.delete(ws);
-        }
-      } else {
-        set.delete(ws);
-      }
-    });
-    return n;
-  }
+  // Request tracking for quote requests
+  const pendingRequests = new Map<string, { requester: WebSocket; timestamp: number }>();
 
   wss.on('connection', (ws, req) => {
     const ip =
@@ -180,15 +90,24 @@ export function createVaultQuotesWebSocketServer() {
       const msg = safeParse<ClientToServerMessage>(data);
       if (!msg || typeof msg !== 'object' || !('type' in msg)) return;
 
-      if (msg.type === 'vault_quote.subscribe') {
-        const { chainId, vaultAddress } =
-          msg.payload || ({} as SubscribePayload);
-        if (!chainId || !vaultAddress) {
+
+      if (msg.type === 'vault_quote.request') {
+        const request = msg.payload as VaultQuoteRequestPayload;
+        
+        // Validate request payload
+        if (
+          !request ||
+          !request.chainId ||
+          !request.vaultAddress ||
+          !request.requestId ||
+          !request.operation ||
+          (!request.collateralAmount && !request.sharesAmount)
+        ) {
           try {
             ws.send(
               JSON.stringify({
                 type: 'vault_quote.ack',
-                payload: { error: 'invalid_subscribe' },
+                payload: { error: 'invalid_request' },
               })
             );
           } catch {
@@ -196,19 +115,39 @@ export function createVaultQuotesWebSocketServer() {
           }
           return;
         }
-        const key = makeKey(chainId, vaultAddress);
-        subscribe(key, ws);
-        // send latest if present
-        const latest = latestQuoteByKey.get(key);
-        if (latest) {
-          try {
-            ws.send(
-              JSON.stringify({ type: 'vault_quote.update', payload: latest })
-            );
-          } catch {
-            void 0;
+
+        // Store the request to track the requester
+        pendingRequests.set(request.requestId, {
+          requester: ws,
+          timestamp: Date.now()
+        });
+
+        // Clean up old pending requests (older than 5 minutes)
+        const now = Date.now();
+        for (const [reqId, req] of pendingRequests.entries()) {
+          if (now - req.timestamp > 5 * 60 * 1000) {
+            pendingRequests.delete(reqId);
           }
         }
+
+        // Broadcast the request to all connected clients (bots)
+        const requestMessage = {
+          type: 'vault_quote.request',
+          payload: request
+        };
+        
+        let botCount = 0;
+        wss.clients.forEach((client) => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            try {
+              client.send(JSON.stringify(requestMessage));
+              botCount++;
+            } catch {
+              // ignore send errors
+            }
+          }
+        });
+
         try {
           ws.send(
             JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
@@ -216,153 +155,104 @@ export function createVaultQuotesWebSocketServer() {
         } catch {
           void 0;
         }
+
+        console.log(
+          `[VaultQuotes-WS] quote request broadcast requestId=${request.requestId} bots=${botCount}`
+        );
         return;
       }
 
-      if (msg.type === 'vault_quote.unsubscribe') {
-        const { chainId, vaultAddress } =
-          msg.payload || ({} as SubscribePayload);
-        if (!chainId || !vaultAddress) return;
-        const key = makeKey(chainId, vaultAddress);
-        unsubscribe(key, ws);
-        try {
-          ws.send(
-            JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
-          );
-        } catch {
-          void 0;
-        }
-        return;
-      }
-
-      if (msg.type === 'vault_quote.publish') {
-        const p = msg.payload as PublishVaultQuotePayload;
-        try {
-          // basic payload validation
-          if (
-            !p ||
-            !p.vaultAddress ||
-            !p.chainId ||
-            p.timestamp == null ||
-            p.vaultCollateralPerShare == null ||
-            !p.signedBy ||
-            !p.signature
-          ) {
-            try {
-              ws.send(
-                JSON.stringify({
-                  type: 'vault_quote.ack',
-                  payload: { error: 'invalid_payload' },
-                })
-              );
-            } catch {
-              void 0;
-            }
-            return;
-          }
-          // anti-replay window (5 minutes)
-          if (Math.abs(Date.now() - p.timestamp) > 5 * 60 * 1000) {
-            try {
-              ws.send(
-                JSON.stringify({
-                  type: 'vault_quote.ack',
-                  payload: { error: 'stale_timestamp' },
-                })
-              );
-            } catch {
-              void 0;
-            }
-            return;
-          }
-
-          const key = makeKey(p.chainId, p.vaultAddress);
-          // fetch or reuse signer cache (cache 60s)
-          let allowed = signerCache.get(key);
-          const cacheFresh = allowed && Date.now() - allowed.fetchedAt < 60_000;
-          if (!cacheFresh) {
-            const signers = await fetchAuthorizedSigners(
-              p.chainId,
-              p.vaultAddress
-            );
-            allowed = { signers, fetchedAt: Date.now() };
-            signerCache.set(key, allowed);
-          }
-
-          const canonical = buildCanonicalMessage(p);
-          const ok = await verifyMessage({
-            address: p.signedBy.toLowerCase() as `0x${string}`,
-            message: canonical,
-            signature: p.signature as `0x${string}`,
-          });
-          if (!ok) {
-            try {
-              ws.send(
-                JSON.stringify({
-                  type: 'vault_quote.ack',
-                  payload: { error: 'bad_signature' },
-                })
-              );
-            } catch {
-              void 0;
-            }
-            return;
-          }
-          if (!allowed!.signers.has(p.signedBy.toLowerCase())) {
-            try {
-              ws.send(
-                JSON.stringify({
-                  type: 'vault_quote.ack',
-                  payload: { error: 'unauthorized_signer' },
-                })
-              );
-            } catch {
-              void 0;
-            }
-            return;
-          }
-
-          // normalize and store
-          const normalized: PublishVaultQuotePayload = {
-            chainId: p.chainId,
-            vaultAddress: p.vaultAddress.toLowerCase(),
-            vaultCollateralPerShare: String(p.vaultCollateralPerShare),
-            timestamp: p.timestamp,
-            signedBy: p.signedBy.toLowerCase(),
-            signature: p.signature,
-          };
-          latestQuoteByKey.set(key, normalized);
-          const recipients = broadcast(key, {
-            type: 'vault_quote.update',
-            payload: normalized,
-          });
-          try {
-            ws.send(
-              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
-            );
-          } catch {
-            void 0;
-          }
-          console.log(
-            `[VaultQuotes-WS] quote published key=${key} recipients=${recipients}`
-          );
-        } catch (err) {
+      if (msg.type === 'vault_quote.response') {
+        const response = msg.payload as VaultQuoteResponsePayload;
+        
+        // Validate response payload
+        if (
+          !response ||
+          !response.requestId ||
+          !response.chainId ||
+          !response.vaultAddress ||
+          !response.operation ||
+          !response.inputAmount ||
+          !response.outputAmount ||
+          !response.price
+        ) {
           try {
             ws.send(
               JSON.stringify({
                 type: 'vault_quote.ack',
-                payload: { error: (err as Error).message || 'internal_error' },
+                payload: { error: 'invalid_response' },
               })
             );
           } catch {
             void 0;
           }
+          return;
         }
+
+        // Find the original requester
+        const pendingRequest = pendingRequests.get(response.requestId);
+        if (!pendingRequest) {
+          try {
+            ws.send(
+              JSON.stringify({
+                type: 'vault_quote.ack',
+                payload: { error: 'request_not_found' },
+              })
+            );
+          } catch {
+            void 0;
+          }
+          return;
+        }
+
+        // Send response to the original requester
+        try {
+          pendingRequest.requester.send(
+            JSON.stringify({
+              type: 'vault_quote.response',
+              payload: response
+            })
+          );
+        } catch {
+          // requester might have disconnected
+        }
+
+        // Clean up the pending request
+        pendingRequests.delete(response.requestId);
+
+        try {
+          ws.send(
+            JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
+          );
+        } catch {
+          void 0;
+        }
+
+        console.log(
+          `[VaultQuotes-WS] quote response sent requestId=${response.requestId}`
+        );
         return;
+      }
+
+    });
+
+    ws.on('error', (err) => {
+      console.error(`[VaultQuotes-WS] Socket error from ${ip}:`, err);
+      try {
+        Sentry.captureException(err);
+      } catch {
+        /* ignore */
       }
     });
 
     ws.on('close', () => {
-      unsubscribeAll(ws);
+      // Clean up any pending requests from this client
+      for (const [reqId, req] of pendingRequests.entries()) {
+        if (req.requester === ws) {
+          pendingRequests.delete(reqId);
+        }
+      }
+      
       console.log(`[VaultQuotes-WS] Connection closed from ${ip}`);
     });
   });
