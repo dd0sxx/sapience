@@ -137,6 +137,8 @@ export async function GET(req: Request) {
               symbol={symbol}
               potentialReturn={potentialReturn}
               scale={scale}
+              showReturn={false}
+              forceToWinGreen={true}
             />
           </div>
         </div>

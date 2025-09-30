@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { formatDistanceStrict } from 'date-fns';
 import {
   WIDTH,
   HEIGHT,
@@ -58,9 +59,19 @@ export async function GET(req: Request) {
     const formatHorizonDays = (fromTsSec: number, toTsSec: number): string => {
       if (!Number.isFinite(fromTsSec) || !Number.isFinite(toTsSec)) return '';
       if (fromTsSec <= 0 || toTsSec <= 0) return '';
-      const diffMs =
-        Math.abs(Math.floor(toTsSec) - Math.floor(fromTsSec)) * 1000;
-      const days = Math.max(0, Math.round(diffMs / (24 * 60 * 60 * 1000)));
+      const from = new Date(Math.floor(fromTsSec) * 1000);
+      const to = new Date(Math.floor(toTsSec) * 1000);
+      const diffMs = Math.abs(+to - +from);
+      const dayMs = 24 * 60 * 60 * 1000;
+      if (diffMs < dayMs) {
+        try {
+          return formatDistanceStrict(from, to);
+        } catch {
+          const minutes = Math.max(1, Math.round(diffMs / (60 * 1000)));
+          return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+        }
+      }
+      const days = Math.max(1, Math.round(diffMs / dayMs));
       return `${days} ${days === 1 ? 'day' : 'days'}`;
     };
 
@@ -103,7 +114,7 @@ export async function GET(req: Request) {
                     color: 'rgba(255,255,255,0.64)',
                   }}
                 >
-                  Prediction Market
+                  Question
                 </div>
                 <div
                   style={{

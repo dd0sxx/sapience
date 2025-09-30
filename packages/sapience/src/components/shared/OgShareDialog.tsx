@@ -52,11 +52,32 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
   const [imgLoading, setImgLoading] = useState(true);
   const { toast } = useToast();
 
-  const absoluteShareUrl = useMemo(() => {
+  const buildXShareUrl = (
+    url: string,
+    opts?: { text?: string; via?: string; hashtags?: string[] }
+  ) => {
+    try {
+      const u = new URL('https://twitter.com/intent/tweet');
+      u.searchParams.set('url', url);
+      if (opts?.text) u.searchParams.set('text', opts.text);
+      if (opts?.via) u.searchParams.set('via', opts.via);
+      if (opts?.hashtags?.length)
+        u.searchParams.set('hashtags', opts.hashtags.join(','));
+      return u.toString();
+    } catch {
+      return `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}`;
+    }
+  };
+
+  // Absolute URL to the actual image route (for copying image binary)
+  const absoluteImageUrl = useMemo(() => {
     if (typeof window !== 'undefined')
       return `${window.location.origin}${imageSrc}`;
     return imageSrc;
   }, [imageSrc]);
+
+  // Canonical share page base; encoded short path becomes /s/<token>
+  const shareHref = useMemo(() => `/share`, []);
 
   useEffect(() => {
     if (open) setCacheBust(String(Date.now()));
@@ -98,15 +119,16 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               priority
             />
           </div>
-          <div className="flex gap-3">
+          <div className="grid grid-cols-3 gap-4">
+            {/* Copy */}
             <Button
               size="lg"
-              className="w-1/2"
+              className="w-full"
               type="button"
               variant="outline"
               onClick={async () => {
                 try {
-                  const res = await fetch(absoluteShareUrl, {
+                  const res = await fetch(absoluteImageUrl, {
                     cache: 'no-store',
                   });
                   const blob = await res.blob();
@@ -115,13 +137,52 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
                       [blob.type]: blob,
                     });
                     await navigator.clipboard.write([item]);
-                  } else {
-                    await navigator.clipboard.writeText(absoluteShareUrl);
+                    toast({ title: 'Image copied successfully' });
+                    return;
                   }
-                  toast({ title: 'Image copied successfully' });
+
+                  // Fallback: generate compact share URL and copy as text
+                  const payload = {
+                    img: imageSrc,
+                    title: shareTitle,
+                    description: shareText,
+                    alt: 'Sapience share image',
+                  };
+                  let shareUrl = shareHref;
+                  try {
+                    const resp = await fetch('/api/share/encode', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify(payload),
+                    });
+                    const data = await resp.json();
+                    shareUrl = data?.shareUrl || shareHref;
+                  } catch {
+                    // ignore and use fallback
+                  }
+                  await navigator.clipboard.writeText(shareUrl);
+                  toast({ title: 'Link copied successfully' });
                 } catch {
                   try {
-                    await navigator.clipboard.writeText(absoluteShareUrl);
+                    const payload = {
+                      img: imageSrc,
+                      title: shareTitle,
+                      description: shareText,
+                      alt: 'Sapience share image',
+                    };
+                    let shareUrl = shareHref;
+                    try {
+                      const resp = await fetch('/api/share/encode', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify(payload),
+                      });
+                      const data = await resp.json();
+                      shareUrl = data?.shareUrl || shareHref;
+                    } catch {
+                      // ignore and use fallback
+                    }
+                    await navigator.clipboard.writeText(shareUrl);
                     toast({ title: 'Link copied successfully' });
                   } catch {
                     // ignore
@@ -129,29 +190,84 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
                 }
               }}
             >
-              <Copy className="mr-2 h-4 w-4" /> {copyButtonText}
+              <Copy className="mr-0.5 h-4 w-4" /> {copyButtonText}
             </Button>
+            {/* Post (X) - middle */}
             <Button
               size="lg"
-              className="w-1/2"
+              className="w-full"
               type="button"
               onClick={async () => {
+                // Request compact share URL from API
+                const payload = {
+                  // send relative path to shorten token further
+                  img: imageSrc,
+                  title: shareTitle,
+                  description: shareText,
+                  alt: 'Sapience share image',
+                };
+                try {
+                  const res = await fetch('/api/share/encode', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify(payload),
+                  });
+                  const data = await res.json();
+                  const shareUrl = data?.shareUrl || shareHref;
+                  const intent = buildXShareUrl(shareUrl);
+                  window.open(intent, '_blank', 'noopener,noreferrer');
+                } catch {
+                  const intent = buildXShareUrl(shareHref);
+                  window.open(intent, '_blank', 'noopener,noreferrer');
+                }
+              }}
+            >
+              <Image
+                src="/x.svg"
+                alt="X"
+                width={14}
+                height={14}
+                className="mr-0.5 dark:invert"
+              />
+              Post
+            </Button>
+            {/* Share */}
+            <Button
+              size="lg"
+              className="w-full"
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                const payload = {
+                  img: imageSrc,
+                  title: shareTitle,
+                  description: shareText,
+                  alt: 'Sapience share image',
+                };
+                let shareUrl = shareHref;
+                try {
+                  const res = await fetch('/api/share/encode', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify(payload),
+                  });
+                  const data = await res.json();
+                  shareUrl = data?.shareUrl || shareHref;
+                } catch {
+                  // ignore; use fallback
+                }
                 if ((navigator as any).share) {
                   try {
-                    await (navigator as any).share({
-                      title: shareTitle,
-                      text: shareText,
-                      url: absoluteShareUrl,
-                    });
+                    await (navigator as any).share({ url: shareUrl });
                     return;
                   } catch {
                     // fallthrough
                   }
                 }
-                window.open(absoluteShareUrl, '_blank', 'noopener,noreferrer');
+                window.open(shareUrl, '_blank', 'noopener,noreferrer');
               }}
             >
-              <Share2 className="mr-2 h-4 w-4" /> {shareButtonText}
+              <Share2 className="mr-0.5 h-4 w-4" /> {shareButtonText}
             </Button>
           </div>
         </div>

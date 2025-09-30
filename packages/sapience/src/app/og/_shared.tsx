@@ -266,12 +266,16 @@ export function StatsRow({
   potentialReturn,
   symbol: _symbol,
   scale = 1,
+  showReturn = true,
+  forceToWinGreen = false,
 }: {
   wager?: string;
   payout?: string;
   potentialReturn?: string | null;
   symbol?: string;
   scale?: number;
+  showReturn?: boolean;
+  forceToWinGreen?: boolean;
 }) {
   const parseNumber = (val?: string | null): number => {
     if (!val) return 0;
@@ -287,6 +291,7 @@ export function StatsRow({
       : null;
   const returnColor =
     returnPercent !== null && returnPercent < 100 ? '#DD524C' : '#22C55F';
+  const hasReturn = Boolean(potentialReturn && showReturn);
   const labelWrapperStyle: React.CSSProperties = {
     display: 'flex',
     marginBottom: 6 * scale,
@@ -317,7 +322,17 @@ export function StatsRow({
           justifyContent: 'space-between',
         }}
       >
-        <div style={colStyle}>
+        <div
+          style={
+            hasReturn
+              ? colStyle
+              : {
+                  ...colStyle,
+                  flex: `0 0 ${300 * scale}px`,
+                  width: 300 * scale,
+                }
+          }
+        >
           <div style={labelWrapperStyle}>
             <FooterLabel scale={scale}>Wagered</FooterLabel>
           </div>
@@ -348,7 +363,14 @@ export function StatsRow({
           <div
             style={{ display: 'flex', alignItems: 'flex-end', gap: 8 * scale }}
           >
-            <div style={valueStyle}>{payout}</div>
+            <div
+              style={{
+                ...valueStyle,
+                color: forceToWinGreen ? '#22C55F' : valueStyle.color,
+              }}
+            >
+              {payout}
+            </div>
             {symbolText ? (
               <div
                 style={{
@@ -357,7 +379,7 @@ export function StatsRow({
                   marginTop: 0,
                   lineHeight: `${24 * scale}px`,
                   fontWeight: 600,
-                  color: '#FFFFFF',
+                  color: forceToWinGreen ? '#22C55F' : '#FFFFFF',
                 }}
               >
                 {symbolText}
@@ -365,7 +387,7 @@ export function StatsRow({
             ) : null}
           </div>
         </div>
-        {potentialReturn ? (
+        {hasReturn ? (
           <div style={colStyle}>
             <div style={labelWrapperStyle}>
               <FooterLabel scale={scale}>Return</FooterLabel>
@@ -422,6 +444,8 @@ export function Footer({
   symbol,
   potentialReturn,
   scale = 1,
+  showReturn = true,
+  forceToWinGreen = false,
 }: {
   addr: string;
   avatarUrl?: string | null;
@@ -430,6 +454,8 @@ export function Footer({
   symbol?: string;
   potentialReturn?: string | null;
   scale?: number;
+  showReturn?: boolean;
+  forceToWinGreen?: boolean;
 }) {
   return (
     <div
@@ -461,6 +487,8 @@ export function Footer({
           symbol={symbol}
           potentialReturn={potentialReturn}
           scale={scale}
+          showReturn={showReturn}
+          forceToWinGreen={forceToWinGreen}
         />
       </div>
     </div>
