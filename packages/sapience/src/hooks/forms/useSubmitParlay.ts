@@ -67,6 +67,8 @@ export function useSubmitParlay({
     successMessage: 'Parlay prediction was successful',
     fallbackErrorMessage: 'Failed to submit parlay prediction',
     redirectProfileAnchor: 'parlays',
+    // Minimal share intent for parlay; callers can include OG if they compute it
+    shareIntent: {},
   });
 
   // Prepare calls for sendCalls

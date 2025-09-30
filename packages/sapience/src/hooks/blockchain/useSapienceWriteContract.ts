@@ -18,6 +18,17 @@ import { handleViemError } from '~/utils/blockchain/handleViemError';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 
+interface ShareIntentOg {
+  imagePath: string;
+  params?: Record<string, string | number | boolean | null | undefined>;
+}
+
+interface ShareIntentPartial {
+  positionId?: string | number;
+  og?: ShareIntentOg;
+  // Additional optional hints can be added over time
+}
+
 interface useSapienceWriteContractProps {
   onSuccess?: (
     receipt: ReturnType<typeof useTransactionReceipt>['data']
@@ -27,6 +38,13 @@ interface useSapienceWriteContractProps {
   successMessage?: string;
   fallbackErrorMessage?: string;
   redirectProfileAnchor?: 'trades' | 'parlays' | 'lp' | 'forecasts';
+  /**
+   * Optional share intent hints. When provided, a durable record will be written
+   * to sessionStorage as soon as a tx hash is known (or immediately if not available),
+   * before redirecting to the profile page. This enables the profile page to
+   * automatically open a share dialog with the correct OG image.
+   */
+  shareIntent?: ShareIntentPartial;
 }
 
 export function useSapienceWriteContract({
@@ -36,6 +54,7 @@ export function useSapienceWriteContract({
   successMessage,
   fallbackErrorMessage = 'Transaction failed',
   redirectProfileAnchor,
+  shareIntent,
 }: useSapienceWriteContractProps) {
   const { data: client } = useConnectorClient();
   const [txHash, setTxHash] = useState<Hash | undefined>(undefined);
@@ -50,7 +69,7 @@ export function useSapienceWriteContract({
   const didShowSuccessToastRef = useRef(false);
   const embeddedWallet = useMemo(() => {
     const match = wallets?.find(
-      (wallet) => (wallet as any)?.walletClientType === 'privy'
+      (wallet: any) => wallet?.walletClientType === 'privy'
     );
     return match;
   }, [wallets]);
@@ -119,6 +138,46 @@ export function useSapienceWriteContract({
       // noop on navigation errors
     }
   }, [redirectProfileAnchor, wallets, wagmiAddress, router]);
+
+  // Write durable share intent to sessionStorage
+  const writeShareIntent = useCallback(
+    (maybeHash?: string) => {
+      try {
+        if (typeof window === 'undefined') return;
+        if (!redirectProfileAnchor) return;
+        if (!shareIntent) return; // only write when caller opts-in
+
+        const connectedAddress = (
+          wagmiAddress ||
+          (wallets?.[0] as any)?.address ||
+          ''
+        )
+          .toString()
+          .toLowerCase();
+        if (!connectedAddress) return;
+
+        const intent = {
+          address: connectedAddress,
+          anchor: redirectProfileAnchor,
+          clientTimestamp: Date.now(),
+          txHash: maybeHash || undefined,
+          ...(shareIntent?.positionId !== undefined
+            ? { positionId: shareIntent.positionId }
+            : {}),
+          ...(shareIntent?.og ? { og: shareIntent.og } : {}),
+        } as Record<string, any>;
+
+        window.sessionStorage.setItem(
+          'sapience:share-intent',
+          JSON.stringify(intent)
+        );
+      } catch (e) {
+        // best-effort only
+        console.error(e);
+      }
+    },
+    [redirectProfileAnchor, shareIntent, wagmiAddress, wallets]
+  );
 
   // Custom write contract function that handles chain validation
   const sapienceWriteContract = useCallback(
@@ -197,6 +256,8 @@ export function useSapienceWriteContract({
             data?.transactionHash ||
             data?.txHash;
           if (maybeHash) {
+            // Persist share intent before redirect
+            writeShareIntent(maybeHash);
             // Redirect as soon as a tx hash is known
             maybeRedirectToProfile();
             // Show success toast after navigation so it appears on profile
@@ -214,7 +275,9 @@ export function useSapienceWriteContract({
             setTxHash(maybeHash as Hash);
             setIsSubmitting(false);
           } else {
-            // No hash available; redirect before showing success toast
+            // No hash available; persist minimal intent then redirect
+            writeShareIntent(undefined);
+            // Redirect before showing success toast
             maybeRedirectToProfile();
             toast({
               title: successTitle,
@@ -228,6 +291,8 @@ export function useSapienceWriteContract({
         } else {
           // Execute the transaction and set hash when resolved
           const hash = await writeContractAsync(...args);
+          // Persist share intent before redirect
+          writeShareIntent(hash);
           // Redirect as soon as a tx hash is known
           maybeRedirectToProfile();
           // Show success toast after navigation so it appears on profile
@@ -267,6 +332,7 @@ export function useSapienceWriteContract({
       onTxHash,
       user,
       maybeRedirectToProfile,
+      writeShareIntent,
     ]
   );
 
@@ -352,6 +418,8 @@ export function useSapienceWriteContract({
             const result = await waitForCallsStatus(client!, { id: data.id });
             const transactionHash = result?.receipts?.[0]?.transactionHash;
             if (transactionHash) {
+              // Persist share intent before redirect
+              writeShareIntent(transactionHash);
               // Redirect as soon as a tx hash is known
               maybeRedirectToProfile();
               // Show success toast after navigation so it appears on profile
@@ -371,6 +439,7 @@ export function useSapienceWriteContract({
             } else {
               // No tx hash available from aggregator; consider operation successful.
               // Redirect before showing success toast
+              writeShareIntent(undefined);
               maybeRedirectToProfile();
               toast({
                 title: successTitle,
@@ -387,6 +456,8 @@ export function useSapienceWriteContract({
               data?.transactionHash ||
               data?.txHash;
             if (transactionHash) {
+              // Persist share intent before redirect
+              writeShareIntent(transactionHash);
               // Redirect as soon as a tx hash is known
               maybeRedirectToProfile();
               // Show success toast after navigation so it appears on profile
@@ -407,6 +478,7 @@ export function useSapienceWriteContract({
             }
             // Fallback path without aggregator id.
             // Redirect before showing success toast
+            writeShareIntent(undefined);
             maybeRedirectToProfile();
             toast({
               title: successTitle,
@@ -421,6 +493,7 @@ export function useSapienceWriteContract({
           console.error(e);
           // `wallet_getCallsStatus` unsupported or failed; assume success since `sendCalls` resolved.
           // Redirect before showing success toast
+          writeShareIntent(undefined);
           maybeRedirectToProfile();
           toast({
             title: successTitle,

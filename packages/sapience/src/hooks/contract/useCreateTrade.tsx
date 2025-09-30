@@ -107,6 +107,8 @@ export function useCreateTrade({
       successMessage: 'Trade position submission was successful',
       fallbackErrorMessage: 'Failed to create trade position',
       redirectProfileAnchor: 'trades',
+      // Minimal share intent; callers can override by passing OG via UI layer later
+      shareIntent: {},
     });
 
   // Function to actually create the trader position using sendCalls

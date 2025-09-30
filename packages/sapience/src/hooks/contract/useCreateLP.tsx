@@ -106,6 +106,8 @@ export function useCreateLP({
       successMessage: 'Liquidity position submission was successful',
       fallbackErrorMessage: 'Failed to create liquidity position',
       redirectProfileAnchor: 'lp',
+      // Provide minimal share intent (callers can enrich with OG at call site if desired)
+      shareIntent: {},
     });
 
   // Set error if approval error occurs
