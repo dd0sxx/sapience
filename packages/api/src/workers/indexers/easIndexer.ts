@@ -340,207 +340,263 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
   }
 
   async indexBlockPriceFromTimestamp(
-    _: Resource,
+    resource: Resource,
     startTimestamp: number,
     endTimestamp?: number,
     overwriteExisting: boolean = false
   ): Promise<boolean> {
     try {
-      const initialBlock = await getBlockByTimestamp(
-        this.client,
-        startTimestamp
+      console.log(
+        `[EASPredictionIndexer] Indexing blocks from timestamp ${startTimestamp} to ${endTimestamp || 'latest'}`
       );
-      if (!initialBlock.number) {
-        throw new Error('No block found at timestamp');
-      }
+
+      // Use binary search to find the exact blocks for the timestamps
+      const startBlock = await getBlockByTimestamp(this.client, startTimestamp);
+      console.log(
+        `[EASPredictionIndexer] Found start block: ${startBlock.number} at timestamp ${startBlock.timestamp}`
+      );
 
       let endBlock;
       if (endTimestamp) {
         endBlock = await getBlockByTimestamp(this.client, endTimestamp);
-        if (!endBlock.number) {
-          throw new Error('No block found at end timestamp');
-        }
+        console.log(
+          `[EASPredictionIndexer] Found end block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
+        );
       } else {
-        endBlock = await this.client.getBlock();
+        // If no end timestamp provided, use the latest block
+        endBlock = await this.client.getBlock({ blockTag: 'latest' });
+        console.log(
+          `[EASPredictionIndexer] Using latest block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
+        );
       }
 
-      if (!endBlock.number) {
-        throw new Error('No end block number found');
+      if (!startBlock.number || !endBlock.number) {
+        throw new Error('No block found at timestamp');
       }
-      let currentBlock = Math.max(
-        Number(initialBlock.number),
+
+      // Create array of block numbers to index
+      const startBlockNumber = Math.max(
+        Number(startBlock.number),
         this.easStartBlock
       );
       const endBlockNumber = Number(endBlock.number);
+      const blockNumbers: number[] = [];
 
-      console.log(
-        `[EASPredictionIndexer] Indexing prediction market attestations from block ${currentBlock} to ${endBlockNumber}`
-      );
-
-      // Process blocks in batches
-      while (currentBlock <= endBlockNumber) {
-        const batchEnd = Math.min(
-          currentBlock + BLOCK_BATCH_SIZE - 1,
-          endBlockNumber
+      // Process blocks in batches to avoid overwhelming the RPC
+      for (
+        let i = startBlockNumber;
+        i <= endBlockNumber;
+        i += BLOCK_BATCH_SIZE
+      ) {
+        const batchEnd = Math.min(i + BLOCK_BATCH_SIZE - 1, endBlockNumber);
+        const batch = Array.from(
+          { length: batchEnd - i + 1 },
+          (_, idx) => i + idx
         );
-
-        console.log(
-          `[EASPredictionIndexer] Processing batch: blocks ${currentBlock} to ${batchEnd}`
-        );
-
-        const skipBlocks: number[] = [];
-
-        if (!overwriteExisting) {
-          for (
-            let blockNumber = currentBlock;
-            blockNumber <= batchEnd;
-            blockNumber++
-          ) {
-            const existingAttestations = await prisma.attestation.findFirst({
-              where: {
-                blockNumber: blockNumber,
-              },
-            });
-
-            if (existingAttestations) {
-              console.log(
-                `[EASPredictionIndexer] Already have data for block ${blockNumber}, skipping...`
-              );
-              skipBlocks.push(blockNumber);
-            }
-          }
-        }
-
-        let events: PredictionMarketEvent[] = [];
-        try {
-          events = await this.getPredictionMarketEventsForBlocks(
-            BigInt(currentBlock),
-            BigInt(batchEnd)
-          );
-          if (events.length > 0) {
-            console.log(
-              `[EASPredictionIndexer] Found ${events.length} prediction market attestations in blocks ${currentBlock} to ${batchEnd}`
-            );
-          }
-        } catch (error) {
-          console.error(
-            `[EASPredictionIndexer] Error fetching prediction market events for blocks ${currentBlock} to ${batchEnd}:`,
-            error
-          );
-
-          // Try one by one
-          for (
-            let blockNumber = currentBlock;
-            blockNumber <= batchEnd;
-            blockNumber++
-          ) {
-            if (skipBlocks.includes(Number(blockNumber))) {
-              continue;
-            }
-
-            const currentEvents = await this.getPredictionMarketEventsForBlocks(
-              BigInt(blockNumber),
-              BigInt(blockNumber)
-            );
-
-            if (events.length > 0) {
-              console.log(
-                `[EASPredictionIndexer] Found ${events.length} prediction market attestations in block ${blockNumber}`
-              );
-              events.push(...currentEvents);
-            }
-          }
-        }
-
-        for (const event of events) {
-          try {
-            // Check if we already have data for this block
-            if (skipBlocks.includes(Number(event.blockNumber))) {
-              continue;
-            }
-
-            await this.storePredictionAttestation(event);
-          } catch (error) {
-            console.error(
-              `[EASPredictionIndexer] Error processing block ${event.blockNumber}:`,
-              error
-            );
-            Sentry.withScope((scope: Sentry.Scope) => {
-              scope.setExtra('blockNumber', event.blockNumber);
-              scope.setExtra('chainId', this.chainId);
-              Sentry.captureException(error);
-            });
-          }
-        }
-
-        // Small delay between batches
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        currentBlock = batchEnd + 1;
+        blockNumbers.push(...batch);
       }
 
-      return true;
+      console.log(
+        `[EASPredictionIndexer] Indexing ${blockNumbers.length} blocks from ${startBlockNumber} to ${endBlockNumber}`
+      );
+      return await this.indexBlocks(resource, blockNumbers, overwriteExisting);
     } catch (error) {
       console.error(
-        `[EASPredictionIndexer] Error in indexBlocksFromTimestamp:`,
+        '[EASPredictionIndexer] Error indexing from timestamp:',
         error
       );
-      Sentry.withScope((scope: Sentry.Scope) => {
-        scope.setExtra('startTimestamp', startTimestamp);
-        scope.setExtra('endTimestamp', endTimestamp);
-        scope.setExtra('chainId', this.chainId);
-        Sentry.captureException(error);
-      });
+      Sentry.captureException(error);
       return false;
     }
   }
 
-  async indexBlocks(_: Resource, blocks: number[]): Promise<boolean> {
+  async indexBlocks(
+    _: Resource, 
+    blocks: number[], 
+    overwriteExisting: boolean = false
+  ): Promise<boolean> {
     try {
       console.log(
-        `[EASPredictionIndexer] Indexing ${blocks.length} specific blocks`
+        `[EASPredictionIndexer] Indexing ${blocks.length} blocks: ${blocks[0]} to ${blocks[blocks.length - 1]}`
       );
 
+      // For reindexing large ranges, use optimized batch processing
+      if (blocks.length > 1000) {
+        return await this.indexBlocksOptimized(blocks, overwriteExisting);
+      }
+
       for (const blockNumber of blocks) {
+        await this.indexBlock(blockNumber, overwriteExisting);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[EASPredictionIndexer] Error indexing blocks:', error);
+      Sentry.captureException(error);
+      return false;
+    }
+  }
+
+  private async indexBlocksOptimized(
+    blocks: number[], 
+    overwriteExisting: boolean = false
+  ): Promise<boolean> {
+    try {
+      console.log(
+        `[EASPredictionIndexer] Using optimized batch processing for ${blocks.length} blocks`
+      );
+
+      const CHUNK_SIZE = 10000;
+      let processedBlocks = 0;
+
+      for (let i = 0; i < blocks.length; i += CHUNK_SIZE) {
+        const chunk = blocks.slice(i, i + CHUNK_SIZE);
+        const fromBlock = chunk[0];
+        const toBlock = chunk[chunk.length - 1];
+
+        console.log(
+          `[EASPredictionIndexer] Processing chunk: blocks ${fromBlock} to ${toBlock} (${chunk.length} blocks)`
+        );
+
         try {
+          // Single efficient query for the entire chunk
           const events = await this.getPredictionMarketEventsForBlocks(
-            BigInt(blockNumber),
-            BigInt(blockNumber)
+            BigInt(fromBlock),
+            BigInt(toBlock)
           );
 
-          if (events.length > 0) {
-            console.log(
-              `[EASPredictionIndexer] Found ${events.length} prediction market attestations in block ${blockNumber}`
-            );
+          console.log(
+            `[EASPredictionIndexer] Found ${events.length} attestations in chunk ${fromBlock}-${toBlock}`
+          );
 
-            for (const event of events) {
+          // Optimize duplicate checking by batching database queries
+          let skipEventUids: Set<string> = new Set();
+          if (!overwriteExisting && events.length > 0) {
+            const eventUids = events.map(e => e.uid);
+            const existingAttestations = await prisma.attestation.findMany({
+              where: {
+                uid: { in: eventUids },
+              },
+              select: { uid: true },
+            });
+            skipEventUids = new Set(existingAttestations.map(a => a.uid));
+          }
+
+          // Process all events in this chunk
+          for (const event of events) {
+            try {
+              // Skip if we already have this attestation and not overwriting
+              if (!overwriteExisting && skipEventUids.has(event.uid)) {
+                console.log(
+                  `[EASPredictionIndexer] Already have attestation ${event.uid}, skipping...`
+                );
+                continue;
+              }
+
               await this.storePredictionAttestation(event);
+            } catch (eventError) {
+              console.error(
+                `[EASPredictionIndexer] Error processing event:`,
+                eventError
+              );
+              Sentry.captureException(eventError);
+              // Continue processing other events
             }
           }
-        } catch (error) {
-          console.error(
-            `[EASPredictionIndexer] Error processing block ${blockNumber}:`,
-            error
+
+          processedBlocks += chunk.length;
+          console.log(
+            `[EASPredictionIndexer] Progress: ${processedBlocks}/${blocks.length} blocks (${Math.round((processedBlocks / blocks.length) * 100)}%)`
           );
-          Sentry.withScope((scope: Sentry.Scope) => {
-            scope.setExtra('blockNumber', blockNumber);
-            scope.setExtra('chainId', this.chainId);
-            Sentry.captureException(error);
-          });
+        } catch (chunkError) {
+          console.error(
+            `[EASPredictionIndexer] Error processing chunk ${fromBlock}-${toBlock}:`,
+            chunkError
+          );
+          Sentry.captureException(chunkError);
+
+          // Fallback to individual block processing
+          console.log(
+            `[EASPredictionIndexer] Falling back to individual block processing for chunk ${fromBlock}-${toBlock}`
+          );
+          for (const blockNumber of chunk) {
+            await this.indexBlock(blockNumber, overwriteExisting);
+          }
+          processedBlocks += chunk.length;
         }
+
+        // Small delay between chunks to avoid overwhelming the RPC
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       return true;
     } catch (error) {
       console.error(
-        `[EASPredictionIndexer] Error in indexSpecificBlocks:`,
+        '[EASPredictionIndexer] Error in optimized indexing:',
         error
       );
-      Sentry.withScope((scope: Sentry.Scope) => {
-        scope.setExtra('blocks', blocks);
-        scope.setExtra('chainId', this.chainId);
-        Sentry.captureException(error);
-      });
+      Sentry.captureException(error);
       return false;
+    }
+  }
+
+  private async indexBlock(
+    blockNumber: number, 
+    overwriteExisting: boolean = false
+  ): Promise<void> {
+    try {
+      const events = await this.getPredictionMarketEventsForBlocks(
+        BigInt(blockNumber),
+        BigInt(blockNumber)
+      );
+
+      if (events.length === 0) {
+        return;
+      }
+
+      console.log(
+        `[EASPredictionIndexer] Found ${events.length} prediction market attestations in block ${blockNumber}`
+      );
+
+      // Optimize duplicate checking for individual blocks too
+      let skipEventUids: Set<string> = new Set();
+      if (!overwriteExisting) {
+        const eventUids = events.map(e => e.uid);
+        const existingAttestations = await prisma.attestation.findMany({
+          where: {
+            uid: { in: eventUids },
+          },
+          select: { uid: true },
+        });
+        skipEventUids = new Set(existingAttestations.map(a => a.uid));
+      }
+
+      for (const event of events) {
+        try {
+          // Skip if we already have this attestation and not overwriting
+          if (!overwriteExisting && skipEventUids.has(event.uid)) {
+            console.log(
+              `[EASPredictionIndexer] Already have attestation ${event.uid}, skipping...`
+            );
+            continue;
+          }
+
+          await this.storePredictionAttestation(event);
+        } catch (eventError) {
+          console.error(
+            `[EASPredictionIndexer] Error processing event in block ${blockNumber}:`,
+            eventError
+          );
+          Sentry.captureException(eventError);
+          // Continue processing other events
+        }
+      }
+    } catch (error) {
+      console.error(
+        `[EASPredictionIndexer] Error indexing block ${blockNumber}:`,
+        error
+      );
+      Sentry.captureException(error);
     }
   }
 
