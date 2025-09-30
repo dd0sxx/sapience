@@ -9,10 +9,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
+import { SearchBar } from '@sapience/ui';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
 import FocusAreaFilter from './FocusAreaFilter';
-import SearchBar from './SearchBar';
 import {
   useEnrichedMarketGroups,
   useCategories,
