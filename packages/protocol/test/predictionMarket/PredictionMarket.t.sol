@@ -100,7 +100,8 @@ contract PredictionMarketTest is Test {
                 MAKER_COLLATERAL,
                 address(mockResolver),
                 maker,
-                block.timestamp + 1 hours
+                block.timestamp + 1 hours,
+                0 // makerNonce
             )
         );
         
@@ -118,6 +119,7 @@ contract PredictionMarketTest is Test {
             takerCollateral: TAKER_COLLATERAL,
             maker: maker,
             taker: taker,
+            makerNonce: 0,
             takerSignature: takerSignature,
             takerDeadline: block.timestamp + 1 hours,
             refCode: REF_CODE
@@ -390,7 +392,8 @@ contract PredictionMarketTest is Test {
                 MAKER_COLLATERAL,
                 address(mockResolver),
                 maker,
-                block.timestamp + 1 hours
+                block.timestamp + 1 hours,
+                0 // makerNonce
             )
         );
         
@@ -556,8 +559,9 @@ contract PredictionMarketTest is Test {
         
         IPredictionStructs.MintPredictionRequestData memory request2 = _createValidMintRequest();
         request2.taker = taker2;
+        request2.makerNonce = 1; // Nonce incremented after first mint
         
-        // Create valid signature for taker2
+        // Create valid signature for taker2 with correct nonce
         bytes32 messageHash = keccak256(
             abi.encode(
                 ENCODED_OUTCOMES,
@@ -565,7 +569,8 @@ contract PredictionMarketTest is Test {
                 MAKER_COLLATERAL,
                 address(mockResolver),
                 maker,
-                block.timestamp + 1 hours
+                block.timestamp + 1 hours,
+                1 // makerNonce
             )
         );
         
@@ -623,7 +628,8 @@ contract PredictionMarketTest is Test {
                 MAKER_COLLATERAL,
                 address(mockResolver),
                 maker,
-                block.timestamp + 1 hours
+                block.timestamp + 1 hours,
+                0 // makerNonce
             )
         );
         
@@ -677,8 +683,26 @@ contract PredictionMarketTest is Test {
         assertEq(predictionMarket.getUserCollateralDeposits(maker), MAKER_COLLATERAL);
         assertEq(predictionMarket.getUserCollateralDeposits(taker), TAKER_COLLATERAL);
 
-        // Create another prediction with the same users
+        // Create another prediction with the same users (with incremented nonce)
         IPredictionStructs.MintPredictionRequestData memory request2 = _createValidMintRequest();
+        request2.makerNonce = 1; // Nonce incremented after first mint
+        
+        // Re-create signature with new nonce
+        bytes32 messageHash2 = keccak256(
+            abi.encode(
+                ENCODED_OUTCOMES,
+                TAKER_COLLATERAL,
+                MAKER_COLLATERAL,
+                address(mockResolver),
+                maker,
+                block.timestamp + 1 hours,
+                1 // makerNonce
+            )
+        );
+        bytes32 approvalHash2 = predictionMarket.getApprovalHash(messageHash2, taker);
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(2, approvalHash2);
+        request2.takerSignature = abi.encodePacked(r2, s2, v2);
+        
         vm.prank(maker);
         (uint256 makerNftTokenId2, uint256 takerNftTokenId2) = predictionMarket.mint(request2);
 
