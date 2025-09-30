@@ -32,8 +32,5 @@ const config: StorybookConfig = {
       },
     },
   },
-  typescript: {
-    check: false, // Disable TypeScript checking during build to reduce memory usage
-  },
 };
 export default config;
