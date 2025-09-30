@@ -23,8 +23,17 @@ const config: StorybookConfig = {
     name: "@storybook/react-webpack5",
     options: {},
   },
+  core: {
+    builder: {
+      name: "@storybook/builder-webpack5",
+      options: {
+        fsCache: true,
+        lazyCompilation: true,
+      },
+    },
+  },
   typescript: {
-    check: true,
+    check: false, // Disable TypeScript checking during build to reduce memory usage
   },
 };
 export default config;
