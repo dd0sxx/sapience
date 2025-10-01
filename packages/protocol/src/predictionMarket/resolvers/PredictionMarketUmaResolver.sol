@@ -373,6 +373,9 @@ contract PredictionMarketUmaResolver is
     }
 
     function assertionDisputedCallback(bytes32 assertionId) external {
+        if (msg.sender != address(config.optimisticOracleV3)) {
+            revert OnlyOptimisticOracleV3CanCall();
+        }
         bytes32 marketId = umaSettlements[assertionId].marketId;
 
         // do nothing on disputes, just emit the event. We wait for the assertion to be resolved (truthfully or not) to close the loop.
