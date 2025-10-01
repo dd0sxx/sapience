@@ -145,6 +145,17 @@ const VaultsPageContent = () => {
         }
         const stored = window.localStorage.getItem('sapience.vaults');
         setVaultsFeatureEnabled(stored === 'true');
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[VaultPage] feature flags', {
+            stored,
+            NEXT_PUBLIC_ENABLE_VAULTS: process.env.NEXT_PUBLIC_ENABLE_VAULTS,
+          });
+
+          console.debug('[VaultPage] inputs', {
+            VAULT_CHAIN_ID,
+            VAULT_ADDRESS,
+          });
+        }
       }
     } catch {
       setVaultsFeatureEnabled(false);
