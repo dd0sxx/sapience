@@ -245,7 +245,7 @@ contract PassiveLiquidityVault is
     function requestWithdrawal(
         uint256 shares,
         uint256 expectedAssets
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused notEmergency {
         if (shares == 0) revert InvalidShares(shares);
         if (balanceOf(msg.sender) < shares)
             revert InsufficientBalance(
