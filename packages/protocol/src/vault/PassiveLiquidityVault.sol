@@ -254,6 +254,7 @@ contract PassiveLiquidityVault is
                 balanceOf(msg.sender)
             );
         if (
+            lastUserInteractionTimestamp[msg.sender] > 0 &&
             lastUserInteractionTimestamp[msg.sender] + interactionDelay >
             block.timestamp
         ) revert InteractionDelayNotExpired();
@@ -292,6 +293,7 @@ contract PassiveLiquidityVault is
     ) external nonReentrant whenNotPaused notEmergency {
         if (assets < MIN_DEPOSIT) revert AmountTooSmall(assets, MIN_DEPOSIT);
         if (
+            lastUserInteractionTimestamp[msg.sender] > 0 &&
             lastUserInteractionTimestamp[msg.sender] + interactionDelay >
             block.timestamp
         ) revert InteractionDelayNotExpired();
@@ -337,6 +339,9 @@ contract PassiveLiquidityVault is
 
         request.user = address(0);
 
+        // Reset the interaction timestamp to allow user to post a new request after the a request has expired (most likely due to volatility)
+        lastUserInteractionTimestamp[msg.sender] = 0; 
+
         emit PendingRequestCancelled(
             msg.sender,
             false,
@@ -377,6 +382,9 @@ contract PassiveLiquidityVault is
         uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
         if (balanceBefore != assetsToReturn + balanceAfter)
             revert TransferFailed(balanceBefore, assetsToReturn, balanceAfter);
+
+        // Reset the interaction timestamp to allow user to post a new request after the a request has expired (most likely due to volatility)
+        lastUserInteractionTimestamp[msg.sender] = 0; 
 
         emit PendingRequestCancelled(
             msg.sender,

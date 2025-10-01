@@ -840,6 +840,256 @@ contract PassiveLiquidityVaultTest is Test {
         
         assertEq(returnedSelector, expectedSelector, "Should return correct ERC721Receiver selector");
     }
+
+    // ============ Interaction Delay Tests ============
+
+    function test_userCanMakeNewRequestImmediatelyAfterCancelingDeposit() public {
+        console.log("\n=== Testing User Can Make New Request After Canceling Deposit ===");
+        
+        // Use a fresh user to avoid any previous interactions
+        address freshUser = address(0x999);
+        asset.mint(freshUser, INITIAL_SUPPLY);
+        
+        // Debug: Check initial state
+        uint256 initialTimestamp = vault.lastUserInteractionTimestamp(freshUser);
+        console.log("Initial timestamp for fresh user:", initialTimestamp);
+        
+        // Set interaction delay to 1 hour for this test
+        vm.prank(owner);
+        vault.setInteractionDelay(1 hours);
+        
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // 1. User makes a deposit request
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Debug: Check timestamp after first request
+        uint256 afterFirstRequest = vault.lastUserInteractionTimestamp(freshUser);
+        console.log("Timestamp after first request:", afterFirstRequest);
+        
+        // 2. Wait for request to expire (2 minutes by default)
+        vm.warp(block.timestamp + 3 minutes);
+        
+        // 3. User cancels the expired deposit request
+        vm.prank(freshUser);
+        vault.cancelDeposit();
+        
+        // Debug: Check timestamp after cancel
+        uint256 afterCancel = vault.lastUserInteractionTimestamp(freshUser);
+        console.log("Timestamp after cancel:", afterCancel);
+        
+        // 4. User should be able to make a new deposit request immediately
+        // (lastUserInteractionTimestamp should be reset to 0)
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Verify the request was created successfully
+        (address requestUser, bool isDeposit, , uint256 requestAssets, , bool processed) = vault.pendingRequests(freshUser);
+        assertEq(requestUser, freshUser, "User should have a pending request");
+        assertTrue(isDeposit, "Should be a deposit request");
+        assertEq(requestAssets, depositAmount, "Request assets should match");
+        assertFalse(processed, "Request should not be processed yet");
+        
+        console.log("SUCCESS: User can make new deposit request immediately after canceling");
+    }
+
+    function test_userCanMakeNewRequestImmediatelyAfterCancelingWithdrawal() public {
+        console.log("\n=== Testing User Can Make New Request After Canceling Withdrawal ===");
+        
+        // Use a fresh user to avoid any previous interactions
+        address freshUser = address(0x888);
+        asset.mint(freshUser, INITIAL_SUPPLY);
+        
+        // Set interaction delay to 1 hour for this test
+        vm.prank(owner);
+        vault.setInteractionDelay(1 hours);
+        
+        // First, give freshUser some shares by processing a deposit
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        vm.prank(manager);
+        vault.processDeposit(freshUser);
+        
+        uint256 userShares = vault.balanceOf(freshUser);
+        assertTrue(userShares > 0, "User should have shares");
+        
+        // Wait for interaction delay to expire before making withdrawal request
+        vm.warp(block.timestamp + 1 hours + 1);
+        
+        // 1. User makes a withdrawal request
+        vm.prank(freshUser);
+        vault.requestWithdrawal(userShares / 2, depositAmount / 2);
+        
+        // 2. Wait for request to expire (2 minutes by default)
+        vm.warp(block.timestamp + 3 minutes);
+        
+        // 3. User cancels the expired withdrawal request
+        vm.prank(freshUser);
+        vault.cancelWithdrawal();
+        
+        // 4. User should be able to make a new withdrawal request immediately
+        // (lastUserInteractionTimestamp should be reset to 0)
+        vm.prank(freshUser);
+        vault.requestWithdrawal(userShares / 4, depositAmount / 4);
+        
+        // Verify the request was created successfully
+        (address requestUser, bool isDeposit, , uint256 requestAssets, , bool processed) = vault.pendingRequests(freshUser);
+        assertEq(requestUser, freshUser, "User should have a pending request");
+        assertFalse(isDeposit, "Should be a withdrawal request");
+        assertEq(requestAssets, depositAmount / 4, "Request assets should match");
+        assertFalse(processed, "Request should not be processed yet");
+        
+        console.log("SUCCESS: User can make new withdrawal request immediately after canceling");
+    }
+
+    function test_interactionDelayEnforcedForActiveRequests() public {
+        console.log("\n=== Testing Interaction Delay Enforced For Active Requests ===");
+        
+        // Use a fresh user to avoid any previous interactions
+        address freshUser = address(0x777);
+        asset.mint(freshUser, INITIAL_SUPPLY);
+        
+        // Set interaction delay to 1 hour for this test
+        vm.prank(owner);
+        vault.setInteractionDelay(1 hours);
+        
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // 1. User makes a deposit request
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // 2. Manager processes the first request
+        vm.prank(manager);
+        vault.processDeposit(freshUser);
+        
+        // 3. User tries to make another request immediately after the first one is processed
+        // This should fail with InteractionDelayNotExpired
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vm.expectRevert(PassiveLiquidityVault.InteractionDelayNotExpired.selector);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // 4. Wait for interaction delay to expire
+        vm.warp(block.timestamp + 1 hours + 1);
+        
+        // 5. User should now be able to make another request
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        console.log("SUCCESS: Interaction delay properly enforced for active requests");
+    }
+
+    function test_interactionDelayEnforcedAfterProcessedRequest() public {
+        console.log("\n=== Testing Interaction Delay Enforced After Processed Request ===");
+        
+        // Use a fresh user to avoid any previous interactions
+        address freshUser = address(0x666);
+        asset.mint(freshUser, INITIAL_SUPPLY);
+        
+        // Set interaction delay to 1 hour for this test
+        vm.prank(owner);
+        vault.setInteractionDelay(1 hours);
+        
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // 1. User makes a deposit request
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // 2. Manager processes the deposit
+        vm.prank(manager);
+        vault.processDeposit(freshUser);
+        
+        // 3. User tries to make another request immediately (should fail due to delay)
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vm.expectRevert(PassiveLiquidityVault.InteractionDelayNotExpired.selector);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // 4. Wait for interaction delay to expire
+        vm.warp(block.timestamp + 1 hours + 1);
+        
+        // 5. User should now be able to make another request
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Verify the request was created successfully
+        (address requestUser, bool isDeposit, , uint256 requestAssets, , bool processed) = vault.pendingRequests(freshUser);
+        assertEq(requestUser, freshUser, "User should have a pending request");
+        assertTrue(isDeposit, "Should be a deposit request");
+        assertEq(requestAssets, depositAmount, "Request assets should match");
+        assertFalse(processed, "Request should not be processed yet");
+        
+        console.log("SUCCESS: Interaction delay properly enforced after processed request");
+    }
+
+    function test_interactionDelayEnforcedForWithdrawalAfterProcessedDeposit() public {
+        console.log("\n=== Testing Interaction Delay Enforced For Withdrawal After Processed Deposit ===");
+        
+        // Use a fresh user to avoid any previous interactions
+        address freshUser = address(0x555);
+        asset.mint(freshUser, INITIAL_SUPPLY);
+        
+        // Set interaction delay to 1 hour for this test
+        vm.prank(owner);
+        vault.setInteractionDelay(1 hours);
+        
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // 1. User makes a deposit request
+        vm.startPrank(freshUser);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // 2. Manager processes the deposit
+        vm.prank(manager);
+        vault.processDeposit(freshUser);
+        
+        uint256 userShares = vault.balanceOf(freshUser);
+        assertTrue(userShares > 0, "User should have shares");
+        
+        // 3. User tries to make a withdrawal request immediately (should fail due to delay)
+        vm.prank(freshUser);
+        vm.expectRevert(PassiveLiquidityVault.InteractionDelayNotExpired.selector);
+        vault.requestWithdrawal(userShares / 2, depositAmount / 2);
+        
+        // 4. Wait for interaction delay to expire
+        vm.warp(block.timestamp + 1 hours + 1);
+        
+        // 5. User should now be able to make a withdrawal request
+        vm.prank(freshUser);
+        vault.requestWithdrawal(userShares / 2, depositAmount / 2);
+        
+        // Verify the request was created successfully
+        (address requestUser, bool isDeposit, , uint256 requestAssets, , bool processed) = vault.pendingRequests(freshUser);
+        assertEq(requestUser, freshUser, "User should have a pending request");
+        assertFalse(isDeposit, "Should be a withdrawal request");
+        assertEq(requestAssets, depositAmount / 2, "Request assets should match");
+        assertFalse(processed, "Request should not be processed yet");
+        
+        console.log("SUCCESS: Interaction delay properly enforced for withdrawal after processed deposit");
+    }
 }
 
 // Mock ERC721 contract that uses _safeMint for testing
