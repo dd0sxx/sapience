@@ -46,8 +46,9 @@ const VaultsPageContent = () => {
   const {
     vaultData,
     userData,
-    depositRequest,
-    withdrawalRequest,
+    depositRequest: _depositRequest,
+    withdrawalRequest: _withdrawalRequest,
+    pendingRequest,
     userAssetBalance,
     assetDecimals,
     isLoadingUserData,
@@ -63,6 +64,11 @@ const VaultsPageContent = () => {
     pricePerShare,
     vaultManager: _vaultManager,
     quoteSignatureValid,
+    expirationTime,
+    interactionDelay,
+    interactionDelayRemainingSec: _interactionDelayRemainingSec,
+    isInteractionDelayActive,
+    lastInteractionAt,
   } = usePassiveLiquidityVault({
     vaultAddress: VAULT_ADDRESS,
     chainId: VAULT_CHAIN_ID,
@@ -71,6 +77,9 @@ const VaultsPageContent = () => {
   // Form state
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [pendingAction, setPendingAction] = useState<
+    'deposit' | 'withdraw' | 'cancelDeposit' | 'cancelWithdrawal' | undefined
+  >(undefined);
   // No slippage; we rely on manager-provided decimal pricePerShare quote
 
   // Derived validation
@@ -245,6 +254,36 @@ const VaultsPageContent = () => {
     }
   }, []); // Empty dependency array ensures this runs once client-side
 
+  // Live cooldown countdown (HH:MM:SS)
+  const [cooldownDisplay, setCooldownDisplay] = useState<string>('');
+  useEffect(() => {
+    if (!isInteractionDelayActive) {
+      setCooldownDisplay('');
+      return;
+    }
+
+    const compute = () => {
+      try {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const target = Number(lastInteractionAt + interactionDelay);
+        const remaining = Math.max(0, target - nowSec);
+        const totalHours = Math.floor(remaining / 3600);
+        const minutes = Math.floor((remaining % 3600) / 60);
+        const seconds = remaining % 60;
+        const pad = (n: number) => String(n).padStart(2, '0');
+        setCooldownDisplay(
+          `${pad(totalHours)}:${pad(minutes)}:${pad(seconds)}`
+        );
+      } catch {
+        setCooldownDisplay('');
+      }
+    };
+
+    compute();
+    const id = window.setInterval(compute, 1000);
+    return () => window.clearInterval(id);
+  }, [isInteractionDelayActive, lastInteractionAt, interactionDelay]);
+
   const renderVaultForm = () => (
     <Tabs defaultValue="deposit" className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-4">
@@ -301,69 +340,50 @@ const VaultsPageContent = () => {
           )}
         </div>
 
-        {/* Deposit Button */}
-        <Button
-          size="lg"
-          className="w-full text-base !mt-6"
-          disabled={
-            !isConnected ||
-            !depositAmount ||
-            isVaultPending ||
-            vaultData?.paused ||
-            belowMinDeposit ||
-            quoteSignatureValid === false
-          }
-          onClick={async () => {
-            await deposit(depositAmount, VAULT_CHAIN_ID);
-            setDepositAmount('');
-          }}
-        >
-          {!isConnected
-            ? 'Connect Wallet'
-            : isVaultPending
-              ? 'Processing...'
-              : vaultData?.paused
-                ? 'Vault Paused'
-                : quoteSignatureValid === false
-                  ? 'Invalid Quote Signature'
-                  : requiresApproval
-                    ? 'Approve & Deposit'
-                    : 'Submit Deposit'}
-        </Button>
-
-        {/* Pending Deposits list (boxes) below */}
-        {depositRequest &&
-          (userData?.depositIndex ?? 0n) > 0n &&
-          !depositRequest.processed && (
-            <div className="mt-4 space-y-2">
-              <div className="p-3 bg-muted/30 border border-border rounded-md">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="text-sm text-muted-foreground">
-                    <p className="font-medium">Pending Deposit</p>
-                    <p className="text-xs">
-                      {formatAssetAmount(depositRequest.amount)} testUSDe
-                      {depositQueuePosition
-                        ? ` · Queue #${depositQueuePosition}`
-                        : ''}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      Date.now() <
-                      (Number(depositRequest.timestamp) +
-                        Number(vaultData?.withdrawalDelay ?? 0n)) *
-                        1000
-                    }
-                    onClick={() => cancelDeposit(VAULT_CHAIN_ID)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
+        {/* Cooldown + Deposit Button Group */}
+        <div className="mt-4 space-y-2">
+          {isInteractionDelayActive && (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
+              This vault implements a cooldown period. Please wait{' '}
+              {cooldownDisplay} before submitting another request.
             </div>
           )}
+
+          {/* Deposit Button */}
+          <Button
+            size="lg"
+            className="w-full text-base"
+            disabled={
+              !isConnected ||
+              !depositAmount ||
+              isVaultPending ||
+              vaultData?.paused ||
+              belowMinDeposit ||
+              quoteSignatureValid === false ||
+              isInteractionDelayActive
+            }
+            onClick={async () => {
+              setPendingAction('deposit');
+              await deposit(depositAmount, VAULT_CHAIN_ID);
+              setDepositAmount('');
+              setPendingAction(undefined);
+            }}
+          >
+            {!isConnected
+              ? 'Connect Wallet'
+              : isVaultPending && pendingAction === 'deposit'
+                ? 'Processing...'
+                : vaultData?.paused
+                  ? 'Vault Paused'
+                  : quoteSignatureValid === false
+                    ? 'Invalid Quote Signature'
+                    : requiresApproval
+                      ? 'Approve & Deposit'
+                      : 'Submit Deposit'}
+          </Button>
+        </div>
+
+        {/* Consolidated pending section rendered below tabs */}
       </TabsContent>
 
       <TabsContent value="withdraw" className="space-y-2 mt-1">
@@ -415,49 +435,46 @@ const VaultsPageContent = () => {
             )}
         </div>
 
-        {/* Withdraw Button */}
-        <Button
-          size="lg"
-          className="w-full text-base !mt-6"
-          disabled={
-            !isConnected ||
-            !withdrawAmount ||
-            isVaultPending ||
-            vaultData?.paused ||
-            quoteSignatureValid === false
-          }
-          onClick={() => requestWithdrawal(withdrawAmount, VAULT_CHAIN_ID)}
-        >
-          {!isConnected
-            ? 'Connect Wallet'
-            : isVaultPending
-              ? 'Processing...'
-              : vaultData?.paused
-                ? 'Vault Paused'
-                : quoteSignatureValid === false
-                  ? 'Invalid Quote Signature'
-                  : 'Request Withdrawal'}
-        </Button>
-
-        {/* Pending Withdrawal as cancel button below */}
-        {withdrawalRequest &&
-          (userData?.withdrawalIndex ?? 0n) > 0n &&
-          !withdrawalRequest.processed && (
-            <Button
-              variant="outline"
-              className="w-full mt-4"
-              disabled={
-                Date.now() <
-                (Number(withdrawalRequest.timestamp) +
-                  Number(vaultData?.withdrawalDelay ?? 0n)) *
-                  1000
-              }
-              onClick={() => cancelWithdrawal(VAULT_CHAIN_ID)}
-            >
-              Pending withdrawal: {formatSharesAmount(withdrawalRequest.shares)}{' '}
-              · Cancel
-            </Button>
+        {/* Cooldown + Withdraw Button Group */}
+        <div className="mt-4 space-y-2">
+          {isInteractionDelayActive && (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
+              This vault implements a cooldown period. Please wait{' '}
+              {cooldownDisplay} before submitting another request.
+            </div>
           )}
+
+          {/* Withdraw Button */}
+          <Button
+            size="lg"
+            className="w-full text-base"
+            disabled={
+              !isConnected ||
+              !withdrawAmount ||
+              isVaultPending ||
+              vaultData?.paused ||
+              quoteSignatureValid === false ||
+              isInteractionDelayActive
+            }
+            onClick={async () => {
+              setPendingAction('withdraw');
+              await requestWithdrawal(withdrawAmount, VAULT_CHAIN_ID);
+              setPendingAction(undefined);
+            }}
+          >
+            {!isConnected
+              ? 'Connect Wallet'
+              : isVaultPending && pendingAction === 'withdraw'
+                ? 'Processing...'
+                : vaultData?.paused
+                  ? 'Vault Paused'
+                  : quoteSignatureValid === false
+                    ? 'Invalid Quote Signature'
+                    : 'Request Withdrawal'}
+          </Button>
+        </div>
+
+        {/* Consolidated pending section rendered below tabs */}
       </TabsContent>
     </Tabs>
   );
@@ -539,7 +556,82 @@ const VaultsPageContent = () => {
 
                     {/* Deposit/Withdraw Tabs */}
                     {renderVaultForm()}
-                    {/* moved pending deposit cancel into deposit tab below button */}
+
+                    {/* Pending Requests (mapping-based) */}
+                    {pendingRequest && !pendingRequest.processed && (
+                      <div className="mt-4 space-y-2">
+                        <div className="p-3 bg-muted/30 border border-border rounded-md">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-sm text-muted-foreground">
+                              <p className="font-medium">
+                                {pendingRequest.isDeposit
+                                  ? 'Pending Deposit'
+                                  : 'Pending Withdrawal'}
+                              </p>
+                              <p className="text-xs">
+                                {pendingRequest.isDeposit ? (
+                                  <>
+                                    {formatAssetAmount(pendingRequest.assets)}{' '}
+                                    testUSDe
+                                    {depositQueuePosition
+                                      ? ` · Queue #${depositQueuePosition}`
+                                      : ''}
+                                  </>
+                                ) : (
+                                  <>
+                                    {formatSharesAmount(pendingRequest.shares)}{' '}
+                                    sapLP
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            {pendingRequest.isDeposit ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                  Date.now() <
+                                  (Number(pendingRequest.timestamp) +
+                                    Number(expirationTime ?? 0n)) *
+                                    1000
+                                }
+                                onClick={async () => {
+                                  setPendingAction('cancelDeposit');
+                                  await cancelDeposit(VAULT_CHAIN_ID);
+                                  setPendingAction(undefined);
+                                }}
+                              >
+                                {isVaultPending &&
+                                pendingAction === 'cancelDeposit'
+                                  ? 'Processing...'
+                                  : 'Cancel'}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                  Date.now() <
+                                  (Number(pendingRequest.timestamp) +
+                                    Number(expirationTime ?? 0n)) *
+                                    1000
+                                }
+                                onClick={async () => {
+                                  setPendingAction('cancelWithdrawal');
+                                  await cancelWithdrawal(VAULT_CHAIN_ID);
+                                  setPendingAction(undefined);
+                                }}
+                              >
+                                {isVaultPending &&
+                                pendingAction === 'cancelWithdrawal'
+                                  ? 'Processing...'
+                                  : 'Cancel'}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -561,6 +653,68 @@ const VaultsPageContent = () => {
 
                     {/* Deposit/Withdraw Tabs */}
                     {renderVaultForm()}
+
+                    {/* Pending Requests (mapping-based) */}
+                    {pendingRequest && !pendingRequest.processed && (
+                      <div className="mt-4 space-y-2">
+                        <div className="p-3 bg-muted/30 border border-border rounded-md">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-sm text-muted-foreground">
+                              <p className="font-medium">
+                                {pendingRequest.isDeposit
+                                  ? 'Pending Deposit'
+                                  : 'Pending Withdrawal'}
+                              </p>
+                              <p className="text-xs">
+                                {pendingRequest.isDeposit ? (
+                                  <>
+                                    {formatAssetAmount(pendingRequest.assets)}{' '}
+                                    testUSDe
+                                    {depositQueuePosition
+                                      ? ` · Queue #${depositQueuePosition}`
+                                      : ''}
+                                  </>
+                                ) : (
+                                  <>
+                                    {formatSharesAmount(pendingRequest.shares)}{' '}
+                                    sapLP
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={
+                                Date.now() <
+                                (Number(pendingRequest.timestamp) +
+                                  Number(expirationTime ?? 0n)) *
+                                  1000
+                              }
+                              onClick={async () => {
+                                const act = pendingRequest.isDeposit
+                                  ? 'cancelDeposit'
+                                  : 'cancelWithdrawal';
+                                setPendingAction(act);
+                                if (act === 'cancelDeposit')
+                                  await cancelDeposit(VAULT_CHAIN_ID);
+                                else await cancelWithdrawal(VAULT_CHAIN_ID);
+                                setPendingAction(undefined);
+                              }}
+                            >
+                              {isVaultPending &&
+                              pendingAction &&
+                              ((pendingAction === 'cancelDeposit' &&
+                                pendingRequest.isDeposit) ||
+                                (pendingAction === 'cancelWithdrawal' &&
+                                  !pendingRequest.isDeposit))
+                                ? 'Processing...'
+                                : 'Cancel'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
                 {!vaultsFeatureEnabled && <ComingSoonOverlay />}
