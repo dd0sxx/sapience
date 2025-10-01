@@ -229,6 +229,29 @@ contract PassiveLiquidityVault is
         return totalDeployedAmount;
     }
 
+    function _deployedLiquidityWithCleanup() internal returns (uint256) {
+        // get vault's owned NFTs and sum the collateral of each for each NFT
+        uint256 totalDeployedAmount = 0;
+        address[] memory protocols = activeProtocols.values();
+        for (
+            uint256 protocolIndex = 0;
+            protocolIndex < protocols.length;
+            protocolIndex++
+        ) {
+            address protocol = protocols[protocolIndex];
+            IPredictionMarket pm = IPredictionMarket(protocol);
+            uint256 userCollateralDeposits = pm.getUserCollateralDeposits(
+                address(this)
+            );
+            if (userCollateralDeposits == 0) {
+                // remove protocol from active protocols
+                activeProtocols.remove(protocol);
+            }
+            totalDeployedAmount += userCollateralDeposits;
+        }
+        return totalDeployedAmount;
+    }
+
     /**
      * @notice Request withdrawal of shares - creates a pending request that the manager can process
      * @param shares Number of shares to withdraw
@@ -517,7 +540,7 @@ contract PassiveLiquidityVault is
             revert InsufficientAvailableAssets(amount, availableAssetsValue);
 
         // Check utilization rate limits - cache values to avoid multiple calls
-        uint256 deployedLiquidity = _deployedLiquidity();
+        uint256 deployedLiquidity = _deployedLiquidityWithCleanup();
         uint256 totalAssetsValue = availableAssetsValue + deployedLiquidity;
         uint256 newUtilization = ((deployedLiquidity + amount) * BASIS_POINTS) /
             totalAssetsValue;
