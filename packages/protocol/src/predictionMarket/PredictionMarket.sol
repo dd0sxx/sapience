@@ -50,7 +50,8 @@ contract PredictionMarket is
     error OrderExpired();
     error OrderNotExpired();
     error InvalidMakerNonce();
-
+    error NotOwner();
+    
     // ============ State Variables ============
     IPredictionStructs.Settings public config;
 
@@ -266,6 +267,7 @@ contract PredictionMarket is
 
         if (prediction.maker != prediction.taker)
             revert MakerAndTakerAreDifferent();
+        if (prediction.maker != msg.sender) revert NotOwner();
 
         // 3- Set as settled and maker won and send the collateral to the maker
         prediction.settled = true;

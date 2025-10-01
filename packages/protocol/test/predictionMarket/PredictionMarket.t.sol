@@ -449,6 +449,47 @@ contract PredictionMarketTest is Test {
         vm.expectRevert(PredictionMarket.PredictionNotFound.selector);
         predictionMarket.consolidatePrediction(999, REF_CODE);
     }
+    
+    function test_consolidatePrediction_onlyOwnerCanCall() public {
+        // Create a prediction where maker and taker are the same
+        IPredictionStructs.MintPredictionRequestData memory request = _createValidMintRequest();
+        request.taker = maker; // Same as maker
+        
+        // Create valid signature for maker as taker
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                ENCODED_OUTCOMES,
+                TAKER_COLLATERAL,
+                MAKER_COLLATERAL,
+                address(mockResolver),
+                maker,
+                block.timestamp + 1 hours,
+                0 // makerNonce
+            )
+        );
+        
+        bytes32 approvalHash = predictionMarket.getApprovalHash(messageHash, maker);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, approvalHash); // Use key 1 for maker
+        request.takerSignature = abi.encodePacked(r, s, v);
+        
+        vm.prank(maker);
+        (uint256 makerNftTokenId, uint256 takerNftTokenId) = predictionMarket.mint(request);
+        
+        // Try to call consolidatePrediction from unauthorized user - should fail
+        vm.prank(unauthorizedUser);
+        vm.expectRevert(PredictionMarket.NotOwner.selector);
+        predictionMarket.consolidatePrediction(makerNftTokenId, REF_CODE);
+        
+        // Try to call consolidatePrediction from taker (who is also maker in this case) - should succeed
+        vm.prank(maker);
+        predictionMarket.consolidatePrediction(makerNftTokenId, REF_CODE);
+        
+        // Verify NFTs are burned
+        vm.expectRevert();
+        predictionMarket.ownerOf(makerNftTokenId);
+        vm.expectRevert();
+        predictionMarket.ownerOf(takerNftTokenId);
+    }
 
     // ============ View Function Tests ============
     
