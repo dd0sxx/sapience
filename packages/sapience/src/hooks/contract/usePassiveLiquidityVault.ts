@@ -370,6 +370,20 @@ export function usePassiveLiquidityVault(
       ? wsQuote.pricePerShareRay
       : httpQuote.pricePerShareRay;
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[VaultHook] inputs', {
+      chainId: TARGET_CHAIN_ID,
+      vaultAddress: String(VAULT_ADDRESS),
+      onChainPricePerShareRay: String(onChainPricePerShareRay),
+    });
+
+    console.debug('[VaultHook] quotes', {
+      ws: { source: wsQuote.source, updatedAtMs: wsQuote.updatedAtMs },
+      http: { source: httpQuote.source, updatedAtMs: httpQuote.updatedAtMs },
+      selected: String(pricePerShareRay),
+    });
+  }
+
   // Manager address (for signature validation)
   const vaultManager: Address | undefined = parsedVaultData?.manager;
 
@@ -382,6 +396,14 @@ export function usePassiveLiquidityVault(
     (async () => {
       if (!raw || !vaultManager || !raw.signature || !raw.signedBy) {
         setQuoteSignatureValid(undefined);
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[VaultHook] signature: skipped', {
+            hasRaw: !!raw,
+            hasManager: !!vaultManager,
+            hasSig: !!raw?.signature,
+            hasSigner: !!raw?.signedBy,
+          });
+        }
         return;
       }
       try {
@@ -389,6 +411,12 @@ export function usePassiveLiquidityVault(
           raw.signedBy.toLowerCase() !== (vaultManager as string).toLowerCase()
         ) {
           setQuoteSignatureValid(false);
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug('[VaultHook] signature: wrong signer', {
+              signedBy: raw.signedBy,
+              expected: String(vaultManager),
+            });
+          }
           return;
         }
         const canonical = [
@@ -406,6 +434,9 @@ export function usePassiveLiquidityVault(
         setQuoteSignatureValid(!!ok);
       } catch {
         setQuoteSignatureValid(false);
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[VaultHook] signature: verify error');
+        }
       }
     })();
   }, [wsQuote.raw, vaultManager]);
