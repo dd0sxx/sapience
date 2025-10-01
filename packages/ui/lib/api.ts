@@ -20,7 +20,7 @@ const getGraphQLEndpoint = () => {
 };
 
 // Create client factory to ensure overrides apply without reload
-const createClient = () => new GraphQLClient(getGraphQLEndpoint());
+export const createClient = () => new GraphQLClient(getGraphQLEndpoint());
 
 // Generic request function (current implementation)
 export async function graphqlRequest<T>(

@@ -6,6 +6,7 @@ export * from "./hooks/useResources";
 export * from "./hooks/useSapienceAbi";
 export * from "./hooks/useUniswapPool";
 export * from "./hooks/use-mobile";
+export * from "./hooks/useMarketsData";
 
 // Export components
 export * from "./components/TradeForm";
