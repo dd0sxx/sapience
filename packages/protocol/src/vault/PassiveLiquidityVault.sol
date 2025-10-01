@@ -394,10 +394,7 @@ contract PassiveLiquidityVault is
      */
     function processDeposit(
         address requestedBy
-    ) external nonReentrant {
-        // Check if the caller is the manager
-        if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
-
+    ) external nonReentrant onlyManager {
         PendingRequest storage request = pendingRequests[requestedBy];
         if (request.user == address(0) || request.processed)
             revert NoPendingRequests(requestedBy);
@@ -427,10 +424,7 @@ contract PassiveLiquidityVault is
      */
     function processWithdrawal(
         address requestedBy
-    ) external nonReentrant {
-        // Check if the caller is the manager
-        if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
-
+    ) external nonReentrant onlyManager {
         PendingRequest storage request = pendingRequests[requestedBy];
         if (request.user == address(0) || request.processed)
             revert NoPendingRequests(requestedBy);
