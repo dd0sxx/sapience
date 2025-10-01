@@ -804,4 +804,110 @@ contract PassiveLiquidityVaultTest is Test {
         console.log("SUCCESS: Emergency withdrawal correctly excluded unconfirmed assets");
         console.log("User1 got their fair share without touching user2's pending deposit");
     }
+
+    // ============ ERC721 Receiver Tests ============
+
+    function test_vaultCanReceiveERC721NFT() public {
+        console.log("\n=== Testing Vault Can Receive ERC721 NFT ===");
+        
+        // Deploy a mock ERC721 that uses _safeMint
+        MockERC721WithSafeMint mockNFT = new MockERC721WithSafeMint("Test NFT", "TNFT");
+        
+        // Mint an NFT to the vault using _safeMint
+        // This should succeed because the vault implements onERC721Received
+        uint256 tokenId = mockNFT.safeMintTo(address(vault));
+        
+        console.log("NFT token ID:", tokenId);
+        console.log("NFT owner:", mockNFT.ownerOf(tokenId));
+        
+        // Verify the vault received the NFT
+        assertEq(mockNFT.ownerOf(tokenId), address(vault), "Vault should own the NFT");
+        assertEq(mockNFT.balanceOf(address(vault)), 1, "Vault should have 1 NFT");
+        
+        console.log("SUCCESS: Vault successfully received ERC721 NFT via _safeMint");
+    }
+
+    function test_onERC721ReceivedReturnsCorrectSelector() public {
+        // Test that onERC721Received returns the correct selector
+        bytes4 expectedSelector = 0x150b7a02; // IERC721Receiver.onERC721Received.selector
+        
+        bytes4 returnedSelector = vault.onERC721Received(
+            address(this),
+            address(user1),
+            1,
+            ""
+        );
+        
+        assertEq(returnedSelector, expectedSelector, "Should return correct ERC721Receiver selector");
+    }
 }
+
+// Mock ERC721 contract that uses _safeMint for testing
+contract MockERC721WithSafeMint {
+    string public name;
+    string public symbol;
+    uint256 private _tokenIdCounter;
+    
+    mapping(uint256 => address) private _owners;
+    mapping(address => uint256) private _balances;
+    
+    constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
+        _tokenIdCounter = 1;
+    }
+    
+    function safeMintTo(address to) external returns (uint256) {
+        uint256 tokenId = _tokenIdCounter++;
+        _safeMint(to, tokenId);
+        return tokenId;
+    }
+    
+    function _safeMint(address to, uint256 tokenId) internal {
+        _mint(to, tokenId);
+        _checkOnERC721Received(address(0), to, tokenId, "");
+    }
+    
+    function _mint(address to, uint256 tokenId) internal {
+        require(to != address(0), "ERC721: mint to the zero address");
+        require(_owners[tokenId] == address(0), "ERC721: token already minted");
+        
+        _balances[to] += 1;
+        _owners[tokenId] = to;
+    }
+    
+    function _checkOnERC721Received(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) private {
+        if (to.code.length > 0) {
+            try IERC721Receiver(to).onERC721Received(msg.sender, from, tokenId, data) returns (bytes4 retval) {
+                require(retval == IERC721Receiver.onERC721Received.selector, "ERC721: transfer to non ERC721Receiver implementer");
+            } catch (bytes memory reason) {
+                if (reason.length == 0) {
+                    revert("ERC721: transfer to non ERC721Receiver implementer");
+                } else {
+                    assembly {
+                        revert(add(32, reason), mload(reason))
+                    }
+                }
+            }
+        }
+    }
+    
+    function ownerOf(uint256 tokenId) external view returns (address) {
+        address owner = _owners[tokenId];
+        require(owner != address(0), "ERC721: invalid token ID");
+        return owner;
+    }
+    
+    function balanceOf(address owner) external view returns (uint256) {
+        require(owner != address(0), "ERC721: address zero is not a valid owner");
+        return _balances[owner];
+    }
+}
+
+// Import IERC721Receiver interface for the mock contract
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";

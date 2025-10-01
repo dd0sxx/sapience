@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../predictionMarket/interfaces/IPredictionStructs.sol";
 import "../predictionMarket/interfaces/IPredictionMarket.sol";
@@ -46,7 +47,8 @@ contract PassiveLiquidityVault is
     Ownable2Step,
     ReentrancyGuard,
     Pausable,
-    SignatureProcessor
+    SignatureProcessor,
+    IERC721Receiver
 {
     using SafeERC20 for IERC20;
     using Math for uint256;
@@ -772,5 +774,20 @@ contract PassiveLiquidityVault is
         revert NotImplemented();
     }
 
+    // ============ ERC721 Receiver ============
+
+    /**
+     * @notice Handle the receipt of an NFT
+     * @dev This function is called when an ERC721 token is transferred to this contract via safeTransferFrom
+     * @return bytes4 Returns `IERC721Receiver.onERC721Received.selector` to confirm the token transfer
+     */
+    function onERC721Received(
+        address /* operator */,
+        address /* from */,
+        uint256 /* tokenId */,
+        bytes calldata /* data */
+    ) external pure override returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
 
 }
