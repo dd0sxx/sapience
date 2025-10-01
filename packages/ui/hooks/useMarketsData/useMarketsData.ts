@@ -17,12 +17,13 @@ import { MarketsDataService } from "./MarketsDataService";
  * @returns MarketsDataResult with processed data and loading states
  */
 export function useMarketsData(params: MarketsDataParams) {
-  return useQuery<MarketsDataResult, Error>({
+  const query = useQuery<MarketsDataResult, Error>({
     queryKey: ["marketsData", params],
     queryFn: async () => {
       const client = createClient();
       const service = new MarketsDataService(client);
-      return service.fetchAllData(params);
+      const result = await service.fetchAllData(params);
+      return result;
     },
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // 1 minute
@@ -30,6 +31,8 @@ export function useMarketsData(params: MarketsDataParams) {
     refetchOnMount: true,
     notifyOnChangeProps: ["data", "error", "isLoading"],
   });
+
+  return query;
 }
 
 // Re-export types for external use

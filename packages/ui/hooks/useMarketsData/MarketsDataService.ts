@@ -12,6 +12,75 @@ import type {
 } from "../../types/MarketsData";
 import { GET_CATEGORIES, GET_CONDITIONS, MARKETS_QUERY } from "./queries";
 
+// Focus areas with their colors - matching the constants from the main app
+const FOCUS_AREAS = [
+  {
+    id: "economy-finance",
+    name: "Economy & Finance",
+    color: "#4ADE80", // green-400
+  },
+  {
+    id: "crypto",
+    name: "Crypto",
+    color: "#C084FC", // purple-400
+  },
+  {
+    id: "weather",
+    name: "Weather",
+    color: "#93C5FD", // blue-300
+  },
+  {
+    id: "geopolitics",
+    name: "Geopolitics",
+    color: "#F87171", // red-400
+  },
+  {
+    id: "tech-science",
+    name: "Tech & Science",
+    color: "#FBBF24", // amber-400
+  },
+  {
+    id: "sports",
+    name: "Sports",
+    color: "#F97316", // orange-500
+  },
+  {
+    id: "culture",
+    name: "Culture",
+    color: "#D946EF", // fuchsia-500
+  },
+];
+
+// Helper function to get color for a category slug
+const getCategoryColor = (categorySlug: string): string => {
+  // First try to find a matching focus area
+  const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
+
+  if (focusArea) {
+    return focusArea.color;
+  }
+
+  // If no matching focus area, create a deterministic color based on the slug
+  // This ensures the same category always gets the same color
+  const DEFAULT_COLORS = [
+    "#3B82F6", // blue-500
+    "#C084FC", // purple-400
+    "#4ADE80", // green-400
+    "#FBBF24", // amber-400
+    "#F87171", // red-400
+    "#22D3EE", // cyan-400
+    "#FB923C", // orange-400
+  ];
+
+  // Use a simple hash function to get a consistent index
+  const hashCode = categorySlug.split("").reduce((acc, char) => {
+    return char.charCodeAt(0) + (acc * 32 - acc);
+  }, 0);
+
+  const colorIndex = Math.abs(hashCode) % DEFAULT_COLORS.length;
+  return DEFAULT_COLORS[colorIndex];
+};
+
 export class MarketsDataService {
   constructor(private graphqlClient: GraphQLClient) {}
 
@@ -34,11 +103,13 @@ export class MarketsDataService {
 
       const conditionsResult = this.processConditionsData(conditions, params);
 
-      return {
+      const result = {
         ...marketGroupsResult,
         ...conditionsResult,
         lastUpdated: Date.now(),
       };
+
+      return result;
     } catch (error) {
       console.error("Error in MarketsDataService.fetchAllData:", error);
       throw error;
@@ -46,10 +117,19 @@ export class MarketsDataService {
   }
 
   private async fetchMarketGroups(): Promise<MarketGroupType[]> {
-    const data = await this.graphqlClient.request<{
-      marketGroups: MarketGroupType[];
-    }>(MARKETS_QUERY);
-    return data.marketGroups || [];
+    try {
+      const data = await this.graphqlClient.request<{
+        marketGroups: MarketGroupType[];
+      }>(MARKETS_QUERY);
+      console.log(
+        "MarketsDataService: Market groups fetched:",
+        data.marketGroups?.length || 0
+      );
+      return data.marketGroups || [];
+    } catch (error) {
+      console.error("MarketsDataService: Error fetching market groups:", error);
+      throw error;
+    }
   }
 
   private async fetchConditions(
@@ -92,9 +172,15 @@ export class MarketsDataService {
       params.statusFilter
     );
 
+    // Filter by search term
+    const filteredBySearch = this.filterMarketsBySearchTerm(
+      filteredByStatus,
+      params.searchTerm
+    );
+
     // Group by market group
     const groupedByMarketKey = this.groupMarketsByMarketKey(
-      filteredByStatus,
+      filteredBySearch,
       filteredByCategory
     );
 
@@ -162,27 +248,32 @@ export class MarketsDataService {
   private flattenAndEnrichMarkets(
     marketGroups: MarketGroupType[]
   ): MarketWithContext[] {
-    return marketGroups.flatMap((marketGroup) => {
-      return marketGroup.markets
-        .filter((market) => isAddress(market.poolAddress || ""))
-        .filter(
-          (market) =>
-            typeof market.startTimestamp === "number" &&
-            typeof market.endTimestamp === "number"
-        )
-        .map(
-          (market): MarketWithContext => ({
-            ...market,
-            startTimestamp: market.startTimestamp,
-            endTimestamp: market.endTimestamp,
-            marketAddress: marketGroup.address!,
-            chainId: marketGroup.chainId,
-            collateralAsset: marketGroup.collateralAsset!,
-            categorySlug: marketGroup.category!.slug,
-            categoryId: marketGroup.category!.id.toString(),
-          })
-        );
+    const result = marketGroups.flatMap((marketGroup) => {
+      const allMarkets = marketGroup.markets || [];
+      const validPoolAddressMarkets = allMarkets.filter((market) =>
+        isAddress(market.poolAddress || "")
+      );
+      const validTimestampMarkets = validPoolAddressMarkets.filter(
+        (market) =>
+          typeof market.startTimestamp === "number" &&
+          typeof market.endTimestamp === "number"
+      );
+
+      return validTimestampMarkets.map(
+        (market): MarketWithContext => ({
+          ...market,
+          startTimestamp: market.startTimestamp,
+          endTimestamp: market.endTimestamp,
+          marketAddress: marketGroup.address!,
+          chainId: marketGroup.chainId,
+          collateralAsset: marketGroup.collateralAsset!,
+          categorySlug: marketGroup.category!.slug,
+          categoryId: marketGroup.category!.id.toString(),
+        })
+      );
     });
+
+    return result;
   }
 
   private filterMarketsByStatus(
@@ -205,12 +296,32 @@ export class MarketsDataService {
     });
   }
 
+  private filterMarketsBySearchTerm(
+    markets: MarketWithContext[],
+    searchTerm?: string
+  ): MarketWithContext[] {
+    if (!searchTerm) return markets;
+
+    const lower = searchTerm.toLowerCase();
+
+    return markets.filter((market) => {
+      const haystacks: string[] = [];
+      if (typeof market.question === "string") haystacks.push(market.question);
+      if (typeof market.shortName === "string")
+        haystacks.push(market.shortName);
+      if (typeof market.optionName === "string")
+        haystacks.push(market.optionName);
+      if (typeof market.categorySlug === "string")
+        haystacks.push(market.categorySlug);
+
+      return haystacks.some((h) => h.toLowerCase().includes(lower));
+    });
+  }
+
   private groupMarketsByMarketKey(
     markets: MarketWithContext[],
     sourceMarketGroups: MarketGroupType[]
   ): Record<string, GroupedMarketGroup> {
-    const DEFAULT_CATEGORY_COLOR = "#9CA3AF";
-
     return markets.reduce<Record<string, GroupedMarketGroup>>((acc, market) => {
       const marketKey = `${market.chainId}:${market.marketAddress}`;
 
@@ -226,8 +337,40 @@ export class MarketsDataService {
           typeof marketName !== "string" ||
           typeof collateralAsset !== "string"
         ) {
+          console.warn(
+            "MarketsDataService: Skipping market group due to missing data:",
+            {
+              marketKey,
+              marketName,
+              collateralAsset,
+              marketNameType: typeof marketName,
+              collateralAssetType: typeof collateralAsset,
+            }
+          );
           return acc;
         }
+
+        // Calculate display question
+        const allMarketsInGroup = sourceMarketGroup?.markets || [];
+        const marketWithQuestion =
+          allMarketsInGroup.find((m) => !!m.question) || null;
+        const displayQuestion =
+          (marketWithQuestion && marketWithQuestion.question) ||
+          sourceMarketGroup?.question ||
+          "";
+
+        // Calculate if any market is active (will be updated after markets are added)
+        const isActive = false; // Will be calculated after markets are added
+
+        // Calculate market classification based on number of markets
+        // This will be updated after markets are added
+        const marketClassification = undefined;
+
+        // Get display unit from baseTokenName or quoteTokenName
+        const displayUnit = sourceMarketGroup?.baseTokenName || "";
+
+        // Get color based on category slug
+        const color = getCategoryColor(market.categorySlug);
 
         acc[marketKey] = {
           key: marketKey,
@@ -235,19 +378,36 @@ export class MarketsDataService {
           chainId: market.chainId,
           marketName,
           collateralAsset,
-          color: DEFAULT_CATEGORY_COLOR, // Will be enhanced later with focus areas
+          color,
           categorySlug: market.categorySlug,
           categoryId: market.categoryId,
           marketQuestion: sourceMarketGroup?.question || null,
           markets: [],
-          displayQuestion: undefined,
-          isActive: undefined,
-          marketClassification: undefined,
-          displayUnit: undefined,
+          displayQuestion,
+          isActive,
+          marketClassification,
+          displayUnit,
         };
       }
 
       acc[marketKey].markets.push(market);
+
+      // Update isActive based on the current markets in the group
+      const now = Math.floor(Date.now() / 1000);
+      acc[marketKey].isActive = acc[marketKey].markets.some(
+        (m) => typeof m.endTimestamp === "number" && now <= m.endTimestamp
+      );
+
+      // Calculate market classification based on number of markets
+      const marketCount = acc[marketKey].markets.length;
+      if (marketCount === 1) {
+        acc[marketKey].marketClassification = "YES_NO";
+      } else if (marketCount === 2) {
+        acc[marketKey].marketClassification = "YES_NO";
+      } else if (marketCount > 2) {
+        acc[marketKey].marketClassification = "MULTIPLE_CHOICE";
+      }
+
       return acc;
     }, {});
   }
