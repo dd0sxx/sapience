@@ -166,13 +166,6 @@ contract PassiveLiquidityVault is
         _;
     }
 
-    modifier notProcessingRequests() {
-        if (processingRequests) revert ProcessingRequestsInProgress();
-        processingRequests = true;
-        _;
-        processingRequests = false;
-    }
-
     // ============ Constructor ============
 
     constructor(
@@ -401,7 +394,7 @@ contract PassiveLiquidityVault is
      */
     function processDeposit(
         address requestedBy
-    ) external nonReentrant notProcessingRequests {
+    ) external nonReentrant {
         // Check if the caller is the manager
         if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
 
@@ -434,7 +427,7 @@ contract PassiveLiquidityVault is
      */
     function processWithdrawal(
         address requestedBy
-    ) external nonReentrant notProcessingRequests {
+    ) external nonReentrant {
         // Check if the caller is the manager
         if (msg.sender != manager) revert OnlyManager(msg.sender, manager);
 
@@ -472,7 +465,7 @@ contract PassiveLiquidityVault is
      */
     function emergencyWithdraw(
         uint256 shares
-    ) external nonReentrant notProcessingRequests {
+    ) external nonReentrant {
         if (!emergencyMode) revert EmergencyModeNotActive();
         if (shares == 0) revert InvalidShares(shares);
         if (balanceOf(msg.sender) < shares)
