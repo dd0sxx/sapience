@@ -748,6 +748,149 @@ contract PredictionMarketTest is Test {
         assertEq(predictionMarket.getUserCollateralDeposits(taker), 0);
     }
 
+    // ============ Nonce and Replay Protection Tests ============
+
+    function test_nonces_initialValue() public view {
+        // Initial nonce should be 0
+        assertEq(predictionMarket.nonces(maker), 0);
+        assertEq(predictionMarket.nonces(taker), 0);
+        assertEq(predictionMarket.nonces(unauthorizedUser), 0);
+    }
+
+    function test_nonces_incrementAfterMint() public {
+        IPredictionStructs.MintPredictionRequestData memory request = _createValidMintRequest();
+        
+        // Check nonce before mint
+        assertEq(predictionMarket.nonces(maker), 0);
+        
+        vm.prank(maker);
+        predictionMarket.mint(request);
+        
+        // Check nonce after mint - should be incremented
+        assertEq(predictionMarket.nonces(maker), 1);
+    }
+
+    function test_replayProtection_cannotReuseSameSignature() public {
+        IPredictionStructs.MintPredictionRequestData memory request = _createValidMintRequest();
+        
+        // First mint - should succeed
+        vm.prank(maker);
+        (uint256 makerNftTokenId1, uint256 takerNftTokenId1) = predictionMarket.mint(request);
+        
+        // Verify first prediction was created successfully
+        assertEq(predictionMarket.ownerOf(makerNftTokenId1), maker);
+        assertEq(predictionMarket.ownerOf(takerNftTokenId1), taker);
+        assertEq(predictionMarket.nonces(maker), 1);
+        
+        // Try to reuse the same request with the same signature - should fail
+        vm.prank(maker);
+        vm.expectRevert(PredictionMarket.InvalidMakerNonce.selector);
+        predictionMarket.mint(request);
+        
+        // Nonce should still be 1 (not incremented on failed attempt)
+        assertEq(predictionMarket.nonces(maker), 1);
+    }
+
+    function test_replayProtection_mustUseSequentialNonces() public {
+        // Try to use nonce 1 when current nonce is 0
+        IPredictionStructs.MintPredictionRequestData memory request = _createValidMintRequest();
+        request.makerNonce = 1; // Skip nonce 0
+        
+        // Create signature with wrong nonce
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                ENCODED_OUTCOMES,
+                TAKER_COLLATERAL,
+                MAKER_COLLATERAL,
+                address(mockResolver),
+                maker,
+                block.timestamp + 1 hours,
+                1 // Wrong nonce
+            )
+        );
+        
+        bytes32 approvalHash = predictionMarket.getApprovalHash(messageHash, taker);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(2, approvalHash);
+        request.takerSignature = abi.encodePacked(r, s, v);
+        
+        vm.prank(maker);
+        vm.expectRevert(PredictionMarket.InvalidMakerNonce.selector);
+        predictionMarket.mint(request);
+    }
+
+    function test_replayProtection_afterBurnCannotReuse() public {
+        IPredictionStructs.MintPredictionRequestData memory request = _createValidMintRequest();
+        
+        // First mint
+        vm.prank(maker);
+        (uint256 makerNftTokenId,) = predictionMarket.mint(request);
+        
+        // Burn the prediction
+        mockResolver.setResolutionResult(true, IPredictionMarketResolver.Error.NO_ERROR, true);
+        vm.prank(maker);
+        predictionMarket.burn(makerNftTokenId, REF_CODE);
+        
+        // Try to reuse the same signature after burn - should fail
+        vm.prank(maker);
+        vm.expectRevert(PredictionMarket.InvalidMakerNonce.selector);
+        predictionMarket.mint(request);
+    }
+
+    function test_replayProtection_independentNoncesPerMaker() public {
+        address maker2 = vm.addr(10);
+        collateralToken.mint(maker2, 10000e18);
+        vm.prank(maker2);
+        collateralToken.approve(address(predictionMarket), type(uint256).max);
+        
+        // Both makers start with nonce 0
+        assertEq(predictionMarket.nonces(maker), 0);
+        assertEq(predictionMarket.nonces(maker2), 0);
+        
+        // Maker 1 mints
+        IPredictionStructs.MintPredictionRequestData memory request1 = _createValidMintRequest();
+        vm.prank(maker);
+        predictionMarket.mint(request1);
+        
+        // Maker 1 nonce incremented, maker 2 unchanged
+        assertEq(predictionMarket.nonces(maker), 1);
+        assertEq(predictionMarket.nonces(maker2), 0);
+        
+        // Maker 2 can still use nonce 0
+        address taker2 = vm.addr(11);
+        collateralToken.mint(taker2, 10000e18);
+        vm.prank(taker2);
+        collateralToken.approve(address(predictionMarket), type(uint256).max);
+        
+        IPredictionStructs.MintPredictionRequestData memory request2 = _createValidMintRequest();
+        request2.maker = maker2;
+        request2.taker = taker2;
+        request2.makerNonce = 0; // Maker2's first nonce
+        
+        // Create signature for maker2
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                ENCODED_OUTCOMES,
+                TAKER_COLLATERAL,
+                MAKER_COLLATERAL,
+                address(mockResolver),
+                maker2,
+                block.timestamp + 1 hours,
+                0 // makerNonce for maker2
+            )
+        );
+        
+        bytes32 approvalHash = predictionMarket.getApprovalHash(messageHash, taker2);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(11, approvalHash);
+        request2.takerSignature = abi.encodePacked(r, s, v);
+        
+        vm.prank(maker2);
+        predictionMarket.mint(request2);
+        
+        // Both makers now have nonce 1
+        assertEq(predictionMarket.nonces(maker), 1);
+        assertEq(predictionMarket.nonces(maker2), 1);
+    }
+
     // ============ NFT Transfer Tests (role/mapping/deposit sync) ============
 
     function test_transfer_makerNft_updatesPredictionAndDeposits() public {
