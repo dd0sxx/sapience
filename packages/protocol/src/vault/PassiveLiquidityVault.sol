@@ -769,6 +769,18 @@ contract PassiveLiquidityVault is
         revert NotImplemented();
     }
 
+    function convertToShares(
+        uint256 /* assets */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+    
+    function convertToAssets(
+        uint256 /* shares */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
     // ============ ERC721 Receiver ============
 
     /**
