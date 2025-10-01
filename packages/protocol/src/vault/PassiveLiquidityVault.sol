@@ -329,7 +329,7 @@ contract PassiveLiquidityVault is
      * @notice Cancel a pending withdrawal request after expiration time
      * @dev Can only be called after the request has expired
      */
-    function cancelWithdrawal() external nonReentrant {
+    function cancelWithdrawal() external nonReentrant whenNotPaused {
         PendingRequest storage request = pendingRequests[msg.sender];
         if (request.user == address(0) || request.processed)
             revert NoPendingRequests(msg.sender);
@@ -354,7 +354,7 @@ contract PassiveLiquidityVault is
      * @notice Cancel a pending deposit request after expiration time
      * @dev Can only be called after the request has expired, returns assets to user
      */
-    function cancelDeposit() external nonReentrant {
+    function cancelDeposit() external nonReentrant whenNotPaused {
         PendingRequest storage request = pendingRequests[msg.sender];
         if (request.user == address(0) || request.processed)
             revert NoPendingRequests(msg.sender);
