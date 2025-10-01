@@ -249,13 +249,19 @@ export function createAuctionWebSocketServer() {
     const client = getProviderForChain(chainId);
     const addr = vaultAddress.toLowerCase() as `0x${string}`;
     const manager = (await client
-      .readContract({ address: addr, abi: PASSIVE_VAULT_ABI, functionName: 'manager' })
+      .readContract({
+        address: addr,
+        abi: PASSIVE_VAULT_ABI,
+        functionName: 'manager',
+      })
       .catch(() => undefined)) as string | undefined;
     const set = new Set<string>();
     if (manager) set.add(manager.toLowerCase());
     return set;
   }
-  function buildVaultCanonicalMessage(payload: PublishVaultQuotePayload): string {
+  function buildVaultCanonicalMessage(
+    payload: PublishVaultQuotePayload
+  ): string {
     return [
       'Sapience Vault Share Quote',
       `Vault: ${payload.vaultAddress.toLowerCase()}`,
@@ -272,7 +278,6 @@ export function createAuctionWebSocketServer() {
       req.socket.remoteAddress ||
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       'unknown';
-    const ua = (req.headers['user-agent'] as string) || 'unknown';
 
     let rateCount = 0;
     let rateResetAt = Date.now() + RATE_LIMIT_WINDOW_MS;
@@ -290,8 +295,11 @@ export function createAuctionWebSocketServer() {
         );
         try {
           ws.close(1008, 'rate_limited');
-        } catch {
-          /* ignore */
+        } catch (err) {
+          console.error(
+            '[Auction-WS] Failed to close rate-limited connection:',
+            err
+          );
         }
         return;
       }
@@ -305,12 +313,17 @@ export function createAuctionWebSocketServer() {
         );
         try {
           ws.close(1009, 'message_too_large');
-        } catch {
-          /* ignore */
+        } catch (err) {
+          console.error(
+            '[Auction-WS] Failed to close oversized-message connection:',
+            err
+          );
         }
         return;
       }
-      const msg = safeParse<ClientToServerMessage | BotToServerMessage | { type?: string }>(data);
+      const msg = safeParse<
+        ClientToServerMessage | BotToServerMessage | { type?: string }
+      >(data);
       if (!msg || typeof msg !== 'object') {
         console.warn(`[Auction-WS] Invalid JSON from ${ip}`);
         return;
@@ -321,61 +334,168 @@ export function createAuctionWebSocketServer() {
         const type = (msg as { type?: string }).type as string;
         if (type === 'vault_quote.observe') {
           addVaultObserver(ws);
-          try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })); } catch {}
+          try {
+            ws.send(
+              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
+            );
+          } catch (err) {
+            console.error(
+              '[Auction-WS] Failed to send vault_quote.ack (observe):',
+              err
+            );
+          }
           return;
         }
         if (type === 'vault_quote.unobserve') {
           removeVaultObserver(ws);
-          try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })); } catch {}
+          try {
+            ws.send(
+              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
+            );
+          } catch (err) {
+            console.error(
+              '[Auction-WS] Failed to send vault_quote.ack (unobserve):',
+              err
+            );
+          }
           return;
         }
         if (type === 'vault_quote.subscribe') {
-          const { chainId, vaultAddress } = (msg as unknown as { payload?: SubscribePayload })?.payload || ({} as SubscribePayload);
+          const { chainId, vaultAddress } =
+            (msg as unknown as { payload?: SubscribePayload })?.payload ||
+            ({} as SubscribePayload);
           if (!chainId || !vaultAddress) {
-            try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'invalid_subscribe' } })); } catch {}
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'vault_quote.ack',
+                  payload: { error: 'invalid_subscribe' },
+                })
+              );
+            } catch (err) {
+              console.error(
+                '[Auction-WS] Failed to send vault_quote.ack (invalid_subscribe):',
+                err
+              );
+            }
             return;
           }
           const key = makeVaultKey(chainId, vaultAddress);
           vaultSubscribe(key, ws);
           const latest = latestVaultQuoteByKey.get(key);
           if (latest) {
-            try { ws.send(JSON.stringify({ type: 'vault_quote.update', payload: latest })); } catch {}
+            try {
+              ws.send(
+                JSON.stringify({ type: 'vault_quote.update', payload: latest })
+              );
+            } catch (err) {
+              console.error(
+                '[Auction-WS] Failed to send vault_quote.update (latest on subscribe):',
+                err
+              );
+            }
           }
-          try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })); } catch {}
+          try {
+            ws.send(
+              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
+            );
+          } catch (err) {
+            console.error(
+              '[Auction-WS] Failed to send vault_quote.ack (subscribe):',
+              err
+            );
+          }
           // Public broadcast so relayer feeds can display the request
           try {
             broadcastToVaultObservers({
               type: 'vault_quote.requested',
-              payload: { chainId, vaultAddress: vaultAddress.toLowerCase(), channel: key },
+              payload: {
+                chainId,
+                vaultAddress: vaultAddress.toLowerCase(),
+                channel: key,
+              },
             });
-          } catch {}
+          } catch (err) {
+            console.error(
+              '[Auction-WS] Failed to broadcast to vault observers (requested):',
+              err
+            );
+          }
           return;
         }
         if (type === 'vault_quote.unsubscribe') {
-          const { chainId, vaultAddress } = (msg as unknown as { payload?: SubscribePayload })?.payload || ({} as SubscribePayload);
+          const { chainId, vaultAddress } =
+            (msg as unknown as { payload?: SubscribePayload })?.payload ||
+            ({} as SubscribePayload);
           if (!chainId || !vaultAddress) return;
           const key = makeVaultKey(chainId, vaultAddress);
           vaultUnsubscribe(key, ws);
-          try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })); } catch {}
+          try {
+            ws.send(
+              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
+            );
+          } catch (err) {
+            console.error(
+              '[Auction-WS] Failed to send vault_quote.ack (unsubscribe):',
+              err
+            );
+          }
           return;
         }
         if (type === 'vault_quote.publish' || type === 'vault_quote.submit') {
-          const p = (msg as unknown as { payload: PublishVaultQuotePayload }).payload;
+          const p = (msg as unknown as { payload: PublishVaultQuotePayload })
+            .payload;
           try {
-            if (!p || !p.vaultAddress || !p.chainId || p.timestamp == null || p.vaultCollateralPerShare == null || !p.signedBy || !p.signature) {
-              try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'invalid_payload' } })); } catch {}
+            if (
+              !p ||
+              !p.vaultAddress ||
+              !p.chainId ||
+              p.timestamp == null ||
+              p.vaultCollateralPerShare == null ||
+              !p.signedBy ||
+              !p.signature
+            ) {
+              try {
+                ws.send(
+                  JSON.stringify({
+                    type: 'vault_quote.ack',
+                    payload: { error: 'invalid_payload' },
+                  })
+                );
+              } catch (err) {
+                console.error(
+                  '[Auction-WS] Failed to send vault_quote.ack (invalid_payload):',
+                  err
+                );
+              }
               return;
             }
             // anti-replay window (5 minutes)
             if (Math.abs(Date.now() - p.timestamp) > 5 * 60 * 1000) {
-              try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'stale_timestamp' } })); } catch {}
+              try {
+                ws.send(
+                  JSON.stringify({
+                    type: 'vault_quote.ack',
+                    payload: { error: 'stale_timestamp' },
+                  })
+                );
+              } catch (err) {
+                console.error(
+                  '[Auction-WS] Failed to send vault_quote.ack (stale_timestamp):',
+                  err
+                );
+              }
               return;
             }
             const key = makeVaultKey(p.chainId, p.vaultAddress);
             let allowed = vaultSignerCache.get(key);
-            const cacheFresh = allowed && Date.now() - allowed.fetchedAt < 60_000;
+            const cacheFresh =
+              allowed && Date.now() - allowed.fetchedAt < 60_000;
             if (!cacheFresh) {
-              const signers = await fetchAuthorizedVaultSigners(p.chainId, p.vaultAddress);
+              const signers = await fetchAuthorizedVaultSigners(
+                p.chainId,
+                p.vaultAddress
+              );
               allowed = { signers, fetchedAt: Date.now() };
               vaultSignerCache.set(key, allowed);
             }
@@ -386,11 +506,35 @@ export function createAuctionWebSocketServer() {
               signature: p.signature as `0x${string}`,
             });
             if (!ok) {
-              try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'bad_signature' } })); } catch {}
+              try {
+                ws.send(
+                  JSON.stringify({
+                    type: 'vault_quote.ack',
+                    payload: { error: 'bad_signature' },
+                  })
+                );
+              } catch (err) {
+                console.error(
+                  '[Auction-WS] Failed to send vault_quote.ack (bad_signature):',
+                  err
+                );
+              }
               return;
             }
             if (!allowed!.signers.has(p.signedBy.toLowerCase())) {
-              try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: 'unauthorized_signer' } })); } catch {}
+              try {
+                ws.send(
+                  JSON.stringify({
+                    type: 'vault_quote.ack',
+                    payload: { error: 'unauthorized_signer' },
+                  })
+                );
+              } catch (err) {
+                console.error(
+                  '[Auction-WS] Failed to send vault_quote.ack (unauthorized_signer):',
+                  err
+                );
+              }
               return;
             }
             const normalized: PublishVaultQuotePayload = {
@@ -402,14 +546,51 @@ export function createAuctionWebSocketServer() {
               signature: p.signature,
             };
             latestVaultQuoteByKey.set(key, normalized);
-            broadcastToVaultSubscribers(key, { type: 'vault_quote.update', payload: normalized });
-            try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })); } catch {}
+            broadcastToVaultSubscribers(key, {
+              type: 'vault_quote.update',
+              payload: normalized,
+            });
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'vault_quote.ack',
+                  payload: { ok: true },
+                })
+              );
+            } catch (err) {
+              console.error(
+                '[Auction-WS] Failed to send vault_quote.ack (ok after publish):',
+                err
+              );
+            }
             // Also emit a public broadcast of the update so passive feeds can display it
             try {
-              broadcastToVaultObservers({ type: 'vault_quote.update', payload: normalized });
-            } catch {}
+              broadcastToVaultObservers({
+                type: 'vault_quote.update',
+                payload: normalized,
+              });
+            } catch (err) {
+              console.error(
+                '[Auction-WS] Failed to broadcast to vault observers (update):',
+                err
+              );
+            }
           } catch (err) {
-            try { ws.send(JSON.stringify({ type: 'vault_quote.ack', payload: { error: (err as Error).message || 'internal_error' } })); } catch {}
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'vault_quote.ack',
+                  payload: {
+                    error: (err as Error).message || 'internal_error',
+                  },
+                })
+              );
+            } catch (err2) {
+              console.error(
+                '[Auction-WS] Failed to send vault_quote.ack (internal_error):',
+                err2
+              );
+            }
           }
           return;
         }
@@ -505,8 +686,11 @@ export function createAuctionWebSocketServer() {
                 `[Auction-WS] bid.submit strict verification failed auctionId=${bid.auctionId} reason=${strict.reason}`
               );
             }
-          } catch {
-            // ignore strict verification errors; basic validation already passed
+          } catch (err) {
+            console.warn(
+              '[Auction-WS] Strict verification threw; continuing:',
+              err
+            );
           }
         })().catch(() => undefined);
         const validated = addBid(bid.auctionId, bid);
@@ -546,8 +730,8 @@ export function createAuctionWebSocketServer() {
       console.error(`[Auction-WS] Socket error from ${ip}:`, err);
       try {
         Sentry.captureException(err);
-      } catch {
-        /* ignore */
+      } catch (err2) {
+        console.error('[Auction-WS] Sentry capture failed:', err2);
       }
     });
 
@@ -560,12 +744,15 @@ export function createAuctionWebSocketServer() {
         }
       })();
 
+      console.log(
+        `[Auction-WS] Socket closed from ${ip} code=${code} reason=${reasonStr}`
+      );
+
       // Clean up auction subscriptions for this client
       unsubscribeFromAllAuctions(ws, auctionSubscriptions);
       // Clean up vault subscriptions and observers for this client
       vaultUnsubscribeAll(ws);
       removeVaultObserver(ws);
-
     });
   });
 
