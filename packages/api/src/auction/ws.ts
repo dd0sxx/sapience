@@ -132,7 +132,7 @@ export function createAuctionWebSocketServer() {
   type PublishVaultQuotePayload = {
     chainId: number;
     vaultAddress: string;
-    vaultCollateralPerShare: string | number;
+    vaultCollateralPerShare: string; // decimal string, e.g. "1.234567"
     timestamp: number;
     signedBy: string;
     signature: string;

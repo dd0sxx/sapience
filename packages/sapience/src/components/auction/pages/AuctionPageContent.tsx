@@ -14,6 +14,7 @@ import {
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
 import Link from 'next/link';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import LoaderWithMessage from '~/components/shared/LoaderWithMessage';
 import {
   TransactionTimeCell,
@@ -42,22 +43,41 @@ const AuctionPageContent: React.FC = () => {
     return [...messages].sort((a, b) => Number(b.time) - Number(a.time));
   }, [messages]);
 
-  function formatRayToDecimalStr(rayStr: string): string {
+  // Group vault quote messages by vaultAddress so a single row updates from Pending → Value
+  const vaultQuoteRows = useMemo(() => {
     try {
-      if (!rayStr) return '—';
-      const s = String(rayStr);
-      const isNeg = s.startsWith('-');
-      const digits = isNeg ? s.slice(1) : s;
-      const pad = digits.padStart(19, '0');
-      const intPart = pad.slice(0, pad.length - 18).replace(/^0+/, '') || '0';
-      const fracPart = pad.slice(pad.length - 18).replace(/0+$/, '');
-      const joined =
-        fracPart.length > 0 ? `${intPart}.${fracPart.slice(0, 6)}` : intPart; // 6 dp
-      return isNeg ? `-${joined}` : joined;
+      const relevant = displayMessages.filter(
+        (m) =>
+          m.type === 'vault_quote.requested' || m.type === 'vault_quote.update'
+      );
+      const map = new Map<
+        string,
+        { vaultAddress: string; time: number; quote?: string }
+      >();
+      for (const m of relevant) {
+        const vaultAddress = String((m as any)?.data?.vaultAddress ?? '');
+        if (!vaultAddress) continue;
+        const existing = map.get(vaultAddress);
+        const time = Number(m.time);
+        let quote = existing?.quote;
+        if (m.type === 'vault_quote.update') {
+          const v = (m as any)?.data?.vaultCollateralPerShare;
+          if (v != null) quote = String(v);
+        }
+        const latestTime = existing ? Math.max(existing.time, time) : time;
+        map.set(vaultAddress, { vaultAddress, time: latestTime, quote });
+      }
+      return Array.from(map.values()).sort((a, b) => b.time - a.time);
     } catch {
-      return '—';
+      return [] as Array<{
+        vaultAddress: string;
+        time: number;
+        quote?: string;
+      }>;
     }
-  }
+  }, [displayMessages]);
+
+  // Removed ray-to-decimal formatting; relayer now sends decimal strings
 
   // Collect unique conditionIds from auction.started messages for enrichment
   const conditionIds = useMemo(() => {
@@ -342,7 +362,10 @@ const AuctionPageContent: React.FC = () => {
                       {displayMessages
                         .filter((m) => m.type === 'auction.started')
                         .map((m, idx) => (
-                          <tr key={`started-${idx}`} className="border-b">
+                          <tr
+                            key={`started-${idx}`}
+                            className="border-b last:border-b-0"
+                          >
                             <td className="px-4 py-3 whitespace-nowrap">
                               <TransactionTimeCell tx={toUiTx(m)} />
                             </td>
@@ -427,50 +450,53 @@ const AuctionPageContent: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {displayMessages
-                        .filter(
-                          (m) =>
-                            m.type === 'vault_quote.requested' ||
-                            m.type === 'vault_quote.update'
-                        )
-                        .map((m, idx) => {
-                          const isVaultUpd = m.type === 'vault_quote.update';
-                          const vaultAddress = String(
-                            (m as any)?.data?.vaultAddress ?? ''
-                          );
-                          return (
-                            <tr key={`vault-${idx}`} className="border-b">
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <TransactionTimeCell tx={toUiTx(m)} />
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="flex items-center gap-2">
-                                  {vaultAddress ? (
-                                    <EnsAvatar
-                                      address={vaultAddress}
-                                      width={16}
-                                      height={16}
-                                    />
-                                  ) : null}
-                                  <AddressDisplay
-                                    address={vaultAddress}
-                                    compact
-                                    disablePopover
-                                  />
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                {isVaultUpd ? (
-                                  `${formatRayToDecimalStr(String((m as any)?.data?.vaultCollateralPerShare ?? ''))}`
-                                ) : (
-                                  <span className="text-muted-foreground">
-                                    Pending…
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                      {vaultQuoteRows.map((row) => (
+                        <tr
+                          key={row.vaultAddress}
+                          className="border-b last:border-b-0"
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <TransactionTimeCell
+                              tx={toUiTx({
+                                time: row.time,
+                                type: 'vault_quote.update',
+                                data: {},
+                              })}
+                            />
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              {row.vaultAddress ? (
+                                <EnsAvatar
+                                  address={row.vaultAddress}
+                                  width={16}
+                                  height={16}
+                                />
+                              ) : null}
+                              <AddressDisplay
+                                address={row.vaultAddress}
+                                compact
+                                disablePopover
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {row.quote != null ? (
+                              <span className="whitespace-nowrap inline-flex items-center gap-1">
+                                <NumberDisplay
+                                  value={row.quote}
+                                  precision={6}
+                                />{' '}
+                                {collateralAssetTicker} per share
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                Pending…
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

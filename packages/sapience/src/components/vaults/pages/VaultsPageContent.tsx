@@ -55,7 +55,7 @@ const VaultsPageContent = () => {
     formatUtilizationRate,
     minDeposit,
     allowance,
-    pricePerShareRay,
+    pricePerShare,
     vaultManager: _vaultManager,
     quoteSignatureValid,
   } = usePassiveLiquidityVault({
@@ -66,7 +66,7 @@ const VaultsPageContent = () => {
   // Form state
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  // No slippage; we rely on manager-provided vaultCollateralPerShare quote
+  // No slippage; we rely on manager-provided decimal pricePerShare quote
 
   // Derived validation
   const depositWei =
@@ -167,15 +167,17 @@ const VaultsPageContent = () => {
     if (!depositAmount || !assetDecimals) return 0n;
     try {
       const amountWei = parseUnits(depositAmount, assetDecimals);
-      const pps =
-        pricePerShareRay && pricePerShareRay > 0n
-          ? pricePerShareRay
-          : 10n ** 18n;
-      return (amountWei * 10n ** 18n) / pps;
+      const ppsScaled = parseUnits(
+        pricePerShare && pricePerShare !== '0' ? pricePerShare : '1',
+        assetDecimals
+      );
+      return ppsScaled === 0n
+        ? 0n
+        : (amountWei * 10n ** BigInt(assetDecimals)) / ppsScaled;
     } catch {
       return 0n;
     }
-  }, [depositAmount, assetDecimals, pricePerShareRay]);
+  }, [depositAmount, assetDecimals, pricePerShare]);
 
   const minDepositShares = estDepositShares;
 
@@ -183,15 +185,15 @@ const VaultsPageContent = () => {
     if (!withdrawAmount || !assetDecimals) return 0n;
     try {
       const sharesWei = parseUnits(withdrawAmount, assetDecimals);
-      const pps =
-        pricePerShareRay && pricePerShareRay > 0n
-          ? pricePerShareRay
-          : 10n ** 18n;
-      return (sharesWei * pps) / 10n ** 18n;
+      const ppsScaled = parseUnits(
+        pricePerShare && pricePerShare !== '0' ? pricePerShare : '1',
+        assetDecimals
+      );
+      return (sharesWei * ppsScaled) / 10n ** BigInt(assetDecimals);
     } catch {
       return 0n;
     }
-  }, [withdrawAmount, assetDecimals, pricePerShareRay]);
+  }, [withdrawAmount, assetDecimals, pricePerShare]);
 
   const minWithdrawAssets = estWithdrawAssets;
 

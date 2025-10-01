@@ -6,14 +6,14 @@ import { toAuctionWsUrl } from '../../lib/ws';
 export interface VaultShareWsQuotePayload {
   chainId: number;
   vaultAddress: string;
-  vaultCollateralPerShare: string; // 1e18-scaled integer as string
+  vaultCollateralPerShare: string; // decimal string
   timestamp: number; // ms
   signedBy?: string;
   signature?: string;
 }
 
 export interface VaultShareWsQuote {
-  pricePerShareRay: bigint; // 1e18-scaled
+  vaultCollateralPerShare: string; // decimal string
   updatedAtMs: number;
   source: 'ws' | 'fallback';
   raw?: VaultShareWsQuotePayload;
@@ -22,15 +22,14 @@ export interface VaultShareWsQuote {
 interface UseVaultShareQuoteWsOptions {
   chainId?: number;
   vaultAddress?: Address;
-  onChainFallbackRay: bigint;
 }
 
 export function useVaultShareQuoteWs(
   options: UseVaultShareQuoteWsOptions
 ): VaultShareWsQuote {
-  const { chainId, vaultAddress, onChainFallbackRay } = options;
+  const { chainId, vaultAddress } = options;
   const [quote, setQuote] = useState<VaultShareWsQuote>({
-    pricePerShareRay: onChainFallbackRay,
+    vaultCollateralPerShare: '0',
     updatedAtMs: Date.now(),
     source: 'fallback',
   });
@@ -104,9 +103,8 @@ export function useVaultShareQuoteWs(
             p.chainId === chainId &&
             p.vaultAddress?.toLowerCase() === vaultAddress.toLowerCase()
           ) {
-            const ray = BigInt(String(p.vaultCollateralPerShare));
             setQuote({
-              pricePerShareRay: ray,
+              vaultCollateralPerShare: String(p.vaultCollateralPerShare),
               updatedAtMs: p.timestamp,
               source: 'ws',
               raw: p,
@@ -145,17 +143,6 @@ export function useVaultShareQuoteWs(
       wsRef.current = null;
     };
   }, [wsUrl, chainId, vaultAddress]);
-
-  // Keep fallback synced if on-chain fallback changes and we don't have ws yet
-  useEffect(() => {
-    if (quote.source === 'ws') return;
-    setQuote({
-      pricePerShareRay: onChainFallbackRay,
-      updatedAtMs: Date.now(),
-      source: 'fallback',
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onChainFallbackRay]);
 
   return quote;
 }

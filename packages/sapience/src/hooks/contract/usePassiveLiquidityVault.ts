@@ -7,7 +7,6 @@ import { useReadContracts, useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
-import { useVaultShareQuote } from '~/hooks/data/useVaultShareQuote';
 import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 
 // Default to deployment JSON address; can be overridden by hook config
@@ -345,44 +344,11 @@ export function usePassiveLiquidityVault(
     };
   }, [userQueueDetails, userDepositIdx, userWithdrawalIdx]);
 
-  // Price-per-share (on-chain fallback): scaled by 1e18
-  const onChainPricePerShareRay = useMemo(() => {
-    const totalAssetsWei = (vaultData?.[0]?.result as bigint) || 0n;
-    const totalSupplyWei = (vaultData?.[1]?.result as bigint) || 0n;
-    if (totalSupplyWei === 0n) return 10n ** 18n; // 1.0
-    return (totalAssetsWei * 10n ** 18n) / totalSupplyWei;
-  }, [vaultData]);
-
-  // Prefer offchain quote if available
-  // Prefer WS quotes first, then HTTP poll, then on-chain
-  const httpQuote = useVaultShareQuote({
-    chainId: TARGET_CHAIN_ID,
-    vaultAddress: VAULT_ADDRESS,
-    onChainFallbackRay: onChainPricePerShareRay,
-  });
   const wsQuote = useVaultShareQuoteWs({
     chainId: TARGET_CHAIN_ID,
     vaultAddress: VAULT_ADDRESS,
-    onChainFallbackRay: onChainPricePerShareRay,
   });
-  const pricePerShareRay =
-    wsQuote.source === 'ws'
-      ? wsQuote.pricePerShareRay
-      : httpQuote.pricePerShareRay;
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.debug('[VaultHook] inputs', {
-      chainId: TARGET_CHAIN_ID,
-      vaultAddress: String(VAULT_ADDRESS),
-      onChainPricePerShareRay: String(onChainPricePerShareRay),
-    });
-
-    console.debug('[VaultHook] quotes', {
-      ws: { source: wsQuote.source, updatedAtMs: wsQuote.updatedAtMs },
-      http: { source: httpQuote.source, updatedAtMs: httpQuote.updatedAtMs },
-      selected: String(pricePerShareRay),
-    });
-  }
+  const pricePerShareDecimal = wsQuote.vaultCollateralPerShare;
 
   // Manager address (for signature validation)
   const vaultManager: Address | undefined = parsedVaultData?.manager;
@@ -464,10 +430,17 @@ export function usePassiveLiquidityVault(
 
       const amountWei = parseUnits(amount, assetDecimals);
 
-      // Compute minShares using the provided quote (no slippage)
+      // Compute minShares using the provided decimal quote (no slippage)
+      const ppsScaled = parseUnits(
+        pricePerShareDecimal && pricePerShareDecimal !== '0'
+          ? pricePerShareDecimal
+          : '1',
+        assetDecimals
+      );
       const estSharesWei =
-        (amountWei * 10n ** 18n) /
-        (pricePerShareRay === 0n ? 10n ** 18n : pricePerShareRay);
+        ppsScaled === 0n
+          ? 0n
+          : (amountWei * 10n ** BigInt(assetDecimals)) / ppsScaled;
       const minSharesWei = estSharesWei;
 
       // Prepare calldata for requestDeposit (with or without min)
@@ -544,7 +517,7 @@ export function usePassiveLiquidityVault(
     [
       parsedVaultData?.asset,
       assetDecimals,
-      pricePerShareRay,
+      pricePerShareDecimal,
       hasFunction,
       writeVaultContract,
       sendCalls,
@@ -561,11 +534,15 @@ export function usePassiveLiquidityVault(
 
       const sharesWei = parseUnits(shares, assetDecimals);
 
-      // Compute minAssets using the provided quote (no slippage)
+      // Compute minAssets using the provided decimal quote (no slippage)
+      const ppsScaled = parseUnits(
+        pricePerShareDecimal && pricePerShareDecimal !== '0'
+          ? pricePerShareDecimal
+          : '1',
+        assetDecimals
+      );
       const estAssetsWei =
-        (sharesWei *
-          (pricePerShareRay === 0n ? 10n ** 18n : pricePerShareRay)) /
-        10n ** 18n;
+        (sharesWei * ppsScaled) / 10n ** BigInt(assetDecimals);
       const minAssetsWei = estAssetsWei;
 
       const supportsWithdrawalWithMin =
@@ -609,7 +586,7 @@ export function usePassiveLiquidityVault(
     },
     [
       assetDecimals,
-      pricePerShareRay,
+      pricePerShareDecimal,
       hasFunction,
       writeVaultContract,
       VAULT_ADDRESS,
@@ -739,7 +716,7 @@ export function usePassiveLiquidityVault(
     assetDecimals,
     minDeposit,
     allowance: currentAllowance,
-    pricePerShareRay,
+    pricePerShare: pricePerShareDecimal,
     vaultManager,
     quoteSignatureValid,
 
