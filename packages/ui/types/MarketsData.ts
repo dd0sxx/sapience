@@ -5,10 +5,8 @@ import type {
   Condition as ConditionType,
 } from "./graphql";
 
-// Re-export GraphQL types for convenience
 export type { MarketType, MarketGroupType, CategoryType, ConditionType };
 
-// Internal types for the markets data service
 export interface MarketWithContext extends MarketType {
   marketAddress: string;
   chainId: number;
@@ -23,7 +21,6 @@ export interface GroupedMarketGroup {
   chainId: number;
   marketName: string;
   collateralAsset: string;
-  color: string;
   categorySlug: string;
   categoryId: string;
   marketQuestion?: string | null;
@@ -55,6 +52,9 @@ export interface MarketsDataResult {
   filteredConditions: ConditionType[];
   conditionsByDay: Record<string, ConditionType[]>;
   sortedConditionDays: string[];
+
+  // Categories
+  categories: CategoryType[];
 
   // Metadata
   lastUpdated: number;

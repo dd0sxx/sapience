@@ -1,27 +1,37 @@
 'use client';
 
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
-import { useMarketsData } from '@sapience/ui/hooks/useMarketsData';
+import {
+  useMarketsData,
+  type GroupedMarketGroup,
+} from '@sapience/ui/hooks/useMarketsData';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FrownIcon } from 'lucide-react';
 import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
-import * as React from 'react';
+import type { ChangeEvent } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 import { SearchBar } from '@sapience/ui';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
 import FocusAreaFilter from './FocusAreaFilter';
-import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
+// Focus areas are now handled by the category utility functions
 import type { MarketGroupClassification } from '~/lib/types';
 import Betslip from '~/components/markets/Betslip';
+import { getCategoryColor, getCategoryStyle } from '~/lib/utils/category';
+
+// Extended type for Sapience that includes color
+type GroupedMarketGroupWithColor = GroupedMarketGroup & {
+  color: string;
+};
 
 // Custom hook for debouncing values
 function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
@@ -55,33 +65,41 @@ const MarketsPage = () => {
 
   // Get the category SLUG from the URL query parameter, default to null (all)
   const categorySlugParam = searchParams.get('category');
-  const [selectedCategorySlug, setSelectedCategorySlug] = React.useState<
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState<
     string | null
   >(categorySlugParam);
 
   // Add state for the active/settled toggle
-  const [statusFilter, setStatusFilter] = React.useState<'all' | 'active'>(
-    'active'
-  );
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active'>('active');
 
   // State for text filter
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Parlay Mode toggle
-  const [parlayMode, setParlayMode] = React.useState<boolean>(false);
+  const [parlayMode, setParlayMode] = useState<boolean>(false);
 
   // Initialize parlay mode from URL hash unconditionally
-  React.useEffect(() => {
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     if (window.location.hash === '#parlays') {
       setParlayMode(true);
     }
   }, []);
 
+  // Update the state when the URL parameter changes
+  useEffect(() => {
+    const currentCategorySlug = searchParams.get('category');
+    // Basic validation: just set if it exists or is null
+    setSelectedCategorySlug(currentCategorySlug);
+  }, [searchParams]);
+
+  // Get mobile status
+  const isMobile = useIsMobile();
+
   // Use the new markets data hook
   const {
-    data: marketsData,
+    data: rawMarketsData,
     isLoading: isLoadingMarketsData,
     error: marketsDataError,
   } = useMarketsData({
@@ -92,66 +110,62 @@ const MarketsPage = () => {
     conditionsSkip: 0,
   });
 
-  // Get mobile status
-  const isMobile = useIsMobile();
-
-  // Update the state when the URL parameter changes
-  React.useEffect(() => {
-    const currentCategorySlug = searchParams.get('category');
-    // Basic validation: just set if it exists or is null
-    setSelectedCategorySlug(currentCategorySlug);
-  }, [searchParams]);
-
-  // Handle parlay mode toggle and keep URL hash in sync
-  const handleParlayModeChange = (enabled: boolean) => {
-    setParlayMode(enabled);
-    if (typeof window === 'undefined') return;
-    if (enabled) {
-      const newHash = '#parlays';
-      if (window.location.hash !== newHash) {
-        // Update hash without scrolling or adding a new history entry
-        window.history.replaceState(null, '', newHash);
-      }
-    } else {
-      // Clear hash entirely
-      const url = window.location.pathname + window.location.search;
-      window.history.replaceState(null, '', url);
+  // Enrich market groups with colors and extract data from the hook
+  const {
+    groupedMarketGroups,
+    marketGroupsByDay,
+    sortedMarketDays,
+    filteredConditions,
+    conditionsByDay,
+    sortedConditionDays,
+  } = useMemo(() => {
+    if (!rawMarketsData) {
+      return {
+        groupedMarketGroups: [],
+        marketGroupsByDay: {} as Record<string, GroupedMarketGroupWithColor[]>,
+        sortedMarketDays: [],
+        filteredConditions: [],
+        conditionsByDay: {},
+        sortedConditionDays: [],
+      };
     }
-  };
 
-  // Handler for text filter changes
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
-  };
+    // Enrich market groups with colors
+    const enrichedGroupedMarketGroups = rawMarketsData.groupedMarketGroups.map(
+      (group): GroupedMarketGroupWithColor => ({
+        ...group,
+        color: getCategoryColor(group.categorySlug),
+      })
+    );
 
-  // Extract data from the hook
-  const groupedMarketGroups = React.useMemo(
-    () => marketsData?.groupedMarketGroups || [],
-    [marketsData?.groupedMarketGroups]
-  );
-  const marketGroupsByDay = React.useMemo(
-    () => marketsData?.marketGroupsByDay || {},
-    [marketsData?.marketGroupsByDay]
-  );
-  const sortedMarketDays = React.useMemo(
-    () => marketsData?.sortedMarketDays || [],
-    [marketsData?.sortedMarketDays]
-  );
-  const filteredConditions = React.useMemo(
-    () => marketsData?.filteredConditions || [],
-    [marketsData?.filteredConditions]
-  );
-  const conditionsByDay = React.useMemo(
-    () => marketsData?.conditionsByDay || {},
-    [marketsData?.conditionsByDay]
-  );
-  const sortedConditionDays = React.useMemo(
-    () => marketsData?.sortedConditionDays || [],
-    [marketsData?.sortedConditionDays]
-  );
+    // Enrich marketGroupsByDay with colors
+    const enrichedMarketGroupsByDay: Record<
+      string,
+      GroupedMarketGroupWithColor[]
+    > = {};
+    Object.entries(rawMarketsData.marketGroupsByDay).forEach(
+      ([dayKey, marketGroups]) => {
+        enrichedMarketGroupsByDay[dayKey] = marketGroups.map(
+          (group): GroupedMarketGroupWithColor => ({
+            ...group,
+            color: getCategoryColor(group.categorySlug),
+          })
+        );
+      }
+    );
+
+    return {
+      groupedMarketGroups: enrichedGroupedMarketGroups,
+      marketGroupsByDay: enrichedMarketGroupsByDay,
+      sortedMarketDays: rawMarketsData.sortedMarketDays,
+      filteredConditions: rawMarketsData.filteredConditions,
+      conditionsByDay: rawMarketsData.conditionsByDay,
+      sortedConditionDays: rawMarketsData.sortedConditionDays,
+    };
+  }, [rawMarketsData]);
 
   // Calculate day end times for display
-  const dayEndTimes = React.useMemo(() => {
+  const dayEndTimes = useMemo(() => {
     const result: Record<string, number> = {};
 
     Object.entries(marketGroupsByDay).forEach(([dayKey, marketGroups]) => {
@@ -186,7 +200,7 @@ const MarketsPage = () => {
   }, [marketGroupsByDay]);
 
   // Calculate RFQ day end times for display
-  const rfqDayEndTimes = React.useMemo(() => {
+  const rfqDayEndTimes = useMemo(() => {
     const result: Record<string, number> = {};
     Object.entries(conditionsByDay).forEach(([dayKey, list]) => {
       const withEnds = list.filter(
@@ -211,7 +225,7 @@ const MarketsPage = () => {
   }, [conditionsByDay, statusFilter]);
 
   // Create a key that changes whenever filters change to force complete re-render
-  const filterKey = React.useMemo(() => {
+  const filterKey = useMemo(() => {
     return `${selectedCategorySlug || 'all'}-${statusFilter}-${debouncedSearchTerm}`;
   }, [selectedCategorySlug, statusFilter, debouncedSearchTerm]);
 
@@ -231,43 +245,30 @@ const MarketsPage = () => {
     setStatusFilter(filter);
   };
 
-  // Helper to find FocusArea data by category slug for UI styling
-  const getCategoryStyle = (categorySlug: string): FocusArea | undefined => {
-    // First try to find a matching focus area
-    const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
-
-    if (focusArea) {
-      return focusArea;
+  // Handle parlay mode toggle and keep URL hash in sync
+  const handleParlayModeChange = (enabled: boolean) => {
+    setParlayMode(enabled);
+    if (typeof window === 'undefined') return;
+    if (enabled) {
+      const newHash = '#parlays';
+      if (window.location.hash !== newHash) {
+        // Update hash without scrolling or adding a new history entry
+        window.history.replaceState(null, '', newHash);
+      }
+    } else {
+      // Clear hash entirely
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, '', url);
     }
-
-    // If no matching focus area, create a deterministic color based on the slug
-    // This ensures the same category always gets the same color
-    const DEFAULT_COLORS = [
-      '#3B82F6', // blue-500
-      '#C084FC', // purple-400
-      '#4ADE80', // green-400
-      '#FBBF24', // amber-400
-      '#F87171', // red-400
-      '#22D3EE', // cyan-400
-      '#FB923C', // orange-400
-    ];
-
-    // Use a simple hash function to get a consistent index
-    const hashCode = categorySlug.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + (acc * 32 - acc);
-    }, 0);
-
-    const colorIndex = Math.abs(hashCode) % DEFAULT_COLORS.length;
-
-    // Return a partial focus area with the minimal required properties
-    return {
-      id: categorySlug,
-      name: '', // Will use category.name from database
-      resources: [],
-      color: DEFAULT_COLORS[colorIndex],
-      iconSvg: '', // Will use default TagIcon
-    };
   };
+
+  // Handler for text filter changes
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  };
+
+  // Helper to find FocusArea data by category slug for UI styling
+  // (now using the utility function from ~/lib/utils/category)
 
   // Show loader if data is loading
   if (isLoadingMarketsData) {
@@ -326,7 +327,7 @@ const MarketsPage = () => {
               parlayMode={parlayMode}
               onParlayModeChange={handleParlayModeChange}
               isLoadingCategories={isLoadingMarketsData}
-              categories={[]} // Categories are now handled by the hook internally
+              categories={rawMarketsData?.categories || []}
               getCategoryStyle={getCategoryStyle}
               containerClassName="px-0 md:px-0 py-0 w-full max-w-full box-border"
             />

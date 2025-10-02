@@ -12,75 +12,6 @@ import type {
 } from "../../types/MarketsData";
 import { GET_CATEGORIES, GET_CONDITIONS, MARKETS_QUERY } from "./queries";
 
-// Focus areas with their colors - matching the constants from the main app
-const FOCUS_AREAS = [
-  {
-    id: "economy-finance",
-    name: "Economy & Finance",
-    color: "#4ADE80", // green-400
-  },
-  {
-    id: "crypto",
-    name: "Crypto",
-    color: "#C084FC", // purple-400
-  },
-  {
-    id: "weather",
-    name: "Weather",
-    color: "#93C5FD", // blue-300
-  },
-  {
-    id: "geopolitics",
-    name: "Geopolitics",
-    color: "#F87171", // red-400
-  },
-  {
-    id: "tech-science",
-    name: "Tech & Science",
-    color: "#FBBF24", // amber-400
-  },
-  {
-    id: "sports",
-    name: "Sports",
-    color: "#F97316", // orange-500
-  },
-  {
-    id: "culture",
-    name: "Culture",
-    color: "#D946EF", // fuchsia-500
-  },
-];
-
-// Helper function to get color for a category slug
-const getCategoryColor = (categorySlug: string): string => {
-  // First try to find a matching focus area
-  const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
-
-  if (focusArea) {
-    return focusArea.color;
-  }
-
-  // If no matching focus area, create a deterministic color based on the slug
-  // This ensures the same category always gets the same color
-  const DEFAULT_COLORS = [
-    "#3B82F6", // blue-500
-    "#C084FC", // purple-400
-    "#4ADE80", // green-400
-    "#FBBF24", // amber-400
-    "#F87171", // red-400
-    "#22D3EE", // cyan-400
-    "#FB923C", // orange-400
-  ];
-
-  // Use a simple hash function to get a consistent index
-  const hashCode = categorySlug.split("").reduce((acc, char) => {
-    return char.charCodeAt(0) + (acc * 32 - acc);
-  }, 0);
-
-  const colorIndex = Math.abs(hashCode) % DEFAULT_COLORS.length;
-  return DEFAULT_COLORS[colorIndex];
-};
-
 export class MarketsDataService {
   constructor(private graphqlClient: GraphQLClient) {}
 
@@ -106,6 +37,7 @@ export class MarketsDataService {
       const result = {
         ...marketGroupsResult,
         ...conditionsResult,
+        categories,
         lastUpdated: Date.now(),
       };
 
@@ -369,16 +301,12 @@ export class MarketsDataService {
         // Get display unit from baseTokenName or quoteTokenName
         const displayUnit = sourceMarketGroup?.baseTokenName || "";
 
-        // Get color based on category slug
-        const color = getCategoryColor(market.categorySlug);
-
         acc[marketKey] = {
           key: marketKey,
           marketAddress: market.marketAddress,
           chainId: market.chainId,
           marketName,
           collateralAsset,
-          color,
           categorySlug: market.categorySlug,
           categoryId: market.categoryId,
           marketQuestion: sourceMarketGroup?.question || null,
