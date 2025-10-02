@@ -1,7 +1,5 @@
 import dynamic from 'next/dynamic';
 import type React from 'react';
-// import { useState } from 'react';
-
 import NumberDisplay from '../../shared/NumberDisplay';
 import type { OrderBookLevel } from '~/hooks/charts/useOrderBookData';
 
@@ -104,9 +102,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 }) => {
   const isLoading = isLoadingPool || isLoadingBook;
   const isError = isErrorPool || isErrorBook;
-  // const [displayMode, setDisplayMode] = useState<'shares' | 'collateral'>(
-  //   'shares'
-  // );
 
   // Derive decimals from bucket size
   const priceDecimals = (() => {
@@ -194,10 +189,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   const askPadding = Math.max(0, maxRowsPerSide - cumulativeAsks.length);
   const bidPadding = Math.max(0, maxRowsPerSide - cumulativeBids.length);
 
-  // Build fixed-length arrays for rendering in a grid so the middle row is always last price
-  // For asks (top half): we want highest at the very top and the lowest ask
-  // directly above the Last Price. To achieve this, put placeholders at the top,
-  // ensure the bottom-most row is the closest ask to last price, then reverse for rendering.
   const asksTopRows = [
     ...cumulativeAsks,
     ...Array.from({ length: askPadding }, () => null),
@@ -272,20 +263,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
             maxCumulativeAskSize > 0
               ? (ask.cumulativeSize / maxCumulativeAskSize) * 100
               : 0;
-          // const sizeDisplay =
-          //   displayMode === 'shares'
-          //     ? ask.rawSize
-          //     : (Array.isArray((ask as any).bucketTicks) && (ask as any).bucketTicks.length > 0
-          //         ? (ask as any).bucketTicks.reduce(
-          //             (sum: number, t: { price: number; size: number }) =>
-          //               sum + t.size * t.price,
-          //             0
-          //           )
-          //         : ask.rawSize * ask.rawPrice);
-          // const totalDisplay =
-          //   displayMode === 'shares'
-          //     ? ask.cumulativeSize
-          //     : ask.cumulativeCollateral;
           const sizeDisplay = ask.rawSize;
           const totalDisplay = ask.cumulativeSize;
           return (
@@ -316,21 +293,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
               ) : null}
             </span>
           </div>
-          {/* <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                setDisplayMode((m) =>
-                  m === 'shares' ? 'collateral' : 'shares'
-                )
-              }
-              aria-pressed={displayMode === 'collateral'}
-              className="ml-1 rounded border px-1 py-0.5 text-[10px] leading-none bg-primary text-primary-foreground"
-              title="Toggle size units"
-            >
-              {displayMode === 'shares' ? 'Shares' : quoteTokenName || 'tokens'}
-            </button>
-          </div> */}
         </div>
 
         {/* Bottom Half: Bids (rendered top-down, padded at bottom) */}
@@ -354,20 +316,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
             maxCumulativeBidSize > 0
               ? (bid.cumulativeSize / maxCumulativeBidSize) * 100
               : 0;
-          // const sizeDisplay =
-          //   displayMode === 'shares'
-          //     ? bid.rawSize
-          //     : (Array.isArray((bid as any).bucketTicks) && (bid as any).bucketTicks.length > 0
-          //         ? (bid as any).bucketTicks.reduce(
-          //             (sum: number, t: { price: number; size: number }) =>
-          //               sum + t.size * t.price,
-          //             0
-          //           )
-          //         : bid.rawSize * bid.rawPrice);
-          // const totalDisplay =
-          //   displayMode === 'shares'
-          //     ? bid.cumulativeSize
-          //     : bid.cumulativeCollateral;
           const sizeDisplay = bid.rawSize;
           const totalDisplay = bid.cumulativeSize;
           return (
