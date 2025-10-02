@@ -4,7 +4,7 @@ import { IoDocumentTextOutline } from 'react-icons/io5';
 import { LiaRulerVerticalSolid } from 'react-icons/lia';
 import * as chains from 'viem/chains';
 
-import type { MarketType } from '@sapience/ui/types';
+import type { MarketType } from '@sapience/sdk/types';
 import NumberDisplay from '../shared/NumberDisplay';
 import {
   useTotalVolume,

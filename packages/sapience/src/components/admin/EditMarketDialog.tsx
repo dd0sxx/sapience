@@ -1,19 +1,19 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/dialog';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import type { MarketType } from '@sapience/ui/types';
+import type { MarketType } from '@sapience/sdk/types';
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { tickToPrice } from '~/lib/utils/tickUtils';

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useToast } from '@sapience/ui/hooks/use-toast';
-import type { MarketGroupType } from '@sapience/ui/types';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
+import type { MarketGroupType } from '@sapience/sdk/types';
 import type { MarketGroupClassification } from '~/lib/types';
 
 export interface TradeParams {

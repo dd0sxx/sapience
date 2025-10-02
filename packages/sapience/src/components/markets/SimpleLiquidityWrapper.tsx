@@ -1,5 +1,9 @@
 import { useConnectOrCreateWallet } from '@privy-io/react-auth';
-import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@sapience/sdk/ui/components/ui/tabs';
 import type React from 'react';
 import { useState } from 'react';
 import { useAccount } from 'wagmi';

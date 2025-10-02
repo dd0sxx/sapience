@@ -1,15 +1,15 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
-import { Button } from '@sapience/ui/components/ui/button';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@sapience/ui/components/ui/dropdown-menu';
-import { Label } from '@sapience/ui/components/ui/label';
+} from '@sapience/sdk/ui/components/ui/dropdown-menu';
+import { Label } from '@sapience/sdk/ui/components/ui/label';
 import { ChevronDown } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';

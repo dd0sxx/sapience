@@ -1,13 +1,13 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@sapience/ui/components/ui/button';
-import { sapienceAbi } from '@sapience/ui/lib/abi';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { sapienceAbi } from '@sapience/sdk/queries/client/abi';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import type { MarketGroupType } from '@sapience/ui/types';
+import type { MarketGroupType } from '@sapience/sdk/types';
 import NumericPredict from '../inputs/NumericPredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';

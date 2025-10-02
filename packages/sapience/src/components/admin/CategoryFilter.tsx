@@ -1,8 +1,8 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
-import { Button } from '@sapience/ui/components/ui/button';
-import { cn } from '@sapience/ui/lib/utils';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { cn } from '@sapience/sdk/ui/lib/utils';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 

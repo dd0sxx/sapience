@@ -1,13 +1,13 @@
 'use client';
 
 import { Button } from '@/sapience/ui/index';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@sapience/sdk/ui/components/ui/dialog';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
@@ -62,6 +62,7 @@ export default function BetslipParlayForm({
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
+  const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const parlayWagerAmount = useWatch({
     control: methods.control,
@@ -262,21 +263,13 @@ export default function BetslipParlayForm({
                     <LottieLoader width={16} height={16} />
                     <span>Broadcasting a request for bids...</span>
                   </span>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="text-primary underline"
-                        >
-                          Limit Order
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Coming Soon</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <button
+                    type="button"
+                    className="text-primary underline"
+                    onClick={() => setIsLimitDialogOpen(true)}
+                  >
+                    Limit Order
+                  </button>
                 </div>
               </div>
             ) : (
@@ -296,40 +289,17 @@ export default function BetslipParlayForm({
                     <LottieLoader width={16} height={16} />
                     <span>Broadcasting a request for bids...</span>
                   </span>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="text-primary underline"
-                        >
-                          Limit Order
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Coming Soon</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <button
+                    type="button"
+                    className="text-primary underline"
+                    onClick={() => setIsLimitDialogOpen(true)}
+                  >
+                    Limit Order
+                  </button>
                 </div>
                 {showNoBidsHint ? (
-                  <div className="text-xs text-muted-foreground mt-2">
-                    <span>If no bids appear, you can place a </span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="text-primary underline"
-                          >
-                            limit order
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Coming Soon</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  <div className="text-xs text-muted-foreground font-medium mt-2">
+                    Some combinations may not receive bids
                   </div>
                 ) : null}
               </div>
@@ -342,6 +312,16 @@ export default function BetslipParlayForm({
           )}
         </div>
       </form>
+      <Dialog open={isLimitDialogOpen} onOpenChange={setIsLimitDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Place a Limit Order</DialogTitle>
+          </DialogHeader>
+          <p className="text-center my-6 text-sm text-muted-foreground">
+            Coming soon
+          </p>
+        </DialogContent>
+      </Dialog>
     </FormProvider>
   );
 }

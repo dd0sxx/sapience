@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { parseUnits } from 'viem';
-import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
+import type { MarketGroup as MarketGroupType } from '@sapience/sdk/types/graphql';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { fetchQuoteByUrl, toQuoteUrl } from '~/hooks/forms/quoteApi';
 

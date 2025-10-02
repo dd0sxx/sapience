@@ -1,4 +1,4 @@
-import { useToast } from '@sapience/ui/hooks/use-toast';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useCallback, useEffect, useState } from 'react';
 import { formatUnits, type Abi } from 'viem';
 

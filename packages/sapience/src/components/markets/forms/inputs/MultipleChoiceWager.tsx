@@ -1,12 +1,12 @@
-import { Button } from '@sapience/ui/components/ui/button';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@sapience/ui/components/ui/select';
+} from '@sapience/sdk/ui/components/ui/select';
 import { useFormContext } from 'react-hook-form';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';

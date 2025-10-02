@@ -3,7 +3,7 @@ import { twMerge } from 'tailwind-merge';
 import { createPublicClient, formatEther, http } from 'viem';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
-import type { MarketType, TransactionType } from '@sapience/ui/types';
+import type { MarketType, TransactionType } from '@sapience/sdk/types';
 
 export const foilApi = {
   get baseUrl() {

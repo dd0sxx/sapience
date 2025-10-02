@@ -1,11 +1,11 @@
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
-import { SlippageTolerance } from '@sapience/ui/components/SlippageTolerance';
+import { NumberDisplay } from '@sapience/sdk/ui/components/NumberDisplay';
+import { SlippageTolerance } from '@sapience/sdk/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@sapience/ui/components/ui/alert';
-import { Button } from '@sapience/ui/components/ui/button';
+} from '@sapience/sdk/ui/components/ui/alert';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -13,11 +13,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@sapience/ui/components/ui/form';
-import { Input } from '@sapience/ui/components/ui/input';
-import { Skeleton } from '@sapience/ui/components/ui/skeleton';
-import Slider from '@sapience/ui/components/ui/slider';
-import { useToast } from '@sapience/ui/index';
+} from '@sapience/sdk/ui/components/ui/form';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
+import { Skeleton } from '@sapience/sdk/ui/components/ui/skeleton';
+import Slider from '@sapience/sdk/ui/components/ui/slider';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { HelpCircle } from 'lucide-react';
 import type React from 'react';

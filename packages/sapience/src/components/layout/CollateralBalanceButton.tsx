@@ -5,14 +5,14 @@ import { useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 import { erc20Abi, formatUnits } from 'viem';
 import { useWallets } from '@privy-io/react-auth';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import { formatFiveSigFigs } from '~/lib/utils/util';
 import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/constants';
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
-import { Input } from '@sapience/ui/components/ui/input';
-import { Label } from '@sapience/ui/components/ui/label';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
+import { Label } from '@sapience/sdk/ui/components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';

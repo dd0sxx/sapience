@@ -3,8 +3,8 @@ import type { CodegenConfig } from "@graphql-codegen/cli";
 const config: CodegenConfig = {
   schema: "./schema.graphql",
   generates: {
-    // Generate types for the UI package (client)
-    "../ui/types/graphql.ts": {
+    // Generate types for the SDK package
+    "../sdk/types/graphql.ts": {
       plugins: ["typescript", "typescript-operations"],
       config: {
         avoidOptionals: false,

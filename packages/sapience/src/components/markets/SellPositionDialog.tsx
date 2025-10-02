@@ -2,17 +2,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatEther } from 'viem';
 
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
-import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
+import { sapienceAbi as getSapienceAbi } from '@sapience/sdk/queries';
 
-import type { PositionType } from '@sapience/ui/types';
+import type { PositionType } from '@sapience/sdk/types';
 import { useAccount } from 'wagmi';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useModifyTrade } from '~/hooks/contract/useModifyTrade';
@@ -32,7 +32,7 @@ export default function SellPositionDialog({
   onSuccess,
 }: SellPositionDialogProps) {
   const [open, setOpen] = useState(false);
-  const { abi } = useSapienceAbi();
+  const { abi } = getSapienceAbi();
   const { address: accountAddress } = useAccount();
 
   const positionId = position.positionId;

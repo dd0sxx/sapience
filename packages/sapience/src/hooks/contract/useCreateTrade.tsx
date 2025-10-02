@@ -1,6 +1,6 @@
 import type { Hash } from 'viem';
 import { parseUnits, type Abi, encodeFunctionData } from 'viem';
-import erc20ABI from '@sapience/ui/abis/erc20abi.json';
+import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 
 import { useMemo, useState } from 'react';
 import { useTokenApproval } from './useTokenApproval';

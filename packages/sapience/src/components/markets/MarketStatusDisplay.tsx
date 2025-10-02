@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic';
 import type React from 'react';
-import type { MarketGroupType } from '@sapience/ui/types';
+import type { MarketGroupType } from '@sapience/sdk/types';
 
 import { MarketGroupClassification } from '~/lib/types';
 import { formatNumber } from '~/lib/utils/util';

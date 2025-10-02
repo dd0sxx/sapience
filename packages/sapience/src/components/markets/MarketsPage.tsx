@@ -1,6 +1,6 @@
 'use client';
 
-import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
+import { useIsMobile } from '@sapience/sdk/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FrownIcon } from 'lucide-react';
@@ -8,8 +8,8 @@ import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
-import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
-import { SearchBar } from '@sapience/ui';
+import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
+import { SearchBar } from '@sapience/sdk/ui';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
 import FocusAreaFilter from './FocusAreaFilter';

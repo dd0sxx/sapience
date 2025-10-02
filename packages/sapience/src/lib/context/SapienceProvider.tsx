@@ -1,7 +1,7 @@
 'use client';
 
-import { graphqlRequest } from '@sapience/ui/lib';
-import type { MarketGroup as GraphQLMarketGroup } from '@sapience/ui/types/graphql';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import type { MarketGroup as GraphQLMarketGroup } from '@sapience/sdk/types/graphql';
 import type {
   QueryObserverResult,
   RefetchOptions,

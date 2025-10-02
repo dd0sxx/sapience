@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -8,18 +8,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@sapience/ui/components/ui/table';
+} from '@sapience/sdk/ui/components/ui/table';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import Link from 'next/link';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
-import type { PositionType } from '@sapience/ui/types';
+import type { PositionType } from '@sapience/sdk/types';
 import {
   flexRender,
   getCoreRowModel,

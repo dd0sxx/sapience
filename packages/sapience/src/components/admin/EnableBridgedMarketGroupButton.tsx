@@ -4,8 +4,8 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@sapience/ui/components/ui/alert';
-import { Button } from '@sapience/ui/components/ui/button';
+} from '@sapience/sdk/ui/components/ui/alert';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Address } from 'viem';
