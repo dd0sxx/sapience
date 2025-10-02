@@ -1,10 +1,10 @@
 # Passive Liquidity Vault
 
-An ERC-20 share token vault with a request-based flow for deposits and withdrawals. A designated EOA “manager” deploys funds to external protocols and processes user requests. The contract intentionally deviates from ERC-4626 immediate-execution semantics to enforce fair pricing, rate limits, and safety constraints.
+An ERC-20 share token vault with a request-based flow for deposits and withdrawals. A designated EOA "manager" deploys funds to external protocols and processes user requests. The contract uses a request-based system to enforce fair pricing, rate limits, and safety constraints.
 
-## ERC-4626 deviations and alternative interface
+## Request-based interface
 
-This vault inherits ERC-4626/4626-compatible types but overrides the standard entry points to revert. Instead, use the request-based API:
+This vault uses a request-based API instead of immediate execution:
 - `requestDeposit(uint256 assets, uint256 expectedShares)`
 - `requestWithdrawal(uint256 shares, uint256 expectedAssets)`
 - `processDeposit(address requestedBy)` and `processWithdrawal(address requestedBy)` (manager only)
@@ -41,7 +41,7 @@ Additional views/utilities:
    - Users can cancel their own requests after expiration
 
 2. **Asset Management**
-   - Underlying asset from ERC-4626 `asset()`
+   - Underlying asset from `asset()`
    - ERC-20 shares minted/burned on processing
    - `unconfirmedAssets` tracks assets held for unprocessed deposit requests
 

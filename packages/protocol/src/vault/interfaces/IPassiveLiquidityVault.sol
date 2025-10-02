@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 /**
  * @title IPassiveLiquidityVault
- * @notice Interface for the ERC-4626 compliant PassiveLiquidityVault contract with request-based deposits and withdrawals
+ * @notice Interface for the PassiveLiquidityVault contract with request-based deposits and withdrawals
  */
-interface IPassiveLiquidityVault is IERC4626, IERC1271 {
+interface IPassiveLiquidityVault is IERC1271 {
     // ============ Structs ============
     struct PendingRequest {
         address user;
@@ -84,13 +83,6 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
 
     // ============ Additional Functions Available in Contract ============
     // Note: The following functions are implemented in the contract but not declared in this interface
-    
-    // ERC-4626 Standard Functions (inherited from IERC4626) - Note: These now create requests instead of immediate execution
-    // function deposit(uint256 assets, address receiver) external returns (uint256 shares);
-    // function mint(uint256 shares, address receiver) external returns (uint256 assets);
-    // function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
-    // function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
-    // function totalAssets() external view returns (uint256);
     
     // IERC1271 Signature Validation Function
     // function isValidSignature(bytes32 messageHash, bytes memory signature) external view returns (bytes4);
