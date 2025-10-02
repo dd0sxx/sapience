@@ -229,7 +229,7 @@ contract PassiveLiquidityVault is
     }
 
     function availableAssets() public view returns (uint256) {
-        uint256 balance = IERC20(asset()).balanceOf(address(this));
+        uint256 balance = _asset.balanceOf(address(this));
         // Subtract unconfirmed assets (pending deposit requests)
         return balance > unconfirmedAssets ? balance - unconfirmedAssets : 0;
     }
@@ -359,9 +359,9 @@ contract PassiveLiquidityVault is
         lastUserInteractionTimestamp[msg.sender] = block.timestamp;
 
         // Transfer assets from user to vault
-        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
-        IERC20(asset()).safeTransferFrom(msg.sender, address(this), assets);
-        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        uint256 balanceBefore = _asset.balanceOf(address(this));
+        _asset.safeTransferFrom(msg.sender, address(this), assets);
+        uint256 balanceAfter = _asset.balanceOf(address(this));
         if (balanceBefore + assets != balanceAfter)
             revert TransferFailed(balanceBefore, assets, balanceAfter);
 
@@ -431,9 +431,9 @@ contract PassiveLiquidityVault is
         }
 
         // Transfer assets from vault to user
-        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
-        IERC20(asset()).safeTransfer(msg.sender, assetsToReturn);
-        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        uint256 balanceBefore = _asset.balanceOf(address(this));
+        _asset.safeTransfer(msg.sender, assetsToReturn);
+        uint256 balanceAfter = _asset.balanceOf(address(this));
         if (balanceBefore != assetsToReturn + balanceAfter)
             revert TransferFailed(balanceBefore, assetsToReturn, balanceAfter);
 
@@ -499,9 +499,9 @@ contract PassiveLiquidityVault is
         _burn(requestedBy, request.shares);
 
         // Transfer assets from vault to user
-        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
-        IERC20(asset()).safeTransfer(request.user, request.assets);
-        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        uint256 balanceBefore = _asset.balanceOf(address(this));
+        _asset.safeTransfer(request.user, request.assets);
+        uint256 balanceAfter = _asset.balanceOf(address(this));
         if (balanceBefore != request.assets + balanceAfter)
             revert TransferFailed(balanceBefore, request.assets, balanceAfter);
 
@@ -550,9 +550,9 @@ contract PassiveLiquidityVault is
         if (withdrawAmount == 0) revert AmountTooSmall(withdrawAmount, 1); // Prevent zero withdrawals
 
         _burn(msg.sender, shares);
-        uint256 balanceBefore = IERC20(asset()).balanceOf(address(this));
-        IERC20(asset()).safeTransfer(msg.sender, withdrawAmount);
-        uint256 balanceAfter = IERC20(asset()).balanceOf(address(this));
+        uint256 balanceBefore = _asset.balanceOf(address(this));
+        _asset.safeTransfer(msg.sender, withdrawAmount);
+        uint256 balanceAfter = _asset.balanceOf(address(this));
         if (balanceBefore != withdrawAmount + balanceAfter)
             revert TransferFailed(balanceBefore, withdrawAmount, balanceAfter);
 
@@ -588,7 +588,7 @@ contract PassiveLiquidityVault is
         // Update deployment info - use EnumerableSet for gas efficiency
         activeProtocols.add(protocol);
 
-        IERC20(asset()).forceApprove(protocol, amount);
+        _asset.forceApprove(protocol, amount);
 
         emit FundsApproved(msg.sender, amount, protocol);
 
@@ -619,7 +619,7 @@ contract PassiveLiquidityVault is
      * @return Available assets minus unconfirmed assets from pending deposits
      */
     function _getAvailableAssets() internal view returns (uint256) {
-        uint256 balance = IERC20(asset()).balanceOf(address(this));
+        uint256 balance = _asset.balanceOf(address(this));
         // Subtract unconfirmed assets (pending deposit requests)
         return balance > unconfirmedAssets ? balance - unconfirmedAssets : 0;
     }
