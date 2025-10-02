@@ -4,8 +4,8 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@sapience/ui/components/ui/alert';
-import { Button } from '@sapience/ui/components/ui/button';
+} from '@sapience/sdk/ui/components/ui/alert';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
-import { sapienceFactoryAbi } from '@sapience/ui/lib/abi';
+} from '@sapience/sdk/ui/components/ui/dialog';
+import { sapienceFactoryAbi } from '@sapience/sdk/queries/client/abi';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AbiEvent, Address, TransactionReceipt } from 'viem';

@@ -3,7 +3,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from '@sapience/ui/components/ui/card';
+} from '@sapience/sdk/ui/components/ui/card';
 import { ArrowRightCircle } from 'lucide-react';
 import type React from 'react';
 

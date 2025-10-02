@@ -1,8 +1,8 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
-import { Button } from '@sapience/ui/components/ui/button';
-import { graphqlRequest } from '@sapience/ui/lib';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { Address } from 'viem';

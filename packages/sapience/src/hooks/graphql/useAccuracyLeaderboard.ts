@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 type ForecasterScore = {
   attester: string;

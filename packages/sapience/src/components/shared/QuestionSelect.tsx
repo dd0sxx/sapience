@@ -1,6 +1,6 @@
 'use client';
 
-import { Input } from '@sapience/ui/components/ui/input';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
 import { Search } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import type { CommentFilters } from './Comments';

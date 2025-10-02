@@ -1,8 +1,8 @@
-import { Button } from '@sapience/ui/components/ui/button';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
+import { sapienceAbi as getSapienceAbi } from '@sapience/sdk/queries';
 import { useModifyTrade } from '~/hooks/contract/useModifyTrade';
 
 interface SellPositionButtonProps {
@@ -19,7 +19,7 @@ const SellPositionButton = ({
   onSuccess,
 }: SellPositionButtonProps) => {
   const { toast } = useToast();
-  const { abi } = useSapienceAbi();
+  const { abi } = getSapienceAbi();
   const {
     closePosition,
     isClosingPosition,

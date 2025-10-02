@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import LottieLoader from './LottieLoader';
 
 const LOCAL_STORAGE_KEY = 'sapiencePwaInstallDismissed';

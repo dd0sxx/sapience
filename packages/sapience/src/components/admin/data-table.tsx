@@ -7,7 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@sapience/ui/components/ui/table';
+} from '@sapience/sdk/ui/components/ui/table';
 import type {
   ColumnDef,
   ColumnFiltersState,

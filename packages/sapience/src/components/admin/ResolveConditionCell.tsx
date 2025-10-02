@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { useWallets } from '@privy-io/react-auth';
 import { Loader2 } from 'lucide-react';
 import { erc20Abi, zeroAddress, toHex } from 'viem';

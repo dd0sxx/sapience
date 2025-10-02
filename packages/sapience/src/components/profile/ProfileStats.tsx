@@ -1,7 +1,7 @@
 'use client';
 
-import { Card, CardContent } from '@sapience/ui/components/ui/card';
-import { cn } from '@sapience/ui/lib/utils';
+import { Card, CardContent } from '@sapience/sdk/ui/components/ui/card';
+import { cn } from '@sapience/sdk/ui/lib/utils';
 import { BarChart2, Target } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';

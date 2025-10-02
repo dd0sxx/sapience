@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { formatEther } from 'viem';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';

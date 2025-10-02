@@ -4,7 +4,7 @@ import {
   SidebarInset,
   SidebarProvider,
   useSidebar,
-} from '@sapience/ui/components/ui/sidebar';
+} from '@sapience/sdk/ui/components/ui/sidebar';
 import type { ReactNode } from 'react';
 
 import Header from './Header';

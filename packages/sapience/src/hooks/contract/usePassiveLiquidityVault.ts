@@ -4,7 +4,7 @@ import { erc20Abi, formatUnits, parseUnits, encodeFunctionData } from 'viem';
 import type { Abi } from 'abitype';
 import PassiveLiquidityVault from '@/protocol/deployments/PassiveLiquidityVault.json';
 import { useReadContracts, useAccount } from 'wagmi';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';

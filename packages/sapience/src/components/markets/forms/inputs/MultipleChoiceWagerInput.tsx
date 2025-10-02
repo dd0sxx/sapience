@@ -1,4 +1,4 @@
-import type { MarketGroupType } from '@sapience/ui/types';
+import type { MarketGroupType } from '@sapience/sdk/types';
 import { WagerInput } from './WagerInput';
 import MultipleChoiceWagerChoiceSelect from './MultipleChoiceWager';
 

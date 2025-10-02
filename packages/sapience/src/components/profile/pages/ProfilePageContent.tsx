@@ -9,7 +9,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@sapience/ui/components/ui/tabs';
+} from '@sapience/sdk/ui/components/ui/tabs';
 
 import {
   Telescope,

@@ -1,5 +1,5 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
-import type { PositionType } from '@sapience/ui/types';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
+import type { PositionType } from '@sapience/sdk/types';
 import { formatEther } from 'viem';
 
 import NumberDisplay from '~/components/shared/NumberDisplay';

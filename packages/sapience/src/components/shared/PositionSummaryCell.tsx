@@ -1,9 +1,9 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 
-import type { PositionType } from '@sapience/ui/types';
+import type { PositionType } from '@sapience/sdk/types';
 import {
   CHART_SERIES_COLORS,
   getSeriesColorByIndex,

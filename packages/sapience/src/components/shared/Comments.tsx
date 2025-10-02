@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef } from 'react';
 import { FrownIcon } from 'lucide-react';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { AddressDisplay } from './AddressDisplay';
 import LottieLoader from './LottieLoader';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';

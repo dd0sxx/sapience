@@ -1,4 +1,4 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import clsx from 'clsx';
 
 import NumberDisplay from '~/components/shared/NumberDisplay';

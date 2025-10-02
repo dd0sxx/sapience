@@ -19,9 +19,9 @@
       "~/*": ["./*"],
       "@/components/*": ["./components/*"],
       "@/protocol/*": ["../../protocol/*"],      
-      "@/sapience/ui/*": ["../../ui/*"],
-      "@sapience/ui": ["../../ui/index.ts"],
-      "@sapience/ui/*": ["../../ui/*"]
+      "@/sapience/ui/*": ["../../sdk/ui/*"],
+      "@sapience/sdk": ["../../sdk/index.ts"],
+      "@sapience/sdk/*": ["../../sdk/*"]
     },
     "incremental": true,
     "plugins": [

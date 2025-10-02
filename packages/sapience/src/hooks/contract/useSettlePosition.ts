@@ -1,4 +1,4 @@
-import { sapienceAbi } from '@sapience/ui/lib/abi';
+import { sapienceAbi } from '@sapience/sdk/queries/client/abi';
 import type { Abi } from 'abitype';
 import { useCallback, useState } from 'react';
 import { useSimulateContract } from 'wagmi';

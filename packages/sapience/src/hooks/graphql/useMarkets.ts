@@ -1,4 +1,4 @@
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
