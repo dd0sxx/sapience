@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from '@sapience/ui/components/ui/dialog';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/dialog';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';

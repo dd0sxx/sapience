@@ -6,15 +6,15 @@ import { erc20Abi, formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 import { Calendar, TrendingUp, Telescope } from 'lucide-react';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 
-import type { PositionType } from '@sapience/ui/types';
+import type { PositionType } from '@sapience/sdk/types';
 import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/constants';
 import { formatFiveSigFigs, bigIntAbs } from '~/lib/utils/util';
 import type { Parlay } from '~/hooks/graphql/useUserParlays';

@@ -1,5 +1,5 @@
-import { Label } from '@sapience/ui/components/ui/label';
-import Slider from '@sapience/ui/components/ui/slider';
+import { Label } from '@sapience/sdk/ui/components/ui/label';
+import Slider from '@sapience/sdk/ui/components/ui/slider';
 import { useFormContext } from 'react-hook-form';
 import { useState, useEffect } from 'react';
 import { priceToSqrtPriceX96 } from '~/lib/utils/util';

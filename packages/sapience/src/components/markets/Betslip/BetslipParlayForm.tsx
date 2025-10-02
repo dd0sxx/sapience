@@ -1,13 +1,13 @@
 'use client';
 
 import { Button } from '@/sapience/ui/index';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';

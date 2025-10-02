@@ -1,6 +1,6 @@
 ---
 title: Design Dashboards, Games, and more
-description: Build your own app with @sapience/ui, GraphQL, Quoter, and Auctions.
+description: Build your own app with @sapience/sdk, GraphQL, Quoter, and Auctions.
 ---
 
 import BuilderGuideAlert from '../../../components/BuilderGuideAlert'
@@ -9,7 +9,7 @@ import BuilderGuideAlert from '../../../components/BuilderGuideAlert'
 
 # Build a Completely Custom App
 
-This guide shows how to scaffold a Next.js app that uses the `@sapience/ui` package for forms and components, and wires data via GraphQL and the Quoter/Auction APIs.
+This guide shows how to scaffold a Next.js app that uses the `@sapience/sdk` package for forms and components, and wires data via GraphQL and the Quoter/Auction APIs.
 
 ## Install
 
@@ -22,21 +22,21 @@ pnpm create next-app@14 my-sapience-app --ts --tailwind --eslint --app --use-pnp
 cd my-sapience-app
 ```
 
-If your scaffold installs a different Next version, pin the version supported by `@sapience/ui`:
+If your scaffold installs a different Next version, pin the version supported by `@sapience/sdk`:
 
 ```bash
 pnpm add -E next@14.2.30
 ```
 
-### Install @sapience/ui
+### Install @sapience/sdk
 
 ```bash
-pnpm add @sapience/ui
+pnpm add @sapience/sdk
 ```
 
 ### Install peer dependencies
 
-`@sapience/ui` expects certain libraries to be provided by your app. Install the core set below, then add optional ones as you use the corresponding components.
+`@sapience/sdk` expects certain libraries to be provided by your app. Install the core set below, then add optional ones as you use the corresponding components.
 
 Core peer deps:
 
@@ -50,7 +50,7 @@ Optional/feature-specific peer deps (install only if needed):
 pnpm add -E @rainbow-me/rainbowkit@2.1.6 @tanstack/react-table@8.21.2 date-fns@3.6.0 dayjs@1.11.13 jsbi@3.2.5 react-countup@6.5.3 next-pwa@5.6.0 @uniswap/sdk-core@5.4.0 @uniswap/v3-core@1.0.1 @uniswap/v3-sdk@3.14.0
 ```
 
-Tip: You can always check the exact versions in `@sapience/ui`'s `peerDependencies` and match them with `-E`.
+Tip: You can always check the exact versions in `@sapience/sdk`'s `peerDependencies` and match them with `-E`.
 
 ### Start the dev server
 
@@ -61,7 +61,7 @@ pnpm dev
 ## Import Components and Hooks
 
 ```tsx
-import { TradeForm } from '@sapience/ui';
+import { TradeForm } from '@sapience/sdk/ui';
 ```
 
 ## Connect Data
@@ -97,7 +97,7 @@ function toQuoteUrl(params: {
 
 ```tsx
 import { useMemo, useState } from 'react';
-import { TradeForm } from '@sapience/ui';
+import { TradeForm } from '@sapience/sdk/ui';
 
 export default function TradePage() {
   const [baseUrl] = useState('https://api.sapience.xyz');
@@ -161,12 +161,12 @@ export async function fetchMarkets() {
 
 ## Theming and UI
 
-`@sapience/ui` ships with shadcn-like primitives and a Tailwind preset. Import the preset and include it in your Tailwind config.
+`@sapience/sdk` ships with shadcn-like primitives and a Tailwind preset. Import the preset and include it in your Tailwind config.
 
 ```ts
 // tailwind.config.ts
 import type { Config } from 'tailwindcss'
-import sapiencePreset from '@sapience/ui/tailwind-preset'
+import sapiencePreset from '@sapience/sdk/ui/tailwind-preset'
 
 export default {
   presets: [sapiencePreset],
@@ -174,7 +174,7 @@ export default {
     './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
-    './node_modules/@sapience/ui/dist/**/*.{js,mjs}'
+    './node_modules/@sapience/sdk/dist/**/*.{js,mjs}'
   ],
 } satisfies Config
 ```

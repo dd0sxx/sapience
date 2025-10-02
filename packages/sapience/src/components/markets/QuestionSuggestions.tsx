@@ -7,7 +7,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import QuestionItem from '../shared/QuestionItem';
 
 interface QuestionSuggestionsProps {

@@ -1,4 +1,4 @@
-import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
+import { sapienceAbi as getSapienceAbi } from '@sapience/sdk/queries';
 import { useEffect, useState } from 'react';
 import type { Address } from 'viem';
 import { useReadContract } from 'wagmi';
@@ -6,7 +6,7 @@ import { useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 export function useMarketGroupOwnership(marketGroupAddress: Address) {
-  const { abi: marketGroupAbi } = useSapienceAbi();
+  const { abi: marketGroupAbi } = getSapienceAbi();
   const [nominateError, setNominateError] = useState<string | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
 

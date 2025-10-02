@@ -1,4 +1,4 @@
-import { Toaster } from '@sapience/ui/components/ui/toaster';
+import { Toaster } from '@sapience/sdk/ui/components/ui/toaster';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 
 import '@rainbow-me/rainbowkit/styles.css';
 
-import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
+import { TooltipProvider } from '@sapience/sdk/ui/components/ui/tooltip';
 import Providers from '~/app/providers';
 import Layout from '~/components/layout';
 import GlobalLoader from '~/components/shared/GlobalLoader';

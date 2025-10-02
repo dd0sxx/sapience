@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';

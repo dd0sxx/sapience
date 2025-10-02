@@ -1,8 +1,8 @@
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { useFormContext } from 'react-hook-form';
 import { useEffect } from 'react';
 
-import type { MarketGroupType } from '@sapience/ui/types';
+import type { MarketGroupType } from '@sapience/sdk/types';
 import { WagerInput } from './WagerInput';
 import {
   YES_SQRT_PRICE_X96,

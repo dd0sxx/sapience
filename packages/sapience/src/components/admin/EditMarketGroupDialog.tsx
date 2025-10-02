@@ -1,23 +1,23 @@
 'use client';
 
-import { Button, Input, Label } from '@sapience/ui';
-import { Textarea } from '@sapience/ui/components/ui/textarea';
+import { Button, Input, Label } from '@sapience/sdk/ui';
+import { Textarea } from '@sapience/sdk/ui/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@sapience/ui/components/ui/select';
-import { Switch } from '@sapience/ui/components/ui/switch';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/select';
+import { Switch } from '@sapience/sdk/ui/components/ui/switch';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';

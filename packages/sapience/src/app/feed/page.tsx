@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { graphqlRequest } from '@sapience/ui/lib';
-import type { Transaction as TransactionType } from '@sapience/ui/types';
-import { Input } from '@sapience/ui/components/ui/input';
-import { Button } from '@sapience/ui/components/ui/button';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import type { Transaction as TransactionType } from '@sapience/sdk/types';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { Zap, Search, SquareStack as SquareStackIcon } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';

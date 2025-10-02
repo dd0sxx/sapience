@@ -1,12 +1,12 @@
 'use client';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatEther } from 'viem';
 import { formatDistanceToNow } from 'date-fns';
 
-import type { Position as PositionType } from '@sapience/ui/types/graphql';
+import type { Position as PositionType } from '@sapience/sdk/types/graphql';
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@sapience/ui/components/ui/table';
+} from '@sapience/sdk/ui/components/ui/table';
 import {
   flexRender,
   getCoreRowModel,
@@ -23,7 +23,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useAllPositions } from '~/hooks/graphql/usePositions';
 import NumberDisplay from '~/components/shared/NumberDisplay';

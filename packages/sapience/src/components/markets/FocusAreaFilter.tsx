@@ -1,8 +1,12 @@
 'use client';
 
 import type * as React from 'react';
-import { Switch } from '@sapience/ui/components/ui/switch';
-import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import { Switch } from '@sapience/sdk/ui/components/ui/switch';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@sapience/sdk/ui/components/ui/tabs';
 import { SquareStack as SquareStackIcon } from 'lucide-react';
 import CategoryChips from './CategoryChips';
 import type { FocusArea } from '~/lib/constants/focusAreas';

@@ -1,20 +1,20 @@
 'use client';
 
-import { Dialog, DialogContent } from '@sapience/ui/components/ui/dialog';
+import { Dialog, DialogContent } from '@sapience/sdk/ui/components/ui/dialog';
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from '@sapience/ui/components/ui/tabs';
-import type { MarketGroupType, MarketType } from '@sapience/ui/types';
+} from '@sapience/sdk/ui/components/ui/tabs';
+import type { MarketGroupType, MarketType } from '@sapience/sdk/types';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import type { Address } from 'viem';
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { RefreshCw, CandlestickChart } from 'lucide-react';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 
