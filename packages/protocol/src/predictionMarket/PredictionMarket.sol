@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IPredictionMarket.sol";
 import "./interfaces/IPredictionStructs.sol";
@@ -14,7 +13,6 @@ import "./interfaces/IPredictionMarketResolver.sol";
 import "./interfaces/IPredictionEvents.sol";
 import "./utils/SignatureProcessor.sol";
 import "../market/interfaces/ISapience.sol";
-import "../market/interfaces/ISapienceStructs.sol";
 
 /**
  * @title PredictionMarket
@@ -48,10 +46,9 @@ contract PredictionMarket is
     error TransferFailed();
     error OrderNotFound();
     error OrderExpired();
-    error OrderNotExpired();
     error InvalidMakerNonce();
     error NotOwner();
-    
+
     // ============ State Variables ============
     IPredictionStructs.Settings public config;
 
@@ -383,7 +380,6 @@ contract PredictionMarket is
             orderId
         ];
         if (order.orderId != orderId) revert OrderNotFound();
-        if (block.timestamp < order.orderDeadline) revert OrderNotExpired();
         if (order.maker != msg.sender) revert MakerIsNotCaller();
 
         _safeTransferOut(

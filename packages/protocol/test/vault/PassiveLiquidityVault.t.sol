@@ -614,6 +614,27 @@ contract PassiveLiquidityVaultTest is Test {
         
         assertFalse(vault.emergencyMode());
     }
+
+    // Tests that the EmergencyModeUpdated event is properly emitted when toggling emergency mode
+    function testToggleEmergencyModeEmitsEvent() public {
+        // Test enabling emergency mode
+        vm.startPrank(owner);
+        vm.expectEmit(true, true, true, true);
+        emit IPassiveLiquidityVault.EmergencyModeUpdated(true);
+        vault.toggleEmergencyMode();
+        vm.stopPrank();
+        
+        assertTrue(vault.emergencyMode(), "Emergency mode should be enabled");
+        
+        // Test disabling emergency mode
+        vm.startPrank(owner);
+        vm.expectEmit(true, true, true, true);
+        emit IPassiveLiquidityVault.EmergencyModeUpdated(false);
+        vault.toggleEmergencyMode();
+        vm.stopPrank();
+        
+        assertFalse(vault.emergencyMode(), "Emergency mode should be disabled");
+    }
     
     // ============ Access Control Tests ============
     

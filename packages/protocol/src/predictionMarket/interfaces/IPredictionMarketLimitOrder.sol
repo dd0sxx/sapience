@@ -46,7 +46,7 @@ interface IPredictionMarketLimitOrder {
      *   1- validate the order id
      *   1.1- check if the order is unfilled
      *   1.2- check if the order is valid
-     *   1.3- check if the order is expired
+     *   1.3- check if the caller is the maker
      *   1.4- transfer collateral back to the maker
      *   2- cancel the order
      *   3- emit an event with the right information
