@@ -43,5 +43,3 @@ export async function typedGraphqlRequest<TQuery, TVariables extends Record<stri
   }
 }
 
-
-

@@ -5,7 +5,7 @@ import { Pool } from '@uniswap/v3-sdk';
 import { useCallback, useEffect, useState } from 'react';
 import { useReadContract, useReadContracts } from 'wagmi';
 
-import erc20ABI from '../../abis/erc20abi.json';
+import erc20ABI from '../queries/abis/erc20abi.json';
 
 const REFETCH_INTERVAL = 60000;
 
