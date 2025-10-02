@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Address } from 'viem';
+import { formatUnits } from 'viem';
 
 import type { Position as PositionType } from '@sapience/ui/types/graphql';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
@@ -117,19 +118,36 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
           return `/og/forecast?${qp.toString()}`;
         }
         if (anchor === 'parlays' && entity) {
-          // Encode up to 5 legs short names if present
-          const p = entity as Parlay;
-          const legs: string[] = (p?.predictedOutcomes || [])
-            .map(
-              (o) =>
-                (o?.condition?.shortName as string) ||
-                (o?.condition?.question as string)
-            )
-            .filter(Boolean)
-            .slice(0, 5);
+          // Encode all legs with question and prediction choice
+          const parlay = entity as Parlay;
+          const legs = (parlay?.predictedOutcomes || [])
+            .map((o) => {
+              const question = (o?.condition?.shortName as string) ||
+                (o?.condition?.question as string);
+              const choice = o?.prediction ? 'Yes' : 'No';
+              return question ? `${question}|${choice}` : null;
+            })
+            .filter(Boolean);
           if (legs.length > 0) {
-            legs.forEach((l, idx) => qp.set(`leg${idx + 1}`, String(l)));
+            legs.forEach((l) => qp.append('leg', String(l)));
           }
+          
+          const collateralDecimals = 18;
+          const collateralSymbol = 'testUSDe';
+          if (parlay?.makerCollateral) {
+            const wager= parseFloat(formatUnits(BigInt(parlay.makerCollateral), collateralDecimals)).toFixed(2); // not sure if this is too much lol
+            qp.set('wager', wager);
+          }
+          
+         
+          if (parlay?.totalCollateral) {
+            const totalCollateralBigInt = BigInt(parlay.totalCollateral);
+            const payout = parseFloat(formatUnits(totalCollateralBigInt, collateralDecimals)).toFixed(2); //same here
+            qp.set('payout', payout);
+          }
+          
+          qp.set('symbol', collateralSymbol);
+          
           return `/og/parlay?${qp.toString()}`;
         }
       } catch {
@@ -146,7 +164,11 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
     if (clearedRef.current) return;
 
     const intent = readIntent();
-    if (!intent) return;
+    if (!intent) {
+      console.log('[DEBUG] No share intent found');
+      return;
+    }
+    console.log('[DEBUG] Share intent found:', intent);
 
     // Validate address and anchor
     const intentAddr = String(intent.address || '').toLowerCase();
@@ -251,9 +273,8 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
           ) || null;
       } else if (intent.anchor === 'parlays') {
         const list: Parlay[] = parlays || [];
-        resolved =
-          list
-            .filter((p: Parlay) => Number(p.mintedAt) * 1000 >= minTs)
+        const filtered = list.filter((p: Parlay) => Number(p.mintedAt) * 1000 >= minTs);
+        resolved = filtered
             .sort(
               (a: Parlay, b: Parlay) => Number(b.mintedAt) - Number(a.mintedAt)
             )[0] || null;

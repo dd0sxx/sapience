@@ -132,7 +132,9 @@ export function useSapienceWriteContract({
       if (!connectedAddress) return; // No address available yet
       const addressLower = String(connectedAddress).toLowerCase();
       didRedirectRef.current = true;
-      router.push(`/profile/${addressLower}#${redirectProfileAnchor}`);
+      const redirectUrl = `/profile/${addressLower}#${redirectProfileAnchor}`;
+      console.log('[DEBUG] Redirecting to:', redirectUrl);
+      router.push(redirectUrl);
     } catch (e) {
       console.error(e);
       // noop on navigation errors
@@ -145,7 +147,7 @@ export function useSapienceWriteContract({
       try {
         if (typeof window === 'undefined') return;
         if (!redirectProfileAnchor) return;
-        if (!shareIntent) return; // only write when caller opts-in
+        if (shareIntent === undefined) return; // only write when caller explicitly opts-in
 
         const connectedAddress = (
           wagmiAddress ||
@@ -171,6 +173,7 @@ export function useSapienceWriteContract({
           'sapience:share-intent',
           JSON.stringify(intent)
         );
+        console.log('[DEBUG] Share intent written:', intent);
       } catch (e) {
         // best-effort only
         console.error(e);
