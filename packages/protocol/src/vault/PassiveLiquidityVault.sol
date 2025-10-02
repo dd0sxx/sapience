@@ -657,6 +657,7 @@ contract PassiveLiquidityVault is
      */
     function toggleEmergencyMode() external onlyOwner {
         emergencyMode = !emergencyMode;
+        emit EmergencyModeUpdated(emergencyMode);
     }
 
     /**

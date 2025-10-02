@@ -30,7 +30,8 @@ interface IPassiveLiquidityVault is IERC4626, IERC1271 {
     event ManagerUpdated(address indexed oldManager, address indexed newManager);
     event ExpirationTimeUpdated(uint256 oldExpirationTime, uint256 newExpirationTime);
     event InteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
-
+    event EmergencyModeUpdated(bool emergencyMode);
+    
     // ============ State Variables ============
     
     function manager() external view returns (address);
