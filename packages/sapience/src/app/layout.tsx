@@ -4,8 +4,6 @@ import type { Metadata, Viewport } from 'next';
 import type React from 'react';
 import { Suspense } from 'react';
 
-import '@rainbow-me/rainbowkit/styles.css';
-
 import { TooltipProvider } from '@sapience/sdk/ui/components/ui/tooltip';
 import Providers from '~/app/providers';
 import Layout from '~/components/layout';
