@@ -1,7 +1,7 @@
 import { elizaLogger, IAgentRuntime, ModelType, Memory } from '@elizaos/core';
 // @ts-ignore - Sapience plugin types not available at build time
 import type { SapienceService } from './sapienceService.js';
-import { buildAttestationCalldata } from '../utils/eas';
+import { buildAttestationCalldata } from '../utils/eas.js';
 import { privateKeyToAddress } from 'viem/accounts';
 
 interface AttestationConfig {
