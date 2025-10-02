@@ -5,9 +5,9 @@ description: "Message channels, payload shapes, validation, signatures, and limi
 
 # Batch Auction Relayer Reference
 
-Canonical message channels, payload shapes, validations, acknowledgments, broadcasts, and signature semantics for the Auction WebSocket.
+Canonical WebSocket channels, payload shapes, validations, acknowledgments, broadcasts, and signature semantics for the Batch Auction Relayer.
 
-> For an overview and quick integration, see API → Batch Auction Relayer.
+> For a quick start and a minimal working bot, see Guides → Build a Batch Auction Bot.
 
 ## Endpoint
 
@@ -16,10 +16,11 @@ Canonical message channels, payload shapes, validations, acknowledgments, broadc
 
 ## Message flow
 
-- `auction.start` → relayer replies `auction.ack` and broadcasts `auction.started`
-- `bid.submit` → relayer replies `bid.ack` and broadcasts `auction.bids` to subscribers of that auction
+- `auction.start` → relayer replies `auction.ack` and broadcasts `auction.started` to all clients
+- `auction.subscribe` → client subscribes to a specific `auctionId` to receive `auction.bids`
+- `bid.submit` → relayer replies `bid.ack` and broadcasts `auction.bids` to subscribers of that `auctionId`
 
-Auctions are short-lived (~60s TTL). Makers are auto-subscribed to their auction channel upon `auction.start`.
+Auctions are short-lived (~60s TTL). The socket that sends `auction.start` is auto-subscribed to that auction channel.
 
 ## Schemas
 
@@ -53,6 +54,20 @@ Broadcast to all clients
 }}
 ```
 
+### auction.subscribe
+Client → Relayer
+```ts
+{
+  type: 'auction.subscribe',
+  payload: { auctionId: string }
+}
+```
+
+If accepted, the relayer will immediately stream current bids, if any:
+```ts
+{ type: 'auction.bids', payload: { auctionId: string, bids: ValidatedBid[] } }
+```
+
 ### bid.submit
 Taker → Relayer
 ```ts
@@ -73,9 +88,10 @@ Acknowledgment to submitting socket
 { type: 'bid.ack', payload: { error?: string } }
 ```
 
-Broadcast to auction subscribers (maker)
+Broadcast to auction subscribers of this `auctionId`
 ```ts
 { type: 'auction.bids', payload: {
+    auctionId: string,
     bids: Array<{
       auctionId: string,
       takerSignature: string,
@@ -92,15 +108,16 @@ Broadcast to auction subscribers (maker)
 
 ## Validation
 
-Server-side checks (summarized from `packages/api/src/auction/sim.ts`, `helpers.ts`, and `ws.ts`).
+Server-side checks (summarized from `packages/api/src/auction/sim.ts`, `helpers.ts`, `registry.ts`, and `ws.ts`).
 
 ### Auction payload
 - `wager` must parse to BigInt and be > 0
 - `predictedOutcomes` must be an array with ≥1 element, each a non-empty bytes string
-- `resolver` must be provided (non-empty 0x address expected by downstream)
+- `resolver` must be provided (0x address expected by downstream)
 - `maker` must be a valid `0x` address (40 hex)
 
 ### Bid payload
+- `auctionId` must be a non-empty string of an active auction
 - `taker` must be a valid `0x` address (40 hex)
 - `takerWager` must parse to BigInt and be > 0
 - `takerDeadline` must be a finite number strictly greater than `now` (unix seconds)
@@ -108,6 +125,7 @@ Server-side checks (summarized from `packages/api/src/auction/sim.ts`, `helpers.
 
 If any check fails, `bid.ack` includes an `error` string. Common reasons:
 - `invalid_payload`
+- `invalid_auction_id`
 - `invalid_taker`
 - `invalid_taker_wager`
 - `invalid_wager_values`
@@ -117,7 +135,7 @@ If any check fails, `bid.ack` includes an `error` string. Common reasons:
 
 ## Signature semantics (strict mode)
 
-Basic format checks are always applied. When chain and contract addresses are configured, the relayer may perform stricter EIP-712 verification (see `verifyTakerBidStrict`). This check is optional and failures are logged but do not necessarily reject the bid if basic validation passed.
+Basic format checks are always applied. When chain and contract addresses are configured, the relayer performs optional EIP-712 verification (see `verifyTakerBidStrict`). This check is best-effort: failures are logged but do not reject the bid if basic validation passed.
 
 Typed inner message hash (Solidity-compatible):
 ```ts
@@ -155,7 +173,8 @@ The taker signs this `Approve` typed data; the server verifies with `verifyTyped
 ## Expiration and subscriptions
 
 - Auctions expire after ~60 seconds (internal TTL); expired auctions are removed.
-- Makers are auto-subscribed to their auction channel when sending `auction.start`.
+- The socket that sends `auction.start` is auto-subscribed to that `auctionId`.
+- Other clients may call `auction.subscribe` to receive `auction.bids` for that `auctionId`.
 - `auction.bids` broadcasts only to subscribers of that `auctionId`.
 
 ## On-chain flow context

@@ -5,6 +5,7 @@ import { CandleCacheBuilder } from '../candle-cache/candleCacheBuilder';
 import { createResilientProcess } from '../utils/utils';
 import { PnlAccuracyReconciler } from '../precompute/reconciler';
 import { MarketEventReconciler } from '../market-events/reconciler';
+import { ParlayReconciler } from '../parlay-reconciler/reconciler';
 
 async function runCandleCacheBuilder(intervalSeconds: number) {
   await initializeDataSource();
@@ -13,6 +14,7 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
   const candleCacheBuilder = CandleCacheBuilder.getInstance();
   const pnlAccuracyReconciler = PnlAccuracyReconciler.getInstance();
   const marketEventReconciler = MarketEventReconciler.getInstance();
+  const parlayReconciler = ParlayReconciler.getInstance();
 
   while (true) {
     try {
@@ -25,6 +27,9 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
       console.log('[WORKER] Starting MarketEvent reconciliation...');
       await marketEventReconciler.runOnce();
       console.log('[WORKER] MarketEvent reconciliation completed');
+      console.log('[WORKER] Starting Parlay reconciliation...');
+      await parlayReconciler.runOnce();
+      console.log('[WORKER] Parlay reconciliation completed');
       console.log(`Update completed at ${new Date().toISOString()}`);
     } catch (error) {
       console.error('Error in update:', error);
@@ -34,7 +39,7 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
     await new Promise((resolve) => setTimeout(resolve, intervalSeconds * 1000));
   }
 }
- 
+
 // Handle command line arguments
 async function handleWorkerCommands(args: string[]): Promise<boolean> {
   if (args.length <= 2) return false;
