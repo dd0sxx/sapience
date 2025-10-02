@@ -60,8 +60,6 @@ export const useResources = () => {
   });
 };
 
-// Backwards-compatible wrapper to simulate previous singular hook naming
-export const useResource = () => useResources();
 
 export const useLatestResourcePrice = (slug: string) => {
   return useQuery<{ timestamp: string; value: string }>({
