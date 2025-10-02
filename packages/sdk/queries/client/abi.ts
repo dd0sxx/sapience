@@ -12,3 +12,6 @@ export const sapienceFactoryAbi = (): { abi: Abi } => {
   return { abi };
 };
 
+// Backwards-compatible hook alias so this is a pure move
+export const useSapienceAbi = () => sapienceAbi();
+
