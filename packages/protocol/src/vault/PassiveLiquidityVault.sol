@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
@@ -17,7 +18,7 @@ import "./interfaces/IPassiveLiquidityVault.sol";
 
 /**
  * @title PassiveLiquidityVault
- * @notice An ERC-4626 semi-compliant passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
+ * @notice A passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
  *
  * HOW IT WORKS:
  * 1. Users request deposits by specifying assets and expected shares, with assets transferred immediately to the vault
@@ -29,7 +30,6 @@ import "./interfaces/IPassiveLiquidityVault.sol";
  * 7. Emergency mode allows immediate proportional withdrawals using only vault balance
  *
  * KEY FEATURES:
- * - ERC-4626 standard (semi-compliant) for DeFi interoperability
  * - Request-based deposit and withdrawal system with manager-controlled processing
  * - Utilization rate limits (default 80%) to control risk exposure
  * - Interaction delay (default 1 day) between user requests to prevent abuse
@@ -42,7 +42,7 @@ import "./interfaces/IPassiveLiquidityVault.sol";
  * @dev Implements utilization rate management, request-based deposit/withdrawal system, and EOA-controlled fund deployment with custom errors
  */
 contract PassiveLiquidityVault is
-    ERC4626,
+    ERC20,
     IPassiveLiquidityVault,
     Ownable2Step,
     ReentrancyGuard,
@@ -54,9 +54,13 @@ contract PassiveLiquidityVault is
     using Math for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    // ============ Vault ============
+    IERC20 private immutable _asset;
+    uint8 private immutable _underlyingDecimals;
+
     // ============ Custom Errors ============
 
-    // Non ERC-4626 compliant errors
+    // Standard function errors (functions that revert with NotImplemented)
     error NotImplemented();
 
     // Access control errors
@@ -169,18 +173,21 @@ contract PassiveLiquidityVault is
     // ============ Constructor ============
 
     constructor(
-        address _asset,
+        address asset_,
         address _manager,
         string memory _name,
         string memory _symbol
     )
-        ERC4626(IERC20(_asset))
         ERC20(_name, _symbol)
         Ownable(msg.sender)
         SignatureProcessor()
     {
-        if (_asset == address(0)) revert InvalidAsset(_asset);
+        if (asset_ == address(0)) revert InvalidAsset(asset_);
         if (_manager == address(0)) revert InvalidManager(_manager);
+
+        _asset = IERC20(asset_);
+        (bool success, uint8 assetDecimals) = _tryGetAssetDecimals(_asset);
+        _underlyingDecimals = success ? assetDecimals : 18;
 
         manager = _manager;
         maxUtilizationRate = DEFAULT_MAX_UTILIZATION_RATE;
@@ -188,7 +195,38 @@ contract PassiveLiquidityVault is
         expirationTime = DEFAULT_EXPIRATION_TIME;
     }
 
+    /**
+     * @dev Attempts to fetch the asset decimals. A return value of false indicates that the attempt failed in some way.
+     */
+    function _tryGetAssetDecimals(IERC20 asset_) private view returns (bool, uint8) {
+        (bool success, bytes memory encodedDecimals) = address(asset_).staticcall(
+            abi.encodeCall(IERC20Metadata.decimals, ())
+        );
+        if (success && encodedDecimals.length >= 32) {
+            uint256 returnedDecimals = abi.decode(encodedDecimals, (uint256));
+            if (returnedDecimals <= type(uint8).max) {
+                return (true, uint8(returnedDecimals));
+            }
+        }
+        return (false, 0);
+    }
+
     // ============ Custom totals, Withdrawal and Deposit Functions ============
+    /**
+     * @dev Decimals are computed by adding the decimal offset on top of the underlying asset's decimals. This
+     * "original" value is cached during construction of the vault contract. If this read operation fails (e.g., the
+     * asset has not been created yet), a default of 18 is used to represent the underlying asset's decimals.
+     *
+     * See {IERC20Metadata-decimals}.
+     */
+    function decimals() public view virtual override returns (uint8) {
+        return _underlyingDecimals;
+    }
+
+    /** @dev See {IERC20-asset}. */
+    function asset() public view virtual returns (address) {
+        return address(_asset);
+    }
 
     function availableAssets() public view returns (uint256) {
         uint256 balance = IERC20(asset()).balanceOf(address(this));
@@ -673,137 +711,6 @@ contract PassiveLiquidityVault is
         _unpause();
     }
 
-
-
-    // ============ ERC-4626 Overrides ============
-
-    /**
-     * @notice ERC-4626 COMPLIANCE NOTICE:
-     *
-     * This vault intentionally deviates from the ERC-4626 standard to implement a request-based
-     * deposit/withdrawal system with manager-controlled processing. The standard ERC-4626 functions
-     * are overridden to revert with NotImplemented() to prevent direct usage.
-     *
-     * DEVIATION RATIONALE:
-     * 1. Request-based System: Users create requests that are processed by a manager when conditions
-     *    are favorable, rather than immediate execution as required by ERC-4626.
-     * 2. Manager Control: A designated manager controls when deposits/withdrawals are processed,
-     *    allowing for better risk management and fair pricing.
-     * 3. Request Expiration: Requests can expire and be cancelled, providing users with an escape
-     *    mechanism if conditions change.
-     * 4. Interaction Delays: Users must wait between requests to prevent abuse and rapid-fire
-     *    interactions that could destabilize the vault.
-     *
-     * ALTERNATIVE INTERFACE:
-     * - Use requestDeposit(assets, expectedShares) instead of deposit()
-     * - Use requestWithdrawal(shares, expectedAssets) instead of withdraw()
-     * - Use emergencyWithdraw(shares) for immediate withdrawals in emergency mode
-     * - Use availableAssets() and totalDeployed() instead of totalAssets()
-     *
-     * COMPATIBILITY:
-     * While not ERC-4626 compliant, this vault maintains ERC-20 compliance for the share token
-     * and provides similar functionality through the request-based interface.
-     */
-
-    function deposit(
-        uint256 /* assets */,
-        address /* receiver */
-    ) public override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function mint(
-        uint256 /* shares */,
-        address /* receiver */
-    ) public override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function withdraw(
-        uint256 /* assets */,
-        address /* receiver */,
-        address /* owner */
-    ) public override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function redeem(
-        uint256 /* shares */,
-        address /* receiver */,
-        address /* owner */
-    ) public override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function totalAssets()
-        public
-        view
-        override(ERC4626, IERC4626)
-        returns (uint256)
-    {
-        revert NotImplemented();
-    }
-
-    function previewDeposit(
-        uint256 /* assets */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function previewMint(
-        uint256 /* shares */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function previewWithdraw(
-        uint256 /* assets */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function previewRedeem(
-        uint256 /* shares */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function maxDeposit(
-        address /* receiver */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function maxMint(
-        address /* receiver */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function maxWithdraw(
-        address /* owner */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function maxRedeem(
-        address /* owner */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function convertToShares(
-        uint256 /* assets */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-    
-    function convertToAssets(
-        uint256 /* shares */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
     // ============ ERC721 Receiver ============
 
     /**
@@ -819,5 +726,4 @@ contract PassiveLiquidityVault is
     ) external pure override returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
-
 }

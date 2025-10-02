@@ -245,10 +245,10 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
     }
     
-    // ============ ERC-4626 Tests ============
+    // ============ Request-based Deposit Tests ============
     
-    // Tests that users can deposit assets and receive shares according to ERC-4626 standard
-    function testERC4626Deposit() public {
+    // Tests that users can deposit assets and receive shares through the request system
+    function testRequestDeposit() public {
         uint256 amount = DEPOSIT_AMOUNT;
         
         vm.startPrank(user1);
@@ -267,8 +267,8 @@ contract PassiveLiquidityVaultTest is Test {
         assertEq(vault.availableAssets(), amount);
     }
     
-    // Tests that users can mint shares by depositing the exact asset amount required
-    function testERC4626Mint() public {
+    // Tests that users can request shares by depositing the exact asset amount required
+    function testRequestMint() public {
         uint256 shares = DEPOSIT_AMOUNT;
         
         vm.startPrank(user1);
@@ -288,7 +288,7 @@ contract PassiveLiquidityVaultTest is Test {
     }
     
     // Tests that the withdraw function properly queues withdrawal requests instead of immediate withdrawal
-    function testERC4626Withdraw() public {
+    function testRequestWithdraw() public {
         uint256 depositAmount = DEPOSIT_AMOUNT;
         uint256 shares = _approveAndDeposit(user1, depositAmount);
         
@@ -304,7 +304,7 @@ contract PassiveLiquidityVaultTest is Test {
     }
     
     // Tests that the redeem function properly queues withdrawal requests for specific share amounts
-    function testERC4626Redeem() public {
+    function testRequestRedeem() public {
         uint256 depositAmount = DEPOSIT_AMOUNT;
         uint256 shares = _approveAndDeposit(user1, depositAmount);
         
