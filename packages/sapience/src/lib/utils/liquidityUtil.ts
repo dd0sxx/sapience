@@ -87,21 +87,22 @@ function processTickDirection(
     );
   }
 
-  if (direction === Direction.ASC && currentInitializedTick) {
-    // Liquidity is added when crossing initialized ticks ascendingly
-    currentTickProcessed.liquidityActive = JSBI.add(
-      previousTickProcessed.liquidityActive,
-      JSBI.BigInt(currentInitializedTick.liquidityNet)
-    );
-  } else if (direction === Direction.DESC && currentInitializedTick) {
-    // Liquidity is removed when crossing initialized ticks descendingly
-    // We use the PREVIOUS tick's net liquidity change based on the formula
-    currentTickProcessed.liquidityActive = JSBI.subtract(
-      previousTickProcessed.liquidityActive,
-      JSBI.BigInt(currentInitializedTick.liquidityNet) // Use previous tick's net liquidity
-    );
+  if (previousTickProcessed && currentInitializedTick) {
+    if (direction === Direction.ASC) {
+      // Liquidity is added when crossing initialized ticks ascendingly
+      currentTickProcessed.liquidityActive = JSBI.add(
+        previousTickProcessed.liquidityActive,
+        JSBI.BigInt(currentInitializedTick.liquidityNet)
+      );
+    } else if (direction === Direction.DESC) {
+      // Liquidity is removed when crossing initialized ticks descendingly
+      // We use the PREVIOUS tick's net liquidity change based on the formula
+      currentTickProcessed.liquidityActive = JSBI.subtract(
+        previousTickProcessed.liquidityActive,
+        JSBI.BigInt(currentInitializedTick.liquidityNet) // Use previous tick's net liquidity
+      );
+    }
   }
-
   return currentTickProcessed;
 }
 
@@ -236,6 +237,16 @@ function processTicks(
     minTick,
     maxTick
   );
+
+  // Ensure boundary ticks (min/max of the computed range) reflect pool liquidity
+  // Set lowest tick in range to pool liquidity if present
+  if (previousTicks.length > 0) {
+    previousTicks[0].liquidityActive = poolLiquidity;
+  }
+  // Set highest tick in range to pool liquidity if present
+  if (subsequentTicks.length > 0) {
+    subsequentTicks[subsequentTicks.length - 1].liquidityActive = poolLiquidity;
+  }
 
   // Combine and return in ascending order
   return previousTicks.concat(activeTickProcessed).concat(subsequentTicks);

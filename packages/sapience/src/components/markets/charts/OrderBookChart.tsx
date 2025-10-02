@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic';
 import type React from 'react';
-import { useState } from 'react';
+// import { useState } from 'react';
 
 import NumberDisplay from '../../shared/NumberDisplay';
 import type { OrderBookLevel } from '~/hooks/charts/useOrderBookData';
@@ -104,9 +104,9 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 }) => {
   const isLoading = isLoadingPool || isLoadingBook;
   const isError = isErrorPool || isErrorBook;
-  const [displayMode, setDisplayMode] = useState<'shares' | 'collateral'>(
-    'shares'
-  );
+  // const [displayMode, setDisplayMode] = useState<'shares' | 'collateral'>(
+  //   'shares'
+  // );
 
   // Derive decimals from bucket size
   const priceDecimals = (() => {
@@ -160,13 +160,17 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 
   // Calculate cumulative sizes for visualization and slice to fixed rows per side
   const computeCumulative = (levels: OrderBookLevel[]) => {
-    // Use levels as-is; hook already returns fixed number per side
     const slice = levels;
     let cumulativeSize = 0;
     let cumulativeCollateral = 0;
     const withCum = slice.map((lvl) => {
+      // Precise per-level collateral: sum exact tick sizes * their exact prices if available
+      // comment(ukitta555): does not affect much anyways? using size everywhere anyways - will use later once we wire quoter for orderbook
+      const levelCollateral =
+        Array.isArray(lvl.bucketTicks) && lvl.bucketTicks.length > 0
+          ? lvl.bucketTicks.reduce((sum, t) => sum + t.size * t.price, 0)
+          : lvl.rawSize * lvl.rawPrice;
       cumulativeSize += lvl.rawSize;
-      const levelCollateral = lvl.rawSize * lvl.rawPrice;
       cumulativeCollateral += levelCollateral;
       return {
         ...lvl,
@@ -268,12 +272,22 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
             maxCumulativeAskSize > 0
               ? (ask.cumulativeSize / maxCumulativeAskSize) * 100
               : 0;
-          const sizeDisplay =
-            displayMode === 'shares' ? ask.rawSize : ask.rawSize * ask.rawPrice;
-          const totalDisplay =
-            displayMode === 'shares'
-              ? ask.cumulativeSize
-              : ask.cumulativeCollateral;
+          // const sizeDisplay =
+          //   displayMode === 'shares'
+          //     ? ask.rawSize
+          //     : (Array.isArray((ask as any).bucketTicks) && (ask as any).bucketTicks.length > 0
+          //         ? (ask as any).bucketTicks.reduce(
+          //             (sum: number, t: { price: number; size: number }) =>
+          //               sum + t.size * t.price,
+          //             0
+          //           )
+          //         : ask.rawSize * ask.rawPrice);
+          // const totalDisplay =
+          //   displayMode === 'shares'
+          //     ? ask.cumulativeSize
+          //     : ask.cumulativeCollateral;
+          const sizeDisplay = ask.rawSize;
+          const totalDisplay = ask.cumulativeSize;
           return (
             <OrderBookRow
               key={`ask-${ask.rawPrice}-${index}`}
@@ -302,7 +316,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
               ) : null}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() =>
@@ -316,7 +330,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
             >
               {displayMode === 'shares' ? 'Shares' : quoteTokenName || 'tokens'}
             </button>
-          </div>
+          </div> */}
         </div>
 
         {/* Bottom Half: Bids (rendered top-down, padded at bottom) */}
@@ -340,12 +354,22 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
             maxCumulativeBidSize > 0
               ? (bid.cumulativeSize / maxCumulativeBidSize) * 100
               : 0;
-          const sizeDisplay =
-            displayMode === 'shares' ? bid.rawSize : bid.rawSize * bid.rawPrice;
-          const totalDisplay =
-            displayMode === 'shares'
-              ? bid.cumulativeSize
-              : bid.cumulativeCollateral;
+          // const sizeDisplay =
+          //   displayMode === 'shares'
+          //     ? bid.rawSize
+          //     : (Array.isArray((bid as any).bucketTicks) && (bid as any).bucketTicks.length > 0
+          //         ? (bid as any).bucketTicks.reduce(
+          //             (sum: number, t: { price: number; size: number }) =>
+          //               sum + t.size * t.price,
+          //             0
+          //           )
+          //         : bid.rawSize * bid.rawPrice);
+          // const totalDisplay =
+          //   displayMode === 'shares'
+          //     ? bid.cumulativeSize
+          //     : bid.cumulativeCollateral;
+          const sizeDisplay = bid.rawSize;
+          const totalDisplay = bid.cumulativeSize;
           return (
             <OrderBookRow
               key={`bid-${bid.rawPrice}-${index}`}

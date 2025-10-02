@@ -34,6 +34,7 @@ export interface OrderBookLevel {
   rawPrice: number; // Raw numeric price for potential sorting/calculations
   rawSize: number; // Raw numeric size
   rawTotal: number; // Raw numeric total
+  bucketTicks?: { price: number; size: number }[]; // Exact per-tick details in this bucket
 }
 
 enum BidAsk {
@@ -135,7 +136,12 @@ const aggregateTicksToGridLevels = (
   const decimals = derivePriceDecimals(bucketSize);
 
   // Group raw sizes by bucket key (string to avoid float precision issues)
-  const grouped = new Map<string, number>();
+  // Store per-tick exact sizes to avoid approximation due to grouping
+  type BucketEntry = {
+    total: number;
+    ticks: { price: number; size: number }[];
+  };
+  const grouped = new Map<string, BucketEntry>();
   const priceKeyFor = (p: number): string => {
     if (!Number.isFinite(bucketSize) || bucketSize <= 0)
       return p.toFixed(decimals);
@@ -146,13 +152,18 @@ const aggregateTicksToGridLevels = (
   };
 
   for (const tick of ticks) {
-    const size = useToken1AsBase
+    // Compute exact per-tick size before aggregation
+    const tickSize = useToken1AsBase
       ? tick.liquidityLockedToken1
       : tick.liquidityLockedToken0;
-    if (size <= 1e-9) continue; // Skip negligible liquidity
+    if (tickSize <= 1e-9) continue; // Skip negligible liquidity
     const priceRaw = useToken1AsBase ? tick.price1 : tick.price0;
     const key = priceKeyFor(priceRaw);
-    grouped.set(key, (grouped.get(key) ?? 0) + size);
+
+    const bucket = grouped.get(key) ?? { total: 0, ticks: [] };
+    bucket.total += tickSize;
+    bucket.ticks.push({ price: priceRaw, size: tickSize });
+    grouped.set(key, bucket);
   }
 
   // Get sorted keys from grouped data
@@ -188,12 +199,14 @@ const aggregateTicksToGridLevels = (
   let cumulative = 0;
   return selectedKeys.map((key) => {
     const price = Number(key);
-    const size = grouped.get(key) ?? 0;
+    const bucket = grouped.get(key);
+    const size = bucket?.total ?? 0;
     cumulative += size;
     return {
       rawPrice: price,
       rawSize: size,
       rawTotal: cumulative,
+      bucketTicks: bucket?.ticks ?? [],
       price: formatPrice(
         price,
         pool,

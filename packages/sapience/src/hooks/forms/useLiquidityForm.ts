@@ -25,7 +25,7 @@ export function useLiquidityForm({
   tickSpacing = 200,
   priceDecimals = 6,
 }: UseLiquidityFormProps = {}) {
-  const initialLowPrice = formatPrice(0.0001);
+  const initialLowPrice = formatPrice(0.01);
   const initialHighPrice = formatPrice(
     tickToPrice(highPriceTick, tickSpacing),
     priceDecimals
