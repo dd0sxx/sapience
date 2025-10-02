@@ -56,10 +56,9 @@
     "vite": "6.0.1"
   },
   "scripts": {
-    "predev": "node scripts/preflight.cjs",
-    "prestart": "node scripts/preflight.cjs",
     "start": "elizaos start",
-    "dev": "node -e \"try{require('child_process').execSync('bun x elizaos dev',{stdio:'inherit'})}catch(e){console.warn('Falling back to panel-only UI (no Bun/CLI).');require('child_process').execSync('pnpm run dev:frontend',{stdio:'inherit'})}\"",
+    "dev": "bun x elizaos dev",
+    "dev:panel": "vite",
     "build": "tsc --noEmit && vite build && tsup",
     "lint": "prettier --write ./src",
     "type-check": "tsc --noEmit",

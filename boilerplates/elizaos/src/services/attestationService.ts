@@ -1,7 +1,7 @@
 import { elizaLogger, IAgentRuntime, ModelType, Memory } from '@elizaos/core';
 // @ts-ignore - Sapience plugin types not available at build time
 import type { SapienceService } from './sapienceService.js';
-import { buildAttestationCalldata } from 'src/utils/eas';
+import { buildAttestationCalldata } from '../utils/eas';
 import { privateKeyToAddress } from 'viem/accounts';
 
 interface AttestationConfig {
@@ -428,7 +428,7 @@ export class AttestationService {
   private async getWalletAddress(): Promise<string | null> {
     try {
       const privateKey = process.env.EVM_PRIVATE_KEY || process.env.PRIVATE_KEY || process.env.WALLET_PRIVATE_KEY;
-      
+
       if (!privateKey) {
         elizaLogger.error('[AttestationService] No private key found in environment variables');
         return null;
@@ -490,107 +490,7 @@ export class AttestationService {
     }
   }
 
-  private async getLastAttestationForMarket(
-    marketId: string,
-    walletAddress: string
-  ): Promise<any | null> {
-    try {
-      const sapienceService = this.runtime.getService(
-        'sapience'
-      ) as SapienceService;
-
-      console.log(
-        `[AttestationService] Querying attestations for marketId: ${marketId} (type: ${typeof marketId}), address: ${walletAddress}`
-      );
-
-      // Use get_recent_attestations with marketId filter, plus client-side address filtering
-      const result = await sapienceService.callTool(
-        'sapience',
-        'get_recent_attestations',
-        {
-          limit: 100, // Get more attestations to ensure we find matches
-          marketId: marketId.toString(), // Filter by marketId at DB level for efficiency
-        }
-      );
-
-      console.log(
-        `[AttestationService] Query result for get_recent_attestations:`,
-        result ? 'Success' : 'Failed'
-      );
-
-      if (result && result.content) {
-        const text = result.content?.[0]?.text ?? '[]';
-        const allAttestations = JSON.parse(text);
-        console.log(
-          `[AttestationService] Raw response contains ${allAttestations.length} total recent attestations`
-        );
-
-        // Filter by both address and marketId (case-insensitive address comparison)
-        const targetMarketId = marketId.toString();
-        const targetAddress = walletAddress.toLowerCase();
-
-        const matchingAttestations = allAttestations.filter((att: any) => {
-          const attMarketId = att.marketId ? att.marketId.toString() : '';
-          const attAddress = att.attester ? att.attester.toLowerCase() : '';
-
-          const addressMatch = attAddress === targetAddress;
-          const marketIdMatch = attMarketId === targetMarketId;
-          const bothMatch = addressMatch && marketIdMatch;
-
-          // Only log mismatches for debugging
-          if (!bothMatch) {
-            console.log(
-              `[AttestationService] Filtering out: address=${att.attester} (${addressMatch}), marketId=${attMarketId} (${marketIdMatch})`
-            );
-          }
-
-          return bothMatch;
-        });
-
-        console.log(
-          `[AttestationService] Found ${matchingAttestations.length} attestations matching both address=${targetAddress} and marketId=${targetMarketId}`
-        );
-
-        if (matchingAttestations.length > 0) {
-          console.log(`[AttestationService] Sample matching attestation:`, {
-            marketId: matchingAttestations[0].marketId,
-            attester: matchingAttestations[0].attester,
-            createdAt: matchingAttestations[0].createdAt,
-          });
-
-          // Return the most recent matching attestation
-          const sorted = matchingAttestations.sort(
-            (a: any, b: any) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-          return sorted[0];
-        } else {
-          console.log(
-            `[AttestationService] No attestations found matching address=${targetAddress} and marketId=${targetMarketId}`
-          );
-          // Debug: show sample attestations to help diagnose
-          if (allAttestations.length > 0) {
-            console.log(
-              `[AttestationService] Sample attestation from response:`,
-              {
-                attester: allAttestations[0].attester,
-                marketId: allAttestations[0].marketId,
-                createdAt: allAttestations[0].createdAt,
-              }
-            );
-          }
-        }
-      }
-
-      return null;
-    } catch (error) {
-      elizaLogger.error(
-        `[AttestationService] Failed to get attestations for market ${marketId}:`,
-        error
-      );
-      return null;
-    }
-  }
+  // getLastAttestationForMarket removed as dead code
 
   private decodeProbability(predictionValue: string): number | null {
     try {
@@ -635,7 +535,12 @@ export class AttestationService {
         process.env.PRIVATE_KEY ||
         process.env.WALLET_PRIVATE_KEY ||
         process.env.EVM_PRIVATE_KEY;
-      console.log('[AttestationService] Private key available:', !!privateKey);
+      if (
+        process.env.NODE_ENV !== 'production' &&
+        process.env.NODE_ENV !== 'staging'
+      ) {
+        console.log('[AttestationService] Private key available:', !!privateKey);
+      }
 
       if (privateKey) {
         // We need to derive the public address from the private key
@@ -734,7 +639,11 @@ export class AttestationService {
           question: market.question,
         },
         prediction,
-        42161 // Arbitrum chain ID
+        parseInt(
+          (process.env.CHAIN_ID as string) ||
+            ((this.runtime?.character as any)?.settings?.chainId as string) ||
+            '42161'
+        )
       );
 
       if (!attestationData) {
