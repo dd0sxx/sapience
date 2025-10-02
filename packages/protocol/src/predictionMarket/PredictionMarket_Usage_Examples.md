@@ -17,7 +17,7 @@ The PredictionMarket implements a comprehensive prediction system with two main 
 ### 2. Limit Order System
 - **Makers** can place limit orders using `placeOrder()` to set up predictions with specific terms
 - **Takers** can browse and fill available orders using `fillOrder()` when they match their criteria
-- Orders have expiration deadlines and can be cancelled by makers using `cancelOrder()`
+- Orders have expiration deadlines and can be cancelled by makers using `cancelOrder()` at any time
 - Once filled, limit orders automatically create predictions that can be settled via `burn()`
 - This provides more flexibility and control over prediction timing and terms
 
@@ -395,7 +395,7 @@ The PredictionMarket contract now supports limit orders, providing makers with m
 
 1. **Maker places an order** using `placeOrder()` with specific terms
 2. **Takers browse available orders** and fill them using `fillOrder()`
-3. **Orders expire** after the specified deadline and can be cancelled
+3. **Orders expire** after the specified deadline and can be cancelled by makers at any time
 4. **When filled**, orders automatically create predictions that work the same as direct mint predictions
 
 ### Step 1: Ana Places a Limit Order
@@ -512,11 +512,8 @@ console.log("Taker Collateral:", prediction.takerCollateral);
 If Ana wants to cancel her order before it's filled:
 
 ```solidity
-// Ana can only cancel orders after they expire
-// First, wait for the deadline to pass...
-// (In practice, this would happen after the orderDeadline timestamp)
-
-// Then Ana can cancel the order
+// Ana can cancel her order at any time (before or after expiration)
+// No need to wait for the deadline to pass
 market.cancelOrder(orderId);
 
 // Check if the order was cancelled
@@ -616,7 +613,7 @@ event OrderCancelled(
 - ✅ Set the prediction outcomes and amount
 - ✅ Get matched with a taker automatically (direct) or when takers fill orders
 - ✅ Receive winnings if predictions correct
-- ✅ Cancel unfilled orders after expiration
+- ✅ Cancel unfilled orders at any time
 - ✅ No need to manage complex order books
 
 ### For Takers (like Bob and Carl):
@@ -636,7 +633,7 @@ event OrderCancelled(
 ### Limit Order System:
 - ✅ **Place Orders**: Set specific terms with expiration deadlines
 - ✅ **Fill Orders**: Browse available orders and fill when ready
-- ✅ **Cancel Orders**: Cancel unfilled orders after expiration
+- ✅ **Cancel Orders**: Cancel unfilled orders at any time
 - ✅ **Query Orders**: Get order details, counts, and maker-specific orders
 - ✅ **Automatic Prediction Creation**: Filled orders create standard predictions
 
@@ -652,7 +649,7 @@ event OrderCancelled(
 - ✅ Market validation through resolver
 - ✅ Safe token transfers using permits
 - ✅ Yes/No market validation only
-- ✅ Order expiration and cancellation protection
+- ✅ Order expiration and flexible cancellation
 
 ## Choosing Between Direct Mint and Limit Orders
 
@@ -681,7 +678,7 @@ Both approaches create the same final predictions, but they serve different use 
 | **Execution** | Immediate | On-demand |
 | **Competition** | First-come-first-served | Browse and select |
 | **Timing** | Real-time | Flexible |
-| **Cancellation** | Not applicable | After expiration |
+| **Cancellation** | Not applicable | At any time |
 | **Gas Cost** | Lower (single tx) | Higher (multiple txs) |
 | **Signatures** | ERC20 permit required | Standard transfers |
 | **Order Management** | None needed | Full order lifecycle |

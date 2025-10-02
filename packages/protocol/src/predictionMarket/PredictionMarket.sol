@@ -48,10 +48,9 @@ contract PredictionMarket is
     error TransferFailed();
     error OrderNotFound();
     error OrderExpired();
-    error OrderNotExpired();
     error InvalidMakerNonce();
     error NotOwner();
-    
+
     // ============ State Variables ============
     IPredictionStructs.Settings public config;
 
@@ -383,7 +382,6 @@ contract PredictionMarket is
             orderId
         ];
         if (order.orderId != orderId) revert OrderNotFound();
-        if (block.timestamp < order.orderDeadline) revert OrderNotExpired();
         if (order.maker != msg.sender) revert MakerIsNotCaller();
 
         _safeTransferOut(
