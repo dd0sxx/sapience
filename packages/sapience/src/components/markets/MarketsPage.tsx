@@ -270,15 +270,6 @@ const MarketsPage = () => {
   // Helper to find FocusArea data by category slug for UI styling
   // (now using the utility function from ~/lib/utils/category)
 
-  // Show loader if data is loading
-  if (isLoadingMarketsData) {
-    return (
-      <div className="flex justify-center items-center min-h-[calc(100vh-theme(spacing.20))] w-full">
-        <LottieLoader width={32} height={32} />
-      </div>
-    );
-  }
-
   // Show error state if there's an error
   if (marketsDataError) {
     return (
@@ -326,7 +317,7 @@ const MarketsPage = () => {
               handleStatusFilterClick={handleStatusFilterClick}
               parlayMode={parlayMode}
               onParlayModeChange={handleParlayModeChange}
-              isLoadingCategories={isLoadingMarketsData}
+              isLoadingCategories={isLoadingMarketsData && !rawMarketsData}
               categories={rawMarketsData?.categories || []}
               getCategoryStyle={getCategoryStyle}
               containerClassName="px-0 md:px-0 py-0 w-full max-w-full box-border"
@@ -336,7 +327,11 @@ const MarketsPage = () => {
 
         {/* Results area */}
         <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
-          {!parlayMode ? (
+          {isLoadingMarketsData && !rawMarketsData ? (
+            <div className="flex justify-center items-center min-h-[300px]">
+              <LottieLoader width={32} height={32} />
+            </div>
+          ) : !parlayMode ? (
             <AnimatePresence mode="wait" key={filterKey}>
               {groupedMarketGroups.length === 0 && (
                 <motion.div
@@ -360,7 +355,13 @@ const MarketsPage = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
+                  className="relative"
                 >
+                  {isLoadingMarketsData && rawMarketsData && (
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary/30 rounded-full overflow-hidden z-10">
+                      <div className="h-full bg-primary animate-pulse" />
+                    </div>
+                  )}
                   {sortedMarketDays.map((dayKey) => (
                     <motion.div
                       key={dayKey}
