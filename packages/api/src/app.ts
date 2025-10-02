@@ -45,14 +45,17 @@ const corsOptions: cors.CorsOptions = {
     }
   },
   optionsSuccessStatus: 200,
-  // Allow the Authorization header to be exposed to the client
-  exposedHeaders: ['Authorization'],
+  // Allow the Authorization and MCP headers to be exposed to the client
+  exposedHeaders: ['Authorization', 'mcp-session-id'],
   // Allow required headers to be sent
   allowedHeaders: [
     'Authorization',
     'Content-Type',
     'x-admin-signature',
     'x-admin-signature-timestamp',
+    // MCP headers
+    'mcp-session-id',
+    'Last-Event-ID',
   ],
 };
 

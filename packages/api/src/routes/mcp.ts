@@ -134,8 +134,8 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
     }
   });
 
-  // Handle GET requests for server-to-client notifications via SSE
-  app.get('/mcp', async (req: express.Request, res: express.Response) => {
+  // Handle GET requests for server-to-client notifications via SSE on the same path
+  app.get(url, async (req: express.Request, res: express.Response) => {
     console.log(`GET Request received: ${req.method} ${req.url}`);
 
     try {
@@ -178,8 +178,8 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
     }
   });
 
-  // Handle DELETE requests for session termination
-  app.delete('/mcp', async (req: express.Request, res: express.Response) => {
+  // Handle DELETE requests for session termination on the same path
+  app.delete(url, async (req: express.Request, res: express.Response) => {
     console.log(`DELETE Request received: ${req.method} ${req.url}`);
     try {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
