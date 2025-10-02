@@ -170,9 +170,7 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
   // Handle GET requests for server-to-client notifications via SSE on the same path
   app.get(url, async (req: express.Request, res: express.Response) => {
     const sessionIdHeader = (req.headers['mcp-session-id'] as string) || 'n/a';
-    console.log(
-      `[MCP] ${req.method} ${req.url} sessionId=${sessionIdHeader}`
-    );
+    console.log(`[MCP] ${req.method} ${req.url} sessionId=${sessionIdHeader}`);
 
     try {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
@@ -221,9 +219,7 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
   // Handle DELETE requests for session termination on the same path
   app.delete(url, async (req: express.Request, res: express.Response) => {
     const sessionIdHeader = (req.headers['mcp-session-id'] as string) || 'n/a';
-    console.log(
-      `[MCP] ${req.method} ${req.url} sessionId=${sessionIdHeader}`
-    );
+    console.log(`[MCP] ${req.method} ${req.url} sessionId=${sessionIdHeader}`);
     try {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
       if (!sessionId || !transports[sessionId]) {
