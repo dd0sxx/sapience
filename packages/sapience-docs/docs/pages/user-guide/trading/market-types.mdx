@@ -47,19 +47,26 @@ Sapience supports a variety of prediction market formats so traders and builders
 
 ## Why Not Conditional Tokens?
 
-Conditional tokens are a powerful primitive but can lead to UX and capital-efficiency constraints for our target use-cases.
+Conditional tokens are a powerful primitive, but they introduce UX and capital-efficiency constraints for our target use cases.
 
 ### Limitations
+- **Liquidity fragmentation** – Splitting collateral into multiple outcome tokens spreads liquidity thin and creates friction.  
+- **Complex settlement and redemption** – Users face multi-step flows (split, merge, redeem) that add UX overhead.  
+- **Workflow mismatch** – Conditional tokens are less natural for intent-driven, RFQ, or batch auction designs without significant extra abstraction.  
+- **Collateral inefficiency** – In a binary market, $100 collateral becomes $100 “Yes” and $100 “No” tokens. If only one side trades, half the capital sits idle. This inefficiency grows worse as the number of outcomes increases.  
 
-- Fragmentation across outcome tokens increases friction
-- Complex settlement flows and redemption UX
-- Less natural fit for intent-driven or batch auction workflows
+## Sapience Approach
 
-### Sapience Approach
+Instead of relying directly on conditional tokens, Sapience builds on more expressive and efficient market mechanisms:
 
-- Order Book Markets (CLOB-like) for continuous trading with concentrated liquidity
-- Batch Auction Markets for batch/RFQ/intents with efficient netting
-- Unified APIs and pluggable settlement adapters
+- **Concentrated-Liquidity AMMs (Uniswap v3-style, orderbook-like)**  
+  Virtual tokens (e.g. vGAS/vGWEI) are only tradable inside their designated pool. LPs provide capital in ranges, so liquidity is concentrated where it matters — giving an *order book feel* without requiring a full CLOB.  
+- **Unified collateral pool**  
+  Collateral never fragments into idle Yes/No tokens. In binary markets this yields roughly **2× higher capital efficiency** versus conditional tokens, and in multi-outcome or continuous markets the gains can be even greater.  
+- **Batch Auctions for RFQ / Intents**  
+  Netting orders in discrete batches allows efficient clearing and fits naturally with intent-driven workflows.  
+- **Unified APIs and Pluggable Settlement Adapters**  
+  Abstracting away the settlement layer allows flexible integrations (conditional tokens if desired, or alternative primitives) without fragmenting liquidity or UX.  
 
 ## Key Entities
 
