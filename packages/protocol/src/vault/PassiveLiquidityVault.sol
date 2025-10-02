@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "../predictionMarket/interfaces/IPredictionStructs.sol";
 import "../predictionMarket/interfaces/IPredictionMarket.sol";
 import "../predictionMarket/utils/SignatureProcessor.sol";
 import "./interfaces/IPassiveLiquidityVault.sol";
@@ -61,7 +60,6 @@ contract PassiveLiquidityVault is
 
     // Access control errors
     error OnlyManager(address caller, address expectedManager);
-    error OnlyOwner(address caller, address owner);
 
     // Validation errors
     error InvalidAsset(address asset);
@@ -70,11 +68,9 @@ contract PassiveLiquidityVault is
     error InvalidAmount(uint256 amount);
     error InvalidShares(uint256 shares);
     error InvalidRate(uint256 rate, uint256 maxRate);
-    error InvalidIndex(uint256 index, uint256 length);
 
     // State errors
     error EmergencyModeActive();
-    error ProcessingInProgress(bool pendingRequests);
     error InsufficientBalance(
         address user,
         uint256 requested,
@@ -89,7 +85,6 @@ contract PassiveLiquidityVault is
     error NoPendingWithdrawal(address user);
     error NoPendingDeposit(address user);
     error PendingRequestNotProcessed(address user);
-    error ProcessingRequestsInProgress();
     error TransferFailed(
         uint256 balanceBefore,
         uint256 amount,
@@ -102,7 +97,6 @@ contract PassiveLiquidityVault is
     error EmergencyModeNotActive();
 
     // Additional errors
-    error InvalidCaller();
     error RequestExpired();
 
     // ============ Events ============
