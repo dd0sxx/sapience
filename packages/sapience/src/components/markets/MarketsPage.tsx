@@ -2,7 +2,6 @@
 
 import { useIsMobile } from '@sapience/sdk/ui/hooks/use-mobile';
 import { useMarketsData } from '@sapience/sdk/queries/hooks/useMarketsData';
-import type { GroupedMarketGroup } from '@sapience/sdk/types/MarketsData';
 import type { Condition, Market } from '@sapience/sdk/types/graphql';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +14,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { SearchBar } from '@sapience/sdk/ui';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
+import type { GroupedMarketGroup } from './types';
 import FocusAreaFilter from './FocusAreaFilter';
 // Focus areas are now handled by the category utility functions
 import type { MarketGroupClassification } from '~/lib/types';

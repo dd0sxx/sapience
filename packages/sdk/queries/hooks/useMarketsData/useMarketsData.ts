@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { MarketsDataService } from "./MarketsDataService";
 import {
+  MarketsDataService,
   MarketsDataParams,
   MarketsDataResult,
-} from "../../../types/MarketsData";
+} from "./MarketsDataService";
 import { createGraphQLClient } from "../../client/graphqlClient";
 
 /**

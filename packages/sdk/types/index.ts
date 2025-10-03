@@ -7,13 +7,11 @@ export type { Position as PositionType } from "./graphql";
 export type { Transaction as TransactionType } from "./graphql";
 export type { Resource as ResourceType } from "./graphql";
 
-// Export markets data types
+// Export markets data types from service
 export type {
   MarketWithContext,
   GroupedMarketGroup,
-  MarketsDataParams,
-  MarketsDataResult,
-} from "./MarketsData";
+} from "../queries/hooks/useMarketsData/MarketsDataService";
 
 // Export other commonly used types from graphql
 export type { Query, ResourcePrice, Transaction } from "./graphql";

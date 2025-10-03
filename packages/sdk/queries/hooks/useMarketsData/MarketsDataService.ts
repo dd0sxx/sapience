@@ -2,16 +2,67 @@ import type { GraphQLClient } from "graphql-request";
 import { isAddress } from "viem";
 
 import { GET_CATEGORIES, GET_CONDITIONS, MARKETS_QUERY } from "./queries";
-import {
-  CategoryType,
-  ConditionType,
-  GroupedMarketGroup,
-  MarketGroupType,
-  MarketsDataParams,
-  MarketsDataResult,
-  MarketWithContext,
-} from "../../../types/MarketsData";
-import type { Market } from "../../../types/graphql";
+import type {
+  Market as MarketType,
+  MarketGroup as MarketGroupType,
+  Category as CategoryType,
+  Condition as ConditionType,
+} from "../../../types/graphql";
+
+// UI-specific types for markets components
+export interface MarketWithContext extends MarketType {
+  marketAddress: string;
+  chainId: number;
+  collateralAsset: string;
+  categorySlug: string;
+  categoryId: string;
+}
+
+export interface GroupedMarketGroup {
+  key: string;
+  marketAddress: string;
+  chainId: number;
+  marketName: string;
+  collateralAsset: string;
+  categorySlug: string;
+  categoryId: string;
+  marketQuestion?: string | null;
+  markets: MarketWithContext[];
+  displayQuestion?: string;
+  isActive?: boolean;
+  marketClassification?: string;
+  displayUnit?: string;
+}
+
+// Service-specific types
+export interface MarketsDataParams {
+  // Market Groups filters
+  selectedCategorySlug?: string | null;
+  statusFilter: "all" | "active";
+  searchTerm?: string;
+
+  // Conditions filters
+  conditionsTake?: number;
+  conditionsSkip?: number;
+}
+
+export interface MarketsDataResult {
+  // Market Groups (Order Book)
+  groupedMarketGroups: GroupedMarketGroup[];
+  marketGroupsByDay: Record<string, GroupedMarketGroup[]>;
+  sortedMarketDays: string[];
+
+  // Conditions (RFQ/Parlay)
+  filteredConditions: ConditionType[];
+  conditionsByDay: Record<string, ConditionType[]>;
+  sortedConditionDays: string[];
+
+  // Categories
+  categories: CategoryType[];
+
+  // Metadata
+  lastUpdated: number;
+}
 
 export class MarketsDataService {
   constructor(private graphqlClient: GraphQLClient) {}

@@ -3,3 +3,4 @@ export * from "./client/abi";
 export * from "./hooks/useResources";
 export * from "./hooks/useUniswapPool";
 export * from "./hooks/useMarketsData";
+export * from "./hooks/useMarketsData/MarketsDataService";
