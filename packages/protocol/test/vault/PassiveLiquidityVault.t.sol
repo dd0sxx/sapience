@@ -598,6 +598,17 @@ contract PassiveLiquidityVaultTest is Test {
         assertEq(vault.interactionDelay(), newDelay);
     }
     
+    // Tests that the owner can set a new expiration time for requests
+    function testSetExpirationTime() public {
+        uint256 newExpirationTime = 15 minutes;
+        
+        vm.startPrank(owner);
+        vault.setExpirationTime(newExpirationTime);
+        vm.stopPrank();
+        
+        assertEq(vault.expirationTime(), newExpirationTime);
+    }
+    
     // Tests that the owner can toggle emergency mode on and off
     function testToggleEmergencyMode() public {
         assertFalse(vault.emergencyMode());
@@ -891,8 +902,8 @@ contract PassiveLiquidityVaultTest is Test {
         uint256 afterFirstRequest = vault.lastUserInteractionTimestamp(freshUser);
         console.log("Timestamp after first request:", afterFirstRequest);
         
-        // 2. Wait for request to expire (2 minutes by default)
-        vm.warp(block.timestamp + 3 minutes);
+        // 2. Wait for request to expire (10 minutes by default)
+        vm.warp(block.timestamp + 11 minutes);
         
         // 3. User cancels the expired deposit request
         vm.prank(freshUser);
@@ -950,8 +961,8 @@ contract PassiveLiquidityVaultTest is Test {
         vm.prank(freshUser);
         vault.requestWithdrawal(userShares / 2, depositAmount / 2);
         
-        // 2. Wait for request to expire (2 minutes by default)
-        vm.warp(block.timestamp + 3 minutes);
+        // 2. Wait for request to expire (10 minutes by default)
+        vm.warp(block.timestamp + 11 minutes);
         
         // 3. User cancels the expired withdrawal request
         vm.prank(freshUser);

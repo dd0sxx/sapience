@@ -142,7 +142,7 @@ contract PassiveLiquidityVault is
     uint256 private constant DEFAULT_INTERACTION_DELAY = 1 days;
 
     /// @notice Default expiration time (10 minutes)
-    uint256 private constant DEFAULT_EXPIRATION_TIME = 2 minutes;
+    uint256 private constant DEFAULT_EXPIRATION_TIME = 10 minutes;
 
     /// @notice Total assets reserved for pending deposit requests
     uint256 private unconfirmedAssets = 0;
