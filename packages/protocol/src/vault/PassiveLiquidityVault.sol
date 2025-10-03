@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../predictionMarket/interfaces/IPredictionMarket.sol";
 import "../predictionMarket/utils/SignatureProcessor.sol";
 import "./interfaces/IPassiveLiquidityVault.sol";
@@ -47,7 +48,8 @@ contract PassiveLiquidityVault is
     ReentrancyGuard,
     Pausable,
     SignatureProcessor,
-    IERC721Receiver
+    IERC721Receiver,
+    ERC165
 {
     using SafeERC20 for IERC20;
     using Math for uint256;
@@ -704,6 +706,18 @@ contract PassiveLiquidityVault is
      */
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    // ============ ERC-165 Interface Detection ============
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
+        return 
+            interfaceId == type(IPassiveLiquidityVault).interfaceId ||
+            interfaceId == type(IERC1271).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
     // ============ ERC721 Receiver ============

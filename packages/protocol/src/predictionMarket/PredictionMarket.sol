@@ -7,12 +7,14 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "./interfaces/IPredictionMarket.sol";
 import "./interfaces/IPredictionStructs.sol";
 import "./interfaces/IPredictionMarketResolver.sol";
 import "./interfaces/IPredictionEvents.sol";
 import "./utils/SignatureProcessor.sol";
 import "../market/interfaces/ISapience.sol";
+import "../vault/interfaces/IPassiveLiquidityVault.sol";
 
 /**
  * @title PredictionMarket
@@ -48,6 +50,7 @@ contract PredictionMarket is
     error OrderExpired();
     error InvalidMakerNonce();
     error NotOwner();
+    error TransferNotAllowed();
 
     // ============ State Variables ============
     IPredictionStructs.Settings public config;
@@ -492,6 +495,14 @@ contract PredictionMarket is
 
     // ============ Internal Functions ============
 
+    /// @dev Prevent transfers to PassiveLiquidityVault contracts
+    function _verifyTransfer(address , address to, uint256 ) internal virtual {
+        // Prevent transfers to PassiveLiquidityVault contracts
+        if (_isPassiveLiquidityVault(to)) {
+            revert TransferNotAllowed();
+        }
+    }
+
     /// @dev Override ERC721 ownership update to keep auxiliary mappings and prediction parties in sync.
     function _update(address to, uint256 tokenId, address auth)
         internal
@@ -500,6 +511,11 @@ contract PredictionMarket is
     {
         from = super._update(to, tokenId, auth);
 
+        // Add verification before the transfer
+        if (to != address(0) && from != address(0)) { // Only verify for actual transfers (not mint or burns)
+            _verifyTransfer(auth, to, tokenId);
+        }
+        
         uint256 predictionId = nftToPredictionId[tokenId];
         if (predictionId == 0) {
             return from;
@@ -555,6 +571,26 @@ contract PredictionMarket is
         return
             predictions[id].maker != address(0) &&
             predictions[id].taker != address(0);
+    }
+
+    /**
+     * @notice Check if an address is a PassiveLiquidityVault contract
+     * @dev Uses ERC-165 standard interface detection
+     * @param addr The address to check
+     * @return True if the address is a PassiveLiquidityVault contract
+     */
+    function _isPassiveLiquidityVault(address addr) internal view returns (bool) {
+        // Check if the address is a contract
+        if (addr.code.length == 0) {
+            return false;
+        }
+        
+        // Use ERC-165 standard interface detection
+        try IERC165(addr).supportsInterface(type(IPassiveLiquidityVault).interfaceId) returns (bool supported) {
+            return supported;
+        } catch {
+            return false;
+        }
     }
 
     function _createPrediction(

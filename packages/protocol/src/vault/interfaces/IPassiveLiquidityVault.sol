@@ -2,12 +2,13 @@
 pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
  * @title IPassiveLiquidityVault
  * @notice Interface for the PassiveLiquidityVault contract with request-based deposits and withdrawals
  */
-interface IPassiveLiquidityVault is IERC1271 {
+interface IPassiveLiquidityVault is IERC1271, IERC165 {
     // ============ Structs ============
     struct PendingRequest {
         address user;
@@ -80,6 +81,7 @@ interface IPassiveLiquidityVault is IERC1271 {
     function toggleEmergencyMode() external;
     function pause() external;
     function unpause() external;
+
 
     // ============ Additional Functions Available in Contract ============
     // Note: The following functions are implemented in the contract but not declared in this interface
