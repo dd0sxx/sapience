@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import * as React from 'react';
-import type { MarketWithContext } from '@sapience/ui/types/MarketsData';
+import type { MarketWithContext } from '@sapience/sdk/types/MarketsData';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';

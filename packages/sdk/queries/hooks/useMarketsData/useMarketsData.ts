@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { MarketsDataService } from "./MarketsDataService";
-import { MarketsDataParams, MarketsDataResult } from "@/types";
-import { createGraphQLClient } from "@/lib/api";
+import {
+  MarketsDataParams,
+  MarketsDataResult,
+} from "../../../types/MarketsData";
+import { createGraphQLClient } from "../../client/graphqlClient";
 
 /**
  * Hook for fetching and processing markets data (both Market Groups and Conditions)

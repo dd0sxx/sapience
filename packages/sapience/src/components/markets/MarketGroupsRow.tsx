@@ -5,10 +5,8 @@ import Image from 'next/image';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { Button } from '@sapience/ui/components/ui/button';
-import type { MarketWithContext } from '@/sapience/ui/index';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
-import type { MarketWithContext } from './MarketsPage';
+import type { MarketWithContext } from '@sapience/sdk/types/MarketsData';
 import MarketGroupSparkline from './MarketGroupSparkline';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';

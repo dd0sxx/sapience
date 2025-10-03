@@ -2,7 +2,16 @@ import type { GraphQLClient } from "graphql-request";
 import { isAddress } from "viem";
 
 import { GET_CATEGORIES, GET_CONDITIONS, MARKETS_QUERY } from "./queries";
-import { CategoryType, ConditionType, GroupedMarketGroup, MarketGroupType, MarketsDataParams, MarketsDataResult, MarketWithContext } from "@/types";
+import {
+  CategoryType,
+  ConditionType,
+  GroupedMarketGroup,
+  MarketGroupType,
+  MarketsDataParams,
+  MarketsDataResult,
+  MarketWithContext,
+} from "../../../types/MarketsData";
+import type { Market } from "../../../types/graphql";
 
 export class MarketsDataService {
   constructor(private graphqlClient: GraphQLClient) {}

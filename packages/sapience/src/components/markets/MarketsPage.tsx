@@ -1,11 +1,9 @@
 'use client';
 
-import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
-import {
-  useMarketsData,
-  type GroupedMarketGroup,
-} from '@sapience/ui/hooks/useMarketsData';
 import { useIsMobile } from '@sapience/sdk/ui/hooks/use-mobile';
+import { useMarketsData } from '@sapience/sdk/queries/hooks/useMarketsData';
+import type { GroupedMarketGroup } from '@sapience/sdk/types/MarketsData';
+import type { Condition, Market } from '@sapience/sdk/types/graphql';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FrownIcon } from 'lucide-react';
@@ -14,8 +12,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import type { ChangeEvent } from 'react';
 import { useEffect, useState, useMemo } from 'react';
 
-import { SearchBar } from '@sapience/ui';
-import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
 import { SearchBar } from '@sapience/sdk/ui';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
@@ -135,7 +131,7 @@ const MarketsPage = () => {
 
     // Enrich market groups with colors
     const enrichedGroupedMarketGroups = rawMarketsData.groupedMarketGroups.map(
-      (group): GroupedMarketGroupWithColor => ({
+      (group: GroupedMarketGroup): GroupedMarketGroupWithColor => ({
         ...group,
         color: getCategoryColor(group.categorySlug),
       })
@@ -149,7 +145,7 @@ const MarketsPage = () => {
     Object.entries(rawMarketsData.marketGroupsByDay).forEach(
       ([dayKey, marketGroups]) => {
         enrichedMarketGroupsByDay[dayKey] = marketGroups.map(
-          (group): GroupedMarketGroupWithColor => ({
+          (group: GroupedMarketGroup): GroupedMarketGroupWithColor => ({
             ...group,
             color: getCategoryColor(group.categorySlug),
           })
@@ -171,33 +167,37 @@ const MarketsPage = () => {
   const dayEndTimes = useMemo(() => {
     const result: Record<string, number> = {};
 
-    Object.entries(marketGroupsByDay).forEach(([dayKey, marketGroups]) => {
-      // Get all active markets from all market groups in this day
-      const now = Math.floor(Date.now() / 1000);
-      const allActiveMarkets = marketGroups.flatMap((marketGroup) =>
-        marketGroup.markets.filter((market) => now < market.endTimestamp!)
-      );
-
-      if (allActiveMarkets.length > 0) {
-        const nextEndingMarket = [...allActiveMarkets].sort(
-          (a, b) => a.endTimestamp! - b.endTimestamp!
-        )[0];
-
-        result[dayKey] = nextEndingMarket.endTimestamp!;
-      } else {
-        const allMarketsInDay = marketGroups.flatMap(
-          (marketGroup) => marketGroup.markets
+    Object.entries(marketGroupsByDay).forEach(
+      ([dayKey, marketGroups]: [string, GroupedMarketGroupWithColor[]]) => {
+        // Get all active markets from all market groups in this day
+        const now = Math.floor(Date.now() / 1000);
+        const allActiveMarkets = marketGroups.flatMap((marketGroup) =>
+          marketGroup.markets.filter(
+            (market: Market) => now < market.endTimestamp!
+          )
         );
-        if (allMarketsInDay.length > 0) {
-          const latestEndingMarket = [...allMarketsInDay].sort(
-            (a, b) => b.endTimestamp! - a.endTimestamp!
+
+        if (allActiveMarkets.length > 0) {
+          const nextEndingMarket = [...allActiveMarkets].sort(
+            (a, b) => a.endTimestamp! - b.endTimestamp!
           )[0];
-          result[dayKey] = latestEndingMarket.endTimestamp!;
+
+          result[dayKey] = nextEndingMarket.endTimestamp!;
         } else {
-          result[dayKey] = now;
+          const allMarketsInDay = marketGroups.flatMap(
+            (marketGroup) => marketGroup.markets
+          );
+          if (allMarketsInDay.length > 0) {
+            const latestEndingMarket = [...allMarketsInDay].sort(
+              (a, b) => b.endTimestamp! - a.endTimestamp!
+            )[0];
+            result[dayKey] = latestEndingMarket.endTimestamp!;
+          } else {
+            result[dayKey] = now;
+          }
         }
       }
-    });
+    );
 
     return result;
   }, [marketGroupsByDay]);
@@ -207,7 +207,7 @@ const MarketsPage = () => {
     const result: Record<string, number> = {};
     Object.entries(conditionsByDay).forEach(([dayKey, list]) => {
       const withEnds = list.filter(
-        (c) => typeof c.endTime === 'number' && c.endTime > 0
+        (c: Condition) => typeof c.endTime === 'number' && c.endTime > 0
       ) as Array<{ endTime: number }>;
       if (withEnds.length > 0) {
         if (statusFilter === 'all') {
@@ -365,7 +365,7 @@ const MarketsPage = () => {
                       <div className="h-full bg-primary animate-pulse" />
                     </div>
                   )}
-                  {sortedMarketDays.map((dayKey) => (
+                  {sortedMarketDays.map((dayKey: string) => (
                     <motion.div
                       key={dayKey}
                       className="mb-8"
@@ -435,7 +435,7 @@ const MarketsPage = () => {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
                 >
-                  {sortedConditionDays.map((dayKey) => (
+                  {sortedConditionDays.map((dayKey: string) => (
                     <motion.div
                       key={`rfq-day-${dayKey}`}
                       className="mb-8"
