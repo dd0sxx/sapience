@@ -1,4 +1,4 @@
-import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
+import { sapienceAbi as getSapienceAbi } from '@sapience/sdk/queries';
 import type { Address, Abi } from 'viem';
 import { useReadContract } from 'wagmi';
 
@@ -13,7 +13,7 @@ export const useMarketGroupLatestMarket = (
   marketGroupAddress?: Address,
   chainId?: number
 ) => {
-  const { abi } = useSapienceAbi();
+  const { abi } = getSapienceAbi();
 
   const {
     data: latestMarketData,

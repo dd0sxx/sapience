@@ -1,12 +1,12 @@
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
-import { SlippageTolerance } from '@sapience/ui/components/SlippageTolerance';
+import { NumberDisplay } from '@sapience/sdk/ui/components/NumberDisplay';
+import { SlippageTolerance } from '@sapience/sdk/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@sapience/ui/components/ui/alert';
-import { Badge } from '@sapience/ui/components/ui/badge';
-import { Button } from '@sapience/ui/components/ui/button';
+} from '@sapience/sdk/ui/components/ui/alert';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -14,16 +14,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@sapience/ui/components/ui/form';
-import { Input } from '@sapience/ui/components/ui/input';
+} from '@sapience/sdk/ui/components/ui/form';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
 
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/tooltip';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 import type React from 'react';
@@ -31,7 +31,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
 import { useAccount, useChainId, useReadContract, useSwitchChain } from 'wagmi';
 
-import { ColoredRadioOption } from '@sapience/ui';
+import { ColoredRadioOption } from '@sapience/sdk/ui';
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useModifyTrade } from '~/hooks/contract/useModifyTrade';

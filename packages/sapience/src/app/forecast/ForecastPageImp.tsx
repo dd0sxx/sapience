@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import PredictForm from '~/components/markets/forms/ForecastForm';

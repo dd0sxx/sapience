@@ -1,4 +1,4 @@
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import type { QueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
@@ -7,7 +7,7 @@ import type {
   MarketGroup as MarketGroupType,
   Category as CategoryType,
   Position as PositionType,
-} from '@sapience/ui/types/graphql';
+} from '@sapience/sdk/types/graphql';
 
 import {
   DEFAULT_FOCUS_AREA,

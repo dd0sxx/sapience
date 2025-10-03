@@ -426,9 +426,9 @@ importers:
       '@rainbow-me/rainbowkit':
         specifier: 2.1.6
         version: 2.1.6(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(viem@2.33.3(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))(wagmi@2.16.1(@tanstack/query-core@5.83.1)(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.1.0)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.33.3(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))(zod@3.23.6))
-      '@sapience/ui':
+      '@sapience/sdk':
         specifier: workspace:*
-        version: link:../ui
+        version: link:../sdk
       '@sentry/nextjs':
         specifier: 8.49.0
         version: 8.49.0(@opentelemetry/core@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.56.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(encoding@0.1.13)(next@14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17)))
@@ -684,11 +684,8 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
-  packages/ui:
+  packages/sdk:
     dependencies:
-      '@apollo/client':
-        specifier: 3.12.4
-        version: 3.12.4(@types/react@19.1.8)(graphql@16.11.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@hookform/resolvers':
         specifier: 3.9.0
         version: 3.9.0(react-hook-form@7.53.0(react@19.1.0))
@@ -743,27 +740,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: 1.1.3
         version: 1.1.3(@types/react-dom@18.3.0)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      '@rainbow-me/rainbowkit':
-        specifier: 2.1.6
-        version: 2.1.6(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8))(wagmi@2.14.16(@tanstack/query-core@5.83.1)(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.1.0)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8))(zod@3.23.8))
-      '@sentry/nextjs':
-        specifier: 8.49.0
-        version: 8.49.0(@opentelemetry/core@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.56.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(encoding@0.1.13)(next@14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))
       '@tanstack/react-query':
-        specifier: 5.84.2
+        specifier: 5.x
         version: 5.84.2(react@19.1.0)
-      '@tanstack/react-table':
-        specifier: 8.21.2
-        version: 8.21.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      '@uniswap/sdk-core':
-        specifier: 5.4.0
-        version: 5.4.0
-      '@uniswap/v3-core':
-        specifier: 1.0.1
-        version: 1.0.1
-      '@uniswap/v3-sdk':
-        specifier: 3.14.0
-        version: 3.14.0(hardhat@2.22.10(bufferutil@4.0.9)(ts-node@10.9.2(@swc/core@1.13.3(@swc/helpers@0.5.17))(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       abitype:
         specifier: 1.0.8
         version: 1.0.8(typescript@5.8.3)(zod@3.23.8)
@@ -776,12 +755,6 @@ importers:
       cmdk:
         specifier: 1.1.1
         version: 1.1.1(@types/react-dom@18.3.0)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      date-fns:
-        specifier: 3.6.0
-        version: 3.6.0
-      dayjs:
-        specifier: 1.11.13
-        version: 1.11.13
       decimal.js:
         specifier: 10.5.0
         version: 10.5.0
@@ -791,54 +764,21 @@ importers:
       embla-carousel-react:
         specifier: 8.6.0
         version: 8.6.0(react@19.1.0)
-      framer-motion:
-        specifier: 12.19.1
-        version: 12.19.1(@emotion/is-prop-valid@1.3.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      graphql:
-        specifier: 16.11.0
-        version: 16.11.0
       graphql-request:
         specifier: 7.2.0
         version: 7.2.0(graphql@16.11.0)
-      jsbi:
-        specifier: 3.2.5
-        version: 3.2.5
-      lightweight-charts:
-        specifier: 4.2.1
-        version: 4.2.1
       lodash:
         specifier: 4.17.21
         version: 4.17.21
-      lucide-react:
-        specifier: 0.461.0
-        version: 0.461.0(react@19.1.0)
-      next:
-        specifier: 14.2.30
-        version: 14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      next-pwa:
-        specifier: 5.6.0
-        version: 5.6.0(@babel/core@7.26.10)(@swc/core@1.13.3(@swc/helpers@0.5.17))(@types/babel__core@7.20.5)(esbuild@0.25.1)(next@14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))
-      next-themes:
-        specifier: 0.3.0
-        version: 0.3.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react:
-        specifier: 19.1.0
+        specifier: '>=18 || 19'
         version: 19.1.0
-      react-countup:
-        specifier: 6.5.3
-        version: 6.5.3(react@19.1.0)
       react-day-picker:
         specifier: 8.10.1
         version: 8.10.1(date-fns@3.6.0)(react@19.1.0)
       react-dom:
-        specifier: 19.1.0
+        specifier: '>=18 || 19'
         version: 19.1.0(react@19.1.0)
-      react-hook-form:
-        specifier: 7.53.0
-        version: 7.53.0(react@19.1.0)
-      react-icons:
-        specifier: 4.12.0
-        version: 4.12.0(react@19.1.0)
       tailwind-merge:
         specifier: 2.5.4
         version: 2.5.4
@@ -848,12 +788,6 @@ importers:
       vaul:
         specifier: 1.1.2
         version: 1.1.2(@types/react-dom@18.3.0)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      viem:
-        specifier: 2.23.5
-        version: 2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8)
-      wagmi:
-        specifier: 2.14.16
-        version: 2.14.16(@tanstack/query-core@5.83.1)(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.1.0)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8))(zod@3.23.8)
       zod:
         specifier: 3.23.8
         version: 3.23.8
@@ -876,9 +810,6 @@ importers:
       '@next/eslint-plugin-next':
         specifier: 15.4.1
         version: 15.4.1
-      '@playwright/test':
-        specifier: 1.47.1
-        version: 1.47.1
       '@storybook/addon-docs':
         specifier: 9.1.2
         version: 9.1.2(@types/react@19.1.8)(storybook@9.1.2(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.3.3)(utf-8-validate@5.0.10)(vite@6.2.2(@types/node@22.14.0)(jiti@2.4.2)(lightningcss@1.29.3)(terser@5.43.1)(tsx@4.19.2)(yaml@2.7.1)))
@@ -903,6 +834,15 @@ importers:
       '@types/react':
         specifier: 19.1.8
         version: 19.1.8
+      '@uniswap/sdk-core':
+        specifier: 5.4.0
+        version: 5.4.0
+      '@uniswap/v3-core':
+        specifier: 1.0.1
+        version: 1.0.1
+      '@uniswap/v3-sdk':
+        specifier: 3.14.0
+        version: 3.14.0(hardhat@2.22.10(bufferutil@4.0.9)(ts-node@10.9.2(@swc/core@1.13.3(@swc/helpers@0.5.17))(@types/node@22.14.0)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       autoprefixer:
         specifier: 10.4.20
         version: 10.4.20(postcss@8.5.3)
@@ -936,15 +876,18 @@ importers:
       lint-staged:
         specifier: 15.2.10
         version: 15.2.10
-      next-sitemap:
-        specifier: 4.2.3
-        version: 4.2.3(next@14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
+      lucide-react:
+        specifier: 0.461.0
+        version: 0.461.0(react@19.1.0)
       postcss:
         specifier: 8.5.3
         version: 8.5.3
       prettier:
         specifier: 3.3.3
         version: 3.3.3
+      react-hook-form:
+        specifier: 7.53.0
+        version: 7.53.0(react@19.1.0)
       standard-version:
         specifier: 9.5.0
         version: 9.5.0
@@ -963,6 +906,12 @@ importers:
       typescript-eslint:
         specifier: 8.21.0
         version: 8.21.0(eslint@9.31.0(jiti@2.4.2))(typescript@5.8.3)
+      viem:
+        specifier: 2.23.5
+        version: 2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8)
+      wagmi:
+        specifier: 2.14.16
+        version: 2.14.16(@tanstack/query-core@5.83.1)(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.1.0)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8))(zod@3.23.8)
 
 packages:
 
@@ -13329,9 +13278,6 @@ packages:
     resolution: {integrity: sha512-GlOJwTIP6TMIlrTFsxTerwC0W6OpQpCGuX1ECRLBUVRh6fpJH3xTqjCjRgQHTb4ZXexH9rtHou1Lf03GKzmhhQ==}
     engines: {node: '>= 12.0.0'}
 
-  lightweight-charts@4.2.1:
-    resolution: {integrity: sha512-nE2zCZ5Gp7KZbVHUJi6QhQLkYRvYyxsQTnSLEXIFmc8iHOFBT4rk/Dbyecq+CLW59FNuoCPNOYjZnS63/uHDrA==}
-
   lightweight-charts@5.0.6:
     resolution: {integrity: sha512-A7mkToJ3ZPecKkWWM5afN5PZUUf5BlQ+UgcYbWuSlpe1V18n61ahtbtToCSIL0VpSgE5sQPJ/k+/ieQ7/FJe+Q==}
 
@@ -19259,29 +19205,6 @@ snapshots:
       '@wry/trie': 0.5.0
       graphql: 16.10.0
       graphql-tag: 2.12.6(graphql@16.10.0)
-      hoist-non-react-statics: 3.3.2
-      optimism: 0.18.1
-      prop-types: 15.8.1
-      rehackt: 0.1.0(@types/react@19.1.8)(react@19.1.0)
-      response-iterator: 0.2.11
-      symbol-observable: 4.0.0
-      ts-invariant: 0.10.3
-      tslib: 2.8.1
-      zen-observable-ts: 1.2.5
-    optionalDependencies:
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-    transitivePeerDependencies:
-      - '@types/react'
-
-  '@apollo/client@3.12.4(@types/react@19.1.8)(graphql@16.11.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
-      '@wry/caches': 1.0.1
-      '@wry/equality': 0.5.7
-      '@wry/trie': 0.5.0
-      graphql: 16.11.0
-      graphql-tag: 2.12.6(graphql@16.11.0)
       hoist-non-react-statics: 3.3.2
       optimism: 0.18.1
       prop-types: 15.8.1
@@ -25826,24 +25749,6 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
-  '@rainbow-me/rainbowkit@2.1.6(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8))(wagmi@2.14.16(@tanstack/query-core@5.83.1)(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.1.0)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8))(zod@3.23.8))':
-    dependencies:
-      '@tanstack/react-query': 5.84.2(react@19.1.0)
-      '@vanilla-extract/css': 1.15.5(babel-plugin-macros@3.1.0)
-      '@vanilla-extract/dynamic': 2.1.2
-      '@vanilla-extract/sprinkles': 1.6.3(@vanilla-extract/css@1.15.5(babel-plugin-macros@3.1.0))
-      clsx: 2.1.1
-      qrcode: 1.5.4
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-      react-remove-scroll: 2.6.0(@types/react@19.1.8)(react@19.1.0)
-      ua-parser-js: 1.0.40
-      viem: 2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8)
-      wagmi: 2.14.16(@tanstack/query-core@5.83.1)(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.1.0)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.8))(zod@3.23.8)
-    transitivePeerDependencies:
-      - '@types/react'
-      - babel-plugin-macros
-
   '@rainbow-me/rainbowkit@2.1.6(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(viem@2.33.3(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))(wagmi@2.16.1(@tanstack/query-core@5.83.1)(@tanstack/react-query@5.84.2(react@19.1.0))(@types/react@19.1.8)(bufferutil@4.0.9)(encoding@0.1.13)(react@19.1.0)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.33.3(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))(zod@3.23.6))':
     dependencies:
       '@tanstack/react-query': 5.84.2(react@19.1.0)
@@ -26755,32 +26660,6 @@ snapshots:
       '@sentry/types': 5.30.0
       tslib: 1.14.1
 
-  '@sentry/nextjs@8.49.0(@opentelemetry/core@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.56.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(encoding@0.1.13)(next@14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))':
-    dependencies:
-      '@opentelemetry/api': 1.9.0
-      '@opentelemetry/semantic-conventions': 1.28.0
-      '@rollup/plugin-commonjs': 28.0.1(rollup@3.29.5)
-      '@sentry-internal/browser-utils': 8.49.0
-      '@sentry/core': 8.49.0
-      '@sentry/node': 8.49.0
-      '@sentry/opentelemetry': 8.49.0(@opentelemetry/api@1.9.0)(@opentelemetry/core@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.56.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.28.0)
-      '@sentry/react': 8.49.0(react@19.1.0)
-      '@sentry/vercel-edge': 8.49.0
-      '@sentry/webpack-plugin': 2.22.7(encoding@0.1.13)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))
-      chalk: 3.0.0
-      next: 14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      resolve: 1.22.8
-      rollup: 3.29.5
-      stacktrace-parser: 0.1.11
-    transitivePeerDependencies:
-      - '@opentelemetry/core'
-      - '@opentelemetry/instrumentation'
-      - '@opentelemetry/sdk-trace-base'
-      - encoding
-      - react
-      - supports-color
-      - webpack
-
   '@sentry/nextjs@8.49.0(@opentelemetry/core@1.30.1(@opentelemetry/api@1.9.0))(@opentelemetry/instrumentation@0.56.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(encoding@0.1.13)(next@14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17)))':
     dependencies:
       '@opentelemetry/api': 1.9.0
@@ -26896,16 +26775,6 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@sentry/core': 8.49.0
-
-  '@sentry/webpack-plugin@2.22.7(encoding@0.1.13)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))':
-    dependencies:
-      '@sentry/bundler-plugin-core': 2.22.7(encoding@0.1.13)
-      unplugin: 1.0.1
-      uuid: 9.0.1
-      webpack: 5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)
-    transitivePeerDependencies:
-      - encoding
-      - supports-color
 
   '@sentry/webpack-plugin@2.22.7(encoding@0.1.13)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17)))':
     dependencies:
@@ -30697,15 +30566,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  babel-loader@8.4.1(@babel/core@7.26.10)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)):
-    dependencies:
-      '@babel/core': 7.26.10
-      find-cache-dir: 3.3.2
-      loader-utils: 2.0.4
-      make-dir: 3.1.0
-      schema-utils: 2.7.1
-      webpack: 5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)
-
   babel-loader@8.4.1(@babel/core@7.26.10)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))):
     dependencies:
       '@babel/core': 7.26.10
@@ -31412,11 +31272,6 @@ snapshots:
       source-map: 0.6.1
 
   clean-stack@2.2.0: {}
-
-  clean-webpack-plugin@4.0.0(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)):
-    dependencies:
-      del: 4.1.1
-      webpack: 5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)
 
   clean-webpack-plugin@4.0.0(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))):
     dependencies:
@@ -35594,11 +35449,6 @@ snapshots:
       graphql: 16.10.0
       tslib: 2.8.1
 
-  graphql-tag@2.12.6(graphql@16.11.0):
-    dependencies:
-      graphql: 16.11.0
-      tslib: 2.8.1
-
   graphql-ws@6.0.4(graphql@16.10.0)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
     dependencies:
       graphql: 16.10.0
@@ -37833,10 +37683,6 @@ snapshots:
       lightningcss-win32-arm64-msvc: 1.29.3
       lightningcss-win32-x64-msvc: 1.29.3
 
-  lightweight-charts@4.2.1:
-    dependencies:
-      fancy-canvas: 2.1.0
-
   lightweight-charts@5.0.6:
     dependencies:
       fancy-canvas: 2.1.0
@@ -39212,24 +39058,6 @@ snapshots:
   negotiator@1.0.0: {}
 
   neo-async@2.6.2: {}
-
-  next-pwa@5.6.0(@babel/core@7.26.10)(@swc/core@1.13.3(@swc/helpers@0.5.17))(@types/babel__core@7.20.5)(esbuild@0.25.1)(next@14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)):
-    dependencies:
-      babel-loader: 8.4.1(@babel/core@7.26.10)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))
-      clean-webpack-plugin: 4.0.0(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))
-      globby: 11.1.0
-      next: 14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      terser-webpack-plugin: 5.3.14(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))
-      workbox-webpack-plugin: 6.6.0(@types/babel__core@7.20.5)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1))
-      workbox-window: 6.6.0
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@swc/core'
-      - '@types/babel__core'
-      - esbuild
-      - supports-color
-      - uglify-js
-      - webpack
 
   next-pwa@5.6.0(@babel/core@7.26.10)(@swc/core@1.13.3(@swc/helpers@0.5.17))(@types/babel__core@7.20.5)(next@14.2.30(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@playwright/test@1.47.1)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))):
     dependencies:
@@ -45553,18 +45381,6 @@ snapshots:
       workbox-routing: 6.6.0
 
   workbox-sw@6.6.0: {}
-
-  workbox-webpack-plugin@6.6.0(@types/babel__core@7.20.5)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)):
-    dependencies:
-      fast-json-stable-stringify: 2.1.0
-      pretty-bytes: 5.6.0
-      upath: 1.2.0
-      webpack: 5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(esbuild@0.25.1)
-      webpack-sources: 1.4.3
-      workbox-build: 6.6.0(@types/babel__core@7.20.5)
-    transitivePeerDependencies:
-      - '@types/babel__core'
-      - supports-color
 
   workbox-webpack-plugin@6.6.0(@types/babel__core@7.20.5)(webpack@5.94.0(@swc/core@1.13.3(@swc/helpers@0.5.17))):
     dependencies:

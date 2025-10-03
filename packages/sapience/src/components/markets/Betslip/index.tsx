@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 
 import {
   Drawer,
@@ -8,25 +8,25 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from '@sapience/ui/components/ui/drawer';
+} from '@sapience/sdk/ui/components/ui/drawer';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
-import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
+} from '@sapience/sdk/ui/components/ui/popover';
+import { useIsBelow } from '@sapience/sdk/ui/hooks/use-mobile';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useConnectOrCreateWallet } from '@privy-io/react-auth';
-import { sapienceAbi } from '@sapience/ui/lib/abi';
+import { sapienceAbi } from '@sapience/sdk/queries/client/abi';
 import Image from 'next/image';
 import { useEffect, useMemo } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
 import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
-import erc20ABI from '@sapience/ui/abis/erc20abi.json';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Abi } from 'abitype';
 import type { Address } from 'viem';

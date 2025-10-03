@@ -1,22 +1,22 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Input } from '@sapience/ui/components/ui/input';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@sapience/ui/components/ui/dialog';
-import { Label } from '@sapience/ui';
+} from '@sapience/sdk/ui/components/ui/dialog';
+import { Label } from '@sapience/sdk/ui';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@sapience/ui/components/ui/alert';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/alert';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { FileText, Upload } from 'lucide-react';
 import { useAccount, useChainId } from 'wagmi';
 import {
@@ -26,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@sapience/ui/components/ui/table';
+} from '@sapience/sdk/ui/components/ui/table';
 
 import {
   DEFAULT_FACTORY_ADDRESS,

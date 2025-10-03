@@ -1,4 +1,4 @@
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import Image from 'next/image';
 
 export default function ElizaHomepageFeature() {

@@ -4,17 +4,17 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { decodeAbiParameters } from 'viem';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { SquareStack as SquareStackIcon, Zap } from 'lucide-react';
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@sapience/ui/components/ui/tabs';
+} from '@sapience/sdk/ui/components/ui/tabs';
 import Link from 'next/link';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { NumberDisplay } from '@sapience/sdk/ui/components/NumberDisplay';
 import LoaderWithMessage from '~/components/shared/LoaderWithMessage';
 import {
   TransactionTimeCell,

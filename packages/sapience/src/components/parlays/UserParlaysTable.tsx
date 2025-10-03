@@ -11,8 +11,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@sapience/ui/components/ui/table';
-import { Button } from '@sapience/ui/components/ui/button';
+} from '@sapience/sdk/ui/components/ui/table';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   flexRender,
   getCoreRowModel,
@@ -23,7 +23,7 @@ import {
 } from '@tanstack/react-table';
 import { ArrowUpDown, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
 import * as React from 'react';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { useReadContracts, useAccount } from 'wagmi';
 import type { Abi } from 'abitype';
 import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
@@ -47,7 +47,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';

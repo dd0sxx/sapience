@@ -1,8 +1,8 @@
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useQuery } from '@tanstack/react-query';
 import { formatEther } from 'viem';
 
-import type { CandleType } from '@sapience/ui/types/graphql';
+import type { CandleType } from '@sapience/sdk/types/graphql';
 
 // GraphQL Queries
 const GET_MARKET_CANDLES = /* GraphQL */ `

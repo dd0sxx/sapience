@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -10,16 +10,16 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from '@sapience/ui/components/ui/form';
-import { Input } from '@sapience/ui/components/ui/input';
+} from '@sapience/sdk/ui/components/ui/form';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@sapience/ui/components/ui/select';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/select';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { InfoIcon, PlusIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';

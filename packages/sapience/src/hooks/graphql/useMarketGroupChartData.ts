@@ -1,8 +1,8 @@
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useEffect, useState } from 'react';
 
 // Import the new structures and the processing function
-import type { CandleType } from '@sapience/ui/types/graphql';
+import type { CandleType } from '@sapience/sdk/types/graphql';
 import {
   processCandleData, // Use new data point type
   type MarketCandleDataWithId,

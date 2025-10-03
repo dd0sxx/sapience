@@ -1,12 +1,12 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
   TooltipProvider,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { Timer } from 'lucide-react';
 

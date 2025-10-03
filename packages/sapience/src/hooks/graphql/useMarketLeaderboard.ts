@@ -1,4 +1,4 @@
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useQuery } from '@tanstack/react-query';
 
 // No REST dependencies; all tokens assumed to be worth $1.

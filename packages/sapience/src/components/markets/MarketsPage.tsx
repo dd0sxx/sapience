@@ -5,6 +5,7 @@ import {
   useMarketsData,
   type GroupedMarketGroup,
 } from '@sapience/ui/hooks/useMarketsData';
+import { useIsMobile } from '@sapience/sdk/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FrownIcon } from 'lucide-react';
@@ -14,6 +15,8 @@ import type { ChangeEvent } from 'react';
 import { useEffect, useState, useMemo } from 'react';
 
 import { SearchBar } from '@sapience/ui';
+import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
+import { SearchBar } from '@sapience/sdk/ui';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
 import FocusAreaFilter from './FocusAreaFilter';

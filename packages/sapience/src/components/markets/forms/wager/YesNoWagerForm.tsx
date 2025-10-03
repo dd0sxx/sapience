@@ -1,16 +1,16 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@sapience/ui/components/ui/button';
-import { sapienceAbi } from '@sapience/ui/lib/abi';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { sapienceAbi } from '@sapience/sdk/queries/client/abi';
 
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useSearchParams } from 'next/navigation';
 
-import type { MarketGroupType } from '@sapience/ui/types';
-import { ColoredRadioOption } from '@sapience/ui';
+import type { MarketGroupType } from '@sapience/sdk/types';
+import { ColoredRadioOption } from '@sapience/sdk/ui';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
 import WagerDisclaimer from '../shared/WagerDisclaimer';

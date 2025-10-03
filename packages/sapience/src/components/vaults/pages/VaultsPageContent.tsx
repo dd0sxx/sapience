@@ -1,20 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Card, CardContent } from '@sapience/ui/components/ui/card';
-import { Input } from '@sapience/ui/components/ui/input';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { Card, CardContent } from '@sapience/sdk/ui/components/ui/card';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@sapience/ui/components/ui/tabs';
+} from '@sapience/sdk/ui/components/ui/tabs';
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
 import { Vault as VaultIcon } from 'lucide-react';

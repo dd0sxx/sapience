@@ -13,8 +13,8 @@ import {
   Scatter,
 } from 'recharts';
 
-import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import type { MarketGroup as MarketGroupType } from '@sapience/sdk/types/graphql';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
 import LottieLoader from '../shared/LottieLoader';
 import ChartLegend from './ChartLegend';

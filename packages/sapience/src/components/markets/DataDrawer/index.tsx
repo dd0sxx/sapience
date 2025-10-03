@@ -1,4 +1,4 @@
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -6,13 +6,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@sapience/ui/components/ui/table';
+} from '@sapience/sdk/ui/components/ui/table';
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from '@sapience/ui/components/ui/tabs';
+} from '@sapience/sdk/ui/components/ui/tabs';
 import {
   TrophyIcon,
   ListIcon,

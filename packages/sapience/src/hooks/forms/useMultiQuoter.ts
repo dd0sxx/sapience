@@ -1,4 +1,4 @@
-import type { MarketGroupType } from '@sapience/ui/types';
+import type { MarketGroupType } from '@sapience/sdk/types';
 import { MarketGroupClassification } from '~/lib/types';
 import { YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 

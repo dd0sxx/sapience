@@ -7,9 +7,9 @@ import {
   CarouselContent,
   CarouselItem,
   type CarouselApi,
-} from '@sapience/ui/components/ui/carousel';
-import { useSidebar } from '@sapience/ui/components/ui/sidebar';
-import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
+} from '@sapience/sdk/ui/components/ui/carousel';
+import { useSidebar } from '@sapience/sdk/ui/components/ui/sidebar';
+import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
 import MarketCard from '../markets/MarketCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';

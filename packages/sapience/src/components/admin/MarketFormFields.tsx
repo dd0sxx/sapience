@@ -1,15 +1,15 @@
 'use client';
 
-import { Input, Label } from '@sapience/ui';
-import { Textarea } from '@sapience/ui/components/ui/textarea';
-import { Switch } from '@sapience/ui/components/ui/switch';
+import { Input, Label } from '@sapience/sdk/ui';
+import { Textarea } from '@sapience/sdk/ui/components/ui/textarea';
+import { Switch } from '@sapience/sdk/ui/components/ui/switch';
 import { useEffect, useState } from 'react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import { InfoIcon } from 'lucide-react';
 
 import { TICK_SPACING } from '../../lib/constants/numbers';

@@ -1,10 +1,10 @@
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/popover';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, ExternalLink, User } from 'lucide-react';
 import Image from 'next/image';

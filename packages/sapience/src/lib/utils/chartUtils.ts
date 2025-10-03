@@ -1,5 +1,5 @@
 // Assuming CandleType is defined elsewhere, e.g., in interfaces or generated types
-import type { CandleType } from '@sapience/ui/types/graphql'; // Adjust path if needed
+import type { CandleType } from '@sapience/sdk/types/graphql'; // Adjust path if needed
 import { formatEther } from 'viem';
 
 // Define the type for index candle data (partial CandleType)
