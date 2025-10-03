@@ -1035,10 +1035,18 @@ export const upsertEntitiesFromEvent = async (
           settlementSqrtPriceX96
         );
 
+        const blockTimestamp = Number(
+          event.logData.args.timestamp ??
+            event.blockTimestamp ??
+            event.timestamp ??
+            Math.floor(Date.now() / 1000)
+        );
+
         await prisma.market.update({
           where: { id: market.id },
           data: {
             settled: true,
+            settledAt: blockTimestamp,
             settlementPriceD18: settlementPriceD18.toString(),
           },
         });

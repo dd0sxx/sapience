@@ -33,6 +33,7 @@ export async function backfillAccuracy(): Promise<void> {
   const settledMarkets = await prisma.market.findMany({
     where: { settled: true },
     include: { market_group: true },
+    orderBy: { settledAt: 'asc' },
   });
 
   for (const m of settledMarkets) {

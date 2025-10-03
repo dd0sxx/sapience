@@ -1314,6 +1314,7 @@ type Market {
   public: Boolean!
   question: String
   settled: Boolean
+  settledAt: Int
   settlementPriceD18: Decimal
   shortName: String
   similarMarkets: [String!]!
@@ -2521,6 +2522,7 @@ input MarketWhereInput {
   public: BoolFilter
   question: StringNullableFilter
   settled: BoolNullableFilter
+  settledAt: IntNullableFilter
   settlementPriceD18: DecimalNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
