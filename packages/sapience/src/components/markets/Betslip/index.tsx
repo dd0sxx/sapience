@@ -24,7 +24,8 @@ import { useEffect, useMemo } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
-import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
+import { predictionMarketAbi } from '@sapience/sdk';
+import { getAddressByTag } from '@sapience/sdk';
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -99,16 +100,18 @@ const Betslip = ({
     buildMintRequestDataFromBid,
   } = useAuctionStart();
 
-  // PredictionMarket address (constant)
-  const PREDICTION_MARKET_ADDRESS =
-    '0x8D1D1946cBc56F695584761d25D13F174906671C' as Address;
+  // PredictionMarket address via centralized mapping (arb1 tag default)
+  const PREDICTION_MARKET_ADDRESS = getAddressByTag(
+    'predictionMarket',
+    'arb1'
+  ) as Address;
 
   // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({
     contracts: [
       {
         address: PREDICTION_MARKET_ADDRESS,
-        abi: PredictionMarket.abi as Abi,
+        abi: predictionMarketAbi as Abi,
         functionName: 'getConfig',
         chainId: parlayChainId,
       },
@@ -300,7 +303,7 @@ const Betslip = ({
     wagerAmount?: string;
     limitAmount?: string | number;
   }>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema as any),
     defaultValues: {
       ...generateFormValues,
       wagerAmount: '10',

@@ -51,8 +51,8 @@
     "./boilerplates": "./boilerplates/README.md"
   },
   "scripts": {
-    "dev": "tsup ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
-    "build": "tsup ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json && pnpm build-storybook",
+    "dev": "tsup index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json && pnpm build-storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "eslint .",

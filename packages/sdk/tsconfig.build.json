@@ -6,6 +6,7 @@
   },
   "include": [
     "index.ts",
+    "lib/**/*",
     "ui/**/*",
     "queries/**/*",
     "types/**/*"

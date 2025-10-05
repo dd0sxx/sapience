@@ -18,8 +18,9 @@ import type {
 
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
+import { getAddressByTag } from '@sapience/sdk';
 export const PREDICTION_MARKET_CONTRACT_ADDRESS =
-  '0x8D1D1946cBc56F695584761d25D13F174906671C';
+  getAddressByTag('predictionMarket', 'arb1') as `0x${string}`;
 
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { encodeFunctionData, erc20Abi } from 'viem';
 
-import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
+import { predictionMarketAbi } from '@sapience/sdk';
 import type { Abi } from 'abitype';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -115,7 +115,7 @@ export function useSubmitParlay({
 
       // Add PredictionMarket.mint call
       const mintCalldata = encodeFunctionData({
-        abi: PredictionMarket.abi as Abi,
+        abi: predictionMarketAbi as Abi,
         functionName: 'mint',
         args: [mintPredictionRequestData],
       });

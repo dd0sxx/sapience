@@ -1,9 +1,9 @@
 import type { Abi } from 'abitype';
-import sapience from '../../protocol/deployments/Sapience.json';
+import { foilAbi as sapience } from '../abis';
 import sapienceFactory from '../../protocol/deployments/SapienceFactory.json';
 
 export const sapienceAbi = (): { abi: Abi } => {
-  const abi: Abi = sapience.abi as Abi;
+  const abi: Abi = (sapience as any) as Abi;
   return { abi };
 };
 
