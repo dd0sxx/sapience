@@ -1,0 +1,65 @@
+/* Promote the top two guide links under the logo and place them side-by-side */
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-bottom: 0;
+  padding-top: 15px !important;
+  padding-bottom: 0 !important;
+}
+
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"],
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/what-is-sapience"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  font-weight: 500; /* medium */
+  padding: 6px 10px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+}
+
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"]:hover,
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/what-is-sapience"]:hover {
+  background: rgba(145, 179, 240, 0.08);
+  border-bottom-color: rgba(145, 179, 240, 0.6);
+}
+
+/* Active tab state */
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[data-active="true"][href="/user-guide/introduction/what-is-sapience"],
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[data-active="true"][href="/builder-guide/getting-started/what-is-sapience"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+
+/* Fallback: when a runtime script adds .is-active-tab to top anchors */
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a.is-active-tab[href="/user-guide/introduction/what-is-sapience"],
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a.is-active-tab[href="/builder-guide/getting-started/what-is-sapience"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+
+
+/* Section-aware active tab: highlight User Guide when any /user-guide page is active */
+.vocs_Sidebar_group:has(.vocs_Sidebar_items a[href^="/user-guide/"][data-active="true"]) > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+
+/* Section-aware active tab: highlight Builder Guide when any non-user-guide section is active */
+.vocs_Sidebar_group:has(.vocs_Sidebar_items a[href^="/builder-guide/"][data-active="true"]) > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/what-is-sapience"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+/* Section-aware active tab: if any User Guide page is active, activate the User Guide tab */
+.vocs_Sidebar_group:has(.vocs_Sidebar_items a[data-active="true"][href^="/user-guide/"]) > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+
+/* If any non-User Guide section page is active (root/guides/api/reference/etc.), activate Builder Guide */
+
+

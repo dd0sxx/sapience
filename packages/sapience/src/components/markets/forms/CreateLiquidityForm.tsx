@@ -1,11 +1,11 @@
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
-import { SlippageTolerance } from '@sapience/ui/components/SlippageTolerance';
+import { NumberDisplay } from '@sapience/sdk/ui/components/NumberDisplay';
+import { SlippageTolerance } from '@sapience/sdk/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@sapience/ui/components/ui/alert';
-import { Button } from '@sapience/ui/components/ui/button';
+} from '@sapience/sdk/ui/components/ui/alert';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -13,9 +13,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@sapience/ui/components/ui/form';
-import { Input } from '@sapience/ui/components/ui/input';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/form';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import type { Abi } from 'viem';

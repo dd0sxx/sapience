@@ -1,6 +1,6 @@
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { NumberDisplay } from '@sapience/sdk/ui/components/NumberDisplay';
 import Image from 'next/image';
-import type { MarketGroupType } from '@sapience/ui/types';
+import type { MarketGroupType } from '@sapience/sdk/types';
 import { AlertTriangle } from 'lucide-react';
 import { MarketGroupClassification } from '~/lib/types';
 

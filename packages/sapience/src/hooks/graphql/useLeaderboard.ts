@@ -1,4 +1,4 @@
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 // Interface for aggregated data after processing

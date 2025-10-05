@@ -3,7 +3,7 @@
 import type React from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
+import type { MarketGroup as MarketGroupType } from '@sapience/sdk/types/graphql';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { createPositionDefaults } from '~/lib/utils/betslipUtils';

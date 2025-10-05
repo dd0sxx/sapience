@@ -1,21 +1,21 @@
 'use client';
 
-import { Button, Input, Label } from '@sapience/ui';
+import { Button, Input, Label } from '@sapience/sdk/ui';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@sapience/ui/components/ui/select';
-import { Switch } from '@sapience/ui/components/ui/switch';
+} from '@sapience/sdk/ui/components/ui/select';
+import { Switch } from '@sapience/sdk/ui/components/ui/switch';
 import { Copy, Loader2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 

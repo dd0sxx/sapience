@@ -1,8 +1,8 @@
-import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
+import { sapienceAbi as getSapienceAbi } from '@sapience/sdk/queries';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useMemo } from 'react';
 import type { Abi, Address } from 'viem';
-import type { MarketType } from '@sapience/ui/types';
+import type { MarketType } from '@sapience/sdk/types';
 
 import type { UsePositionsResult } from '~/hooks/contract';
 import {
@@ -108,7 +108,7 @@ export function MarketPageProvider({
   } = useMarket({ chainId, marketAddress, marketId });
 
   // Get ABI for contracts
-  const { abi } = useSapienceAbi();
+  const { abi } = getSapienceAbi();
 
   // Get market data from the contract
   const {

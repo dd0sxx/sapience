@@ -1,4 +1,4 @@
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { useEffect } from 'react';
 import { useAccount, useBalance } from 'wagmi';
 import LottieLoader from '~/components/shared/LottieLoader';

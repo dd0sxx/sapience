@@ -1,4 +1,4 @@
-import type { PositionType } from '@sapience/ui/types';
+import type { PositionType } from '@sapience/sdk/types';
 
 export type TradeShareExtraParams = Record<string, string>;
 

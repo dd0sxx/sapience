@@ -1,10 +1,10 @@
-import { Input } from '@sapience/ui/components/ui/input';
-import { Label } from '@sapience/ui/components/ui/label';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
+import { Label } from '@sapience/sdk/ui/components/ui/label';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
+} from '@sapience/sdk/ui/components/ui/popover';
 import { HelpCircle, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';

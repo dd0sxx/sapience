@@ -1,4 +1,4 @@
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { ChartColumnIncreasingIcon, WalletIcon } from 'lucide-react';
 
 import { useState } from 'react';

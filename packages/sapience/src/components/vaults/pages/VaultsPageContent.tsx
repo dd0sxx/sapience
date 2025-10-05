@@ -1,17 +1,23 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Card, CardContent } from '@sapience/ui/components/ui/card';
-import { Input } from '@sapience/ui/components/ui/input';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { Card, CardContent } from '@sapience/sdk/ui/components/ui/card';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@sapience/ui/components/ui/tabs';
+} from '@sapience/sdk/ui/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
+import { Vault as VaultIcon } from 'lucide-react';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 
@@ -40,8 +46,9 @@ const VaultsPageContent = () => {
   const {
     vaultData,
     userData,
-    depositRequest,
-    withdrawalRequest,
+    depositRequest: _depositRequest,
+    withdrawalRequest: _withdrawalRequest,
+    pendingRequest,
     userAssetBalance,
     assetDecimals,
     isLoadingUserData,
@@ -52,12 +59,16 @@ const VaultsPageContent = () => {
     cancelWithdrawal,
     formatAssetAmount,
     formatSharesAmount,
-    formatUtilizationRate,
     minDeposit,
     allowance,
-    pricePerShareRay,
+    pricePerShare,
     vaultManager: _vaultManager,
     quoteSignatureValid,
+    expirationTime,
+    interactionDelay,
+    interactionDelayRemainingSec: _interactionDelayRemainingSec,
+    isInteractionDelayActive,
+    lastInteractionAt,
   } = usePassiveLiquidityVault({
     vaultAddress: VAULT_ADDRESS,
     chainId: VAULT_CHAIN_ID,
@@ -66,7 +77,10 @@ const VaultsPageContent = () => {
   // Form state
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  // No slippage; we rely on manager-provided vaultCollateralPerShare quote
+  const [pendingAction, setPendingAction] = useState<
+    'deposit' | 'withdraw' | 'cancelDeposit' | 'cancelWithdrawal' | undefined
+  >(undefined);
+  // No slippage; we rely on manager-provided decimal pricePerShare quote
 
   // Derived validation
   const depositWei =
@@ -145,6 +159,17 @@ const VaultsPageContent = () => {
         }
         const stored = window.localStorage.getItem('sapience.vaults');
         setVaultsFeatureEnabled(stored === 'true');
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[VaultPage] feature flags', {
+            stored,
+            NEXT_PUBLIC_ENABLE_VAULTS: process.env.NEXT_PUBLIC_ENABLE_VAULTS,
+          });
+
+          console.debug('[VaultPage] inputs', {
+            VAULT_CHAIN_ID,
+            VAULT_ADDRESS,
+          });
+        }
       }
     } catch {
       setVaultsFeatureEnabled(false);
@@ -156,33 +181,49 @@ const VaultsPageContent = () => {
     if (!depositAmount || !assetDecimals) return 0n;
     try {
       const amountWei = parseUnits(depositAmount, assetDecimals);
-      const pps =
-        pricePerShareRay && pricePerShareRay > 0n
-          ? pricePerShareRay
-          : 10n ** 18n;
-      return (amountWei * 10n ** 18n) / pps;
+      const ppsScaled = parseUnits(
+        pricePerShare && pricePerShare !== '0' ? pricePerShare : '1',
+        assetDecimals
+      );
+      return ppsScaled === 0n
+        ? 0n
+        : (amountWei * 10n ** BigInt(assetDecimals)) / ppsScaled;
     } catch {
       return 0n;
     }
-  }, [depositAmount, assetDecimals, pricePerShareRay]);
-
-  const minDepositShares = estDepositShares;
+  }, [depositAmount, assetDecimals, pricePerShare]);
 
   const estWithdrawAssets = useMemo(() => {
     if (!withdrawAmount || !assetDecimals) return 0n;
     try {
       const sharesWei = parseUnits(withdrawAmount, assetDecimals);
-      const pps =
-        pricePerShareRay && pricePerShareRay > 0n
-          ? pricePerShareRay
-          : 10n ** 18n;
-      return (sharesWei * pps) / 10n ** 18n;
+      const ppsScaled = parseUnits(
+        pricePerShare && pricePerShare !== '0' ? pricePerShare : '1',
+        assetDecimals
+      );
+      return (sharesWei * ppsScaled) / 10n ** BigInt(assetDecimals);
     } catch {
       return 0n;
     }
-  }, [withdrawAmount, assetDecimals, pricePerShareRay]);
+  }, [withdrawAmount, assetDecimals, pricePerShare]);
 
-  const minWithdrawAssets = estWithdrawAssets;
+  const withdrawSharesWei = useMemo(() => {
+    if (!withdrawAmount || !assetDecimals) return 0n;
+    try {
+      return parseUnits(withdrawAmount, assetDecimals);
+    } catch {
+      return 0n;
+    }
+  }, [withdrawAmount, assetDecimals]);
+
+  const withdrawExceedsShareBalance = useMemo(() => {
+    const balanceShares = userData?.balance ?? 0n;
+    try {
+      return withdrawSharesWei > balanceShares;
+    } catch {
+      return false;
+    }
+  }, [withdrawSharesWei, userData]);
 
   // Force light mode rendering for the iframe
   useEffect(() => {
@@ -213,6 +254,36 @@ const VaultsPageContent = () => {
     }
   }, []); // Empty dependency array ensures this runs once client-side
 
+  // Live cooldown countdown (HH:MM:SS)
+  const [cooldownDisplay, setCooldownDisplay] = useState<string>('');
+  useEffect(() => {
+    if (!isInteractionDelayActive) {
+      setCooldownDisplay('');
+      return;
+    }
+
+    const compute = () => {
+      try {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const target = Number(lastInteractionAt + interactionDelay);
+        const remaining = Math.max(0, target - nowSec);
+        const totalHours = Math.floor(remaining / 3600);
+        const minutes = Math.floor((remaining % 3600) / 60);
+        const seconds = remaining % 60;
+        const pad = (n: number) => String(n).padStart(2, '0');
+        setCooldownDisplay(
+          `${pad(totalHours)}:${pad(minutes)}:${pad(seconds)}`
+        );
+      } catch {
+        setCooldownDisplay('');
+      }
+    };
+
+    compute();
+    const id = window.setInterval(compute, 1000);
+    return () => window.clearInterval(id);
+  }, [isInteractionDelayActive, lastInteractionAt, interactionDelay]);
+
   const renderVaultForm = () => (
     <Tabs defaultValue="deposit" className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-4">
@@ -220,9 +291,9 @@ const VaultsPageContent = () => {
         <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="deposit" className="space-y-4 mt-1">
+      <TabsContent value="deposit" className="space-y-2 mt-1">
         {/* Amount Input */}
-        <div className="space-y-1.5">
+        <div className="space-y-0.5">
           <div className="border border-input bg-background rounded-md px-3 py-3">
             <div className="flex items-center justify-between mb-0">
               <Input
@@ -232,23 +303,14 @@ const VaultsPageContent = () => {
                 className="text-lg bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border border-border rounded px-2 py-0.5 leading-none">
-                  testUSDe
-                </span>
+                <span className="text-lg text-muted-foreground">testUSDe</span>
               </div>
-            </div>
-            <div className="text-xs text-muted-foreground mt-0">
-              {depositAmount && (
-                <div className="text-right">
-                  Min Shares: {formatSharesAmount(minDepositShares)}
-                </div>
-              )}
             </div>
           </div>
         </div>
 
         {/* Balance and Requested row (outside input box) */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground py-2">
+        <div className="flex items-center justify-between text-sm text-muted-foreground py-0">
           <div className="flex items-center gap-2">
             <span>
               Balance: <NumberDisplay value={Number(shortWalletBalance)} />{' '}
@@ -263,79 +325,70 @@ const VaultsPageContent = () => {
               MAX
             </Button>
           </div>
-          <div className="text-right">
-            Requested Shares: {formatSharesAmount(estDepositShares)} sapLP
-          </div>
+          {depositAmount &&
+          estDepositShares > 0n &&
+          ((minDeposit ?? 0n) === 0n || depositWei >= (minDeposit ?? 0n)) ? (
+            <div className="text-right">
+              Requested Shares: {formatSharesAmount(estDepositShares)} sapLP
+            </div>
+          ) : (
+            (minDeposit ?? 0n) > 0n && (
+              <div className="text-right">
+                Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)} testUSDe
+              </div>
+            )
+          )}
         </div>
 
-        {/* Deposit Button */}
-        <Button
-          size="lg"
-          className="w-full text-base"
-          disabled={
-            !isConnected ||
-            !depositAmount ||
-            isVaultPending ||
-            vaultData?.paused ||
-            belowMinDeposit ||
-            quoteSignatureValid === false
-          }
-          onClick={async () => {
-            await deposit(depositAmount, VAULT_CHAIN_ID);
-            setDepositAmount('');
-          }}
-        >
-          {!isConnected
-            ? 'Connect Wallet'
-            : isVaultPending
-              ? 'Processing...'
-              : vaultData?.paused
-                ? 'Vault Paused'
-                : quoteSignatureValid === false
-                  ? 'Invalid Quote Signature'
-                  : requiresApproval
-                    ? 'Approve & Deposit'
-                    : 'Deposit testUSDe'}
-        </Button>
-
-        {/* Pending Deposits list (boxes) below */}
-        {depositRequest &&
-          (userData?.depositIndex ?? 0n) > 0n &&
-          !depositRequest.processed && (
-            <div className="mt-4 space-y-2">
-              <div className="p-3 bg-muted/30 border border-border rounded-md">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="text-sm text-muted-foreground">
-                    <p className="font-medium">Pending Deposit</p>
-                    <p className="text-xs">
-                      {formatAssetAmount(depositRequest.amount)} testUSDe
-                      {depositQueuePosition
-                        ? ` · Queue #${depositQueuePosition}`
-                        : ''}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      Date.now() <
-                      (Number(depositRequest.timestamp) +
-                        Number(vaultData?.withdrawalDelay ?? 0n)) *
-                        1000
-                    }
-                    onClick={() => cancelDeposit(VAULT_CHAIN_ID)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
+        {/* Cooldown + Deposit Button Group */}
+        <div className="mt-4 space-y-2">
+          {isInteractionDelayActive && (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
+              This vault implements a cooldown period. Please wait{' '}
+              {cooldownDisplay} before submitting another request.
             </div>
           )}
+
+          {/* Deposit Button */}
+          <Button
+            size="lg"
+            className="w-full text-base"
+            disabled={
+              !isConnected ||
+              !depositAmount ||
+              isVaultPending ||
+              vaultData?.paused ||
+              belowMinDeposit ||
+              quoteSignatureValid === false ||
+              isInteractionDelayActive
+            }
+            onClick={async () => {
+              setPendingAction('deposit');
+              await deposit(depositAmount, VAULT_CHAIN_ID);
+              setDepositAmount('');
+              setPendingAction(undefined);
+            }}
+          >
+            {!isConnected
+              ? 'Connect Wallet'
+              : isVaultPending && pendingAction === 'deposit'
+                ? 'Processing...'
+                : vaultData?.paused
+                  ? 'Vault Paused'
+                  : quoteSignatureValid === false
+                    ? 'Invalid Quote Signature'
+                    : requiresApproval
+                      ? 'Approve & Deposit'
+                      : 'Submit Deposit'}
+          </Button>
+        </div>
+
+        {/* Consolidated pending section rendered below tabs */}
       </TabsContent>
 
-      <TabsContent value="withdraw" className="space-y-4 mt-1">
+      <TabsContent value="withdraw" className="space-y-2 mt-1">
         {/* Amount Input */}
-        <div className="space-y-1.5">
+        <div className="space-y-0.5">
           <div className="border border-input bg-background rounded-md px-3 py-3">
             <div className="flex items-center justify-between mb-0">
               <Input
@@ -345,23 +398,14 @@ const VaultsPageContent = () => {
                 className="text-lg bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border border-border rounded px-2 py-0.5 leading-none">
-                  testUSDe
-                </span>
+                <span className="text-lg text-muted-foreground">testUSDe</span>
               </div>
-            </div>
-            <div className="text-xs text-muted-foreground mt-0">
-              {withdrawAmount && (
-                <div className="text-right">
-                  Min Assets: {formatAssetAmount(minWithdrawAssets)}
-                </div>
-              )}
             </div>
           </div>
         </div>
 
         {/* Balance and Requested row (outside input box) */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground py-2">
+        <div className="flex items-center justify-between text-sm text-muted-foreground py-0">
           <div className="flex items-center gap-2">
             <span>
               Balance:{' '}
@@ -381,55 +425,56 @@ const VaultsPageContent = () => {
               MAX
             </Button>
           </div>
-          <div className="text-right">
-            Requested Collateral: {formatAssetAmount(estWithdrawAssets)}{' '}
-            testUSDe
-          </div>
+          {withdrawAmount &&
+            estWithdrawAssets > 0n &&
+            !withdrawExceedsShareBalance && (
+              <div className="text-right">
+                Requested Collateral: {formatAssetAmount(estWithdrawAssets)}{' '}
+                testUSDe
+              </div>
+            )}
         </div>
 
-        {/* Withdraw Button */}
-        <Button
-          size="lg"
-          className="w-full text-base"
-          disabled={
-            !isConnected ||
-            !withdrawAmount ||
-            isVaultPending ||
-            vaultData?.paused ||
-            quoteSignatureValid === false
-          }
-          onClick={() => requestWithdrawal(withdrawAmount, VAULT_CHAIN_ID)}
-        >
-          {!isConnected
-            ? 'Connect Wallet'
-            : isVaultPending
-              ? 'Processing...'
-              : vaultData?.paused
-                ? 'Vault Paused'
-                : quoteSignatureValid === false
-                  ? 'Invalid Quote Signature'
-                  : 'Request Withdrawal'}
-        </Button>
-
-        {/* Pending Withdrawal as cancel button below */}
-        {withdrawalRequest &&
-          (userData?.withdrawalIndex ?? 0n) > 0n &&
-          !withdrawalRequest.processed && (
-            <Button
-              variant="outline"
-              className="w-full mt-4"
-              disabled={
-                Date.now() <
-                (Number(withdrawalRequest.timestamp) +
-                  Number(vaultData?.withdrawalDelay ?? 0n)) *
-                  1000
-              }
-              onClick={() => cancelWithdrawal(VAULT_CHAIN_ID)}
-            >
-              Pending withdrawal: {formatSharesAmount(withdrawalRequest.shares)}{' '}
-              · Cancel
-            </Button>
+        {/* Cooldown + Withdraw Button Group */}
+        <div className="mt-4 space-y-2">
+          {isInteractionDelayActive && (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
+              This vault implements a cooldown period. Please wait{' '}
+              {cooldownDisplay} before submitting another request.
+            </div>
           )}
+
+          {/* Withdraw Button */}
+          <Button
+            size="lg"
+            className="w-full text-base"
+            disabled={
+              !isConnected ||
+              !withdrawAmount ||
+              isVaultPending ||
+              vaultData?.paused ||
+              quoteSignatureValid === false ||
+              isInteractionDelayActive
+            }
+            onClick={async () => {
+              setPendingAction('withdraw');
+              await requestWithdrawal(withdrawAmount, VAULT_CHAIN_ID);
+              setPendingAction(undefined);
+            }}
+          >
+            {!isConnected
+              ? 'Connect Wallet'
+              : isVaultPending && pendingAction === 'withdraw'
+                ? 'Processing...'
+                : vaultData?.paused
+                  ? 'Vault Paused'
+                  : quoteSignatureValid === false
+                    ? 'Invalid Quote Signature'
+                    : 'Request Withdrawal'}
+          </Button>
+        </div>
+
+        {/* Consolidated pending section rendered below tabs */}
       </TabsContent>
     </Tabs>
   );
@@ -456,10 +501,23 @@ const VaultsPageContent = () => {
       </div>
 
       {/* Main Content */}
-      <div className="container max-w-[750px] mx-auto px-4 pt-32 pb-12 relative z-10">
-        <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-12">
-          Vaults
-        </h1>
+      <div className="container max-w-[600px] mx-auto px-4 pt-32 pb-12 relative z-10">
+        <div className="mb-5 md:mb-10 flex items-center justify-between">
+          <h1 className="text-3xl md:text-5xl font-heading font-normal">
+            Vaults
+          </h1>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex pointer-events-auto" tabIndex={0}>
+                <Button size="sm" disabled aria-label="Coming soon">
+                  <VaultIcon className="h-8 w-8" aria-hidden="true" />
+                  Deploy Vault
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Coming soon</TooltipContent>
+          </Tooltip>
+        </div>
 
         <div className="grid grid-cols-1 gap-8">
           {/* Vault */}
@@ -498,7 +556,82 @@ const VaultsPageContent = () => {
 
                     {/* Deposit/Withdraw Tabs */}
                     {renderVaultForm()}
-                    {/* moved pending deposit cancel into deposit tab below button */}
+
+                    {/* Pending Requests (mapping-based) */}
+                    {pendingRequest && !pendingRequest.processed && (
+                      <div className="mt-4 space-y-2">
+                        <div className="p-3 bg-muted/30 border border-border rounded-md">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-sm text-muted-foreground">
+                              <p className="font-medium">
+                                {pendingRequest.isDeposit
+                                  ? 'Pending Deposit'
+                                  : 'Pending Withdrawal'}
+                              </p>
+                              <p className="text-xs">
+                                {pendingRequest.isDeposit ? (
+                                  <>
+                                    {formatAssetAmount(pendingRequest.assets)}{' '}
+                                    testUSDe
+                                    {depositQueuePosition
+                                      ? ` · Queue #${depositQueuePosition}`
+                                      : ''}
+                                  </>
+                                ) : (
+                                  <>
+                                    {formatSharesAmount(pendingRequest.shares)}{' '}
+                                    sapLP
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            {pendingRequest.isDeposit ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                  Date.now() <
+                                  (Number(pendingRequest.timestamp) +
+                                    Number(expirationTime ?? 0n)) *
+                                    1000
+                                }
+                                onClick={async () => {
+                                  setPendingAction('cancelDeposit');
+                                  await cancelDeposit(VAULT_CHAIN_ID);
+                                  setPendingAction(undefined);
+                                }}
+                              >
+                                {isVaultPending &&
+                                pendingAction === 'cancelDeposit'
+                                  ? 'Processing...'
+                                  : 'Cancel'}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                  Date.now() <
+                                  (Number(pendingRequest.timestamp) +
+                                    Number(expirationTime ?? 0n)) *
+                                    1000
+                                }
+                                onClick={async () => {
+                                  setPendingAction('cancelWithdrawal');
+                                  await cancelWithdrawal(VAULT_CHAIN_ID);
+                                  setPendingAction(undefined);
+                                }}
+                              >
+                                {isVaultPending &&
+                                pendingAction === 'cancelWithdrawal'
+                                  ? 'Processing...'
+                                  : 'Cancel'}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -515,38 +648,73 @@ const VaultsPageContent = () => {
                         <h3 className="text-2xl font-medium">
                           Parlay Liquidity Vault
                         </h3>
-                        {vaultData && (
-                          <div className="mt-2 text-base text-muted-foreground">
-                            Utilization:{' '}
-                            {formatUtilizationRate(
-                              vaultData?.utilizationRate ?? 0n
-                            )}
-                            % (Max.{' '}
-                            {Math.round(
-                              Number(vaultData?.maxUtilizationRate ?? 0n) / 100
-                            )}
-                            %)
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-muted-foreground">
-                          Your Deposits
-                        </div>
-                        <div className="text-lg font-medium">
-                          {isLoadingUserData
-                            ? '...'
-                            : userData
-                              ? formatSharesAmount(userData.balance)
-                              : '0.00'}{' '}
-                          testUSDe
-                        </div>
-                        {/* Removed Withdrawal Delay and Pending lines per design update */}
                       </div>
                     </div>
 
                     {/* Deposit/Withdraw Tabs */}
                     {renderVaultForm()}
+
+                    {/* Pending Requests (mapping-based) */}
+                    {pendingRequest && !pendingRequest.processed && (
+                      <div className="mt-4 space-y-2">
+                        <div className="p-3 bg-muted/30 border border-border rounded-md">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-sm text-muted-foreground">
+                              <p className="font-medium">
+                                {pendingRequest.isDeposit
+                                  ? 'Pending Deposit'
+                                  : 'Pending Withdrawal'}
+                              </p>
+                              <p className="text-xs">
+                                {pendingRequest.isDeposit ? (
+                                  <>
+                                    {formatAssetAmount(pendingRequest.assets)}{' '}
+                                    testUSDe
+                                    {depositQueuePosition
+                                      ? ` · Queue #${depositQueuePosition}`
+                                      : ''}
+                                  </>
+                                ) : (
+                                  <>
+                                    {formatSharesAmount(pendingRequest.shares)}{' '}
+                                    sapLP
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={
+                                Date.now() <
+                                (Number(pendingRequest.timestamp) +
+                                  Number(expirationTime ?? 0n)) *
+                                  1000
+                              }
+                              onClick={async () => {
+                                const act = pendingRequest.isDeposit
+                                  ? 'cancelDeposit'
+                                  : 'cancelWithdrawal';
+                                setPendingAction(act);
+                                if (act === 'cancelDeposit')
+                                  await cancelDeposit(VAULT_CHAIN_ID);
+                                else await cancelWithdrawal(VAULT_CHAIN_ID);
+                                setPendingAction(undefined);
+                              }}
+                            >
+                              {isVaultPending &&
+                              pendingAction &&
+                              ((pendingAction === 'cancelDeposit' &&
+                                pendingRequest.isDeposit) ||
+                                (pendingAction === 'cancelWithdrawal' &&
+                                  !pendingRequest.isDeposit))
+                                ? 'Processing...'
+                                : 'Cancel'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
                 {!vaultsFeatureEnabled && <ComingSoonOverlay />}

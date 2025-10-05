@@ -1,5 +1,5 @@
 import { InfoIcon } from 'lucide-react';
-import { cn } from '@sapience/ui/lib/utils';
+import { cn } from '@sapience/sdk/ui/lib/utils';
 
 interface ForecastInfoNoticeProps {
   className?: string;

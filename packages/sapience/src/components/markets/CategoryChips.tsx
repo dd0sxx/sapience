@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { LayoutGridIcon, TagIcon } from 'lucide-react';
-import { Skeleton } from '@sapience/ui/components/ui/skeleton';
+import { Skeleton } from '@sapience/sdk/ui/components/ui/skeleton';
 import FocusAreaChip from './FocusAreaChip';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 

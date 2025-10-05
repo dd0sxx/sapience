@@ -1,17 +1,17 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
 import type { Address } from 'viem';
 
-import type { MarketType } from '@sapience/ui/types';
+import type { MarketType } from '@sapience/sdk/types';
 import MarketDeployButton from './MarketDeployButton';
 import SettleMarketDialog from './SettleMarketDialog';
 import EditMarketDialog from './EditMarketDialog';

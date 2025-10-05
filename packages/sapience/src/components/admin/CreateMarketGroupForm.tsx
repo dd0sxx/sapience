@@ -1,23 +1,23 @@
 'use client';
 
-import { Button, Input, Label } from '@sapience/ui';
+import { Button, Input, Label } from '@sapience/sdk/ui';
 // Removed Dialog imports; copy dialog is now a separate component
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@sapience/ui/components/ui/accordion';
-import { Card, CardContent } from '@sapience/ui/components/ui/card';
+} from '@sapience/sdk/ui/components/ui/accordion';
+import { Card, CardContent } from '@sapience/sdk/ui/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@sapience/ui/components/ui/select';
-import { Switch } from '@sapience/ui/components/ui/switch';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+} from '@sapience/sdk/ui/components/ui/select';
+import { Switch } from '@sapience/sdk/ui/components/ui/switch';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
 import { Loader2, Plus, Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
