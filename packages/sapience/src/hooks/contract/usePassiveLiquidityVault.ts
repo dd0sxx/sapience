@@ -3,7 +3,7 @@ import type { Address } from 'viem';
 import { getAddressByTag } from '@sapience/sdk';
 import { erc20Abi, formatUnits, parseUnits, encodeFunctionData } from 'viem';
 import type { Abi } from 'abitype';
-import { passiveLiquidityVaultAbi } from '@sapience/sdk';
+import { liquidityVaultAbi } from '@sapience/sdk';
 import { useReadContracts, useAccount } from 'wagmi';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
@@ -14,13 +14,13 @@ import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 const DEFAULT_VAULT_ADDRESS = getAddressByTag('passiveLiquidityVault', 'arb1') as Address;
 
 // Use ABI from SDK
-const PARLAY_VAULT_ABI: Abi = passiveLiquidityVaultAbi as Abi;
+const PARLAY_VAULT_ABI: Abi = liquidityVaultAbi as Abi;
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
 
 // ABI helper: check if contract implements a function with optional arity
 const hasFunction = (name: string, inputsLength?: number) => {
   try {
-    const abiItems = passiveLiquidityVaultAbi as unknown as Array<any>;
+    const abiItems = liquidityVaultAbi as unknown as Array<any>;
     return abiItems.some(
       (f: any) =>
         f?.type === 'function' &&

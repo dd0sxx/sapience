@@ -6,10 +6,10 @@ import {
   getProviderForChain,
 } from '../../utils/utils';
 import { Abi, decodeEventLog, Log } from 'viem';
-import marketGroupFactoryData from '@sapience/protocol/deployments/SapienceFactory.json';
+import { sapienceFactoryAbi } from '@sapience/sdk';
 import { handleMarketGroupInitialized } from './indexMarkets';
 
-const marketGroupFactoryAbi = marketGroupFactoryData.abi;
+const marketGroupFactoryAbi = sapienceFactoryAbi().abi as Abi;
 const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
 
 export async function reindexMarketGroupFactory(
