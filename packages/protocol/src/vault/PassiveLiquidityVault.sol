@@ -176,7 +176,6 @@ contract PassiveLiquidityVault is
     )
         ERC20(_name, _symbol)
         Ownable(msg.sender)
-        SignatureProcessor()
     {
         if (asset_ == address(0)) revert InvalidAsset(asset_);
         if (_manager == address(0)) revert InvalidManager(_manager);
