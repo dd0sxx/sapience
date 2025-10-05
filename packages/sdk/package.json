@@ -18,6 +18,11 @@
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./constants": {
+      "import": "./dist/constants/index.mjs",
+      "require": "./dist/constants/index.js",
+      "types": "./dist/constants/index.d.ts"
+    },
     "./ui": {
       "import": "./dist/ui/index.mjs",
       "require": "./dist/ui/index.js",
@@ -48,11 +53,16 @@
       "require": "./types/*",
       "types": "./types/*"
     },
+    "./contracts": {
+      "import": "./dist/contracts/index.mjs",
+      "require": "./dist/contracts/index.js",
+      "types": "./dist/contracts/index.d.ts"
+    },
     "./boilerplates": "./boilerplates/README.md"
   },
   "scripts": {
-    "dev": "tsup index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
-    "build": "tsup index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json && pnpm build-storybook",
+    "dev": "tsup index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json && pnpm build-storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "eslint .",

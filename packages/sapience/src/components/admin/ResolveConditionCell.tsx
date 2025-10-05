@@ -5,7 +5,7 @@ import { useWallets } from '@privy-io/react-auth';
 import { Loader2 } from 'lucide-react';
 import { erc20Abi, zeroAddress, toHex } from 'viem';
 import { useReadContract } from 'wagmi';
-import { getAddressByTag } from '@sapience/sdk';
+import { umaResolver } from '@sapience/sdk/contracts';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 type ResolveConditionCellProps = {
@@ -58,10 +58,7 @@ const ResolveConditionCell = ({
 
   // Hardcoded Arbitrum One + UMA Resolver address
   const UMA_CHAIN_ID = 42161;
-  const UMA_RESOLVER_ADDRESS = getAddressByTag(
-    'umaResolver',
-    'arb1'
-  ) as `0x${string}`;
+  const UMA_RESOLVER_ADDRESS = umaResolver[42161]?.address as `0x${string}`;
 
   const nowSec = Math.floor(Date.now() / 1000);
   const pastEnd = !!endTime && nowSec >= endTime;

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '../lib/api';
+import { graphqlRequest } from '../queries/client/graphqlClient';
 import { RESOURCE_ORDER, type ResourceSlug } from '../types/resources';
 import type { CandleType, Resource, CandleAndTimestampType } from '../types/graphql';
 
@@ -47,7 +47,7 @@ export const useResources = () => {
     queryKey: ['resources'],
     queryFn: async () => {
       const data = await graphqlRequest<GetResourcesQuery>(RESOURCES_QUERY);
-      const resources = data.resources.sort((a, b) => {
+      const resources = data.resources.sort((a: GetResourcesQuery['resources'][0], b: GetResourcesQuery['resources'][0]) => {
         const indexA = RESOURCE_ORDER.indexOf(a.slug as ResourceSlug);
         const indexB = RESOURCE_ORDER.indexOf(b.slug as ResourceSlug);
         return indexA - indexB;
@@ -69,7 +69,7 @@ export const useLatestResourcePrice = (slug: string) => {
       const to = Math.floor(Date.now() / 1000);
       const interval = 60;
       const data = await graphqlRequest<GetResourceCandlesQuery>(LATEST_RESOURCE_PRICE_QUERY, { slug, from, to, interval });
-      const candles = data.resourceCandles.data;
+      const candles = data.resourceCandles.data as CandleType[];
       if (!candles || candles.length === 0) throw new Error('No price data found');
       const latestCandle = candles.reduce((latest: CandleType | null, current: CandleType) => {
         if (!latest || current.timestamp > latest.timestamp) return current;
@@ -96,7 +96,7 @@ export const useLatestIndexPrice = (market: { address: string; chainId: number; 
         marketId: market.marketId.toString(),
         from, to, interval,
       });
-      const candles = data.indexCandles.data;
+      const candles = data.indexCandles.data as CandleType[];
       if (!candles || candles.length === 0) throw new Error('No index price data found');
       const latestCandle = candles.reduce((latest: CandleType | null, current: CandleType) => {
         if (!latest || current.timestamp > latest.timestamp) return current;

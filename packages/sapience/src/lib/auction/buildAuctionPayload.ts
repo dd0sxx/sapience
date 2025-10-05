@@ -1,5 +1,5 @@
 import { encodeAbiParameters } from 'viem';
-import { getAddressByTag } from '@sapience/sdk';
+import { umaResolver } from '@sapience/sdk/contracts';
 
 export interface PredictedOutcomeInputStub {
   marketId: string; // The id from API (already encoded claim:endTime)
@@ -40,10 +40,7 @@ export function buildAuctionStartPayload(
   resolverOverride?: string
 ): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
   // Use the deployed UMA resolver address
-  const UMA_RESOLVER_ADDRESS = getAddressByTag(
-    'umaResolver',
-    'arb1'
-  ) as `0x${string}`;
+  const UMA_RESOLVER_ADDRESS = umaResolver[42161]?.address as `0x${string}`;
   const resolver: `0x${string}` = isHexAddress(resolverOverride)
     ? resolverOverride
     : UMA_RESOLVER_ADDRESS;

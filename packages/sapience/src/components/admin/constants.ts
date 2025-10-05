@@ -4,9 +4,9 @@ export const DEFAULT_CHAIN_ID = 42161;
 export const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
 export const DEFAULT_BOND_CURRENCY =
   '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
-import { getAddressByTag } from '@sapience/sdk';
+import { collateralToken } from '@sapience/sdk/contracts';
 export const DEFAULT_COLLATERAL_ASSET =
-  getAddressByTag('collateralToken', 'arb1');
+  collateralToken[42161]?.address;
 export const DEFAULT_OPTIMISTIC_ORACLE =
   '0xa6147867264374F324524E30C02C331cF28aa879';
 export const DEFAULT_UNISWAP_POS_MANAGER =

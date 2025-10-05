@@ -25,7 +25,7 @@ import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
-import { getAddressByTag } from '@sapience/sdk';
+import { predictionMarket } from '@sapience/sdk/contracts';
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -101,10 +101,7 @@ const Betslip = ({
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (arb1 tag default)
-  const PREDICTION_MARKET_ADDRESS = getAddressByTag(
-    'predictionMarket',
-    'arb1'
-  ) as Address;
+  const PREDICTION_MARKET_ADDRESS = predictionMarket[42161]?.address as Address;
 
   // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({

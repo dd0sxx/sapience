@@ -1,5 +1,5 @@
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
-import { getAddressByTag } from '@sapience/sdk';
+import { predictionMarket } from '@sapience/sdk/contracts';
 
 const predictionMarketAbi = [
   {
@@ -29,10 +29,7 @@ export function usePredictionMarketWriteContract(opts?: {
 
   // Arbitrum One + PredictionMarket address
   const APP_CHAIN_ID = 42161;
-  const PREDICTION_MARKET_ADDRESS = getAddressByTag(
-    'predictionMarket',
-    'arb1'
-  ) as `0x${string}`;
+  const PREDICTION_MARKET_ADDRESS = predictionMarket[42161]?.address as `0x${string}`;
 
   function burn(tokenId: bigint, refCode: `0x${string}`) {
     if (!PREDICTION_MARKET_ADDRESS || !APP_CHAIN_ID) return;

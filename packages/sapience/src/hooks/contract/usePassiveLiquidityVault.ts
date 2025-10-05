@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
-import { getAddressByTag } from '@sapience/sdk';
+import { passiveLiquidityVault } from '@sapience/sdk/contracts';
 import { erc20Abi, formatUnits, parseUnits, encodeFunctionData } from 'viem';
 import type { Abi } from 'abitype';
 import { liquidityVaultAbi } from '@sapience/sdk';
@@ -11,7 +11,7 @@ import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteCon
 import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 
 // Default to address can be overridden by hook config
-const DEFAULT_VAULT_ADDRESS = getAddressByTag('passiveLiquidityVault', 'arb1') as Address;
+const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[42161]?.address as Address;
 
 // Use ABI from SDK
 const PARLAY_VAULT_ABI: Abi = liquidityVaultAbi as Abi;
