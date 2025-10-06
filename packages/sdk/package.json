@@ -33,30 +33,15 @@
       "require": "./dist/ui/index.js",
       "types": "./dist/ui/index.d.ts"
     },
-    "./ui/*": {
-      "import": "./ui/*",
-      "require": "./ui/*",
-      "types": "./ui/*"
-    },
     "./queries": {
       "import": "./dist/queries/index.mjs",
       "require": "./dist/queries/index.js",
       "types": "./dist/queries/index.d.ts"
     },
-    "./queries/*": {
-      "import": "./queries/*",
-      "require": "./queries/*",
-      "types": "./queries/*"
-    },
     "./types": {
       "import": "./dist/types/index.mjs",
       "require": "./dist/types/index.js",
       "types": "./dist/types/index.d.ts"
-    },
-    "./types/*": {
-      "import": "./types/*",
-      "require": "./types/*",
-      "types": "./types/*"
     },
     "./contracts": {
       "import": "./dist/contracts/index.mjs",
