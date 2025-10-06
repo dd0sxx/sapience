@@ -3,7 +3,7 @@ import { getProviderForChain } from '../../utils/utils';
 import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
 import { indexMarketGroupEvents } from '../../controllers/market';
 import { updateCollateralData } from '../../controllers/marketHelpers';
-import { foilFactoryAbi } from '@sapience/sdk/queries/client/abi';
+import { foilFactoryAbi } from '@sapience/sdk/queries';
 import Sentry from '../../instrument';
 import type { MarketGroup } from '../../../generated/prisma';
 
