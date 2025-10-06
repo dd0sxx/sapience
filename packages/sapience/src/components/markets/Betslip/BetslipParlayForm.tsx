@@ -238,9 +238,11 @@ export default function BetslipParlayForm({
                           </span>
                         </span>
                         <span className="ml-auto text-xs font-normal text-foreground text-right">
-                          Expires in
+                          <span className="whitespace-nowrap">Expires in</span>
                           <br />
-                          {`${secs} ${suffix}`}
+                          <span className="whitespace-nowrap">
+                            {secs} {suffix}
+                          </span>
                         </span>
                       </div>
                     </div>
