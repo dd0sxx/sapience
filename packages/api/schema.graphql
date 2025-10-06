@@ -1334,6 +1334,7 @@ type MarketAvgAggregate {
   marketParamsFeerate: Float
   maxPriceD18: Decimal
   minPriceD18: Decimal
+  settledAt: Float
   settlementPriceD18: Decimal
   startTimestamp: Float
 }
@@ -1350,6 +1351,7 @@ input MarketAvgOrderByAggregateInput {
   marketParamsFeerate: SortOrder
   maxPriceD18: SortOrder
   minPriceD18: SortOrder
+  settledAt: SortOrder
   settlementPriceD18: SortOrder
   startTimestamp: SortOrder
 }
@@ -1384,6 +1386,7 @@ type MarketCountAggregate {
   public: Int!
   question: Int!
   settled: Int!
+  settledAt: Int!
   settlementPriceD18: Int!
   shortName: Int!
   similarMarkets: Int!
@@ -1416,6 +1419,7 @@ input MarketCountOrderByAggregateInput {
   public: SortOrder
   question: SortOrder
   settled: SortOrder
+  settledAt: SortOrder
   settlementPriceD18: SortOrder
   shortName: SortOrder
   similarMarkets: SortOrder
@@ -1523,6 +1527,7 @@ type MarketGroupBy {
   public: Boolean!
   question: String
   settled: Boolean
+  settledAt: Int
   settlementPriceD18: Decimal
   shortName: String
   similarMarkets: [String!]
@@ -2063,6 +2068,7 @@ type MarketMaxAggregate {
   public: Boolean
   question: String
   settled: Boolean
+  settledAt: Int
   settlementPriceD18: Decimal
   shortName: String
   startTimestamp: Int
@@ -2094,6 +2100,7 @@ input MarketMaxOrderByAggregateInput {
   public: SortOrder
   question: SortOrder
   settled: SortOrder
+  settledAt: SortOrder
   settlementPriceD18: SortOrder
   shortName: SortOrder
   startTimestamp: SortOrder
@@ -2125,6 +2132,7 @@ type MarketMinAggregate {
   public: Boolean
   question: String
   settled: Boolean
+  settledAt: Int
   settlementPriceD18: Decimal
   shortName: String
   startTimestamp: Int
@@ -2156,6 +2164,7 @@ input MarketMinOrderByAggregateInput {
   public: SortOrder
   question: SortOrder
   settled: SortOrder
+  settledAt: SortOrder
   settlementPriceD18: SortOrder
   shortName: SortOrder
   startTimestamp: SortOrder
@@ -2201,6 +2210,7 @@ input MarketOrderByWithAggregationInput {
   public: SortOrder
   question: SortOrderInput
   settled: SortOrderInput
+  settledAt: SortOrderInput
   settlementPriceD18: SortOrderInput
   shortName: SortOrderInput
   similarMarkets: SortOrder
@@ -2235,6 +2245,7 @@ input MarketOrderByWithRelationInput {
   public: SortOrder
   question: SortOrderInput
   settled: SortOrderInput
+  settledAt: SortOrderInput
   settlementPriceD18: SortOrderInput
   shortName: SortOrderInput
   similarMarkets: SortOrder
@@ -2418,6 +2429,7 @@ enum MarketScalarFieldEnum {
   public
   question
   settled
+  settledAt
   settlementPriceD18
   shortName
   similarMarkets
@@ -2453,6 +2465,7 @@ input MarketScalarWhereWithAggregatesInput {
   public: BoolWithAggregatesFilter
   question: StringNullableWithAggregatesFilter
   settled: BoolNullableWithAggregatesFilter
+  settledAt: IntNullableWithAggregatesFilter
   settlementPriceD18: DecimalNullableWithAggregatesFilter
   shortName: StringNullableWithAggregatesFilter
   similarMarkets: StringNullableListFilter
@@ -2472,6 +2485,7 @@ type MarketSumAggregate {
   marketParamsFeerate: Int
   maxPriceD18: Decimal
   minPriceD18: Decimal
+  settledAt: Int
   settlementPriceD18: Decimal
   startTimestamp: Int
 }
@@ -2488,6 +2502,7 @@ input MarketSumOrderByAggregateInput {
   marketParamsFeerate: SortOrder
   maxPriceD18: SortOrder
   minPriceD18: SortOrder
+  settledAt: SortOrder
   settlementPriceD18: SortOrder
   startTimestamp: SortOrder
 }
@@ -2561,6 +2576,7 @@ input MarketWhereUniqueInput {
   public: BoolFilter
   question: StringNullableFilter
   settled: BoolNullableFilter
+  settledAt: IntNullableFilter
   settlementPriceD18: DecimalNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter

@@ -786,6 +786,12 @@ importers:
       tailwindcss-animate:
         specifier: 1.0.7
         version: 1.0.7(tailwindcss@3.4.14(ts-node@10.9.2(@swc/core@1.13.3(@swc/helpers@0.5.17))(@types/node@22.14.0)(typescript@5.8.3)))
+      tsup:
+        specifier: 8.5.0
+        version: 8.5.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(jiti@2.4.2)(postcss@8.5.3)(tsx@4.19.2)(typescript@5.8.3)(yaml@2.7.1)
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
       vaul:
         specifier: 1.1.2
         version: 1.1.2(@types/react-dom@18.3.0)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -898,12 +904,6 @@ importers:
       tailwindcss:
         specifier: 3.4.14
         version: 3.4.14(ts-node@10.9.2(@swc/core@1.13.3(@swc/helpers@0.5.17))(@types/node@22.14.0)(typescript@5.8.3))
-      tsup:
-        specifier: 8.5.0
-        version: 8.5.0(@swc/core@1.13.3(@swc/helpers@0.5.17))(jiti@2.4.2)(postcss@8.5.3)(tsx@4.19.2)(typescript@5.8.3)(yaml@2.7.1)
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
       typescript-eslint:
         specifier: 8.21.0
         version: 8.21.0(eslint@9.31.0(jiti@2.4.2))(typescript@5.8.3)
