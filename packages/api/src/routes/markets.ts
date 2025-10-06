@@ -240,6 +240,8 @@ router.put(
       'shortName',
       'optionName',
       'public',
+      'settled',
+      'settledAt',
     ]);
 
     const preDeployAllowed = new Set<string>([
@@ -273,6 +275,8 @@ router.put(
       claimStatementNo?: string | null;
       startTimestamp?: number;
       endTimestamp?: number;
+      settled?: boolean;
+      settledAt?: number | null;
       startingSqrtPriceX96?: string;
       baseAssetMinPriceTick?: number;
       baseAssetMaxPriceTick?: number;
@@ -314,6 +318,14 @@ router.put(
           String((data as Record<string, unknown>)['endTime']),
           10
         );
+      if ('settled' in data)
+        updateData.settled = Boolean(
+          (data as Record<string, unknown>)['settled']
+        );
+      if ('settledAt' in data) {
+        const v = (data as Record<string, unknown>)['settledAt'];
+        updateData.settledAt = v == null ? null : parseInt(String(v), 10);
+      }
       if ('startingSqrtPriceX96' in data)
         updateData.startingSqrtPriceX96 = String(
           (data as Record<string, unknown>)['startingSqrtPriceX96']
@@ -519,6 +531,8 @@ router.put(
       'shortName',
       'optionName',
       'public',
+      'settled',
+      'settledAt',
     ]);
     const preDeployAllowed = new Set<string>([
       ...Array.from(alwaysAllowed),
@@ -551,6 +565,8 @@ router.put(
       claimStatementNo?: string | null;
       startTimestamp?: number;
       endTimestamp?: number;
+      settled?: boolean;
+      settledAt?: number | null;
       startingSqrtPriceX96?: string;
       baseAssetMinPriceTick?: number;
       baseAssetMaxPriceTick?: number;
