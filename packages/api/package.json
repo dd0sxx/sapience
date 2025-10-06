@@ -29,6 +29,7 @@
     "start:reindex-accuracy": "tsx src/workers/worker.ts reindexAccuracy $*",
     "start:reindex-prediction-market": "tsx src/workers/worker.ts reindexPredictionMarket $*",
     "start:backfill-accuracy": "tsx src/workers/worker.ts backfillAccuracy $*",
+    "pretest": "pnpm --filter @sapience/sdk run build:lib",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:prediction-e2e": "tsx test-prediction-indexer-e2e.ts",
