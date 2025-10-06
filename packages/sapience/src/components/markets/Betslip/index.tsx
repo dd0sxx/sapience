@@ -26,10 +26,10 @@ import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Abi } from 'abitype';
 import type { Address } from 'viem';
 import { encodeFunctionData, erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
@@ -91,7 +91,7 @@ const Betslip = ({
     });
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const parlayChainId = betSlipPositions[0]?.chainId || 42161;
+  const parlayChainId = betSlipPositions[0]?.chainId || DEFAULT_CHAIN_ID;
   const {
     auctionId,
     bids,
@@ -101,14 +101,14 @@ const Betslip = ({
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (arb1 tag default)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[42161]?.address as Address;
+  const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
 
   // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({
     contracts: [
       {
         address: PREDICTION_MARKET_ADDRESS,
-        abi: predictionMarketAbi as Abi,
+        abi: predictionMarketAbi,
         functionName: 'getConfig',
         chainId: parlayChainId,
       },
@@ -477,7 +477,7 @@ const Betslip = ({
     isSubmitting: isParlaySubmitting,
     error: parlayError,
   } = useSubmitParlay({
-    chainId: betSlipPositions[0]?.chainId || 42161, // Use first position's chainId or default to Base
+    chainId: betSlipPositions[0]?.chainId || DEFAULT_CHAIN_ID, // Use first position's chainId or default
     predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',

@@ -27,6 +27,7 @@ import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { useReadContracts, useAccount } from 'wagmi';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 // Minimal ABI for PredictionMarketUmaResolver.resolvePrediction(bytes)
 const UMA_RESOLVER_MIN_ABI = [
   {
@@ -254,7 +255,7 @@ export default function UserParlaysTable({
             : userIsTaker
               ? (p.maker as Address | undefined)
               : undefined) ?? null,
-        chainId: Number(p.chainId || 42161),
+        chainId: Number(p.chainId || DEFAULT_CHAIN_ID),
         marketAddress: p.marketAddress as Address,
       };
     });
@@ -274,12 +275,14 @@ export default function UserParlaysTable({
       tokenIdsToCheck.map((tokenId) => ({
         // Fallback to default market address if we can't find a matching row (should not happen)
         address:
-          rows.find((r) => r.tokenIdToClaim === tokenId)?.marketAddress!,
+          rows.find((r) => r.tokenIdToClaim === tokenId)?.marketAddress ??
+          rows[0]?.marketAddress,
         abi: predictionMarketAbi as unknown as Abi,
         functionName: 'ownerOf',
         args: [tokenId],
         chainId:
-          rows.find((r) => r.tokenIdToClaim === tokenId)?.chainId || 42161,
+          rows.find((r) => r.tokenIdToClaim === tokenId)?.chainId ||
+          DEFAULT_CHAIN_ID,
       })),
     [tokenIdsToCheck, rows]
   );

@@ -13,10 +13,7 @@
       "strictPropertyInitialization": false,
       "resolveJsonModule": true,
       "baseUrl": ".",
-      "paths": {
-        "@sapience/sdk": ["../sdk"],
-        "@sapience/sdk/*": ["../sdk/*"]
-      },
+      "paths": {},
       "sourceMap": true,
       "inlineSources": true,
       "sourceRoot": "/"

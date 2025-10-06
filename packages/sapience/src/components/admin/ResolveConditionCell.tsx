@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { erc20Abi, zeroAddress, toHex } from 'viem';
 import { useReadContract } from 'wagmi';
 import { umaResolver } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 type ResolveConditionCellProps = {
@@ -57,8 +58,8 @@ const ResolveConditionCell = ({
     | undefined;
 
   // Hardcoded Arbitrum One + UMA Resolver address
-  const UMA_CHAIN_ID = 42161;
-  const UMA_RESOLVER_ADDRESS = umaResolver[42161]?.address as `0x${string}`;
+  const UMA_CHAIN_ID = DEFAULT_CHAIN_ID;
+  const UMA_RESOLVER_ADDRESS = umaResolver[DEFAULT_CHAIN_ID]?.address;
 
   const nowSec = Math.floor(Date.now() / 1000);
   const pastEnd = !!endTime && nowSec >= endTime;

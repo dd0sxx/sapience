@@ -54,6 +54,7 @@
   },
   "keywords": [],
   "dependencies": {
+    "@sapience/sdk": "workspace:*",
     "@apollo/server": "4.11.3",
     "@apollo/server-plugin-response-cache": "4.1.4",
     "@ethereum-attestation-service/eas-sdk": "2.7.0",

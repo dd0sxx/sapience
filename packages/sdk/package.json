@@ -18,6 +18,11 @@
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./abis": {
+      "import": "./dist/abis/index.mjs",
+      "require": "./dist/abis/index.js",
+      "types": "./dist/abis/index.d.ts"
+    },
     "./constants": {
       "import": "./dist/constants/index.mjs",
       "require": "./dist/constants/index.js",
@@ -61,8 +66,8 @@
     "./boilerplates": "./boilerplates/README.md"
   },
   "scripts": {
-    "dev": "tsup index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
-    "build": "tsup index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json && pnpm build-storybook",
+    "dev": "tsup index.ts abis/index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup index.ts abis/index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json && pnpm build-storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "eslint .",

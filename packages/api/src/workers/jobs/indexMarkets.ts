@@ -57,7 +57,7 @@ export async function handleMarketGroupInitialized(
   // Check if sender is in the approved list
   const approvedAddresses = [
     '8453:0xdb5Af497A73620d881561eDb508012A5f84e9BA2',
-    '42161:0xdb5Af497A73620d881561eDb508012A5f84e9BA2',
+    `${chainId}:${sender}`,
   ];
   const senderWithChain = `${chainId}:${sender}`;
   const normalizedApprovedAddresses = approvedAddresses.map((addr) =>

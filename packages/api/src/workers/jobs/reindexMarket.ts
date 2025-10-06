@@ -1,6 +1,5 @@
 import { foilAbi } from '@sapience/sdk';
 import * as Sentry from '@sentry/node';
-import { Abi } from 'viem';
 import {
   initializeMarket,
   reindexMarketGroupEvents,

@@ -19,7 +19,10 @@ import type {
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
 import { predictionMarket } from '@sapience/sdk';
-export const PREDICTION_MARKET_CONTRACT_ADDRESS = predictionMarket[42161]?.address as `0x${string}`;
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+export const PREDICTION_MARKET_CONTRACT_ADDRESS = predictionMarket[
+  DEFAULT_CHAIN_ID
+]?.address as `0x${string}`;
 
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [

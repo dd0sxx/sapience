@@ -48,6 +48,7 @@ import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { useReadContract } from 'wagmi';
 import { keccak256, concatHex, toHex } from 'viem';
 import { umaResolver } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
 import ResolveConditionCell from './ResolveConditionCell';
@@ -302,8 +303,8 @@ const RFQTab = ({
   };
 
   // UMA Resolver config (same as used elsewhere in admin)
-  const UMA_CHAIN_ID = 42161;
-  const UMA_RESOLVER_ADDRESS = umaResolver[42161]?.address as `0x${string}`;
+  const UMA_CHAIN_ID = DEFAULT_CHAIN_ID;
+  const UMA_RESOLVER_ADDRESS = umaResolver[DEFAULT_CHAIN_ID]?.address;
 
   // Minimal ABI to read wrapped market status
   const umaWrappedMarketAbi = [
