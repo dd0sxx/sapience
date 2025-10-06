@@ -4,5 +4,6 @@
 npm install -g pnpm@9
 
 # Install all workspace dependencies and build the SDK so its dist/ exists
-pnpm -w install --frozen-lockfile --include=dev
+pnpm -w install
+pnpm --filter @sapience/sdk install --include=dev
 pnpm --filter @sapience/sdk run build:lib
