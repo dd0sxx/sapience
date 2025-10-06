@@ -1,6 +1,6 @@
-import { graphqlRequest } from '@/queries/client/graphqlClient';
-import { RESOURCE_ORDER, ResourceSlug } from '@/types';
-import { CandleAndTimestampType, CandleType, Resource } from '@/types/graphql';
+import { graphqlRequest } from '../client/graphqlClient';
+import { RESOURCE_ORDER, ResourceSlug } from '../../types';
+import { CandleAndTimestampType, CandleType, Resource } from '../../types/graphql';
 import { useQuery } from '@tanstack/react-query';
 
 interface GetResourcesQuery { resources: Resource[] }
