@@ -33,6 +33,8 @@ export interface MintPredictionRequestData {
   takerCollateral: string; // wei
   maker: `0x${string}`;
   taker: `0x${string}`;
+  // Optional here; the submit hook will fetch and inject the correct nonce
+  makerNonce?: string | bigint;
   takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
   takerDeadline: string; // unix seconds (uint256 string)
   refCode: `0x${string}`; // bytes32
