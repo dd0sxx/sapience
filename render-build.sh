@@ -2,6 +2,8 @@
 
 # Install specific pnpm version
 npm install -g pnpm@9
+# Ensure tsup is available in PATH for SDK build
+npm install -g tsup
 
 # Install all workspace dependencies and build the SDK so its dist/ exists
 pnpm -w install
