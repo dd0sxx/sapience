@@ -111,15 +111,12 @@ contract PredictionMarketUmaResolver is
 
     mapping(bytes32 => WrappedMarket) public wrappedMarkets;
 
-    // ============ Events ============
     struct UMASettlement {
         // Link to market
         bytes32 marketId;
         // Resolution Value
         bool resolvedToYes;
         uint256 submissionTime;
-        // Resolution Status
-        bool settled;
     }
 
     mapping(bytes32 => UMASettlement) public umaSettlements;
@@ -321,8 +318,7 @@ contract PredictionMarketUmaResolver is
         umaSettlements[assertionId] = UMASettlement({
             marketId: marketId,
             resolvedToYes: resolvedToYes,
-            submissionTime: block.timestamp,
-            settled: false
+            submissionTime: block.timestamp
         });
 
         emit AssertionSubmitted(

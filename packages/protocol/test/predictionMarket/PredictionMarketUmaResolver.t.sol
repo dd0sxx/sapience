@@ -161,10 +161,9 @@ contract PredictionMarketUmaResolverTest is Test {
         assertTrue(assertionSubmitted);
         
         // Verify UMA settlement was created
-        (bytes32 settlementMarketId, bool resolvedToYes, uint256 submissionTime, bool settled) = resolver.umaSettlements(assertionId);
+        (bytes32 settlementMarketId, bool resolvedToYes, uint256 submissionTime) = resolver.umaSettlements(assertionId);
         assertEq(settlementMarketId, marketId);
         assertTrue(resolvedToYes);
-        assertFalse(settled);
         assertEq(submissionTime, block.timestamp);
     }
     
