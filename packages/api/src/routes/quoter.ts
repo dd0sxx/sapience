@@ -1,4 +1,4 @@
-import Sapience from '@sapience/protocol/deployments/Sapience.json';
+import { foilAbi } from '@sapience/sdk';
 import { Router } from 'express';
 import { formatUnits, parseUnits } from 'viem';
 import { z } from 'zod';
@@ -188,7 +188,7 @@ async function getMaxSizeForCollateral(
       // Test this size with contract call
       const result = await client.simulateContract({
         address: marketAddress as `0x${string}`,
-        abi: Sapience.abi,
+        abi: foilAbi,
         functionName: 'quoteCreateTraderPosition',
         args: [BigInt(marketId), signedTestSize],
       });
@@ -299,7 +299,7 @@ async function getCurrentPrice(
   const client = getProviderForChain(chainId);
   const price = await client.readContract({
     address: marketAddress as `0x${string}`,
-    abi: Sapience.abi,
+    abi: foilAbi,
     functionName: 'getReferencePrice',
     args: [BigInt(marketId)],
   });

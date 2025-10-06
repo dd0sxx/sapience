@@ -4,7 +4,15 @@
     "incremental": false,
     "noEmit": false
   },
-  "include": ["index.ts", "ui/**/*", "queries/**/*", "types/**/*"],
+  "include": [
+    "index.ts",
+    "abis/**/*",
+    "constants/**/*",
+    "contracts/**/*",
+    "ui/**/*",
+    "queries/**/*",
+    "types/**/*"
+  ],
   "exclude": [
     "node_modules",
     "dist",
