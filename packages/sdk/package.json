@@ -51,6 +51,7 @@
     "./boilerplates": "./boilerplates/README.md"
   },
   "scripts": {
+    "prepare": "pnpm run build:lib",
     "dev": "tsup index.ts abis/index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
     "build:lib": "tsup index.ts abis/index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib && pnpm build-storybook",
