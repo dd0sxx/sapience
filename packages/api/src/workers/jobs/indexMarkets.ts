@@ -3,11 +3,11 @@ import { getProviderForChain } from '../../utils/utils';
 import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
 import { indexMarketGroupEvents } from '../../controllers/market';
 import { updateCollateralData } from '../../controllers/marketHelpers';
-import marketGroupFactoryData from '@sapience/protocol/deployments/SapienceFactory.json';
+import { foilFactoryAbi } from '@sapience/sdk/queries/client/abi';
 import Sentry from '../../instrument';
 import type { MarketGroup } from '../../../generated/prisma';
 
-const marketGroupFactoryAbi = marketGroupFactoryData.abi;
+const marketGroupFactoryAbi = foilFactoryAbi().abi as Abi;
 
 /**
  * Sets up event watching for a single market group using the logic from market.ts.
@@ -57,7 +57,7 @@ export async function handleMarketGroupInitialized(
   // Check if sender is in the approved list
   const approvedAddresses = [
     '8453:0xdb5Af497A73620d881561eDb508012A5f84e9BA2',
-    '42161:0xdb5Af497A73620d881561eDb508012A5f84e9BA2',
+    `${chainId}:${sender}`,
   ];
   const senderWithChain = `${chainId}:${sender}`;
   const normalizedApprovedAddresses = approvedAddresses.map((addr) =>
