@@ -1421,6 +1421,7 @@ export type Market = {
   public: Scalars['Boolean']['output'];
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   similarMarkets: Array<Scalars['String']['output']>;
@@ -2712,6 +2713,7 @@ export type MarketWhereInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
+  settledAt?: InputMaybe<IntNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
