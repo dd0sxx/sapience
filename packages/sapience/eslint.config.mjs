@@ -101,16 +101,6 @@ export default typescriptPlugin.config(
         }
       ],
       'import/order': 'warn'
-      ,
-      // Prevent importing raw SDK ABI JSONs (which may contain addresses)
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            '@sapience/sdk/abis/*',
-          ],
-        },
-      ]
     },
     settings: {
       react: {

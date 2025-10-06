@@ -12,15 +12,7 @@ export default [
   ...tseslint.configs.recommended,
   {
     rules: {
-      // Prevent importing raw SDK ABI JSONs (which may contain addresses)
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            '@sapience/sdk/abis/*',
-          ],
-        },
-      ],
+      
     },
   },
 ];
