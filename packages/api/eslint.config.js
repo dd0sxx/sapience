@@ -10,4 +10,17 @@ export default [
   {ignores: ["src/graphql/types/generated.ts"]},
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    rules: {
+      // Prevent importing raw SDK ABI JSONs (which may contain addresses)
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            '@sapience/sdk/abis/*',
+          ],
+        },
+      ],
+    },
+  },
 ];

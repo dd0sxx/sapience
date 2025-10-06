@@ -3,11 +3,11 @@ import { getProviderForChain } from '../../utils/utils';
 import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
 import { indexMarketGroupEvents } from '../../controllers/market';
 import { updateCollateralData } from '../../controllers/marketHelpers';
-import { sapienceFactoryAbi } from '@sapience/sdk';
+import { foilFactoryAbi } from '@sapience/sdk/queries/client/abi';
 import Sentry from '../../instrument';
 import type { MarketGroup } from '../../../generated/prisma';
 
-const marketGroupFactoryAbi = sapienceFactoryAbi().abi as Abi;
+const marketGroupFactoryAbi = foilFactoryAbi().abi as Abi;
 
 /**
  * Sets up event watching for a single market group using the logic from market.ts.

@@ -29,10 +29,7 @@ export function useSubmitParlay({
   const { address } = useAccount();
 
   // Read maker nonce from PredictionMarket
-  const {
-    data: makerNonce,
-    refetch: refetchMakerNonce,
-  } = useReadContract({
+  const { data: makerNonce, refetch: refetchMakerNonce } = useReadContract({
     address: predictionMarketAddress,
     abi: predictionMarketAbi,
     functionName: 'nonces',

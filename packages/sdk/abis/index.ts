@@ -12,10 +12,6 @@ export const umaResolverAbi: Abi = (UMAResolver as { abi: Abi }).abi;
 export const collateralTokenAbi: Abi = (CollateralToken as { abi: Abi }).abi;
 export const foilAbi: Abi = (Foil as { abi: Abi }).abi;
 
-export { default as PredictionMarket } from './PredictionMarket.json';
-export { default as LiquidityVault } from './LiquidityVault.json';
-export { default as UMAResolver } from './UMAResolver.json';
-export { default as CollateralToken } from './CollateralToken.json';
-export { default as Foil } from './Foil.json';
+// Note: Do not re-export raw JSONs to avoid exposing addresses.
 
 

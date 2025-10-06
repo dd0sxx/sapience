@@ -6,7 +6,9 @@
   },
   "include": [
     "index.ts",
-    "lib/**/*",
+    "abis/**/*",
+    "constants/**/*",
+    "contracts/**/*",
     "ui/**/*",
     "queries/**/*",
     "types/**/*"
