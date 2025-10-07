@@ -187,7 +187,7 @@ contract PredictionMarketUmaResolver is
             }
         }
 
-        if (isValid && hasUnsettledMarkets && makerWon) {
+        if (isValid && hasUnsettledMarkets) {
             // No decisive loss found, but at least one market is unsettled
             isValid = false;
             error = Error.MARKET_NOT_SETTLED;
