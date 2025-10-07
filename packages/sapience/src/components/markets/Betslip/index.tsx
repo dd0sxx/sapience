@@ -768,6 +768,8 @@ const Betslip = ({
     collateralSymbol,
     collateralDecimals,
     minWager,
+    // PredictionMarket contract address for fetching maker nonce
+    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
   };
 
   if (isCompact) {

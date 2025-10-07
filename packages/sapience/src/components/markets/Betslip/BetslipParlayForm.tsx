@@ -12,7 +12,8 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { formatUnits, parseUnits } from 'viem';
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
+import { predictionMarketAbi } from '@sapience/sdk';
 import { WagerInput } from '~/components/markets/forms';
 import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import LottieLoader from '~/components/shared/LottieLoader';
@@ -41,6 +42,8 @@ interface BetslipParlayFormProps {
   collateralSymbol?: string;
   collateralDecimals?: number;
   minWager?: string;
+  // PredictionMarket contract address for fetching maker nonce
+  predictionMarketAddress?: `0x${string}`;
 }
 
 export default function BetslipParlayForm({
@@ -55,6 +58,7 @@ export default function BetslipParlayForm({
   collateralSymbol,
   collateralDecimals,
   minWager,
+  predictionMarketAddress,
 }: BetslipParlayFormProps) {
   const { parlaySelections, removeParlaySelection } = useBetSlipContext();
   const { address: makerAddress } = useAccount();
@@ -62,6 +66,18 @@ export default function BetslipParlayForm({
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
+
+  // Fetch maker nonce from PredictionMarket contract
+  const { data: makerNonce } = useReadContract({
+    address: predictionMarketAddress,
+    abi: predictionMarketAbi,
+    functionName: 'nonces',
+    args: makerAddress ? [makerAddress] : undefined,
+    chainId,
+    query: {
+      enabled: !!makerAddress && !!predictionMarketAddress,
+    },
+  });
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const parlayWagerAmount = useWatch({
@@ -115,6 +131,7 @@ export default function BetslipParlayForm({
     if (!requestQuotes) return;
     if (!makerAddress) return;
     if (!parlaySelections || parlaySelections.length === 0) return;
+    if (makerNonce === undefined) return; // Wait for maker nonce to be fetched
     const wagerStr = parlayWagerAmount || '0';
     try {
       const decimals = Number.isFinite(collateralDecimals as number)
@@ -132,6 +149,7 @@ export default function BetslipParlayForm({
         resolver: payload.resolver,
         predictedOutcomes: payload.predictedOutcomes,
         maker: makerAddress,
+        makerNonce: Number(makerNonce),
       };
       requestQuotes(params);
       setLastQuoteRequestMs(Date.now());
@@ -144,6 +162,7 @@ export default function BetslipParlayForm({
     parlayWagerAmount,
     collateralDecimals,
     makerAddress,
+    makerNonce,
   ]);
 
   return (
