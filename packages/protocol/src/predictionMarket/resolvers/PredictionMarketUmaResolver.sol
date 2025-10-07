@@ -167,9 +167,10 @@ contract PredictionMarketUmaResolver is
             WrappedMarket memory market = wrappedMarkets[marketId];
 
             if (market.marketId != marketId) {
-                isValid = false;
-                error = Error.INVALID_MARKET;
-                break;
+                // This means it wasn't wrapped yet, so we don't know if it's settled or not. (not even sent to UMA to verify)
+                // Do not immediately invalidate; record and continue.
+                hasUnsettledMarkets = true;
+                continue;
             }
 
             if (!market.settled) {
