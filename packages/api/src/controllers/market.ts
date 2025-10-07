@@ -41,7 +41,7 @@ import { fetchRenderServices, createRenderJob } from '../utils/utils';
 import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
 import { updateTwErrorForMarket } from '../workers/jobs/updateTwErrorForMarket';
 
-const settledPositions: any[] = [];
+
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: marketInfo) => {
   const client = getProviderForChain(marketInfo.marketChainId);
@@ -1138,8 +1138,6 @@ export const upsertEntitiesFromEvent = async (
       break;
     case EventType.PositionSettled:
       console.log('Handling Position Settled from event: ', event);
-      settledPositions.push(event.logData.args.positionId);
-
       await Promise.all([
         handlePositionSettledEvent(event),
         updateTransactionFromPositionSettledEvent(

@@ -3,6 +3,7 @@ import {
   encodeFunctionData,
   createPublicClient,
   extractChain,
+  type Chain,
 } from 'viem';
 import * as allChains from 'viem/chains';
 import { erc20Abi } from 'viem';
@@ -11,7 +12,7 @@ import { z } from 'zod';
 
 const API_URL = process.env.API_URL || 'http://localhost:3001';
 
-// Function to get chain object by ID
+// Function to get chain object by ID (dev supports custom/testnet chains)
 const getChainById = (chainId: string) => {
   const numericChainId = parseInt(chainId, 10);
   // Create an array of all chain objects
@@ -22,10 +23,40 @@ const getChainById = (chainId: string) => {
     // @ts-expect-error: Chain ID is dynamically provided and may not match the exact union type
     id: numericChainId,
   });
-  if (!chain) {
-    throw new Error(`Unsupported chain ID: ${chainId}`);
+  if (chain) return chain;
+
+  if (process.env.NODE_ENV !== 'production') {
+    // Tenderly support via env
+    const tenderlyChainId = Number(process.env.TENDERLY_CHAIN_ID || '0');
+    const tenderlyRpcUrl = process.env.TENDERLY_RPC_URL;
+    if (tenderlyChainId === numericChainId && tenderlyRpcUrl) {
+      return {
+        id: numericChainId,
+        name: 'Tenderly',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: {
+          default: { http: [tenderlyRpcUrl] },
+          public: { http: [tenderlyRpcUrl] },
+        },
+      } as Chain;
+    }
+
+    // Generic RPC_URL_<CHAINID>
+    const rpcUrlForChain = process.env[`RPC_URL_${numericChainId}` as keyof NodeJS.ProcessEnv] as string | undefined;
+    if (rpcUrlForChain) {
+      return {
+        id: numericChainId,
+        name: `Chain ${numericChainId}`,
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: {
+          default: { http: [rpcUrlForChain] },
+          public: { http: [rpcUrlForChain] },
+        },
+      } as Chain;
+    }
   }
-  return chain;
+
+  throw new Error(`Unsupported chain ID: ${chainId}`);
 };
 
 export const approveToken = {

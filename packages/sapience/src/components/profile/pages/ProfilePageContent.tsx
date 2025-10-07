@@ -20,7 +20,7 @@ import {
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
 import ClosedTraderPositionsTable from '~/components/profile/ClosedTraderPositionsTable';
-import LpPositionsTable from '~/components/profile/LpPositionsTable';
+import ActiveClosedLpPositionsTable from '~/components/profile/ActiveClosedLpPositionsTable';
 import ForecastsTable from '~/components/profile/ForecastsTable';
 import UserParlaysTable from '~/components/parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
@@ -268,7 +268,7 @@ const ProfilePageContent = () => {
             </TabsContent>
 
             <TabsContent value="lp">
-              <LpPositionsTable positions={lpPositions} context="profile" />
+              <ActiveClosedLpPositionsTable positions={lpPositions} context="profile" />
             </TabsContent>
 
             <TabsContent value="forecasts">

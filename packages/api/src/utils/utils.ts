@@ -48,6 +48,18 @@ export function getChainById(id: number): viem.Chain | undefined {
   if (chain) return chain;
 }
 
+function buildCustomChain(id: number, rpcUrl: string, name = 'Custom'): viem.Chain {
+  return {
+    id,
+    name,
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrls: {
+      default: { http: [rpcUrl] },
+      public: { http: [rpcUrl] },
+    },
+  } as const;
+}
+
 // Replace __dirname reference with this
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -89,6 +101,15 @@ const createChainClient = (
       },
     });
   }
+  if (process.env.TENDERLY_CHAIN_ID && chain.id === Number(process.env.TENDERLY_CHAIN_ID)) {
+    return createPublicClient({
+      chain,
+      transport: http(process.env.TENDERLY_RPC_URL),
+      batch: {
+        multicall: true,
+      },
+    });
+  }
   return createPublicClient({
     chain,
     transport: useLocalhost
@@ -117,6 +138,19 @@ export function getProviderForChain(chainId: number): PublicClient {
   }
 
   let newClient: PublicClient;
+
+  // Non-production: allow dynamic testnet / virtual networks via env
+  if (process.env.NODE_ENV !== 'production' && process.env.TENDERLY_CHAIN_ID) {
+    // 1) Explicit Tenderly support
+    const tenderlyChainId = Number(process.env.TENDERLY_CHAIN_ID || '0');
+    const tenderlyRpcUrl = process.env.TENDERLY_RPC_URL;
+    if (tenderlyChainId === chainId && tenderlyRpcUrl) {
+      const tenderlyChain = buildCustomChain(chainId, tenderlyRpcUrl, 'Tenderly');
+      newClient = createChainClient(tenderlyChain, 'tenderly');
+      clientMap.set(chainId, newClient);
+      return newClient;
+    }
+  }
 
   switch (chainId) {
     case 1:

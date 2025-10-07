@@ -59,6 +59,11 @@ export async function handleMarketGroupInitialized(
     '8453:0xdb5Af497A73620d881561eDb508012A5f84e9BA2',
     `${chainId}:${sender}`,
   ];
+
+  if (process.env.NODE_ENV !== 'production' && process.env.TENDERLY_CHAIN_ID && chainId === Number(process.env.TENDERLY_CHAIN_ID)) {
+    approvedAddresses.push(`${process.env.TENDERLY_CHAIN_ID}:0xdb5Af497A73620d881561eDb508012A5f84e9BA2`);
+  }
+  
   const senderWithChain = `${chainId}:${sender}`;
   const normalizedApprovedAddresses = approvedAddresses.map((addr) =>
     addr.toLowerCase()

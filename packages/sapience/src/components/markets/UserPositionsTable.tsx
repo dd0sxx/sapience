@@ -8,7 +8,7 @@ import type React from 'react';
 import { useEffect, useMemo } from 'react';
 import type { Address } from 'viem';
 
-import LpPositionsTable from '../profile/LpPositionsTable';
+import ActiveClosedLpPositionsTable from '../profile/ActiveClosedLpPositionsTable';
 import ForecastsTable from '../profile/ForecastsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
 import ClosedTraderPositionsTable from '../profile/ClosedTraderPositionsTable';
@@ -200,7 +200,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
         </TabsContent>
 
         <TabsContent value="lp">
-          <LpPositionsTable
+          <ActiveClosedLpPositionsTable
             positions={lpPositions}
             parentMarketAddress={marketAddress}
             parentChainId={chainId}

@@ -59,6 +59,8 @@ interface LpPositionsTableProps {
   marketContext?: MarketContext;
   columns?: ColumnOverrides;
   summaryMarketsForColors?: Array<any>;
+  hideCollateralColumn?: boolean;
+  hideValueColumn?: boolean;
 }
 
 // Helper component for Collateral Cell
@@ -124,6 +126,8 @@ export default function LpPositionsTable({
   marketContext,
   columns,
   summaryMarketsForColors,
+  hideCollateralColumn = false,
+  hideValueColumn = false,
 }: LpPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
   const [openSharePositionId, setOpenSharePositionId] = React.useState<
@@ -305,7 +309,7 @@ export default function LpPositionsTable({
           },
         }
       : undefined,
-    {
+    ...(hideCollateralColumn ? [] : [{
       id: 'collateral',
       accessorFn: (row: PositionType) =>
         Number(
@@ -345,8 +349,8 @@ export default function LpPositionsTable({
           inlineShares={context === 'data_drawer'}
         />
       ),
-    },
-    {
+    }]),
+    ...(hideValueColumn ? [] : [{
       id: 'value',
       accessorFn: (row: PositionType) => {
         const key = getKey(row);
@@ -448,7 +452,7 @@ export default function LpPositionsTable({
           </div>
         );
       },
-    },
+    }]),
     {
       id: 'range',
       enableSorting: false,

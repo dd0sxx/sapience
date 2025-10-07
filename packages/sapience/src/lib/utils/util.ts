@@ -421,6 +421,8 @@ export const getChainIdFromShortName = (shortName: string): number => {
       return 1;
     case 'converge':
       return 432;
+    case process.env.NEXT_PUBLIC_TENDERLY_CHAIN_ID:
+      return process.env.NEXT_PUBLIC_TENDERLY_CHAIN_ID ? Number(process.env.NEXT_PUBLIC_TENDERLY_CHAIN_ID) : 0;
     default:
       console.warn(`Unknown chain short name: ${shortName}`);
       return 0; // Return 0 or handle error appropriately

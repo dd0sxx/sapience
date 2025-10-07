@@ -81,6 +81,26 @@ const useWagmiConfig = () => {
 
     const chains: Chain[] = [arbitrum, base, converge];
 
+    // Optional: include a Tenderly Virtual/Testnet chain via env configuration
+    // Set NEXT_PUBLIC_TENDERLY_CHAIN_ID and NEXT_PUBLIC_TENDERLY_RPC_URL to enable
+    const tenderlyChainId = process.env.NEXT_PUBLIC_TENDERLY_CHAIN_ID
+      ? Number(process.env.NEXT_PUBLIC_TENDERLY_CHAIN_ID)
+      : undefined;
+    const tenderlyRpcUrl = process.env.NEXT_PUBLIC_TENDERLY_RPC_URL;
+    if (tenderlyChainId && tenderlyRpcUrl) {
+      transports[tenderlyChainId] = http(tenderlyRpcUrl);
+      const tenderlyChain = {
+        id: tenderlyChainId,
+        name: 'Tenderly',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: {
+          default: { http: [tenderlyRpcUrl] },
+          public: { http: [tenderlyRpcUrl] },
+        },
+      } as const satisfies Chain;
+      chains.push(tenderlyChain);
+    }
+
     if (process.env.NODE_ENV !== 'production') {
       transports[cannonAtLocalhost.id] = http('http://localhost:8545');
       chains.push(cannonAtLocalhost);
