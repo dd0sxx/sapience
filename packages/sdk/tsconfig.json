@@ -16,7 +16,9 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@sapience/sdk": ["./index.ts"],
+      "@sapience/sdk/*": ["./*"]
     },
     "incremental": true,
     "strictNullChecks": true
