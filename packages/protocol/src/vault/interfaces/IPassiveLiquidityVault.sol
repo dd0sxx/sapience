@@ -31,7 +31,8 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     event ExpirationTimeUpdated(uint256 oldExpirationTime, uint256 newExpirationTime);
     event InteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
     event EmergencyModeUpdated(bool emergencyMode);
-    
+    event MinRequestAmountUpdated(uint256 oldMinRequestAmount, uint256 newMinRequestAmount);
+
     // ============ State Variables ============
     
     function manager() external view returns (address);
@@ -78,6 +79,7 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     function setMaxUtilizationRate(uint256 newMaxRate) external;
     function setExpirationTime(uint256 newExpirationTime) external;
     function setInteractionDelay(uint256 newDelay) external;
+    function setMinRequestAmount(uint256 newMinRequestAmount) external;
     function toggleEmergencyMode() external;
     function pause() external;
     function unpause() external;

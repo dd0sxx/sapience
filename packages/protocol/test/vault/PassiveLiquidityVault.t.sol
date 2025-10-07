@@ -337,12 +337,12 @@ contract PassiveLiquidityVaultTest is Test {
     
     // Tests that deposits below the minimum amount are rejected
     function testDepositTooSmall() public {
-        uint256 amount = vault.MIN_DEPOSIT() - 1;
+        uint256 amount = vault.minRequestAmount() - 1;
         
         vm.startPrank(user1);
         asset.approve(address(vault), amount);
         
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.AmountTooSmall.selector, amount, vault.MIN_DEPOSIT()));
+        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.AmountTooSmall.selector, amount, vault.minRequestAmount()));
         vault.requestDeposit(amount, amount);
         
         vm.stopPrank();
@@ -607,6 +607,76 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
         
         assertEq(vault.expirationTime(), newExpirationTime);
+    }
+    
+    // Tests that the owner can set a new minimum request amount
+    function testSetMinRequestAmount() public {
+        uint256 newMinRequestAmount = 200e18; // 200 tokens
+        
+        vm.startPrank(owner);
+        vault.setMinRequestAmount(newMinRequestAmount);
+        vm.stopPrank();
+        
+        assertEq(vault.minRequestAmount(), newMinRequestAmount);
+    }
+    
+    // Tests that the MinRequestAmountUpdated event is properly emitted when setting minimum request amount
+    function testSetMinRequestAmountEmitsEvent() public {
+        uint256 oldMinRequestAmount = vault.minRequestAmount();
+        uint256 newMinRequestAmount = 250e18; // 250 tokens
+        
+        vm.startPrank(owner);
+        vm.expectEmit(true, true, true, true);
+        emit IPassiveLiquidityVault.MinRequestAmountUpdated(oldMinRequestAmount, newMinRequestAmount);
+        vault.setMinRequestAmount(newMinRequestAmount);
+        vm.stopPrank();
+        
+        assertEq(vault.minRequestAmount(), newMinRequestAmount, "Minimum request amount should be updated");
+    }
+    
+    // Tests that only the owner can set the minimum request amount
+    function testOnlyOwnerCanSetMinRequestAmount() public {
+        uint256 newMinRequestAmount = 300e18; // 300 tokens
+        
+        vm.startPrank(user1);
+        vm.expectRevert();
+        vault.setMinRequestAmount(newMinRequestAmount);
+        vm.stopPrank();
+        
+        // Verify the value didn't change
+        assertNotEq(vault.minRequestAmount(), newMinRequestAmount);
+    }
+    
+    // Tests that the new minimum request amount is enforced for deposits
+    function testMinRequestAmountEnforcedForDeposits() public {
+        uint256 newMinRequestAmount = 200e18; // 200 tokens
+        
+        vm.startPrank(owner);
+        vault.setMinRequestAmount(newMinRequestAmount);
+        vm.stopPrank();
+        
+        uint256 tooSmallAmount = newMinRequestAmount - 1;
+        
+        vm.startPrank(user1);
+        asset.approve(address(vault), tooSmallAmount);
+        
+        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.AmountTooSmall.selector, tooSmallAmount, newMinRequestAmount));
+        vault.requestDeposit(tooSmallAmount, tooSmallAmount);
+        
+        vm.stopPrank();
+        
+        // Now test that a deposit with the exact minimum amount works
+        vm.startPrank(user1);
+        asset.approve(address(vault), newMinRequestAmount);
+        vault.requestDeposit(newMinRequestAmount, newMinRequestAmount);
+        vm.stopPrank();
+        
+        // Verify the request was created successfully
+        (address requestUser, bool isDeposit, , uint256 requestAssets, , bool processed) = vault.pendingRequests(user1);
+        assertEq(requestUser, user1, "User should have a pending request");
+        assertTrue(isDeposit, "Should be a deposit request");
+        assertEq(requestAssets, newMinRequestAmount, "Request assets should match");
+        assertFalse(processed, "Request should not be processed yet");
     }
     
     // Tests that the owner can toggle emergency mode on and off

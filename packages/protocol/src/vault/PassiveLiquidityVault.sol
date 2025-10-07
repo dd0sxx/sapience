@@ -64,6 +64,7 @@ contract PassiveLiquidityVault is
     uint256 private constant DEFAULT_MAX_UTILIZATION_RATE = 0.8e18; // 80% in WAD
     uint256 private constant DEFAULT_INTERACTION_DELAY = 1 days;
     uint256 private constant DEFAULT_EXPIRATION_TIME = 10 minutes;
+    uint256 private constant DEFAULT_MIN_REQUEST_AMOUNT = 100e18; // 100 token (assuming 18 decimals)
 
     // ============ Custom Errors ============
 
@@ -144,7 +145,7 @@ contract PassiveLiquidityVault is
     uint256 public constant BASIS_POINTS = 10000;
 
     /// @notice Minimum deposit amount. Used also as min withdrawal amount unless available is less than minimum. A large enough amount to prevent DoS attacks on deposits or withdrawals
-    uint256 public constant MIN_DEPOSIT = 100e18; // 100 token (assuming 18 decimals)
+    uint256 public minRequestAmount = DEFAULT_MIN_REQUEST_AMOUNT; // 100 token (assuming 18 decimals)
 
     /// @notice Total assets reserved for pending deposit requests
     uint256 private unconfirmedAssets = 0;
@@ -316,8 +317,8 @@ contract PassiveLiquidityVault is
         lastUserInteractionTimestamp[msg.sender] = block.timestamp;
 
         // Revert if withdrawal is small unless it's the full balance
-        if (shares < balance && expectedAssets < MIN_DEPOSIT)
-            revert AmountTooSmall(expectedAssets, MIN_DEPOSIT);
+        if (shares < balance && expectedAssets < minRequestAmount)
+            revert AmountTooSmall(expectedAssets, minRequestAmount);
 
         request.user = msg.sender;
         request.isDeposit = false;
@@ -339,7 +340,7 @@ contract PassiveLiquidityVault is
         uint256 assets,
         uint256 expectedShares
     ) external nonReentrant whenNotPaused notEmergency {
-        if (assets < MIN_DEPOSIT) revert AmountTooSmall(assets, MIN_DEPOSIT);
+        if (assets < minRequestAmount) revert AmountTooSmall(assets, minRequestAmount);
         if (
             lastUserInteractionTimestamp[msg.sender] > 0 &&
             lastUserInteractionTimestamp[msg.sender] + interactionDelay >
@@ -679,6 +680,16 @@ contract PassiveLiquidityVault is
         uint256 oldExpirationTime = expirationTime;
         expirationTime = newExpirationTime;
         emit ExpirationTimeUpdated(oldExpirationTime, newExpirationTime);
+    }
+
+    /**
+     * @notice Set minimum request amount
+     * @param newMinRequestAmount New minimum request amount
+     */
+    function setMinRequestAmount(uint256 newMinRequestAmount) external onlyOwner {
+        uint256 oldMinRequestAmount = minRequestAmount;
+        minRequestAmount = newMinRequestAmount;
+        emit MinRequestAmountUpdated(oldMinRequestAmount, newMinRequestAmount);
     }
 
     /**

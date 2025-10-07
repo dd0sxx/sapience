@@ -403,6 +403,7 @@ contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
     function setMaxUtilizationRate(uint256) external pure {}
     function setExpirationTime(uint256) external pure {}
     function setInteractionDelay(uint256) external pure {}
+    function setMinRequestAmount(uint256) external pure {}
     function toggleEmergencyMode() external pure {}
     function pause() external pure {}
     function unpause() external pure {}
