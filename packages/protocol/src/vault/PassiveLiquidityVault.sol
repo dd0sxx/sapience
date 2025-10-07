@@ -290,36 +290,38 @@ contract PassiveLiquidityVault is
         uint256 expectedAssets
     ) external nonReentrant whenNotPaused notEmergency {
         if (shares == 0) revert InvalidShares(shares);
-        if (balanceOf(msg.sender) < shares)
+
+        uint256 balance = balanceOf(msg.sender);
+        if (balance < shares)
             revert InsufficientBalance(
                 msg.sender,
                 shares,
-                balanceOf(msg.sender)
+                balance
             );
         if (
             lastUserInteractionTimestamp[msg.sender] > 0 &&
             lastUserInteractionTimestamp[msg.sender] + interactionDelay >
             block.timestamp
         ) revert InteractionDelayNotExpired();
+
+        PendingRequest storage request = pendingRequests[msg.sender];
         if (
-            pendingRequests[msg.sender].user == msg.sender &&
-            !pendingRequests[msg.sender].processed
+            request.user == msg.sender &&
+            !request.processed
         ) revert PendingRequestNotProcessed(msg.sender);
 
         lastUserInteractionTimestamp[msg.sender] = block.timestamp;
 
         // Revert if withdrawal is small unless it's the full balance
-        if (shares < balanceOf(msg.sender) && expectedAssets < MIN_DEPOSIT)
+        if (shares < balance && expectedAssets < MIN_DEPOSIT)
             revert AmountTooSmall(expectedAssets, MIN_DEPOSIT);
 
-        pendingRequests[msg.sender] = IPassiveLiquidityVault.PendingRequest({
-            user: msg.sender,
-            isDeposit: false,
-            shares: shares,
-            assets: expectedAssets,
-            timestamp: block.timestamp,
-            processed: false
-        });
+        request.user = msg.sender;
+        request.isDeposit = false;
+        request.shares = shares;
+        request.assets = expectedAssets;
+        request.timestamp = block.timestamp;
+        request.processed = false;
 
         emit PendingRequestCreated(msg.sender, false, shares, expectedAssets);
     }
@@ -340,10 +342,9 @@ contract PassiveLiquidityVault is
             lastUserInteractionTimestamp[msg.sender] + interactionDelay >
             block.timestamp
         ) revert InteractionDelayNotExpired();
-        if (
-            pendingRequests[msg.sender].user == msg.sender &&
-            !pendingRequests[msg.sender].processed
-        ) revert PendingRequestNotProcessed(msg.sender);
+        PendingRequest storage request = pendingRequests[msg.sender];
+        if (request.user == msg.sender && !request.processed)
+            revert PendingRequestNotProcessed(msg.sender);
 
         lastUserInteractionTimestamp[msg.sender] = block.timestamp;
 
@@ -354,14 +355,12 @@ contract PassiveLiquidityVault is
         if (balanceBefore + assets != balanceAfter)
             revert TransferFailed(balanceBefore, assets, balanceAfter);
 
-        pendingRequests[msg.sender] = IPassiveLiquidityVault.PendingRequest({
-            user: msg.sender,
-            isDeposit: true,
-            shares: expectedShares,
-            assets: assets,
-            timestamp: block.timestamp,
-            processed: false
-        });
+        request.user = msg.sender;
+        request.isDeposit = true;
+        request.shares = expectedShares;
+        request.assets = assets;
+        request.timestamp = block.timestamp;
+        request.processed = false;
 
         unconfirmedAssets += assets;
 
