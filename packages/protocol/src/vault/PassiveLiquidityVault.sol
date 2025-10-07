@@ -61,7 +61,7 @@ contract PassiveLiquidityVault is
 
     // ============ Default Values ============
 
-    uint256 private constant DEFAULT_MAX_UTILIZATION_RATE = 8000;
+    uint256 private constant DEFAULT_MAX_UTILIZATION_RATE = 0.8e18; // 80% in WAD
     uint256 private constant DEFAULT_INTERACTION_DELAY = 1 days;
     uint256 private constant DEFAULT_EXPIRATION_TIME = 10 minutes;
 
@@ -119,7 +119,7 @@ contract PassiveLiquidityVault is
     /// @notice The EOA manager who can deploy funds to other protocols
     address public manager;
 
-    /// @notice Maximum utilization rate (in basis points, e.g., 8000 = 80%)
+    /// @notice Maximum utilization rate (in WAD, e.g., 0.8e18 = 80%)
     uint256 public maxUtilizationRate = DEFAULT_MAX_UTILIZATION_RATE; // 80%
 
     /// @notice Interaction delay in seconds between user requests (default: 1 day)
@@ -137,6 +137,9 @@ contract PassiveLiquidityVault is
     /// @notice Emergency mode flag
     bool public emergencyMode = false;
 
+    /// @notice WAD denominator for high-precision calculations (1e18 = 100%)
+    uint256 public constant WAD = 1e18;
+    
     /// @notice Basis points denominator (10000 = 100%)
     uint256 public constant BASIS_POINTS = 10000;
 
@@ -233,7 +236,7 @@ contract PassiveLiquidityVault is
         uint256 totalAssetsValue = availableAssetsValue + deployedLiquidity;
         return
             totalAssetsValue > 0
-                ? ((deployedLiquidity * BASIS_POINTS) / totalAssetsValue)
+                ? ((deployedLiquidity * WAD) / totalAssetsValue)
                 : 0;
     }
 
@@ -568,7 +571,7 @@ contract PassiveLiquidityVault is
         // Check utilization rate limits - cache values to avoid multiple calls
         uint256 deployedLiquidity = _deployedLiquidityWithCleanup();
         uint256 totalAssetsValue = availableAssetsValue + deployedLiquidity;
-        uint256 newUtilization = ((deployedLiquidity + amount) * BASIS_POINTS) /
+        uint256 newUtilization = ((deployedLiquidity + amount) * WAD) /
             totalAssetsValue;
         if (newUtilization > maxUtilizationRate)
             revert ExceedsMaxUtilization(newUtilization, maxUtilizationRate);
@@ -582,7 +585,7 @@ contract PassiveLiquidityVault is
 
         // Calculate current utilization for event (avoid external call)
         uint256 currentUtilization = totalAssetsValue > 0
-            ? ((deployedLiquidity * BASIS_POINTS) / totalAssetsValue)
+            ? ((deployedLiquidity * WAD) / totalAssetsValue)
             : 0;
         emit UtilizationRateUpdated(currentUtilization, newUtilization);
     }
@@ -648,11 +651,11 @@ contract PassiveLiquidityVault is
 
     /**
      * @notice Set maximum utilization rate
-     * @param newMaxRate New maximum utilization rate (in basis points)
+     * @param newMaxRate New maximum utilization rate (in WAD, e.g., 0.8e18 = 80%)
      */
     function setMaxUtilizationRate(uint256 newMaxRate) external onlyOwner {
-        if (newMaxRate > BASIS_POINTS)
-            revert InvalidRate(newMaxRate, BASIS_POINTS);
+        if (newMaxRate > WAD)
+            revert InvalidRate(newMaxRate, WAD);
         uint256 oldRate = maxUtilizationRate;
         maxUtilizationRate = newMaxRate;
         emit UtilizationRateUpdated(oldRate, newMaxRate);

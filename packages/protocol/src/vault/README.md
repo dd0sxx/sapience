@@ -11,9 +11,9 @@ This vault uses a request-based API instead of immediate execution:
 - `emergencyWithdraw(uint256 shares)` (when emergency mode is active)
 
 Additional views/utilities:
-- `availableAssets()` returns the vault’s token balance
+- `availableAssets()` returns the vault's token balance
 - `totalDeployed()` returns capital deployed in external protocols
-- `utilizationRate()` returns deployed/(deployed+available) in basis points
+- `utilizationRate()` returns deployed/(deployed+available) in WAD (1e18 = 100%)
 
 ## Features
 
@@ -51,7 +51,7 @@ Additional views/utilities:
    - `totalDeployed()` sums collateral held in supported protocols
 
 4. **Risk Management**
-   - `maxUtilizationRate` cap (basis points)
+   - `maxUtilizationRate` cap (in WAD, e.g., 0.8e18 = 80%)
    - `interactionDelay` between user requests
    - `expirationTime` for requests
    - Emergency mode toggle by owner
@@ -60,10 +60,11 @@ Additional views/utilities:
 
 ```solidity
 address public manager;                 // EOA manager address
-uint256 public maxUtilizationRate;      // Max utilization (basis points)
+uint256 public maxUtilizationRate;      // Max utilization (in WAD, e.g., 0.8e18 = 80%)
 uint256 public interactionDelay;        // Delay between user requests
 uint256 public expirationTime;          // Request expiration window
 bool public emergencyMode;              // Emergency mode flag
+uint256 public constant WAD = 1e18;     // WAD denominator for high-precision calculations
 uint256 public constant BASIS_POINTS = 10000;
 uint256 public constant MIN_DEPOSIT = 100e18; // Minimum amount guard
 
@@ -166,7 +167,7 @@ address first = vault.getActiveProtocol(0);
 #### Configuration
 ```solidity
 vault.setManager(newManager);
-vault.setMaxUtilizationRate(8000);     // 80%
+vault.setMaxUtilizationRate(0.8e18);   // 80% in WAD
 vault.setInteractionDelay(1 days);     // default
 vault.setExpirationTime(2 minutes);    // default
 vault.toggleEmergencyMode();

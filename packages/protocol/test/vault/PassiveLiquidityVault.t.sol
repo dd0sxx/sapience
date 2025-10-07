@@ -462,7 +462,7 @@ contract PassiveLiquidityVaultTest is Test {
         _deployFunds(address(protocol1), deployAmount);
         
         assertEq(vault.totalDeployed(), deployAmount);
-        assertEq(vault.utilizationRate(), 5000); // 50%
+        assertEq(vault.utilizationRate(), 0.5e18); // 50% in WAD
         assertEq(protocol1.getBalance(), deployAmount);
         assertEq(vault.getActiveProtocolsCount(), 1);
         assertEq(vault.getActiveProtocol(0), address(protocol1));
@@ -491,7 +491,7 @@ contract PassiveLiquidityVaultTest is Test {
         
         // Set max utilization to 50%
         vm.startPrank(owner);
-        vault.setMaxUtilizationRate(5000);
+        vault.setMaxUtilizationRate(0.5e18); // 50% in WAD
         vm.stopPrank();
         
         uint256 deployAmount = (depositAmount * 6000) / 10000; // 60% utilization
@@ -499,7 +499,7 @@ contract PassiveLiquidityVaultTest is Test {
         vm.startPrank(manager);
         asset.approve(address(protocol1), deployAmount);
         
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 6000, 5000));
+        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 0.6e18, 0.5e18));
         vault.approveFundsUsage(address(protocol1), deployAmount);
         
         vm.stopPrank();
@@ -546,21 +546,21 @@ contract PassiveLiquidityVaultTest is Test {
         
         // Set max utilization to 95% for this test
         vm.startPrank(owner);
-        vault.setMaxUtilizationRate(9500);
+        vault.setMaxUtilizationRate(0.95e18); // 95% in WAD
         vm.stopPrank();
         
         // Deploy 80% of funds
         uint256 deployAmount = (depositAmount * 8000) / 10000;
         _deployFunds(address(protocol1), deployAmount);
         
-        assertEq(vault.utilizationRate(), 8000);
+        assertEq(vault.utilizationRate(), 0.8e18); // 80% in WAD
         
         // Deploy more to reach 90% (but stay within max utilization)
         uint256 additionalDeploy = (depositAmount * 1000) / 10000;
         _deployFunds(address(protocol2), additionalDeploy);
         
-        // Should be 90% utilization
-        assertTrue(vault.utilizationRate() >= 8900 && vault.utilizationRate() <= 9100, "Utilization rate out of expected range");
+        // Should be 90% utilization (0.89e18 to 0.91e18 in WAD)
+        assertTrue(vault.utilizationRate() >= 0.89e18 && vault.utilizationRate() <= 0.91e18, "Utilization rate out of expected range");
     }
     
     // ============ Admin Function Tests ============
@@ -578,7 +578,7 @@ contract PassiveLiquidityVaultTest is Test {
     
     // Tests that the owner can set a new maximum utilization rate
     function testSetMaxUtilizationRate() public {
-        uint256 newMaxRate = 9000;
+        uint256 newMaxRate = 0.9e18; // 90% in WAD
         
         vm.startPrank(owner);
         vault.setMaxUtilizationRate(newMaxRate);
