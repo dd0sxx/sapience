@@ -54,6 +54,31 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
       );
     }
 
+    // Ensure request body is an object for initialization detection
+    let body: unknown = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        /* ignore parse error; leave body as-is */
+      }
+    }
+
+    const isObject = (value: unknown): value is Record<string, unknown> =>
+      value !== null && typeof value === 'object';
+
+    const isJsonRpcInitialize = (
+      value: unknown
+    ): value is {
+      jsonrpc: '2.0';
+      method: 'server/initialize';
+    } => {
+      if (!isObject(value)) return false;
+      const jsonrpc = value['jsonrpc'];
+      const method = value['method'];
+      return jsonrpc === '2.0' && method === 'server/initialize';
+    };
+
     // Capture response data for logging
     const originalJson = res.json;
     res.json = function (body) {
@@ -72,9 +97,19 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
         // Reuse existing transport
         console.log(`Reusing session: ${sessionId}`);
         transport = transports[sessionId];
-      } else if (!sessionId && isInitializeRequest(req.body)) {
+      } else if (
+        !sessionId &&
+        (isInitializeRequest(body as unknown as object) ||
+          isJsonRpcInitialize(body))
+      ) {
         if (DEBUG_MCP_LOGS) {
-          console.log(`New session request: ${req.body.method}`);
+          console.log(
+            `New session request: ${
+              isObject(body) && typeof body['method'] === 'string'
+                ? (body['method'] as string)
+                : 'unknown'
+            }`
+          );
         } else {
           console.log(`New session request`);
         }
@@ -114,7 +149,7 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
         if (DEBUG_MCP_LOGS) {
           console.log(`Handling initialization request...`);
         }
-        await transport.handleRequest(req, res, req.body);
+        await transport.handleRequest(req, res, body as object | undefined);
         if (DEBUG_MCP_LOGS) {
           console.log(`Initialization request handled, response sent`);
         }
