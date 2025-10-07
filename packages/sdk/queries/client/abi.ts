@@ -1,13 +1,9 @@
 import type { Abi } from 'abitype';
-import { foilAbi } from '../../constants/abis';
-import foilFactory from '../../abis/FoilFactory.json';
+import { foilAbi, foilFactoryAbi } from '../../constants/abis';
 
 export const sapienceAbi = (): { abi: Abi } => ({ abi: foilAbi as Abi });
 
-export const foilFactoryAbi = (): { abi: Abi } => {
-  const abi: Abi = (foilFactory as { abi: Abi }).abi as Abi;
-  return { abi };
-};
+export const foilFactoryAbiFn = (): { abi: Abi } => ({ abi: foilFactoryAbi as Abi });
 
 export const useSapienceAbi = () => sapienceAbi();
 
