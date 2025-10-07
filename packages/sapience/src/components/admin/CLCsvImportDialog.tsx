@@ -274,7 +274,7 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
               startingSqrtPriceX96: DEFAULT_SQRT_PRICE,
               baseAssetMinPriceTick: DEFAULT_MIN_PRICE_TICK,
               baseAssetMaxPriceTick: DEFAULT_MAX_PRICE_TICK,
-              public: false,
+              public: true,
               similarMarkets: similar,
               // UI-only fields (startingPrice, lowTickPrice, highTickPrice) are omitted from payload
             } as const;

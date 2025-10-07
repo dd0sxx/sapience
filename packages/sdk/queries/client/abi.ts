@@ -1,16 +1,9 @@
 import type { Abi } from 'abitype';
-import sapience from '../../../protocol/deployments/Sapience.json';
-import sapienceFactory from '../../../protocol/deployments/SapienceFactory.json';
+import { foilAbi, foilFactoryAbi } from '../../constants/abis';
 
-export const sapienceAbi = (): { abi: Abi } => {
-  const abi: Abi = sapience.abi as Abi;
-  return { abi };
-};
+export const sapienceAbi = (): { abi: Abi } => ({ abi: foilAbi as Abi });
 
-export const sapienceFactoryAbi = (): { abi: Abi } => {
-  const abi: Abi = sapienceFactory.abi as Abi;
-  return { abi };
-};
+export const foilFactoryAbiFn = (): { abi: Abi } => ({ abi: foilFactoryAbi as Abi });
 
 export const useSapienceAbi = () => sapienceAbi();
 

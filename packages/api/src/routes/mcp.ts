@@ -34,17 +34,57 @@ registerAllMcpTools(server);
 
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
+// Logging controls
+const isProdLike =
+  process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
+const DEBUG_MCP_LOGS = process.env.DEBUG_MCP_LOGS === '1' && !isProdLike;
+
 export const handleMcpAppRequests = (app: express.Application, url: string) => {
   // Handle POST requests for client-to-server communication
   app.post(url, async (req, res) => {
-    console.log(`Request received: ${req.method} ${req.url}`, {
-      body: req.body,
-    });
+    const sessionIdHeader = (req.headers['mcp-session-id'] as string) || 'n/a';
+    if (DEBUG_MCP_LOGS) {
+      console.log(`Request received: ${req.method} ${req.url}`, {
+        sessionId: sessionIdHeader,
+        body: req.body,
+      });
+    } else {
+      console.log(
+        `[MCP] ${req.method} ${req.url} sessionId=${sessionIdHeader}`
+      );
+    }
+
+    // Ensure request body is an object for initialization detection
+    let body: unknown = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch {
+        /* ignore parse error; leave body as-is */
+      }
+    }
+
+    const isObject = (value: unknown): value is Record<string, unknown> =>
+      value !== null && typeof value === 'object';
+
+    const isJsonRpcInitialize = (
+      value: unknown
+    ): value is {
+      jsonrpc: '2.0';
+      method: 'server/initialize';
+    } => {
+      if (!isObject(value)) return false;
+      const jsonrpc = value['jsonrpc'];
+      const method = value['method'];
+      return jsonrpc === '2.0' && method === 'server/initialize';
+    };
 
     // Capture response data for logging
     const originalJson = res.json;
     res.json = function (body) {
-      console.log(`Response being sent:`, JSON.stringify(body, null, 2));
+      if (DEBUG_MCP_LOGS) {
+        console.log(`Response being sent:`, JSON.stringify(body, null, 2));
+      }
       return originalJson.call(this, body);
     };
 
@@ -57,8 +97,22 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
         // Reuse existing transport
         console.log(`Reusing session: ${sessionId}`);
         transport = transports[sessionId];
-      } else if (!sessionId && isInitializeRequest(req.body)) {
-        console.log(`New session request: ${req.body.method}`);
+      } else if (
+        !sessionId &&
+        (isInitializeRequest(body as unknown as object) ||
+          isJsonRpcInitialize(body))
+      ) {
+        if (DEBUG_MCP_LOGS) {
+          console.log(
+            `New session request: ${
+              isObject(body) && typeof body['method'] === 'string'
+                ? (body['method'] as string)
+                : 'unknown'
+            }`
+          );
+        } else {
+          console.log(`New session request`);
+        }
         // New initialization request
         const eventStore = new InMemoryEventStore();
         transport = new StreamableHTTPServerTransport({
@@ -84,13 +138,21 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
         };
 
         // Connect to the MCP server BEFORE handling the request
-        console.log(`Connecting transport to MCP server...`);
+        if (DEBUG_MCP_LOGS) {
+          console.log(`Connecting transport to MCP server...`);
+        }
         await server.connect(transport);
-        console.log(`Transport connected to MCP server successfully`);
+        if (DEBUG_MCP_LOGS) {
+          console.log(`Transport connected to MCP server successfully`);
+        }
 
-        console.log(`Handling initialization request...`);
-        await transport.handleRequest(req, res, req.body);
-        console.log(`Initialization request handled, response sent`);
+        if (DEBUG_MCP_LOGS) {
+          console.log(`Handling initialization request...`);
+        }
+        await transport.handleRequest(req, res, body as object | undefined);
+        if (DEBUG_MCP_LOGS) {
+          console.log(`Initialization request handled, response sent`);
+        }
         return; // Already handled
       } else {
         console.error(
@@ -108,8 +170,14 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
         return;
       }
 
-      console.log(`Handling request for session: ${transport.sessionId}`);
-      console.log(`Request body:`, JSON.stringify(req.body, null, 2));
+      if (DEBUG_MCP_LOGS) {
+        console.log(`Handling request for session: ${transport.sessionId}`);
+        console.log(`Request body:`, JSON.stringify(req.body, null, 2));
+      } else {
+        console.log(
+          `[MCP] Handling request for session: ${transport.sessionId}`
+        );
+      }
 
       // Handle the request with existing transport
       console.log(`Calling transport.handleRequest...`);
@@ -117,7 +185,7 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
       await transport.handleRequest(req, res, req.body);
       const duration = Date.now() - startTime;
       console.log(
-        `Request handling completed in ${duration}ms for session: ${transport.sessionId}`
+        `[MCP] ${req.method} ${req.url} sessionId=${transport.sessionId} duration=${duration}ms`
       );
     } catch (error) {
       console.error('Error handling MCP request:', error);
@@ -134,9 +202,10 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
     }
   });
 
-  // Handle GET requests for server-to-client notifications via SSE
-  app.get('/mcp', async (req: express.Request, res: express.Response) => {
-    console.log(`GET Request received: ${req.method} ${req.url}`);
+  // Handle GET requests for server-to-client notifications via SSE on the same path
+  app.get(url, async (req: express.Request, res: express.Response) => {
+    const sessionIdHeader = (req.headers['mcp-session-id'] as string) || 'n/a';
+    console.log(`[MCP] ${req.method} ${req.url} sessionId=${sessionIdHeader}`);
 
     try {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
@@ -148,10 +217,12 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
 
       // Check for Last-Event-ID header for resumability
       const lastEventId = req.headers['last-event-id'] as string | undefined;
-      if (lastEventId) {
-        console.log(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
-      } else {
-        console.log(`Establishing new SSE stream for session ${sessionId}`);
+      if (DEBUG_MCP_LOGS) {
+        if (lastEventId) {
+          console.log(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
+        } else {
+          console.log(`Establishing new SSE stream for session ${sessionId}`);
+        }
       }
 
       const transport = transports[sessionId];
@@ -161,14 +232,16 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
         console.log(`SSE connection closed for session ${sessionId}`);
       });
 
-      console.log(
-        `Starting SSE transport.handleRequest for session ${sessionId}...`
-      );
+      if (DEBUG_MCP_LOGS) {
+        console.log(
+          `Starting SSE transport.handleRequest for session ${sessionId}...`
+        );
+      }
       const startTime = Date.now();
       await transport.handleRequest(req, res);
       const duration = Date.now() - startTime;
       console.log(
-        `SSE stream setup completed in ${duration}ms for session: ${sessionId}`
+        `[MCP] ${req.method} ${req.url} sessionId=${sessionId} duration=${duration}ms`
       );
     } catch (error) {
       console.error('Error handling GET request:', error);
@@ -178,9 +251,10 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
     }
   });
 
-  // Handle DELETE requests for session termination
-  app.delete('/mcp', async (req: express.Request, res: express.Response) => {
-    console.log(`DELETE Request received: ${req.method} ${req.url}`);
+  // Handle DELETE requests for session termination on the same path
+  app.delete(url, async (req: express.Request, res: express.Response) => {
+    const sessionIdHeader = (req.headers['mcp-session-id'] as string) || 'n/a';
+    console.log(`[MCP] ${req.method} ${req.url} sessionId=${sessionIdHeader}`);
     try {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
       if (!sessionId || !transports[sessionId]) {
@@ -194,10 +268,12 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
       );
       const transport = transports[sessionId];
 
-      // Capture response for logging
+      // Capture response for logging (debug only)
       const originalSend = res.send;
       res.send = function (body) {
-        console.log(`DELETE response being sent:`, body);
+        if (DEBUG_MCP_LOGS) {
+          console.log(`DELETE response being sent:`, body);
+        }
         return originalSend.call(this, body);
       };
 
@@ -206,7 +282,7 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
       await transport.handleRequest(req, res);
       const duration = Date.now() - startTime;
       console.log(
-        `Session termination completed in ${duration}ms for session: ${sessionId}`
+        `[MCP] ${req.method} ${req.url} sessionId=${sessionId} duration=${duration}ms`
       );
 
       // Check if transport was actually closed

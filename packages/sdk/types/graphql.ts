@@ -1421,6 +1421,7 @@ export type Market = {
   public: Scalars['Boolean']['output'];
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   similarMarkets: Array<Scalars['String']['output']>;
@@ -1456,6 +1457,7 @@ export type MarketAvgAggregate = {
   marketParamsFeerate?: Maybe<Scalars['Float']['output']>;
   maxPriceD18?: Maybe<Scalars['Decimal']['output']>;
   minPriceD18?: Maybe<Scalars['Decimal']['output']>;
+  settledAt?: Maybe<Scalars['Float']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   startTimestamp?: Maybe<Scalars['Float']['output']>;
 };
@@ -1472,6 +1474,7 @@ export type MarketAvgOrderByAggregateInput = {
   marketParamsFeerate?: InputMaybe<SortOrder>;
   maxPriceD18?: InputMaybe<SortOrder>;
   minPriceD18?: InputMaybe<SortOrder>;
+  settledAt?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
 };
@@ -1513,6 +1516,7 @@ export type MarketCountAggregate = {
   public: Scalars['Int']['output'];
   question: Scalars['Int']['output'];
   settled: Scalars['Int']['output'];
+  settledAt: Scalars['Int']['output'];
   settlementPriceD18: Scalars['Int']['output'];
   shortName: Scalars['Int']['output'];
   similarMarkets: Scalars['Int']['output'];
@@ -1545,6 +1549,7 @@ export type MarketCountOrderByAggregateInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
+  settledAt?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
   shortName?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
@@ -1685,6 +1690,7 @@ export type MarketGroupBy = {
   public: Scalars['Boolean']['output'];
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   similarMarkets?: Maybe<Array<Scalars['String']['output']>>;
@@ -2241,6 +2247,7 @@ export type MarketMaxAggregate = {
   public?: Maybe<Scalars['Boolean']['output']>;
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
@@ -2272,6 +2279,7 @@ export type MarketMaxOrderByAggregateInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
+  settledAt?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
   shortName?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
@@ -2304,6 +2312,7 @@ export type MarketMinAggregate = {
   public?: Maybe<Scalars['Boolean']['output']>;
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
@@ -2335,6 +2344,7 @@ export type MarketMinOrderByAggregateInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
+  settledAt?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
   shortName?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
@@ -2380,6 +2390,7 @@ export type MarketOrderByWithAggregationInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
+  settledAt?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
   similarMarkets?: InputMaybe<SortOrder>;
@@ -2414,6 +2425,7 @@ export type MarketOrderByWithRelationInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
+  settledAt?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
   similarMarkets?: InputMaybe<SortOrder>;
@@ -2608,6 +2620,7 @@ export type MarketScalarFieldEnum =
   | 'public'
   | 'question'
   | 'settled'
+  | 'settledAt'
   | 'settlementPriceD18'
   | 'shortName'
   | 'similarMarkets'
@@ -2642,6 +2655,7 @@ export type MarketScalarWhereWithAggregatesInput = {
   public?: InputMaybe<BoolWithAggregatesFilter>;
   question?: InputMaybe<StringNullableWithAggregatesFilter>;
   settled?: InputMaybe<BoolNullableWithAggregatesFilter>;
+  settledAt?: InputMaybe<IntNullableWithAggregatesFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableWithAggregatesFilter>;
   shortName?: InputMaybe<StringNullableWithAggregatesFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
@@ -2662,6 +2676,7 @@ export type MarketSumAggregate = {
   marketParamsFeerate?: Maybe<Scalars['Int']['output']>;
   maxPriceD18?: Maybe<Scalars['Decimal']['output']>;
   minPriceD18?: Maybe<Scalars['Decimal']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
 };
@@ -2678,6 +2693,7 @@ export type MarketSumOrderByAggregateInput = {
   marketParamsFeerate?: InputMaybe<SortOrder>;
   maxPriceD18?: InputMaybe<SortOrder>;
   minPriceD18?: InputMaybe<SortOrder>;
+  settledAt?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
 };
@@ -2712,6 +2728,7 @@ export type MarketWhereInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
+  settledAt?: InputMaybe<IntNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
@@ -2750,6 +2767,7 @@ export type MarketWhereUniqueInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
+  settledAt?: InputMaybe<IntNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;

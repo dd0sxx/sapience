@@ -18,41 +18,43 @@
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./abis": {
+      "import": "./dist/abis/index.mjs",
+      "require": "./dist/abis/index.js",
+      "types": "./dist/abis/index.d.ts"
+    },
+    "./constants": {
+      "import": "./dist/constants/index.mjs",
+      "require": "./dist/constants/index.js",
+      "types": "./dist/constants/index.d.ts"
+    },
     "./ui": {
       "import": "./dist/ui/index.mjs",
       "require": "./dist/ui/index.js",
       "types": "./dist/ui/index.d.ts"
-    },
-    "./ui/*": {
-      "import": "./ui/*",
-      "require": "./ui/*",
-      "types": "./ui/*"
     },
     "./queries": {
       "import": "./dist/queries/index.mjs",
       "require": "./dist/queries/index.js",
       "types": "./dist/queries/index.d.ts"
     },
-    "./queries/*": {
-      "import": "./queries/*",
-      "require": "./queries/*",
-      "types": "./queries/*"
-    },
     "./types": {
       "import": "./dist/types/index.mjs",
       "require": "./dist/types/index.js",
       "types": "./dist/types/index.d.ts"
     },
-    "./types/*": {
-      "import": "./types/*",
-      "require": "./types/*",
-      "types": "./types/*"
+    "./contracts": {
+      "import": "./dist/contracts/index.mjs",
+      "require": "./dist/contracts/index.js",
+      "types": "./dist/contracts/index.d.ts"
     },
     "./boilerplates": "./boilerplates/README.md"
   },
   "scripts": {
-    "dev": "tsup ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
-    "build": "tsup ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json && pnpm build-storybook",
+    "prepare": "pnpm run build:lib",
+    "dev": "tsup index.ts abis/index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts abis/index.ts constants/index.ts contracts/index.ts ui/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "build": "pnpm run build:lib && pnpm build-storybook",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "eslint .",

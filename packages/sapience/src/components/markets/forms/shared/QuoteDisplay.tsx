@@ -103,12 +103,12 @@ export default function QuoteDisplay({
   if (quoteError) {
     return (
       <div className="mt-3">
-        <div className="flex items-center rounded-md border border-destructive/80 bg-destructive/10 px-3 py-2.5 w-full h-12">
+        <div className="flex items-start rounded-md border border-destructive/80 bg-destructive/10 px-3 py-2.5 w-full min-h-12">
           <AlertTriangle
-            className="w-8 h-8 mr-2.5 text-destructive"
+            className="w-5 h-5 mr-2.5 text-destructive mt-0.5 flex-shrink-0"
             strokeWidth={1.5}
           />
-          <span className="text-destructive pr-3">{quoteError}</span>
+          <span className="text-destructive pr-3 text-sm leading-relaxed">{quoteError}</span>
         </div>
       </div>
     );

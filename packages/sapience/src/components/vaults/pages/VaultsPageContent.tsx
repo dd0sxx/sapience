@@ -18,6 +18,8 @@ import {
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
 import { Vault as VaultIcon } from 'lucide-react';
+import { passiveLiquidityVault } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 
@@ -36,8 +38,8 @@ const VaultsPageContent = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { isConnected } = useAccount();
   // Constants for vault integration
-  const VAULT_CHAIN_ID = 42161; // Arbitrum One
-  const VAULT_ADDRESS = '0xD0Fd2e76dFB4449F422cdB2D0Bc3EA67A33b34b2';
+  const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID; // default chain
+  const VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
 
   // Vaults feature flag detection
   const [vaultsFeatureEnabled, setVaultsFeatureEnabled] = useState(false);

@@ -14,6 +14,8 @@ export const WSTETH_ADDRESS_SEPOLIA =
   '0xb82381a3fbd3fafa77b3a7be693342618240067b';
 
 // PredictionMarket deployed addresses
-export const PREDICTION_MARKET_ADDRESS_ARB1 =
-  '0x85b38C1e35F42163C5b9DbDe357b191E1042F5f0' as const;
-export const PREDICTION_MARKET_CHAIN_ID_ARB1 = 42161 as const;
+import { predictionMarket } from '@sapience/sdk';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+export const PREDICTION_MARKET_ADDRESS_ARB1 = predictionMarket[DEFAULT_CHAIN_ID]
+  ?.address as `0x${string}`;
+export const PREDICTION_MARKET_CHAIN_ID_ARB1 = DEFAULT_CHAIN_ID;
