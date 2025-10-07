@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { getAddress } from 'viem';
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 import { SCHEMA_UID } from '../../lib/constants/eas';
 

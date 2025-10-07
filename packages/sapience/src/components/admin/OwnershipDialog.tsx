@@ -1,11 +1,11 @@
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@sapience/ui/components/ui/dialog';
-import { Input } from '@sapience/ui/components/ui/input';
+} from '@sapience/sdk/ui/components/ui/dialog';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
 import { useState } from 'react';
 import type { Address } from 'viem';
 import { useAccount } from 'wagmi';

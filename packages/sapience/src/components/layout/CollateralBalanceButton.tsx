@@ -4,15 +4,16 @@ import Image from 'next/image';
 import { useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 import { erc20Abi, formatUnits } from 'viem';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useWallets } from '@privy-io/react-auth';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import { formatFiveSigFigs } from '~/lib/utils/util';
 import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/constants';
 
@@ -32,13 +33,13 @@ export default function CollateralBalanceButton({
 
   const accountAddress = connectedWallet?.address as `0x${string}` | undefined;
 
-  const collateralAssetAddress = DEFAULT_COLLATERAL_ASSET as `0x${string}`;
+  const collateralAssetAddress = DEFAULT_COLLATERAL_ASSET;
 
   const { data: decimals } = useReadContract({
     abi: erc20Abi,
     address: collateralAssetAddress,
     functionName: 'decimals',
-    chainId: 42161,
+    chainId: DEFAULT_CHAIN_ID,
     query: { enabled: Boolean(accountAddress) },
   });
 
@@ -47,7 +48,7 @@ export default function CollateralBalanceButton({
     address: collateralAssetAddress,
     functionName: 'balanceOf',
     args: accountAddress ? [accountAddress] : undefined,
-    chainId: 42161,
+    chainId: DEFAULT_CHAIN_ID,
     query: { enabled: Boolean(accountAddress) },
   });
 

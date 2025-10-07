@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useReadContracts } from 'wagmi';
 import type { Abi, Address } from 'viem';
-import type { Position as PositionType } from '@sapience/ui/types/graphql';
-import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
+import type { Position as PositionType } from '@sapience/sdk/types/graphql';
+import { sapienceAbi as getSapienceAbi } from '@sapience/sdk/queries';
 
 type PositionKey = string; // `${chainId}:${address}:${positionId}`
 
@@ -46,8 +46,8 @@ export function usePositionValueAndFees(
   options: UsePositionValueAndFeesOptions = {}
 ) {
   const { enabled = true } = options;
-  const { abi } = useSapienceAbi();
-  const sapienceAbi = abi as Abi;
+  const { abi } = getSapienceAbi();
+  const sapienceAbi = abi;
   const SLOW_REFETCH_MS = 120_000; // 2 minutes
   // no-op
 

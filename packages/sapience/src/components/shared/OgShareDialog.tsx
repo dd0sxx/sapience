@@ -1,17 +1,17 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import Image from 'next/image';
 import { Copy, Share2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import LottieLoader from '~/components/shared/LottieLoader';
 
 interface OgShareDialogBaseProps {

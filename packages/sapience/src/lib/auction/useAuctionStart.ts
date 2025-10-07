@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { toAuctionWsUrl } from '~/lib/ws';
 
 export interface PredictedOutcomeInput {
   marketGroup: string; // address
@@ -14,6 +15,7 @@ export interface AuctionParams {
   resolver: string; // contract address for market validation
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   maker: `0x${string}`; // maker EOA address
+  makerNonce: number; // nonce for the maker
 }
 
 export interface QuoteBid {
@@ -22,6 +24,7 @@ export interface QuoteBid {
   takerWager: string; // wei
   takerDeadline: number; // unix seconds
   takerSignature: string; // Taker's bid signature
+  makerNonce: number; // nonce for the maker
 }
 
 // Struct shape expected by PredictionMarket.mint()
@@ -32,28 +35,11 @@ export interface MintPredictionRequestData {
   takerCollateral: string; // wei
   maker: `0x${string}`;
   taker: `0x${string}`;
+  // Optional here; the submit hook will fetch and inject the correct nonce
+  makerNonce?: string | bigint;
   takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
   takerDeadline: string; // unix seconds (uint256 string)
   refCode: `0x${string}`; // bytes32
-}
-
-function toWsUrl(baseHttpUrl: string | undefined): string | null {
-  try {
-    if (!baseHttpUrl || baseHttpUrl.length === 0) {
-      // Relative path
-      const loc = typeof window !== 'undefined' ? window.location : undefined;
-      if (!loc) return null;
-      const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${loc.host}/auction`;
-    }
-    const u = new URL(baseHttpUrl);
-    // Preserve any existing path from settings (which should already include /auction)
-    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-    u.search = '';
-    return u.toString();
-  } catch {
-    return null;
-  }
 }
 
 function jsonStableStringify(value: unknown) {
@@ -88,7 +74,7 @@ export function useAuctionStart() {
       return `${root}/auction`;
     }
   }, [apiBaseUrl]);
-  const wsUrl = useMemo(() => toWsUrl(apiBase || undefined), [apiBase]);
+  const wsUrl = useMemo(() => toAuctionWsUrl(apiBase || undefined), [apiBase]);
   const lastAuctionRef = useRef<AuctionParams | null>(null);
   // Track latest auctionId in a ref to avoid stale closures in ws handlers
   const latestAuctionIdRef = useRef<string | null>(null);
@@ -145,6 +131,7 @@ export function useAuctionStart() {
                   takerWager,
                   takerDeadline,
                   takerSignature: b.takerSignature || '0x',
+                  makerNonce: b.makerNonce || 0,
                 } as QuoteBid;
               } catch {
                 return null;
@@ -184,6 +171,7 @@ export function useAuctionStart() {
           resolver: params.resolver,
           predictedOutcomes: params.predictedOutcomes,
           maker: params.maker,
+          makerNonce: params.makerNonce,
         },
       };
 
@@ -287,6 +275,7 @@ export function useAuctionStart() {
           takerSignature: args.selectedBid.takerSignature as `0x${string}`,
           takerDeadline: String(args.selectedBid.takerDeadline),
           refCode: args.refCode || (zeroBytes32 as `0x${string}`),
+          makerNonce: String(args.selectedBid.makerNonce),
         };
       } catch {
         return null;
@@ -338,6 +327,7 @@ export function buildMintPredictionRequestData(args: {
       takerSignature: args.selectedBid.takerSignature as `0x${string}`,
       takerDeadline: String(args.selectedBid.takerDeadline),
       refCode: args.refCode || (zeroBytes32 as `0x${string}`),
+      makerNonce: String(args.selectedBid.makerNonce),
     };
 
     return out;

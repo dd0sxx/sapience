@@ -3,18 +3,19 @@
 import Image from 'next/image';
 import * as React from 'react';
 import { erc20Abi, formatUnits } from 'viem';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useReadContract } from 'wagmi';
 import { Calendar, TrendingUp, Telescope } from 'lucide-react';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 
-import type { PositionType } from '@sapience/ui/types';
+import type { PositionType } from '@sapience/sdk/types';
 import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/constants';
 import { formatFiveSigFigs, bigIntAbs } from '~/lib/utils/util';
 import type { Parlay } from '~/hooks/graphql/useUserParlays';
@@ -128,13 +129,13 @@ function MetricBadge({
 }
 
 function useProfileBalance(address?: string) {
-  const collateralAssetAddress = DEFAULT_COLLATERAL_ASSET as `0x${string}`;
+  const collateralAssetAddress = DEFAULT_COLLATERAL_ASSET;
 
   const { data: decimals } = useReadContract({
     abi: erc20Abi,
     address: collateralAssetAddress,
     functionName: 'decimals',
-    chainId: 42161,
+    chainId: DEFAULT_CHAIN_ID,
     query: { enabled: Boolean(address) },
   });
 
@@ -143,7 +144,7 @@ function useProfileBalance(address?: string) {
     address: collateralAssetAddress,
     functionName: 'balanceOf',
     args: address ? [address as `0x${string}`] : undefined,
-    chainId: 42161,
+    chainId: DEFAULT_CHAIN_ID,
     query: { enabled: Boolean(address) },
   });
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type {
   Position as PositionType,
   Transaction as TransactionType,
-} from '@sapience/ui/types/graphql';
+} from '@sapience/sdk/types/graphql';
 import {
   Table,
   TableBody,
@@ -10,8 +10,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@sapience/ui/components/ui/table';
-import { Button } from '@sapience/ui/components/ui/button';
+} from '@sapience/sdk/ui/components/ui/table';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { formatUnits } from 'viem';
 import Link from 'next/link';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';

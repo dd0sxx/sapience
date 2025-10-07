@@ -1,29 +1,29 @@
 'use client';
 
-import { Button } from '@sapience/ui/components/ui/button';
-import { Input } from '@sapience/ui/components/ui/input';
-import { Textarea } from '@sapience/ui/components/ui/textarea';
-import { Switch } from '@sapience/ui/components/ui/switch';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { Input } from '@sapience/sdk/ui/components/ui/input';
+import { Textarea } from '@sapience/sdk/ui/components/ui/textarea';
+import { Switch } from '@sapience/sdk/ui/components/ui/switch';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@sapience/ui/components/ui/select';
+} from '@sapience/sdk/ui/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@sapience/ui/components/ui/dialog';
+} from '@sapience/sdk/ui/components/ui/dialog';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 // Simple progress component since it doesn't exist in the UI library
 const Progress = ({
   value,
@@ -39,14 +39,16 @@ const Progress = ({
     />
   </div>
 );
-import { Badge } from '@sapience/ui/components/ui/badge';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
 import { Copy, Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { useReadContract } from 'wagmi';
 import { keccak256, concatHex, toHex } from 'viem';
+import { umaResolver } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
 import ResolveConditionCell from './ResolveConditionCell';
@@ -301,9 +303,8 @@ const RFQTab = ({
   };
 
   // UMA Resolver config (same as used elsewhere in admin)
-  const UMA_CHAIN_ID = 42161;
-  const UMA_RESOLVER_ADDRESS =
-    '0x9052992cB14b7af25a3c40B27211d369c9ff7758' as `0x${string}`;
+  const UMA_CHAIN_ID = DEFAULT_CHAIN_ID;
+  const UMA_RESOLVER_ADDRESS = umaResolver[DEFAULT_CHAIN_ID]?.address;
 
   // Minimal ABI to read wrapped market status
   const umaWrappedMarketAbi = [

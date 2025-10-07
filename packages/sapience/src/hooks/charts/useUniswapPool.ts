@@ -1,4 +1,4 @@
-import erc20ABI from '@sapience/ui/abis/erc20abi.json';
+import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { FeeAmount } from '@uniswap/v3-sdk';

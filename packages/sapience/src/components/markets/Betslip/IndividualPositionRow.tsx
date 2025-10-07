@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
-import type { MarketGroupType } from '@sapience/ui/types';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import type { MarketGroupType } from '@sapience/sdk/types';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { WagerInput } from '~/components/markets/forms';
 import QuoteDisplay from '~/components/markets/forms/shared/QuoteDisplay';
 import { useWagerFlip } from '~/lib/context/WagerFlipContext';

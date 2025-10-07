@@ -1,4 +1,4 @@
-import type { MarketGroupType, MarketType } from '@sapience/ui/types';
+import type { MarketGroupType, MarketType } from '@sapience/sdk/types';
 
 import type { MarketGroupClassification } from '~/lib/types';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';

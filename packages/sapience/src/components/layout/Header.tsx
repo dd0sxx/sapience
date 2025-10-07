@@ -5,20 +5,20 @@ import {
   useWallets,
   useConnectOrCreateWallet,
 } from '@privy-io/react-auth';
-import { Button } from '@sapience/ui/components/ui/button';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@sapience/ui/components/ui/dropdown-menu';
+} from '@sapience/sdk/ui/components/ui/dropdown-menu';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarTrigger,
   useSidebar,
-} from '@sapience/ui/components/ui/sidebar';
+} from '@sapience/sdk/ui/components/ui/sidebar';
 import { LogOut, Menu, User, BookOpen, Settings } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';

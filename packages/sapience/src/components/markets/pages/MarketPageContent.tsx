@@ -3,17 +3,21 @@
 import {
   IntervalSelector,
   PriceSelector,
-} from '@sapience/ui/components/charts';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+} from '@sapience/sdk/ui/components/charts';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@sapience/sdk/ui/components/ui/tabs';
 import { ChevronLeft, ArrowLeftRightIcon, DropletsIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
-import { LineType, TimeInterval } from '@sapience/ui/types/charts';
-import { ColoredRadioOption } from '@sapience/ui';
+import type { Market as GqlMarketType } from '@sapience/sdk/types/graphql';
+import { LineType, TimeInterval } from '@sapience/sdk/types/charts';
+import { ColoredRadioOption } from '@sapience/sdk/ui';
 import { getSeriesColorByIndex } from '~/lib/theme/chartColors';
 
 import OrderBookChart from '~/components/markets/charts/OrderBookChart';

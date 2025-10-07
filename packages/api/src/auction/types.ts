@@ -5,6 +5,7 @@ export interface AuctionRequestPayload {
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   resolver: string; // contract address for market validation
   maker: string; // EOA address of the maker initiating the auction
+  makerNonce: number; // nonce for the maker
 }
 
 export interface BidQuote {
@@ -45,6 +46,7 @@ export interface BidPayload {
   takerWager: string; // wei string
   takerDeadline: number; // unix seconds
   takerSignature: string; // Taker's signature authorizing this specific bid over the typed payload
+  makerNonce: number; // nonce for the maker (same as makerNonce in AuctionRequestPayload)
 }
 
 export type ValidatedBid = BidPayload;

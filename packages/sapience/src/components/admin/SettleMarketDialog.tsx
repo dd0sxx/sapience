@@ -1,15 +1,15 @@
 import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Privy
-import { Button } from '@sapience/ui/components/ui/button'; // Import Button
-import { Input } from '@sapience/ui/components/ui/input'; // Import Input
-import { Label } from '@sapience/ui/components/ui/label'; // Import Label
-import { Separator } from '@sapience/ui/components/ui/separator'; // Import Separator
-import { useToast } from '@sapience/ui/hooks/use-toast'; // Import useToast
-import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi'; // Import the hook
+import { Button } from '@sapience/sdk/ui/components/ui/button'; // Import Button
+import { Input } from '@sapience/sdk/ui/components/ui/input'; // Import Input
+import { Label } from '@sapience/sdk/ui/components/ui/label'; // Import Label
+import { Separator } from '@sapience/sdk/ui/components/ui/separator'; // Import Separator
+import { useToast } from '@sapience/sdk/ui/hooks/use-toast'; // Import useToast
+import { sapienceAbi as getSapienceAbi } from '@sapience/sdk/queries'; // Import abi getter
 import { Loader2 } from 'lucide-react'; // Import Loader2
 import { useState } from 'react'; // Import useState and useMemo
 import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex
 import { useReadContract } from 'wagmi'; // Import wagmi hooks
-import type { MarketType as Market } from '@sapience/ui/types'; // Import types
+import type { MarketType as Market } from '@sapience/sdk/types'; // Import types
 
 import { NO_SQRT_X96_PRICE, YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -187,7 +187,7 @@ const SettleMarketDialog = ({
   const { toast } = useToast();
 
   // 1. Get the ABI using the hook
-  const { abi: sapienceAbi } = useSapienceAbi();
+  const { abi: sapienceAbi } = getSapienceAbi();
 
   // 2. Fetch market data (which includes marketParams and claimStatement) using the ABI
   const {

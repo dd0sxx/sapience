@@ -33,7 +33,7 @@ import {
   updateCollateralData,
 } from './marketHelpers';
 import { alertEvent } from '../workers/discordBot';
-import Sapience from '@sapience/protocol/deployments/Sapience.json';
+import { foilAbi } from '@sapience/sdk';
 import { PublicClient } from 'viem';
 import Sentry from '../instrument';
 import { Transaction } from '../../generated/prisma';
@@ -48,7 +48,7 @@ export const initializeMarket = async (marketInfo: marketInfo) => {
 
   const marketReadResult = (await client.readContract({
     address: marketInfo.deployment.address as `0x${string}`,
-    abi: Sapience.abi,
+    abi: foilAbi,
     functionName: 'getMarketGroup',
   })) as [string, string, any];
 
@@ -290,7 +290,7 @@ export const indexMarketGroupEvents = async (
     try {
       currentUnwatch = client.watchContractEvent({
         address: marketGroup.address as `0x${string}`,
-        abi: Sapience.abi,
+        abi: foilAbi,
         onLogs: processLogs,
         onError: (error) => {
           console.error(
@@ -477,7 +477,7 @@ export const reindexMarketGroupEvents = async (marketGroup: any) => {
     for (const log of logs) {
       try {
         const decodedLog = decodeEventLog({
-          abi: Sapience.abi,
+          abi: foilAbi,
           data: log.data,
           topics: log.topics,
         });
@@ -718,7 +718,7 @@ export const processMarketGroupLogsForRange = async (
   for (const log of logs) {
     try {
       const decodedLog = decodeEventLog({
-        abi: Sapience.abi,
+        abi: foilAbi,
         data: log.data,
         topics: log.topics,
       });
@@ -843,7 +843,7 @@ export const processMarketGroupLogsForAddressesRange = async (
       if (!mg) continue;
 
       const decodedLog = decodeEventLog({
-        abi: Sapience.abi,
+        abi: foilAbi,
         data: log.data,
         topics: log.topics,
       });
@@ -1035,10 +1035,18 @@ export const upsertEntitiesFromEvent = async (
           settlementSqrtPriceX96
         );
 
+        const blockTimestamp = Number(
+          event.logData.args.timestamp ??
+            event.blockTimestamp ??
+            event.timestamp ??
+            Math.floor(Date.now() / 1000)
+        );
+
         await prisma.market.update({
           where: { id: market.id },
           data: {
             settled: true,
+            settledAt: blockTimestamp,
             settlementPriceD18: settlementPriceD18.toString(),
           },
         });

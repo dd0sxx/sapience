@@ -10,7 +10,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 
-import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
+import type { MarketGroup as MarketGroupType } from '@sapience/sdk/types/graphql';
 import {
   transformMarketGroupChartData,
   type MultiMarketChartDataPoint,

@@ -2,7 +2,7 @@
 
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Card } from '@sapience/ui/components/ui/card';
+import { Card } from '@sapience/sdk/ui/components/ui/card';
 import Link from 'next/link';
 import { Bot } from 'lucide-react';
 import { useParams } from 'next/navigation';

@@ -1,5 +1,5 @@
-import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
-import type { Address, Abi } from 'viem';
+import { sapienceAbi as getSapienceAbi } from '@sapience/sdk/queries';
+import type { Address } from 'viem';
 import { useReadContract } from 'wagmi';
 
 /**
@@ -13,7 +13,7 @@ export const useMarketGroupLatestMarket = (
   marketGroupAddress?: Address,
   chainId?: number
 ) => {
-  const { abi } = useSapienceAbi();
+  const { abi } = getSapienceAbi();
 
   const {
     data: latestMarketData,
@@ -22,7 +22,7 @@ export const useMarketGroupLatestMarket = (
     refetch: refetchLatestMarket, // Expose refetch if needed
   } = useReadContract({
     address: marketGroupAddress,
-    abi: abi as Abi, // Cast ABI to Viem's Abi type
+    abi: abi, // Cast ABI to Viem's Abi type
     functionName: 'getLatestMarket',
     chainId,
   });

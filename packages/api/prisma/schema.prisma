@@ -116,6 +116,7 @@ model Market {
   startingSqrtPriceX96               String?      
   settlementPriceD18                 Decimal?      @db.Decimal(78, 0)
   settled                            Boolean?
+  settledAt                          Int?
   baseAssetMinPriceTick              Int?
   baseAssetMaxPriceTick              Int?
   minPriceD18                        Decimal?      @db.Decimal(78, 0)

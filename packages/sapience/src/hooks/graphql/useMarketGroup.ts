@@ -1,4 +1,4 @@
-import { graphqlRequest } from '@sapience/ui/lib';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import type {
   MarketGroup as MarketGroupType,
   Market as MarketType,
-} from '@sapience/ui/types/graphql';
+} from '@sapience/sdk/types/graphql';
 import { getMarketGroupClassification } from '../../lib/utils/marketUtils';
 import {
   findActiveMarkets,

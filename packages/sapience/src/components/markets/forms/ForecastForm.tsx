@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@sapience/ui/components/ui/button';
-import type { MarketGroupType } from '@sapience/ui/types';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import type { MarketGroupType } from '@sapience/sdk/types';
 import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -37,8 +37,9 @@ export default function ForecastForm({
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
   const [selectedMarketIdMultipleChoice, setSelectedMarketIdMultipleChoice] =
     useState<number>(1);
+  type ForecastFormValues = { predictionValue: string; comment?: string };
   // Create a unified schema that works for all market types
-  const formSchema = useMemo(() => {
+  const formSchema: z.ZodType<ForecastFormValues> = useMemo(() => {
     const baseValidation = z.string().min(1, 'Please enter a prediction');
     const commentValidation = z.string().optional();
 
@@ -104,7 +105,7 @@ export default function ForecastForm({
   }, [marketClassification, lowerBound, upperBound]);
 
   // Set up form with dynamic schema
-  const methods = useForm({
+  const methods = useForm<ForecastFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       predictionValue: defaultPredictionValue,

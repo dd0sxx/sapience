@@ -11,8 +11,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@sapience/ui/components/ui/table';
-import { Button } from '@sapience/ui/components/ui/button';
+} from '@sapience/sdk/ui/components/ui/table';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   flexRender,
   getCoreRowModel,
@@ -23,10 +23,11 @@ import {
 } from '@tanstack/react-table';
 import { ArrowUpDown, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
 import * as React from 'react';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { useReadContracts, useAccount } from 'wagmi';
 import type { Abi } from 'abitype';
-import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
+import { predictionMarketAbi } from '@sapience/sdk';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 // Minimal ABI for PredictionMarketUmaResolver.resolvePrediction(bytes)
 const UMA_RESOLVER_MIN_ABI = [
   {
@@ -47,7 +48,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
@@ -254,9 +255,8 @@ export default function UserParlaysTable({
             : userIsTaker
               ? (p.maker as Address | undefined)
               : undefined) ?? null,
-        chainId: Number(p.chainId || 42161),
-        marketAddress: (p.marketAddress ||
-          '0x8D1D1946cBc56F695584761d25D13F174906671C') as Address,
+        chainId: Number(p.chainId || DEFAULT_CHAIN_ID),
+        marketAddress: p.marketAddress as Address,
       };
     });
 
@@ -275,13 +275,14 @@ export default function UserParlaysTable({
       tokenIdsToCheck.map((tokenId) => ({
         // Fallback to default market address if we can't find a matching row (should not happen)
         address:
-          rows.find((r) => r.tokenIdToClaim === tokenId)?.marketAddress ||
-          '0x8D1D1946cBc56F695584761d25D13F174906671C',
-        abi: PredictionMarket.abi as unknown as Abi,
+          rows.find((r) => r.tokenIdToClaim === tokenId)?.marketAddress ??
+          rows[0]?.marketAddress,
+        abi: predictionMarketAbi as unknown as Abi,
         functionName: 'ownerOf',
         args: [tokenId],
         chainId:
-          rows.find((r) => r.tokenIdToClaim === tokenId)?.chainId || 42161,
+          rows.find((r) => r.tokenIdToClaim === tokenId)?.chainId ||
+          DEFAULT_CHAIN_ID,
       })),
     [tokenIdsToCheck, rows]
   );
@@ -341,7 +342,7 @@ export default function UserParlaysTable({
     () =>
       viewerTokenInfo.map((info) => ({
         address: info.marketAddress,
-        abi: PredictionMarket.abi as unknown as Abi,
+        abi: predictionMarketAbi as unknown as Abi,
         functionName: 'ownerOf',
         args: [info.tokenId],
         chainId: info.chainId,
@@ -386,7 +387,7 @@ export default function UserParlaysTable({
     () =>
       ownedRowEntries.map((e) => ({
         address: e.marketAddress,
-        abi: PredictionMarket.abi as unknown as Abi,
+        abi: predictionMarketAbi as unknown as Abi,
         functionName: 'getPrediction',
         args: [e.tokenId],
         chainId: e.chainId,

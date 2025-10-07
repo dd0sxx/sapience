@@ -1,6 +1,6 @@
 'use client';
 
-import type { MarketGroupType } from '@sapience/ui/types';
+import type { MarketGroupType } from '@sapience/sdk/types';
 import MultipleChoiceWagerForm from './wager/MultipleChoiceWagerForm';
 import NumericWagerForm from './wager/NumericWagerForm';
 import YesNoWagerForm from './wager/YesNoWagerForm';

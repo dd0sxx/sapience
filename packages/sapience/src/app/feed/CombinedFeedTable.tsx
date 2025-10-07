@@ -3,7 +3,7 @@
 import type React from 'react';
 import { useMemo } from 'react';
 import { formatEther } from 'viem';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import FeedTable, { type FeedRow } from './FeedTable';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
