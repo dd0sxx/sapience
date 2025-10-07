@@ -59,6 +59,12 @@ contract PassiveLiquidityVault is
     IERC20 private immutable _asset;
     uint8 private immutable _underlyingDecimals;
 
+    // ============ Default Values ============
+
+    uint256 private constant DEFAULT_MAX_UTILIZATION_RATE = 8000;
+    uint256 private constant DEFAULT_INTERACTION_DELAY = 1 days;
+    uint256 private constant DEFAULT_EXPIRATION_TIME = 10 minutes;
+
     // ============ Custom Errors ============
 
     // Standard function errors (functions that revert with NotImplemented)
@@ -114,13 +120,13 @@ contract PassiveLiquidityVault is
     address public manager;
 
     /// @notice Maximum utilization rate (in basis points, e.g., 8000 = 80%)
-    uint256 public maxUtilizationRate = 8000; // 80%
+    uint256 public maxUtilizationRate = DEFAULT_MAX_UTILIZATION_RATE; // 80%
 
     /// @notice Interaction delay in seconds between user requests (default: 1 day)
-    uint256 public interactionDelay = 1 days;
+    uint256 public interactionDelay = DEFAULT_INTERACTION_DELAY; // 1 day
 
     /// @notice Expiration time in seconds for user requests before they can be cancelled (default: 10 minutes)
-    uint256 public expirationTime = 10 minutes;
+    uint256 public expirationTime = DEFAULT_EXPIRATION_TIME; // 10 minutes
 
     /// @notice Mapping of user to their last interaction timestamp (used to enforce interaction delay)
     mapping(address => uint256) public lastUserInteractionTimestamp;
@@ -136,15 +142,6 @@ contract PassiveLiquidityVault is
 
     /// @notice Minimum deposit amount. Used also as min withdrawal amount unless available is less than minimum. A large enough amount to prevent DoS attacks on deposits or withdrawals
     uint256 public constant MIN_DEPOSIT = 100e18; // 100 token (assuming 18 decimals)
-
-    /// @notice Default maximum utilization rate (80%)
-    uint256 private constant DEFAULT_MAX_UTILIZATION_RATE = 8000;
-
-    /// @notice Default interaction delay (1 day)
-    uint256 private constant DEFAULT_INTERACTION_DELAY = 1 days;
-
-    /// @notice Default expiration time (10 minutes)
-    uint256 private constant DEFAULT_EXPIRATION_TIME = 10 minutes;
 
     /// @notice Total assets reserved for pending deposit requests
     uint256 private unconfirmedAssets = 0;
@@ -185,9 +182,6 @@ contract PassiveLiquidityVault is
         _underlyingDecimals = success ? assetDecimals : 18;
 
         manager = _manager;
-        maxUtilizationRate = DEFAULT_MAX_UTILIZATION_RATE;
-        interactionDelay = DEFAULT_INTERACTION_DELAY;
-        expirationTime = DEFAULT_EXPIRATION_TIME;
     }
 
     /**
