@@ -30,6 +30,7 @@ interface FocusAreaFilterProps {
   containerClassName?: string;
   viewMode: 'list' | 'grid';
   onToggleViewMode: () => void;
+  showViewToggle?: boolean;
 }
 
 const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
@@ -45,7 +46,9 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
   containerClassName,
   viewMode,
   onToggleViewMode,
+  showViewToggle,
 }) => {
+  const visibleViewToggle = showViewToggle ?? true;
   return (
     <div className={containerClassName || 'px-0 py-0 w-full'}>
       <div className="w-full min-w-0 flex flex-col min-[1400px]:flex-row items-start min-[1400px]:items-center gap-2">
@@ -98,26 +101,28 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
               </TabsList>
             </Tabs>
 
-            {/* View toggle icon button: larger and with extra left spacing */}
-            <Button
-              type="button"
-              variant={viewMode === 'grid' ? 'secondary' : 'outline'}
-              size="icon"
-              className="ml-2 h-10 w-10"
-              aria-label={
-                viewMode === 'grid'
-                  ? 'Switch to list view'
-                  : 'Switch to grid view'
-              }
-              aria-pressed={viewMode === 'grid'}
-              onClick={onToggleViewMode}
-            >
-              {viewMode === 'grid' ? (
-                <ListIcon className="h-5 w-5" />
-              ) : (
-                <LayoutGridIcon className="h-5 w-5" />
-              )}
-            </Button>
+            {/* View toggle icon button: larger and with extra left spacing, hidden when requested */}
+            {visibleViewToggle ? (
+              <Button
+                type="button"
+                variant={viewMode === 'grid' ? 'secondary' : 'outline'}
+                size="icon"
+                className="ml-2 h-10 w-10 hidden md:inline-flex"
+                aria-label={
+                  viewMode === 'grid'
+                    ? 'Switch to list view'
+                    : 'Switch to grid view'
+                }
+                aria-pressed={viewMode === 'grid'}
+                onClick={onToggleViewMode}
+              >
+                {viewMode === 'grid' ? (
+                  <ListIcon className="h-5 w-5" />
+                ) : (
+                  <LayoutGridIcon className="h-5 w-5" />
+                )}
+              </Button>
+            ) : null}
           </div>
         </div>
 

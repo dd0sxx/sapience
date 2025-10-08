@@ -441,7 +441,10 @@ const Header = () => {
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex items-center">
+                      <Link
+                        href="/settings"
+                        className="flex items-center md:hidden"
+                      >
                         <Settings className="mr-0.5 opacity-75 h-4 w-4" />
                         <span>Settings</span>
                       </Link>

@@ -174,6 +174,9 @@ const MarketsPage = () => {
 
   // Get mobile status
   const isMobile = useIsMobile();
+  const effectiveViewMode: 'list' | 'grid' = isMobile
+    ? 'grid'
+    : currentViewMode;
 
   // Update the state when the URL parameter changes
   React.useEffect(() => {
@@ -666,11 +669,13 @@ const MarketsPage = () => {
       <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-6">
         {/* Top controls section (not sticky) */}
         <div>
-          <SearchBar
-            isMobile={isMobile}
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
+          <div className="mt-6 md:mt-0">
+            <SearchBar
+              isMobile={isMobile}
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
           <motion.div
             className="mt-2 md:mt-3"
             initial={{ opacity: 0, scale: 0.98 }}
@@ -688,8 +693,9 @@ const MarketsPage = () => {
               categories={categories}
               getCategoryStyle={getCategoryStyle}
               containerClassName="px-0 md:px-0 py-0 w-full max-w-full box-border"
-              viewMode={currentViewMode}
+              viewMode={effectiveViewMode}
               onToggleViewMode={toggleViewMode}
+              showViewToggle={!isMobile}
             />
           </motion.div>
         </div>
@@ -715,7 +721,7 @@ const MarketsPage = () => {
               )}
 
               {groupedMarketGroups.length > 0 &&
-                (currentViewMode === 'list' ? (
+                (effectiveViewMode === 'list' ? (
                   <motion.div
                     key="results-container-list"
                     initial={{ opacity: 0 }}
@@ -839,7 +845,7 @@ const MarketsPage = () => {
                 >
                   No public conditions found.
                 </motion.div>
-              ) : currentViewMode === 'list' ? (
+              ) : effectiveViewMode === 'list' ? (
                 <motion.div
                   key="rfq-list"
                   initial={{ opacity: 0 }}

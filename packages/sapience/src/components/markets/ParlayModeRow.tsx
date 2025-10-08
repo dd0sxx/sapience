@@ -12,6 +12,7 @@ import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
+import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
 export interface ParlayModeRowProps {
   condition: {
@@ -124,6 +125,10 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
                 </div>
               </DialogContent>
             </Dialog>
+            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-2">
+              <span className="text-muted-foreground">Market Prediction:</span>
+              <MarketPredictionRequest conditionId={id} />
+            </div>
           </div>
           <div className="flex items-center justify-end shrink-0 w-full md:w-auto">
             <YesNoSplitButton

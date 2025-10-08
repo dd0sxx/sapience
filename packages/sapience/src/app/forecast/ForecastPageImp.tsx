@@ -90,8 +90,8 @@ const ForecastPageImp = () => {
   // Show loading state while data is being fetched
   if (isLoading) {
     return (
-      <div className={`min-h-screen bg-background pt-24`}>
-        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
+      <div className={`min-h-screen bg-transparent pt-24`}>
+        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
@@ -109,8 +109,8 @@ const ForecastPageImp = () => {
   // Show error state if data fetching failed
   if (error) {
     return (
-      <div className={`min-h-screen bg-background pt-24`}>
-        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
+      <div className={`min-h-screen bg-transparent pt-24`}>
+        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
@@ -183,10 +183,10 @@ const ForecastPageImp = () => {
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div className={`min-h-screen bg-background pt-24`}>
+    <div className={`min-h-screen bg-transparent pt-24`}>
       {/* Main content container with Twitter-like layout */}
       <div
-        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card`}
+        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm`}
       >
         <>
           {/* Tabs */}
@@ -237,7 +237,7 @@ const ForecastPageImp = () => {
           </div>
 
           {/* Category Selection Section */}
-          <div className="bg-background z-5 relative">
+          <div className="bg-background/60 backdrop-blur-sm z-5 relative">
             <div
               className={`flex overflow-x-auto max-w-[100dvw] no-scrollbar ${
                 isPopoverOpen ? 'overflow-x-hidden' : ''

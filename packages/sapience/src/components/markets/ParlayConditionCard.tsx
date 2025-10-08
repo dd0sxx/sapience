@@ -19,6 +19,7 @@ import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
+import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 
@@ -40,9 +41,7 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
   const { id, question, shortName, endTime, description } = condition;
   const { addParlaySelection, removeParlaySelection, parlaySelections } =
     useBetSlipContext();
-  const [requestedPrediction, setRequestedPrediction] = React.useState<
-    number | null
-  >(null);
+  const [, setRequestedPrediction] = React.useState<number | null>(null);
   const [isRequesting, setIsRequesting] = React.useState<boolean>(false);
   const [lastMakerWagerWei, setLastMakerWagerWei] = React.useState<
     string | null
@@ -112,12 +111,6 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
     addParlaySelection,
   ]);
 
-  const formatPriceAsPercentage = React.useCallback((price: number) => {
-    if (!(price > 0)) return 'Price N/A';
-    const percentage = price * 100;
-    return `${Math.round(percentage)}% chance`;
-  }, []);
-
   // Complete when ack/bids arrive, if we were requesting
   React.useEffect(() => {
     if (!isRequesting) return;
@@ -135,15 +128,15 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
       });
       const list = valid.length > 0 ? valid : bids;
       // Pick highest takerWager as best payout
-      const best = list.reduce((best, cur) => {
+      const bestBid = list.reduce((acc, cur) => {
         try {
-          return BigInt(cur.takerWager) > BigInt(best.takerWager) ? cur : best;
+          return BigInt(cur.takerWager) > BigInt(acc.takerWager) ? cur : acc;
         } catch {
-          return best;
+          return acc;
         }
       }, list[0]);
       const maker = BigInt(String(lastMakerWagerWei || '0'));
-      const taker = BigInt(String(best?.takerWager || '0'));
+      const taker = BigInt(String(bestBid?.takerWager || '0'));
       const denom = maker + taker;
       const prob = denom > 0n ? Number(maker) / Number(denom) : 0.5;
       // Clamp probability to [0.01, 0.99] to avoid edge cases in display
@@ -189,42 +182,13 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
     requestQuotes,
   ]);
 
-  const handleRequestPrediction = React.useCallback(() => {
-    if (isRequesting) return;
-    // Reset any prior displayed prediction and enter requesting state
-    setRequestedPrediction(null);
-    setIsRequesting(true);
-    try {
-      if (!id || !makerAddress || makerNonce === undefined) {
-        // Queue the request; effect will send once prerequisites are ready
-        setQueuedRequest(true);
-      } else {
-        const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
-        setLastMakerWagerWei(wagerWei);
-        const payload = buildAuctionStartPayload([
-          { marketId: id, prediction: true },
-        ]);
-        requestQuotes({
-          wager: wagerWei,
-          resolver: payload.resolver,
-          predictedOutcomes: payload.predictedOutcomes,
-          maker: makerAddress,
-          makerNonce: Number(makerNonce),
-        });
-        // Remain in requesting state until bids arrive or an explicit error occurs
-      }
-    } catch {
-      setIsRequesting(false);
-    }
-  }, [id, makerAddress, makerNonce, requestQuotes, isRequesting]);
-
   return (
     <div className="w-full h-full">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="bg-card border rounded-md border-border/70 flex flex-row items-stretch h-full md:min-h-[160px] relative overflow-hidden shadow shadow-md transition-shadow duration-200"
+        className="bg-card border rounded-md border-border/70 flex flex-row items-stretch h-full md:min-h-[160px] relative overflow-hidden shadow-sm transition-shadow duration-200"
       >
         <div
           className="w-1 min-w-[4px] max-w-[4px]"
@@ -285,23 +249,7 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
                   Market Prediction:
                 </span>
                 &nbsp;
-                {requestedPrediction == null ? (
-                  isRequesting ? (
-                    <span className="text-muted-foreground">Requesting...</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleRequestPrediction}
-                      className="text-foreground underline decoration-1 decoration-foreground/60 underline-offset-4 transition-colors hover:decoration-foreground/80 cursor-pointer"
-                    >
-                      Request
-                    </button>
-                  )
-                ) : (
-                  <span className="text-foreground font-medium">
-                    {formatPriceAsPercentage(requestedPrediction)}
-                  </span>
-                )}
+                <MarketPredictionRequest conditionId={id} className="" />
               </div>
             </div>
             <YesNoSplitButton

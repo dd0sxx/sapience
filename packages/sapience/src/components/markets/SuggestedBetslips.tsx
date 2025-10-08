@@ -156,6 +156,8 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                           backgroundColor: getCategoryColor(
                             leg.condition.category?.slug
                           ),
+                          // Extend 1px to cover parent's border-b on non-last rows
+                          marginBottom: i === combo.length - 1 ? 0 : -1,
                         }}
                       />
                       <div className="flex-1 min-w-0 px-3 py-2 flex items-center justify-between gap-2">
