@@ -8,7 +8,7 @@ import {
   State,
 } from "@elizaos/core";
 import type { SapienceService } from "../services/sapienceService.js";
-import { buildAttestationCalldata } from "../utils/eas.js";
+import { loadSdk } from "../utils/sdk.js";
 
 export const attestMarketAction: Action = {
   name: "ATTEST_MARKET",
@@ -159,11 +159,13 @@ export const attestMarketAction: Action = {
         elizaLogger.error("Invalid prediction format:", prediction);
         throw new Error("Model returned incomplete prediction data");
       }
-      console.log("HELLOFRIEND", marketInfo);
-
+      const { buildAttestationCalldata } = await loadSdk();
+      const resolvedMarketId = Number(
+        (marketInfo as any).marketId ?? (marketInfo as any).id,
+      );
       const attestationData = await buildAttestationCalldata(
         {
-          marketId: parseInt(marketInfo.marketId),
+          marketId: resolvedMarketId,
           address: marketInfo.marketGroupAddress,
           question: marketInfo.question,
         },

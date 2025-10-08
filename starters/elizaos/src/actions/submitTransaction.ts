@@ -6,8 +6,7 @@ import {
   State,
   elizaLogger,
 } from "@elizaos/core";
-import { createWalletClient, http, parseEther } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { loadSdk } from "../utils/sdk.js";
 
 export const submitTransactionAction: Action = {
   name: "SUBMIT_TRANSACTION",
@@ -45,18 +44,11 @@ export const submitTransactionAction: Action = {
       const rpcUrl = process.env.RPC_URL || "https://arb1.arbitrum.io/rpc";
       if (!privateKey) throw new Error("Missing PRIVATE_KEY");
 
-      const account = privateKeyToAccount(privateKey);
-      const client = createWalletClient({ account, transport: http(rpcUrl) });
-
       elizaLogger.info("[SUBMIT_TRANSACTION] Sending transaction", {
         to: tx.to,
       } as any);
-      const hash = await client.sendTransaction({
-        to: tx.to,
-        data: tx.data,
-        value: tx.value ? parseEther(tx.value) : undefined,
-      } as any);
-
+      const { submitTransaction } = await loadSdk();
+      const { hash } = await submitTransaction({ rpc: rpcUrl, privateKey, tx });
       await callback?.({ text: `Submitted tx: ${hash}`, content: { hash } });
     } catch (err: any) {
       await callback?.({

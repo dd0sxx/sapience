@@ -23,7 +23,10 @@
     "moduleDetection": "force",
     "allowArbitraryExtensions": true,
     "jsx": "react-jsx",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@sapience/sdk": ["src/types/sapience-sdk.d.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": [

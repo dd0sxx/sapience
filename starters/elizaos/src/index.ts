@@ -4,9 +4,9 @@ import {
   type Project,
   type ProjectAgent,
 } from "@elizaos/core";
-import customActionsPlugin from "./plugin.ts";
-import { character } from "./character.ts";
-import { AttestationService } from "./services/attestationService.ts";
+import customActionsPlugin from "./plugin";
+import { character } from "./character";
+import { AttestationService } from "./services/attestationService";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -43,6 +43,6 @@ const project: Project = {
   agents: [projectAgent],
 };
 
-export { character } from "./character.ts";
+export { character } from "./character";
 
 export default project;

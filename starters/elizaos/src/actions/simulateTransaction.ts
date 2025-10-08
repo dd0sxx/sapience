@@ -5,7 +5,8 @@ import {
   HandlerCallback,
   State,
 } from "@elizaos/core";
-import { createPublicClient, http, decodeErrorResult } from "viem";
+import { decodeErrorResult } from "viem";
+import { loadSdk } from "../utils/sdk.js";
 
 export const simulateTransactionAction: Action = {
   name: "SIMULATE_TRANSACTION",
@@ -40,13 +41,8 @@ export const simulateTransactionAction: Action = {
         value?: string;
       };
 
-      const client = createPublicClient({ transport: http(rpc) });
-      const result = await client.call({
-        to: tx.to,
-        data: tx.data,
-        value: tx.value ? BigInt(tx.value) : undefined,
-      } as any);
-
+      const { simulateTransaction } = await loadSdk();
+      const { result } = await simulateTransaction({ rpc, tx });
       await callback?.({ text: "Simulation OK", content: { result, chainId } });
     } catch (err: any) {
       try {
