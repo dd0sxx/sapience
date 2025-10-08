@@ -11,7 +11,6 @@ import {
   TooltipTrigger,
 } from '@sapience/sdk/ui/components/ui/tooltip';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
-import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -65,7 +64,6 @@ const TabsHeader = ({
 };
 
 const ForecastPageImp = () => {
-  const { hasConnectedWallet } = useConnectedWallet();
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<CommentFilters | null>(null);
@@ -92,11 +90,7 @@ const ForecastPageImp = () => {
   // Show loading state while data is being fetched
   if (isLoading) {
     return (
-      <div
-        className={`min-h-screen bg-background ${
-          hasConnectedWallet ? 'pt-32' : 'pt-24 md:pt-0'
-        }`}
-      >
+      <div className={`min-h-screen bg-background pt-24`}>
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
@@ -115,11 +109,7 @@ const ForecastPageImp = () => {
   // Show error state if data fetching failed
   if (error) {
     return (
-      <div
-        className={`min-h-screen bg-background ${
-          hasConnectedWallet ? 'pt-24' : 'pt-24 md:pt-0'
-        }`}
-      >
+      <div className={`min-h-screen bg-background pt-24`}>
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
@@ -193,14 +183,10 @@ const ForecastPageImp = () => {
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div
-      className={`min-h-screen bg-background ${
-        hasConnectedWallet ? 'pt-16 mt-2' : 'pt-16 mt-2 md:pt-0 md:mt-0'
-      }`}
-    >
+    <div className={`min-h-screen bg-background pt-24`}>
       {/* Main content container with Twitter-like layout */}
       <div
-        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card ${hasConnectedWallet ? 'md:mt-2' : 'md:mt-0'}`}
+        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card`}
       >
         <>
           {/* Tabs */}

@@ -8,13 +8,13 @@ import { TooltipProvider } from '@sapience/sdk/ui/components/ui/tooltip';
 import Providers from '~/app/providers';
 import Layout from '~/components/layout';
 import GlobalLoader from '~/components/shared/GlobalLoader';
-import PasswordScrim from '~/components/shared/PasswordScrim';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { ChatProvider } from '~/lib/context/ChatContext';
 import ChatWidget from '~/components/shared/ChatWidget';
 import FloatingChatButton from '~/components/shared/FloatingChatButton';
 import ConsoleMessage from '~/components/shared/ConsoleMessage';
 import InstallDialog from '~/components/shared/InstallDialog';
+import GlobalSplineBackground from '~/components/shared/GlobalSplineBackground';
 import '~/styles/globals.css';
 
 type RootLayoutProps = {
@@ -115,8 +115,8 @@ const RootLayout = ({ children }: RootLayoutProps) => {
         <Providers>
           <LoadingProvider>
             <ChatProvider>
-              <PasswordScrim />
               <GlobalLoader />
+              <GlobalSplineBackground />
               <TooltipProvider>
                 <Layout>{children}</Layout>
               </TooltipProvider>

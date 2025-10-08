@@ -47,6 +47,7 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
   const [lastMakerWagerWei, setLastMakerWagerWei] = React.useState<
     string | null
   >(null);
+  const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
   const { address: makerAddress } = useAccount();
   const { requestQuotes, bids } = useAuctionStart();
   const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
@@ -155,18 +156,12 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
     }
   }, [bids, isRequesting, lastMakerWagerWei]);
 
-  const handleRequestPrediction = React.useCallback(() => {
-    if (isRequesting) return;
-    setIsRequesting(true);
+  // If a request was queued before wallet/nonce were available, send when ready
+  React.useEffect(() => {
+    if (!queuedRequest) return;
+    if (!isRequesting) return;
+    if (!id || !makerAddress || makerNonce === undefined) return;
     try {
-      if (!id || !makerAddress || makerNonce === undefined) {
-        // Fallback: simulate completion if wallet context is missing
-        window.setTimeout(() => {
-          setRequestedPrediction(0.5);
-          setIsRequesting(false);
-        }, 600);
-        return;
-      }
       const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
       setLastMakerWagerWei(wagerWei);
       const payload = buildAuctionStartPayload([
@@ -179,15 +174,46 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
         maker: makerAddress,
         makerNonce: Number(makerNonce),
       });
-      // Safety timeout in case nothing returns
-      window.setTimeout(() => {
-        if (isRequesting) {
-          setRequestedPrediction(0.5);
-          setIsRequesting(false);
-        }
-      }, 2000);
+      setQueuedRequest(false);
     } catch {
-      setRequestedPrediction(0.5);
+      // If building request fails, exit requesting state
+      setIsRequesting(false);
+      setQueuedRequest(false);
+    }
+  }, [
+    queuedRequest,
+    isRequesting,
+    id,
+    makerAddress,
+    makerNonce,
+    requestQuotes,
+  ]);
+
+  const handleRequestPrediction = React.useCallback(() => {
+    if (isRequesting) return;
+    // Reset any prior displayed prediction and enter requesting state
+    setRequestedPrediction(null);
+    setIsRequesting(true);
+    try {
+      if (!id || !makerAddress || makerNonce === undefined) {
+        // Queue the request; effect will send once prerequisites are ready
+        setQueuedRequest(true);
+      } else {
+        const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
+        setLastMakerWagerWei(wagerWei);
+        const payload = buildAuctionStartPayload([
+          { marketId: id, prediction: true },
+        ]);
+        requestQuotes({
+          wager: wagerWei,
+          resolver: payload.resolver,
+          predictedOutcomes: payload.predictedOutcomes,
+          maker: makerAddress,
+          makerNonce: Number(makerNonce),
+        });
+        // Remain in requesting state until bids arrive or an explicit error occurs
+      }
+    } catch {
       setIsRequesting(false);
     }
   }, [id, makerAddress, makerNonce, requestQuotes, isRequesting]);

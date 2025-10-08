@@ -40,7 +40,12 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
   }, []);
 
   const combos = React.useMemo(() => {
-    const publicConditions = (allConditions || []).filter((c) => c.public);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const publicConditions = (allConditions || []).filter((c) => {
+      if (!c.public) return false;
+      const end = typeof c.endTime === 'number' ? c.endTime : 0;
+      return end > nowSec; // only include future-ending conditions
+    });
     if (publicConditions.length === 0)
       return [] as Array<
         Array<{ condition: ConditionType; prediction: boolean }>
@@ -100,7 +105,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
     <div className={'w-full ' + (className ?? '')}>
       <div className="p-0">
         <div className="flex items-center justify-between">
-          <h3 className="font-normal text-sm text-muted-foreground">
+          <h3 className="font-medium text-sm text-muted-foreground">
             Example Predictions
           </h3>
           <TooltipProvider>
@@ -144,7 +149,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                     key={leg.condition.id + '-' + i}
                     className="border-b border-border last:border-b-0 flex-1"
                   >
-                    <div className="flex items-stretch min-h-[72.5px]">
+                    <div className="flex items-stretch">
                       <div
                         className="w-1 self-stretch"
                         style={{
@@ -153,38 +158,40 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                           ),
                         }}
                       />
-                      <div className="flex-1 px-4 py-0 flex items-center">
-                        <h3 className="text-base text-foreground whitespace-normal break-words">
-                          {leg.condition.question}{' '}
-                          <span className="relative -top-0.5">
-                            <Badge
-                              variant="outline"
-                              className={`${leg.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'}`}
-                            >
-                              {leg.prediction ? 'Yes' : 'No'}
-                            </Badge>
-                          </span>
+                      <div className="flex-1 min-w-0 px-3 py-2 flex items-center justify-between gap-2">
+                        <h3 className="text-sm text-foreground truncate">
+                          {leg.condition.shortName || leg.condition.question}
                         </h3>
+                        <span className="relative -top-0.5 shrink-0">
+                          <Badge
+                            variant="outline"
+                            className={`${leg.prediction ? 'px-2 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0' : 'px-2 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'}`}
+                          >
+                            {leg.prediction ? 'Yes' : 'No'}
+                          </Badge>
+                        </span>
                       </div>
                     </div>
                   </div>
                 ))}
-                <div className="px-3 pb-3 pt-3">
+                <div className="px-2 pb-2 pt-2">
                   <Button
                     className="w-full"
-                    variant="default"
+                    variant="outline"
+                    size="sm"
                     type="button"
                     onClick={() => {
                       combo.forEach((leg) => {
                         addParlaySelection({
                           conditionId: leg.condition.id,
-                          question: leg.condition.question,
+                          question:
+                            leg.condition.shortName || leg.condition.question,
                           prediction: leg.prediction,
                         });
                       });
                     }}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3 h-3" />
                     Add Predictions
                   </Button>
                 </div>

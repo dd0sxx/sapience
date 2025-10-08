@@ -600,6 +600,8 @@ const MarketsPage = () => {
     setStatusFilter(filter);
   };
 
+  // No sticky behavior for filters/search
+
   // Helper to find FocusArea data by category slug for UI styling
   const getCategoryStyle = (categorySlug: string): FocusArea | undefined => {
     // First try to find a matching focus area
@@ -662,18 +664,15 @@ const MarketsPage = () => {
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-6">
-        {/* Top controls section with simplified spacing */}
-        <div className="mb-0">
-          <SuggestedBetslips />
-        </div>
-        <div className="sticky top-0 z-50 bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur border-b border-border/60 py-2 -mt-4">
+        {/* Top controls section (not sticky) */}
+        <div>
           <SearchBar
             isMobile={isMobile}
             value={searchTerm}
             onChange={handleSearchChange}
           />
           <motion.div
-            className="mt-2"
+            className="mt-2 md:mt-3"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
@@ -694,6 +693,7 @@ const MarketsPage = () => {
             />
           </motion.div>
         </div>
+        {parlayMode ? <SuggestedBetslips /> : null}
 
         {/* Results area */}
         <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
@@ -776,6 +776,11 @@ const MarketsPage = () => {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.25 }}
                   >
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-sm text-muted-foreground">
+                        Ending Soon
+                      </h3>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                       {groupedMarketGroups.map((group) => {
                         const preferred =
@@ -892,6 +897,11 @@ const MarketsPage = () => {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.25 }}
                 >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-sm text-muted-foreground">
+                      Ending Soon
+                    </h3>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                     {filteredRfqConditions.map((c) => {
                       const categorySlug = c.category?.slug || '';

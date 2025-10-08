@@ -22,7 +22,7 @@ interface FocusAreaChipProps {
 }
 
 const CHIP_BASE =
-  'group relative shrink-0 inline-flex text-left rounded-full items-center gap-1.5 transition-all duration-200 ease-out text-xs whitespace-nowrap px-2.5 py-1 md:py-0';
+  'group relative shrink-0 inline-flex text-left rounded-full items-center gap-2 transition-all duration-200 ease-out text-sm whitespace-nowrap px-3 py-1.5 md:py-0.5';
 
 const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
   label,
@@ -73,10 +73,10 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
   const mergedClassName = className
     ? `${selectedStyles.className} ${className}`
     : selectedStyles.className;
-  const desktopResponsiveClassName = 'md:h-6 md:px-0 md:gap-0 md:justify-start';
+  const desktopResponsiveClassName = 'md:h-8 md:px-0 md:gap-0 md:justify-start';
   const desktopTransitionClassName = 'md:transition-none';
 
-  const iconDimensionClass = iconSize === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5';
+  const iconDimensionClass = iconSize === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
 
   const chipButton = (
     <motion.button
@@ -88,7 +88,7 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
       aria-pressed={selected}
       aria-label={label}
     >
-      <span className="inline-flex items-center justify-center md:w-6 md:h-6">
+      <span className="inline-flex items-center justify-center md:w-8 md:h-8">
         {iconSvg ? (
           <span
             className={`${iconDimensionClass} inline-flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:block`}
@@ -108,7 +108,7 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
         )}
       </span>
       {/* Mobile label (always visible on mobile to preserve existing behavior) */}
-      <span className="ml-1 font-medium pr-1 md:hidden">{label}</span>
+      <span className="ml-1.5 font-medium pr-1.5 md:hidden">{label}</span>
 
       {/* Desktop label: measured container animates width; inner text fades */}
       <motion.span
@@ -121,7 +121,7 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
       >
         <motion.span
           ref={labelRef}
-          className="pl-1 font-medium pr-2.5 text-foreground/80 inline-block"
+          className="pl-1.5 font-medium pr-3 text-foreground/80 inline-block"
           initial={false}
           animate={{ opacity: selected ? 1 : 0 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}

@@ -44,9 +44,9 @@ const CategoryChips: React.FC<CategoryChipsProps> = ({
             color={DEFAULT_CATEGORY_COLOR}
             selected={selectedCategorySlug === null}
             onClick={() => onCategoryClick(null)}
-            className="py-1"
+            className="py-1.5"
             IconComponent={LayoutGridIcon}
-            iconSize="sm"
+            iconSize="md"
           />
 
           {isLoading &&

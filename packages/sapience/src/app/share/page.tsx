@@ -2,7 +2,6 @@ import { brotliDecompressSync, inflateRawSync } from 'zlib';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
-import SplineTopBackground from '~/components/shared/SplineTopBackground';
 
 type SharePageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -185,7 +184,6 @@ export default function SharePage({ searchParams }: SharePageProps) {
   // Simple, crawlable HTML body for social scrapers and a basic human fallback
   return (
     <div className="relative min-h-screen">
-      <SplineTopBackground />
       <main className="relative container mx-auto px-4 mt-36 mb-12 max-w-3xl">
         <div className="flex flex-col items-center text-center">
           {img ? (

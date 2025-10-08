@@ -122,7 +122,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
-          <ReactQueryDevtools initialIsOpen={false} />
+          {process.env.NEXT_PUBLIC_SHOW_REACT_QUERY_DEVTOOLS === 'true' ? (
+            <ReactQueryDevtools initialIsOpen={false} />
+          ) : null}
 
           <SettingsProvider>
             <WagmiRoot>
