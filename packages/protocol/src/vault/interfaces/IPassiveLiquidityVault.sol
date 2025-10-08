@@ -9,6 +9,15 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  * @notice Interface for the PassiveLiquidityVault contract with request-based deposits and withdrawals
  */
 interface IPassiveLiquidityVault is IERC1271, IERC165 {
+    // ============ Enums ============
+    enum ProcessingError {
+        None,
+        NoPendingRequest,
+        WrongRequestType,
+        RequestExpired,
+        TransferFailed
+    }
+
     // ============ Structs ============
     struct PendingRequest {
         address user;
@@ -18,11 +27,18 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
         uint256 timestamp;
         bool processed;
     }
+
+    struct ProcessingResult {
+        address user;
+        bool success;
+        ProcessingError error;
+    }
     // ============ Events ============
     
     event PendingRequestCreated(address indexed user, bool direction, uint256 shares, uint256 assets);
     event PendingRequestProcessed(address indexed user, bool direction, uint256 shares, uint256 assets);
     event PendingRequestCancelled(address indexed user, bool direction, uint256 shares, uint256 assets);
+    event PendingRequestFailed(address indexed user, bool direction, ProcessingError error);
 
     event FundsApproved(address indexed manager, uint256 assets, address targetProtocol);
     event UtilizationRateUpdated(uint256 oldRate, uint256 newRate);
@@ -31,7 +47,6 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     event ExpirationTimeUpdated(uint256 oldExpirationTime, uint256 newExpirationTime);
     event InteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
     event EmergencyModeUpdated(bool emergencyMode);
-    event MinRequestAmountUpdated(uint256 oldMinRequestAmount, uint256 newMinRequestAmount);
 
     // ============ State Variables ============
     
@@ -56,6 +71,9 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     
     function processDeposit(address requestedBy) external;
     function processWithdrawal(address requestedBy) external;
+    
+    function batchProcessDeposit(address[] calldata requesters) external;
+    function batchProcessWithdrawal(address[] calldata requesters) external;
 
     /**
      * @notice Approve funds usage to an external protocol
@@ -81,7 +99,6 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     function setMaxUtilizationRate(uint256 newMaxRate) external;
     function setExpirationTime(uint256 newExpirationTime) external;
     function setInteractionDelay(uint256 newDelay) external;
-    function setMinRequestAmount(uint256 newMinRequestAmount) external;
     function toggleEmergencyMode() external;
     function pause() external;
     function unpause() external;

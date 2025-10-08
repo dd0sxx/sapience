@@ -395,6 +395,8 @@ contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
     function emergencyWithdraw(uint256 shares) external pure {}
     function processDeposit(address requestedBy) external pure {}
     function processWithdrawal(address requestedBy) external pure {}
+    function batchProcessDeposit(address[] calldata) external pure {}
+    function batchProcessWithdrawal(address[] calldata) external pure {}
     function approveFundsUsage(address protocol, uint256 amount) external pure {}
     function getActiveProtocolsCount() external pure returns (uint256) { return 0; }
     function getActiveProtocols() external pure returns (address[] memory) { return new address[](0); }
@@ -405,7 +407,6 @@ contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
     function setMaxUtilizationRate(uint256) external pure {}
     function setExpirationTime(uint256) external pure {}
     function setInteractionDelay(uint256) external pure {}
-    function setMinRequestAmount(uint256) external pure {}
     function toggleEmergencyMode() external pure {}
     function pause() external pure {}
     function unpause() external pure {}

@@ -335,19 +335,6 @@ contract PassiveLiquidityVaultTest is Test {
         assertEq(vault.availableAssets(), amount1 + amount2);
     }
     
-    // Tests that deposits below the minimum amount are rejected
-    function testDepositTooSmall() public {
-        uint256 amount = vault.minRequestAmount() - 1;
-        
-        vm.startPrank(user1);
-        asset.approve(address(vault), amount);
-        
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.AmountTooSmall.selector, amount, vault.minRequestAmount()));
-        vault.requestDeposit(amount, amount);
-        
-        vm.stopPrank();
-    }
-    
     // Tests that deposits are blocked when the contract is paused
     function testDepositWhenPaused() public {
         vm.startPrank(owner);
@@ -659,76 +646,6 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
         
         assertEq(vault.expirationTime(), newExpirationTime);
-    }
-    
-    // Tests that the owner can set a new minimum request amount
-    function testSetMinRequestAmount() public {
-        uint256 newMinRequestAmount = 200e18; // 200 tokens
-        
-        vm.startPrank(owner);
-        vault.setMinRequestAmount(newMinRequestAmount);
-        vm.stopPrank();
-        
-        assertEq(vault.minRequestAmount(), newMinRequestAmount);
-    }
-    
-    // Tests that the MinRequestAmountUpdated event is properly emitted when setting minimum request amount
-    function testSetMinRequestAmountEmitsEvent() public {
-        uint256 oldMinRequestAmount = vault.minRequestAmount();
-        uint256 newMinRequestAmount = 250e18; // 250 tokens
-        
-        vm.startPrank(owner);
-        vm.expectEmit(true, true, true, true);
-        emit IPassiveLiquidityVault.MinRequestAmountUpdated(oldMinRequestAmount, newMinRequestAmount);
-        vault.setMinRequestAmount(newMinRequestAmount);
-        vm.stopPrank();
-        
-        assertEq(vault.minRequestAmount(), newMinRequestAmount, "Minimum request amount should be updated");
-    }
-    
-    // Tests that only the owner can set the minimum request amount
-    function testOnlyOwnerCanSetMinRequestAmount() public {
-        uint256 newMinRequestAmount = 300e18; // 300 tokens
-        
-        vm.startPrank(user1);
-        vm.expectRevert();
-        vault.setMinRequestAmount(newMinRequestAmount);
-        vm.stopPrank();
-        
-        // Verify the value didn't change
-        assertNotEq(vault.minRequestAmount(), newMinRequestAmount);
-    }
-    
-    // Tests that the new minimum request amount is enforced for deposits
-    function testMinRequestAmountEnforcedForDeposits() public {
-        uint256 newMinRequestAmount = 200e18; // 200 tokens
-        
-        vm.startPrank(owner);
-        vault.setMinRequestAmount(newMinRequestAmount);
-        vm.stopPrank();
-        
-        uint256 tooSmallAmount = newMinRequestAmount - 1;
-        
-        vm.startPrank(user1);
-        asset.approve(address(vault), tooSmallAmount);
-        
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.AmountTooSmall.selector, tooSmallAmount, newMinRequestAmount));
-        vault.requestDeposit(tooSmallAmount, tooSmallAmount);
-        
-        vm.stopPrank();
-        
-        // Now test that a deposit with the exact minimum amount works
-        vm.startPrank(user1);
-        asset.approve(address(vault), newMinRequestAmount);
-        vault.requestDeposit(newMinRequestAmount, newMinRequestAmount);
-        vm.stopPrank();
-        
-        // Verify the request was created successfully
-        (address requestUser, bool isDeposit, , uint256 requestAssets, , bool processed) = vault.pendingRequests(user1);
-        assertEq(requestUser, user1, "User should have a pending request");
-        assertTrue(isDeposit, "Should be a deposit request");
-        assertEq(requestAssets, newMinRequestAmount, "Request assets should match");
-        assertFalse(processed, "Request should not be processed yet");
     }
     
     // Tests that the owner can toggle emergency mode on and off
@@ -1243,6 +1160,155 @@ contract PassiveLiquidityVaultTest is Test {
         assertFalse(processed, "Request should not be processed yet");
         
         console.log("SUCCESS: Interaction delay properly enforced for withdrawal after processed deposit");
+    }
+
+    // ============ Batch Processing Tests ============
+
+    function test_batchProcessDeposit() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // Three users request deposits
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        vm.warp(block.timestamp + 1);
+        vm.startPrank(user2);
+        asset.approve(address(vault), depositAmount * 2);
+        vault.requestDeposit(depositAmount * 2, depositAmount * 2);
+        vm.stopPrank();
+        
+        vm.warp(block.timestamp + 1);
+        vm.startPrank(user3);
+        asset.approve(address(vault), depositAmount * 3);
+        vault.requestDeposit(depositAmount * 3, depositAmount * 3);
+        vm.stopPrank();
+        
+        // Manager batch processes all deposits
+        address[] memory requesters = new address[](3);
+        requesters[0] = user1;
+        requesters[1] = user2;
+        requesters[2] = user3;
+        
+        vm.prank(manager);
+        vault.batchProcessDeposit(requesters);
+        
+        // Verify all deposits were processed
+        assertEq(vault.balanceOf(user1), depositAmount);
+        assertEq(vault.balanceOf(user2), depositAmount * 2);
+        assertEq(vault.balanceOf(user3), depositAmount * 3);
+    }
+
+    function test_batchProcessWithdrawal() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // Setup: users deposit first
+        _approveAndDeposit(user1, depositAmount);
+        vm.warp(block.timestamp + 1 days + 1);
+        _approveAndDeposit(user2, depositAmount * 2);
+        vm.warp(block.timestamp + 1 days + 1);
+        _approveAndDeposit(user3, depositAmount * 3);
+        
+        // Users request withdrawals
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(user1);
+        vault.requestWithdrawal(depositAmount, depositAmount);
+        
+        vm.warp(block.timestamp + 1);
+        vm.prank(user2);
+        vault.requestWithdrawal(depositAmount * 2, depositAmount * 2);
+        
+        vm.warp(block.timestamp + 1);
+        vm.prank(user3);
+        vault.requestWithdrawal(depositAmount * 3, depositAmount * 3);
+        
+        // Manager batch processes all withdrawals
+        address[] memory requesters = new address[](3);
+        requesters[0] = user1;
+        requesters[1] = user2;
+        requesters[2] = user3;
+        
+        uint256 user1BalanceBefore = asset.balanceOf(user1);
+        uint256 user2BalanceBefore = asset.balanceOf(user2);
+        uint256 user3BalanceBefore = asset.balanceOf(user3);
+        
+        vm.prank(manager);
+        vault.batchProcessWithdrawal(requesters);
+        
+        // Verify all withdrawals were processed
+        assertEq(vault.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user2), 0);
+        assertEq(vault.balanceOf(user3), 0);
+        
+        assertEq(asset.balanceOf(user1), user1BalanceBefore + depositAmount);
+        assertEq(asset.balanceOf(user2), user2BalanceBefore + depositAmount * 2);
+        assertEq(asset.balanceOf(user3), user3BalanceBefore + depositAmount * 3);
+    }
+
+    function test_batchProcessRevertsOnFirstFailure() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // User1 and user3 request deposits (user2 doesn't)
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        vm.warp(block.timestamp + 11 minutes); // Make user1's request expire
+        
+        vm.startPrank(user3);
+        asset.approve(address(vault), depositAmount * 3);
+        vault.requestDeposit(depositAmount * 3, depositAmount * 3);
+        vm.stopPrank();
+        
+        // Manager batch processes including user1 (expired), user2 (no request), and user3 (valid)
+        address[] memory requesters = new address[](3);
+        requesters[0] = user1; // Expired request - will cause revert
+        requesters[1] = user2; // No request
+        requesters[2] = user3; // Valid request
+        
+        // Expect revert on user1's expired request
+        vm.prank(manager);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.RequestExpired.selector
+            )
+        );
+        vault.batchProcessDeposit(requesters);
+        
+        // Verify no one got shares (batch reverted)
+        assertEq(vault.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user2), 0);
+        assertEq(vault.balanceOf(user3), 0);
+    }
+
+    function test_batchProcessRevertsRollsBackAllChanges() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // Only user1 requests deposit
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Manager tries to batch process user1 and user2 (no request)
+        address[] memory requesters = new address[](2);
+        requesters[0] = user1; // Valid - would process successfully
+        requesters[1] = user2; // No request - will cause revert
+        
+        vm.prank(manager);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.NoPendingRequests.selector,
+                user2
+            )
+        );
+        vault.batchProcessDeposit(requesters);
+        
+        // Verify no one got shares (entire batch reverted, rolling back user1's processing)
+        assertEq(vault.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user2), 0);
     }
 
     // ============ Share Transfer Restriction Tests ============
