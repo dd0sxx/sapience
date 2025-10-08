@@ -27,6 +27,7 @@ import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 import Betslip from '~/components/markets/Betslip';
+import SuggestedBetslips from '~/components/markets/SuggestedBetslips';
 
 // Custom hook for debouncing values
 function useDebounce<T>(value: T, delay: number): T {
@@ -648,7 +649,7 @@ const MarketsPage = () => {
 
   // Render content once both are loaded
   return (
-    <div className="relative w-full max-w-full overflow-x-hidden flex flex-col lg:flex-row items-start">
+    <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
       {/* Render only one betslip instance based on viewport */}
       {isMobile ? (
         <div className="block lg:hidden">
@@ -660,16 +661,19 @@ const MarketsPage = () => {
       ) : null}
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0 max-w-full overflow-x-hidden flex flex-col gap-6 pr-0 lg:pr-6">
+      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-6">
         {/* Top controls section with simplified spacing */}
-        <div className="bg-background/90 w-full max-w-full box-border py-3 md:py-2 px-0 md:px-0 min-w-0">
+        <div className="mb-0">
+          <SuggestedBetslips />
+        </div>
+        <div className="sticky top-0 z-50 bg-background/80 supports-[backdrop-filter]:bg-background/70 backdrop-blur border-b border-border/60 py-2 -mt-4">
           <SearchBar
             isMobile={isMobile}
             value={searchTerm}
             onChange={handleSearchChange}
           />
           <motion.div
-            className="mt-3"
+            className="mt-2"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
@@ -911,7 +915,7 @@ const MarketsPage = () => {
 
       {/* Desktop/Tablet sticky betslip sidebar */}
       {!isMobile ? (
-        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-0">
+        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30">
           <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
               <Betslip

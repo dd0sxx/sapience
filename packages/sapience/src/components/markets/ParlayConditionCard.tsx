@@ -7,11 +7,20 @@ import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@sapience/sdk/ui/components/ui/dialog';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
+import SafeMarkdown from '~/components/shared/SafeMarkdown';
+import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 
 export interface ParlayConditionCardProps {
   condition: {
@@ -28,7 +37,7 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
   condition,
   color,
 }) => {
-  const { id, question, shortName } = condition;
+  const { id, question, shortName, endTime, description } = condition;
   const { addParlaySelection, removeParlaySelection, parlaySelections } =
     useBetSlipContext();
   const [requestedPrediction, setRequestedPrediction] = React.useState<
@@ -201,17 +210,43 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
               <div className="flex flex-col px-4 py-3 gap-3">
                 <div className="flex flex-col min-w-0 flex-1">
                   <h3 className="leading-snug min-h-[44px]">
-                    <span
-                      className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors block overflow-hidden group-hover:decoration-foreground/60"
-                      style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {displayQ}
-                    </span>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <button type="button" className="text-left w-full">
+                          <span
+                            className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors block overflow-hidden group-hover:decoration-foreground/60"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {displayQ}
+                          </span>
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="w-[92vw] max-w-3xl break-words overflow-x-hidden">
+                        <DialogHeader>
+                          <DialogTitle className="break-words whitespace-normal text-2xl font-medium">
+                            {displayQ}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div>
+                          <div className="flex items-center mb-4">
+                            <EndTimeDisplay endTime={endTime} size="large" />
+                          </div>
+                          {description ? (
+                            <div className="text-sm leading-relaxed break-words [&_a]:break-all">
+                              <SafeMarkdown
+                                content={description}
+                                className="break-words [&_a]:break-all"
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </h3>
                 </div>
               </div>

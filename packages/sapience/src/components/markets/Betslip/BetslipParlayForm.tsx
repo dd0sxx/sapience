@@ -267,7 +267,6 @@ export default function BetslipParlayForm({
                     </div>
                   );
                 })()}
-                <WagerDisclaimer className="mt-4 mb-4" />
                 <Button
                   className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={
@@ -292,10 +291,10 @@ export default function BetslipParlayForm({
                     Limit Order
                   </button>
                 </div>
+                <WagerDisclaimer className="mt-3" />
               </div>
             ) : (
               <div className="text-center">
-                <WagerDisclaimer className="mt-4 mb-4" />
                 <Button
                   className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={true}
@@ -323,6 +322,7 @@ export default function BetslipParlayForm({
                     Some combinations may not receive bids
                   </div>
                 ) : null}
+                <WagerDisclaimer className="mt-3" />
               </div>
             )}
           </div>
