@@ -67,9 +67,6 @@ contract PassiveLiquidityVault is
 
     // ============ Custom Errors ============
 
-    // Standard function errors (functions that revert with NotImplemented)
-    error NotImplemented();
-
     // Access control errors
     error OnlyManager(address caller, address expectedManager);
 
@@ -139,17 +136,12 @@ contract PassiveLiquidityVault is
 
     /// @notice WAD denominator for high-precision calculations (1e18 = 100%)
     uint256 public constant WAD = 1e18;
-    
-    /// @notice Basis points denominator (10000 = 100%)
-    uint256 public constant BASIS_POINTS = 10000;
 
     /// @notice Total assets reserved for pending deposit requests
     uint256 private unconfirmedAssets = 0;
 
     /// @notice Mapping of user to their pending request (only one request per user at a time)
     mapping(address => PendingRequest) public pendingRequests;
-
-    bool private processingRequests = false;
 
     // ============ Modifiers ============
 

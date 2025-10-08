@@ -9,15 +9,6 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  * @notice Interface for the PassiveLiquidityVault contract with request-based deposits and withdrawals
  */
 interface IPassiveLiquidityVault is IERC1271, IERC165 {
-    // ============ Enums ============
-    enum ProcessingError {
-        None,
-        NoPendingRequest,
-        WrongRequestType,
-        RequestExpired,
-        TransferFailed
-    }
-
     // ============ Structs ============
     struct PendingRequest {
         address user;
@@ -28,17 +19,11 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
         bool processed;
     }
 
-    struct ProcessingResult {
-        address user;
-        bool success;
-        ProcessingError error;
-    }
     // ============ Events ============
     
     event PendingRequestCreated(address indexed user, bool direction, uint256 shares, uint256 assets);
     event PendingRequestProcessed(address indexed user, bool direction, uint256 shares, uint256 assets);
     event PendingRequestCancelled(address indexed user, bool direction, uint256 shares, uint256 assets);
-    event PendingRequestFailed(address indexed user, bool direction, ProcessingError error);
 
     event FundsApproved(address indexed manager, uint256 assets, address targetProtocol);
     event UtilizationRateUpdated(uint256 oldRate, uint256 newRate);

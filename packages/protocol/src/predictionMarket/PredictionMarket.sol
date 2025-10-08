@@ -13,7 +13,6 @@ import "./interfaces/IPredictionStructs.sol";
 import "./interfaces/IPredictionMarketResolver.sol";
 import "./interfaces/IPredictionEvents.sol";
 import "./utils/SignatureProcessor.sol";
-import "../market/interfaces/ISapience.sol";
 import "../vault/interfaces/IPassiveLiquidityVault.sol";
 
 /**
