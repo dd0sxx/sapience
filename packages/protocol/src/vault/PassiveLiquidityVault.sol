@@ -111,6 +111,7 @@ contract PassiveLiquidityVault is
 
     // Additional errors
     error RequestExpired();
+    error SharesLockedForWithdrawal(address user, uint256 lockedShares, uint256 attemptedTransfer);
 
     // ============ Events ============
     // Events are defined in the IPassiveLiquidityVault interface
@@ -551,6 +552,34 @@ contract PassiveLiquidityVault is
         emit EmergencyWithdrawal(msg.sender, shares, withdrawAmount);
     }
 
+    /**
+     * @notice Override ERC20 _update to prevent transfers of shares locked for withdrawal
+     * @param from Address sending tokens (address(0) for minting)
+     * @param to Address receiving tokens (address(0) for burning)
+     * @param value Amount of tokens being transferred
+     * @dev Prevents users from transferring shares that are locked in pending withdrawal requests
+     */
+    function _update(address from, address to, uint256 value) internal virtual override {
+        // Only check transfer restrictions for non-mint operations (from != address(0))
+        // Allow burns (to == address(0)) as they are part of withdrawal processing
+        if (from != address(0) && to != address(0)) {
+            PendingRequest storage request = pendingRequests[from];
+            
+            // Check if the sender has a pending withdrawal request
+            if (request.user == from && !request.isDeposit && !request.processed) {
+                uint256 currentBalance = balanceOf(from);
+                uint256 lockedShares = request.shares;
+                
+                // Check if the transfer would leave insufficient shares for the pending withdrawal
+                if (currentBalance < lockedShares + value) {
+                    revert SharesLockedForWithdrawal(from, lockedShares, value);
+                }
+            }
+        }
+        
+        super._update(from, to, value);
+    }
+
     // ============ Manager Functions ============
 
     /**
@@ -614,6 +643,36 @@ contract PassiveLiquidityVault is
         uint256 balance = _asset.balanceOf(address(this));
         // Subtract unconfirmed assets (pending deposit requests)
         return balance > unconfirmedAssets ? balance - unconfirmedAssets : 0;
+    }
+
+    /**
+     * @notice Get the number of shares locked for a pending withdrawal request
+     * @param user Address of the user
+     * @return Number of shares locked for withdrawal, 0 if no pending withdrawal
+     */
+    function getLockedShares(address user) external view returns (uint256) {
+        PendingRequest storage request = pendingRequests[user];
+        if (request.user == user && !request.isDeposit && !request.processed) {
+            return request.shares;
+        }
+        return 0;
+    }
+
+    /**
+     * @notice Get the number of shares available for transfer (total balance minus locked shares)
+     * @param user Address of the user
+     * @return Number of shares available for transfer
+     */
+    function getAvailableShares(address user) external view returns (uint256) {
+        uint256 totalBalance = balanceOf(user);
+        uint256 locked = 0;
+        
+        PendingRequest storage request = pendingRequests[user];
+        if (request.user == user && !request.isDeposit && !request.processed) {
+            locked = request.shares;
+        }
+        
+        return totalBalance > locked ? totalBalance - locked : 0;
     }
 
     /**

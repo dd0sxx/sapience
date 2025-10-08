@@ -70,6 +70,8 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     function getActiveProtocolsCount() external view returns (uint256);
     function getActiveProtocols() external view returns (address[] memory);
     function getActiveProtocol(uint256 index) external view returns (address);
+    function getLockedShares(address user) external view returns (uint256);
+    function getAvailableShares(address user) external view returns (uint256);
     // function getPendingDeposit(address user) external view returns (uint256 amount);
     // function getDepositRequest(uint256 index) external view returns (PendingRequest memory);
 
