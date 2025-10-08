@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@sapience/sdk/ui/components/ui/dialog';
-import { sapienceFactoryAbi } from '@sapience/sdk/queries/client/abi';
+import { foilFactoryAbiFn } from '@sapience/sdk/queries/client/abi';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AbiEvent, Address, TransactionReceipt } from 'viem';
@@ -192,7 +192,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       await writeContract({
         chainId: group.chainId,
         address: group.factoryAddress as Address,
-        abi: sapienceFactoryAbi().abi,
+        abi: foilFactoryAbiFn().abi,
         functionName: 'cloneAndInitializeMarketGroup',
         args,
       });

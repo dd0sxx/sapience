@@ -4,16 +4,8 @@
 # Required: Private key for testing (without 0x prefix)
 TEST_PRIVATE_KEY=your_private_key_here
 
-# Optional: Custom RPC URL (defaults to Arbitrum mainnet)
-ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
-
 # Optional: Infura API key for WebSocket connections
 INFURA_API_KEY=your_infura_api_key_here
 
 # Optional: Database configuration
 DATABASE_URL=your_database_url_here
-
-TEST_PRIVATE_KEY=
-PREDICTION_MARKET_CONTRACT_ADDRESS=0x8D1D1946cBc56F695584761d25D13F174906671C
-TEST_RESOLVER_ADDRESS=0x9052992cB14b7af25a3c40B27211d369c9ff7758
-TEST_MARKET_GROUP_ADDRESS=0xeecfc3deee7d224094807189d2aa818f89d7f000

@@ -10,4 +10,9 @@ export default [
   {ignores: ["src/graphql/types/generated.ts"]},
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    rules: {
+      
+    },
+  },
 ];

@@ -1,10 +1,17 @@
-import { Action, IAgentRuntime, Memory, HandlerCallback, State } from '@elizaos/core';
-import { createPublicClient, http, decodeErrorResult } from 'viem';
+import {
+  Action,
+  IAgentRuntime,
+  Memory,
+  HandlerCallback,
+  State,
+} from "@elizaos/core";
+import { decodeErrorResult } from "viem";
+import { loadSdk } from "../utils/sdk.js";
 
 export const simulateTransactionAction: Action = {
-  name: 'SIMULATE_TRANSACTION',
-  description: 'Simulate an EVM transaction against a public RPC (read-only)',
-  similes: ['simulate tx', 'dry run transaction'],
+  name: "SIMULATE_TRANSACTION",
+  description: "Simulate an EVM transaction against a public RPC (read-only)",
+  similes: ["simulate tx", "dry run transaction"],
 
   validate: async () => true,
 
@@ -13,10 +20,10 @@ export const simulateTransactionAction: Action = {
     message: Memory,
     _state?: State,
     _options?: any,
-    callback?: HandlerCallback
+    callback?: HandlerCallback,
   ) => {
     try {
-      const text = message.content?.text || '';
+      const text = message.content?.text || "";
       const jsonMatch = text.match(/\{[\s\S]*\}$/);
       if (!jsonMatch) {
         await callback?.({
@@ -28,27 +35,30 @@ export const simulateTransactionAction: Action = {
       const payload = JSON.parse(jsonMatch[0]);
       const rpc = payload.rpc as string;
       const chainId = payload.chainId as number;
-      const tx = payload.tx as { to: `0x${string}`; data?: `0x${string}`; value?: string };
+      const tx = payload.tx as {
+        to: `0x${string}`;
+        data?: `0x${string}`;
+        value?: string;
+      };
 
-      const client = createPublicClient({ transport: http(rpc) });
-      const result = await client.call({
-        to: tx.to,
-        data: tx.data,
-        value: tx.value ? BigInt(tx.value) : undefined,
-      } as any);
-
-      await callback?.({ text: 'Simulation OK', content: { result, chainId } });
+      const { simulateTransaction } = await loadSdk();
+      const { result } = await simulateTransaction({ rpc, tx });
+      await callback?.({ text: "Simulation OK", content: { result, chainId } });
     } catch (err: any) {
       try {
         const decoded = err?.data ? decodeErrorResult(err.data) : undefined;
-        await callback?.({ text: 'Simulation failed', content: { error: err?.message, decoded } });
+        await callback?.({
+          text: "Simulation failed",
+          content: { error: err?.message, decoded },
+        });
       } catch (_e) {
-        await callback?.({ text: 'Simulation failed', content: { error: err?.message } });
+        await callback?.({
+          text: "Simulation failed",
+          content: { error: err?.message },
+        });
       }
     }
   },
 };
 
 export default simulateTransactionAction;
-
-

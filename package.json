@@ -10,7 +10,6 @@
     "dev:app": "pnpm --filter sapience run dev",
     "dev:foil-docs": "pnpm --filter foil-docs run dev",
     "dev:foil": "pnpm --filter foil run dev",
-    "dev:agent": "pnpm --filter agent run dev",
     "dev:api": "concurrently \"NODE_ENV=development pnpm --filter api run dev:service\" \"NODE_ENV=development pnpm --filter api run dev:worker\"",
     "dev:api:service": "NODE_ENV=development pnpm --filter api run dev:service",
     "dev:api:worker": "NODE_ENV=development pnpm --filter api run dev:worker",
@@ -41,7 +40,8 @@
       "form-data": "4.0.4",
       "request>form-data": "4.0.4",
       "elliptic": "6.6.1",
-      "protobufjs": "7.2.5"
+      "protobufjs": "7.2.5",
+      "zod": "3.23.6"
     }
   },
   "packageManager": "pnpm@9.9.0+sha512.60c18acd138bff695d339be6ad13f7e936eea6745660d4cc4a776d5247c540d0edee1a563695c183a66eb917ef88f2b4feb1fc25f32a7adcadc7aaf3438e99c1"

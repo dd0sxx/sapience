@@ -1,27 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
+import { passiveLiquidityVault } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { erc20Abi, formatUnits, parseUnits, encodeFunctionData } from 'viem';
 import type { Abi } from 'abitype';
-import PassiveLiquidityVault from '@/protocol/deployments/PassiveLiquidityVault.json';
+import { liquidityVaultAbi } from '@sapience/sdk';
 import { useReadContracts, useAccount } from 'wagmi';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 
-// Default to deployment JSON address; can be overridden by hook config
-const DEFAULT_VAULT_ADDRESS = (PassiveLiquidityVault as { address: Address })
-  .address;
+// Default to address can be overridden by hook config
+const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
 
-// Use ABI from deployments
-const PARLAY_VAULT_ABI: Abi = (PassiveLiquidityVault as { abi: Abi }).abi;
+// Use ABI from SDK
+const PARLAY_VAULT_ABI: Abi = liquidityVaultAbi;
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
 
 // ABI helper: check if contract implements a function with optional arity
 const hasFunction = (name: string, inputsLength?: number) => {
   try {
-    const abiItems = (PassiveLiquidityVault as { abi: Abi })
-      .abi as unknown as Array<any>;
+    const abiItems = liquidityVaultAbi as unknown as Array<any>;
     return abiItems.some(
       (f: any) =>
         f?.type === 'function' &&

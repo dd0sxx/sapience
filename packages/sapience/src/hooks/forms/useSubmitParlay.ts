@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react';
 import { encodeFunctionData, erc20Abi } from 'viem';
 
-import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
-import type { Abi } from 'abitype';
+import { predictionMarketAbi } from '@sapience/sdk';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
@@ -28,6 +27,18 @@ export function useSubmitParlay({
   enabled = true,
 }: UseSubmitParlayProps) {
   const { address } = useAccount();
+
+  // Read maker nonce from PredictionMarket
+  const { data: makerNonce, refetch: refetchMakerNonce } = useReadContract({
+    address: predictionMarketAddress,
+    abi: predictionMarketAbi,
+    functionName: 'nonces',
+    args: address ? [address] : undefined,
+    chainId,
+    query: {
+      enabled: !!address && !!predictionMarketAddress && enabled,
+    },
+  });
 
   // Check current allowance to avoid unnecessary approvals
   const { data: currentAllowance } = useReadContract({
@@ -101,6 +112,14 @@ export function useSubmitParlay({
       }
 
       // Convert mintData to the structure expected by the contract
+      const makerNonceBigInt =
+        mintData.makerNonce !== undefined
+          ? BigInt(mintData.makerNonce)
+          : undefined;
+      if (makerNonceBigInt === undefined) {
+        throw new Error('Missing maker nonce');
+      }
+
       const mintPredictionRequestData = {
         encodedPredictedOutcomes: mintData.encodedPredictedOutcomes,
         resolver: mintData.resolver,
@@ -108,6 +127,7 @@ export function useSubmitParlay({
         takerCollateral: takerCollateralWei,
         maker: mintData.maker,
         taker: mintData.taker,
+        makerNonce: makerNonceBigInt,
         takerSignature: mintData.takerSignature,
         takerDeadline: BigInt(mintData.takerDeadline),
         refCode: mintData.refCode,
@@ -115,7 +135,7 @@ export function useSubmitParlay({
 
       // Add PredictionMarket.mint call
       const mintCalldata = encodeFunctionData({
-        abi: PredictionMarket.abi as Abi,
+        abi: predictionMarketAbi,
         functionName: 'mint',
         args: [mintPredictionRequestData],
       });
@@ -139,25 +159,56 @@ export function useSubmitParlay({
       setError(null);
       setSuccess(null);
 
+      const attempt = async (forceRefetch: boolean) => {
+        // Ensure we have a fresh nonce when requested
+        const nonceValue = forceRefetch
+          ? (await refetchMakerNonce()).data
+          : makerNonce;
+
+        if (nonceValue === undefined) {
+          throw new Error('Unable to read maker nonce');
+        }
+
+        const filled: MintPredictionRequestData = {
+          ...mintData,
+          makerNonce: nonceValue as unknown as bigint,
+        };
+
+        const calls = prepareCalls(filled);
+        if (calls.length === 0) {
+          throw new Error('No valid calls to execute');
+        }
+
+        await sendCalls({
+          calls,
+          chainId,
+        });
+      };
+
       try {
         // Validate mint data
         if (!mintData) {
           throw new Error('No mint data provided');
         }
 
-        // Prepare the batch of calls
-        const calls = prepareCalls(mintData);
-
-        if (calls.length === 0) {
-          throw new Error('No valid calls to execute');
+        // First attempt with current cached nonce
+        await attempt(false);
+      } catch (err: any) {
+        const msg = (err?.message || '').toString();
+        const isNonceErr = msg.includes('InvalidMakerNonce');
+        if (isNonceErr) {
+          try {
+            // One-time retry with fresh nonce
+            await attempt(true);
+            return;
+          } catch (retryErr: any) {
+            const retryMsg = (retryErr?.message || '').toString();
+            setError(
+              retryMsg || 'Failed to submit parlay prediction after retry'
+            );
+            return;
+          }
         }
-
-        // Submit the batch of calls using the unified wrapper
-        await sendCalls({
-          calls,
-          chainId,
-        });
-      } catch (err) {
         const errorMessage =
           err instanceof Error
             ? err.message
@@ -165,7 +216,15 @@ export function useSubmitParlay({
         setError(errorMessage);
       }
     },
-    [enabled, address, chainId, prepareCalls, sendCalls]
+    [
+      enabled,
+      address,
+      chainId,
+      prepareCalls,
+      sendCalls,
+      makerNonce,
+      refetchMakerNonce,
+    ]
   );
 
   const reset = useCallback(() => {

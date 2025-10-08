@@ -1,13 +1,19 @@
-import { Action, IAgentRuntime, Memory, HandlerCallback, State } from '@elizaos/core';
-import { SapienceService } from '../services/sapienceService.js';
+import {
+  Action,
+  IAgentRuntime,
+  Memory,
+  HandlerCallback,
+  State,
+} from "@elizaos/core";
+import { SapienceService } from "../services/sapienceService.js";
 
 export const callToolAction: Action = {
-  name: 'CALL_TOOL',
-  description: 'Call an MCP tool on the Sapience server',
-  similes: ['call tool', 'mcp call'],
+  name: "CALL_TOOL",
+  description: "Call an MCP tool on the Sapience server",
+  similes: ["call tool", "mcp call"],
 
   validate: async (runtime: IAgentRuntime, _message: Memory) => {
-    const svc = runtime.getService('sapience') as SapienceService;
+    const svc = runtime.getService("sapience") as SapienceService;
     return !!svc;
   },
 
@@ -16,15 +22,15 @@ export const callToolAction: Action = {
     message: Memory,
     _state?: State,
     _options?: any,
-    callback?: HandlerCallback
+    callback?: HandlerCallback,
   ) => {
-    const svc = runtime.getService('sapience') as SapienceService;
+    const svc = runtime.getService("sapience") as SapienceService;
     if (!svc) {
-      await callback?.({ text: 'Sapience service unavailable', content: {} });
+      await callback?.({ text: "Sapience service unavailable", content: {} });
       return;
     }
 
-    const contentText = message.content?.text || '';
+    const contentText = message.content?.text || "";
     // Expect a JSON payload after the action name
     const jsonMatch = contentText.match(/\{[\s\S]*\}$/);
     if (!jsonMatch) {
@@ -38,14 +44,12 @@ export const callToolAction: Action = {
     const tool = payload.tool as string;
     const args = (payload.args as Record<string, any>) || {};
 
-    const res = await svc.callTool('sapience', tool, args);
+    const res = await svc.callTool("sapience", tool, args);
     await callback?.({
-      text: res?.content?.[0]?.text || 'OK',
+      text: res?.content?.[0]?.text || "OK",
       content: res,
     });
   },
 };
 
 export default callToolAction;
-
-
