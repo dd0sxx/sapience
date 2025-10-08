@@ -10,6 +10,8 @@ import * as React from 'react';
 
 import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
 import { SearchBar } from '@sapience/sdk/ui';
+import ParlayConditionCard from './ParlayConditionCard';
+import MarketCard from './MarketCard';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
 import FocusAreaFilter from './FocusAreaFilter';
@@ -112,12 +114,34 @@ const MarketsPage = () => {
   );
 
   // Parlay Mode toggle
-  const [parlayMode, setParlayMode] = React.useState<boolean>(false);
+  const [parlayMode, setParlayMode] = React.useState<boolean>(true);
+
+  // View mode per browsing mode: list vs grid
+  const [viewModeByMode, setViewModeByMode] = React.useState<{
+    spot: 'list' | 'grid';
+    parlay: 'list' | 'grid';
+  }>({ spot: 'grid', parlay: 'grid' });
+  const currentViewMode = parlayMode
+    ? viewModeByMode.parlay
+    : viewModeByMode.spot;
+  const toggleViewMode = React.useCallback(() => {
+    setViewModeByMode((prev) =>
+      parlayMode
+        ? { ...prev, parlay: prev.parlay === 'list' ? 'grid' : 'list' }
+        : { ...prev, spot: prev.spot === 'list' ? 'grid' : 'list' }
+    );
+  }, [parlayMode]);
 
   // Initialize parlay mode from URL hash unconditionally
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (window.location.hash === '#parlays') {
+    // New: '#spot' indicates singles mode; default (no hash) is parlays
+    if (window.location.hash === '#spot') {
+      setParlayMode(false);
+    } else if (window.location.hash === '#parlays') {
+      // Migrate legacy '#parlays' to default (no hash)
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, '', url);
       setParlayMode(true);
     }
   }, []);
@@ -126,14 +150,14 @@ const MarketsPage = () => {
   const handleParlayModeChange = (enabled: boolean) => {
     setParlayMode(enabled);
     if (typeof window === 'undefined') return;
-    if (enabled) {
-      const newHash = '#parlays';
+    if (!enabled) {
+      const newHash = '#spot';
       if (window.location.hash !== newHash) {
         // Update hash without scrolling or adding a new history entry
         window.history.replaceState(null, '', newHash);
       }
     } else {
-      // Clear hash entirely
+      // Clear hash entirely for default parlays view
       const url = window.location.pathname + window.location.search;
       window.history.replaceState(null, '', url);
     }
@@ -661,6 +685,8 @@ const MarketsPage = () => {
               categories={categories}
               getCategoryStyle={getCategoryStyle}
               containerClassName="px-0 md:px-0 py-0 w-full max-w-full box-border"
+              viewMode={currentViewMode}
+              onToggleViewMode={toggleViewMode}
             />
           </motion.div>
         </div>
@@ -684,60 +710,101 @@ const MarketsPage = () => {
                 </motion.div>
               )}
 
-              {groupedMarketGroups.length > 0 && (
-                <motion.div
-                  key="results-container"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  {sortedDays.map((dayKey) => (
-                    <motion.div
-                      key={dayKey}
-                      className="mb-8"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                    >
-                      <div className="flex flex-col mb-2">
-                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                          {formatEndDate(dayEndTimes[dayKey])}
-                        </h3>
-                        <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
-                          {marketGroupsByDay[dayKey].map((marketGroup) => (
-                            <motion.div
-                              layout
-                              key={marketGroup.key}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.25 }}
-                              className="border-b last:border-b-0 border-border"
-                            >
-                              <MarketGroupsRow
-                                marketAddress={marketGroup.marketAddress}
-                                chainId={marketGroup.chainId}
-                                displayQuestion={
-                                  marketGroup.displayQuestion || 'Loading...'
-                                }
-                                color={marketGroup.color}
-                                market={marketGroup.markets}
-                                isActive={marketGroup.isActive}
-                                marketClassification={
-                                  marketGroup.marketClassification
-                                }
-                                displayUnit={marketGroup.displayUnit}
-                              />
-                            </motion.div>
-                          ))}
+              {groupedMarketGroups.length > 0 &&
+                (currentViewMode === 'list' ? (
+                  <motion.div
+                    key="results-container-list"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {sortedDays.map((dayKey) => (
+                      <motion.div
+                        key={dayKey}
+                        className="mb-8"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <div className="flex flex-col mb-2">
+                          <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                            {formatEndDate(dayEndTimes[dayKey])}
+                          </h3>
+                          <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
+                            {marketGroupsByDay[dayKey].map((marketGroup) => (
+                              <motion.div
+                                layout
+                                key={marketGroup.key}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="border-b last:border-b-0 border-border"
+                              >
+                                <MarketGroupsRow
+                                  marketAddress={marketGroup.marketAddress}
+                                  chainId={marketGroup.chainId}
+                                  displayQuestion={
+                                    marketGroup.displayQuestion || 'Loading...'
+                                  }
+                                  color={marketGroup.color}
+                                  market={marketGroup.markets}
+                                  isActive={marketGroup.isActive}
+                                  marketClassification={
+                                    marketGroup.marketClassification
+                                  }
+                                  displayUnit={marketGroup.displayUnit}
+                                />
+                              </motion.div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="results-container-grid"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                      {groupedMarketGroups.map((group) => {
+                        const preferred =
+                          group.markets.find((m) => m.optionName === 'Yes') ||
+                          group.markets[0];
+                        const yesId = group.markets.find(
+                          (m) => m.optionName === 'Yes'
+                        )?.marketId;
+                        const noId = group.markets.find(
+                          (m) => m.optionName === 'No'
+                        )?.marketId;
+                        return (
+                          <div key={group.key} className="min-h-[160px]">
+                            <MarketCard
+                              chainId={group.chainId}
+                              marketAddress={group.marketAddress}
+                              market={preferred}
+                              yesMarketId={yesId}
+                              noMarketId={noId}
+                              color={group.color}
+                              displayQuestion={
+                                group.displayQuestion || group.marketName
+                              }
+                              isActive={group.isActive}
+                              marketClassification={group.marketClassification}
+                              displayUnit={group.displayUnit}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                ))}
             </AnimatePresence>
           ) : (
             <AnimatePresence mode="wait" key="parlay-mode">
@@ -763,7 +830,7 @@ const MarketsPage = () => {
                 >
                   No public conditions found.
                 </motion.div>
-              ) : (
+              ) : currentViewMode === 'list' ? (
                 <motion.div
                   key="rfq-list"
                   initial={{ opacity: 0 }}
@@ -812,6 +879,29 @@ const MarketsPage = () => {
                       </div>
                     </motion.div>
                   ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="rfq-grid"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                    {filteredRfqConditions.map((c) => {
+                      const categorySlug = c.category?.slug || '';
+                      const styleInfo = categorySlug
+                        ? getCategoryStyle(categorySlug)
+                        : undefined;
+                      const color = styleInfo?.color || DEFAULT_CATEGORY_COLOR;
+                      return (
+                        <div key={c.id} className="min-h-[160px]">
+                          <ParlayConditionCard condition={c} color={color} />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

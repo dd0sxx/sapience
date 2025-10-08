@@ -1,13 +1,13 @@
 'use client';
 
 import type * as React from 'react';
-import { Switch } from '@sapience/sdk/ui/components/ui/switch';
 import {
   Tabs,
   TabsList,
   TabsTrigger,
 } from '@sapience/sdk/ui/components/ui/tabs';
-import { SquareStack as SquareStackIcon } from 'lucide-react';
+import { Button } from '@sapience/sdk/ui/components/ui/button';
+import { LayoutGridIcon, ListIcon } from 'lucide-react';
 import CategoryChips from './CategoryChips';
 import type { FocusArea } from '~/lib/constants/focusAreas';
 
@@ -28,6 +28,8 @@ interface FocusAreaFilterProps {
   categories: Category[] | null | undefined;
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
   containerClassName?: string;
+  viewMode: 'list' | 'grid';
+  onToggleViewMode: () => void;
 }
 
 const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
@@ -41,26 +43,39 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
   categories,
   getCategoryStyle,
   containerClassName,
+  viewMode,
+  onToggleViewMode,
 }) => {
   return (
     <div className={containerClassName || 'px-0 py-0 w-full'}>
       <div className="w-full min-w-0 flex flex-col min-[1400px]:flex-row items-start min-[1400px]:items-center gap-2">
-        {/* Controls row: Parlay left, Status right (mobile). On largest, Status moves to centered sibling */}
-        <div className="w-full min-w-0 min-[1400px]:w-auto flex items-center gap-2">
-          {/* Parlay toggle */}
+        {/* Controls row: moves to the right on large screens */}
+        <div className="w-full min-w-0 min-[1400px]:w-auto flex items-center gap-2 min-[1400px]:order-2 min-[1400px]:justify-end">
+          {/* View mode segmented control: Perps (parlay) | Spot */}
           <div className="relative flex items-center gap-2 min-[1400px]:mr-2">
-            <SquareStackIcon
-              className="h-4 w-4 text-foreground"
-              aria-hidden="true"
-            />
-            <span className="text-sm font-medium text-foreground whitespace-nowrap mr-0.5">
-              Parlay Mode
-            </span>
-            <Switch checked={parlayMode} onCheckedChange={onParlayModeChange} />
+            <Tabs
+              value={parlayMode ? 'perps' : 'spot'}
+              onValueChange={(v) => onParlayModeChange(v === 'perps')}
+            >
+              <TabsList className="inline-flex items-center p-1">
+                <TabsTrigger
+                  value="perps"
+                  className="text-xs px-3 h-8 leading-none rounded-md"
+                >
+                  Parlays
+                </TabsTrigger>
+                <TabsTrigger
+                  value="spot"
+                  className="text-xs px-3 h-8 leading-none rounded-md"
+                >
+                  Spot
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
-          {/* Status tabs (mobile/tablet): right-aligned */}
-          <div className="ml-auto min-[1400px]:hidden flex items-center mr-0">
+          {/* Status tabs: visible on all sizes; right-aligned on large */}
+          <div className="ml-auto min-[1400px]:flex items-center mr-0 gap-2">
             <Tabs
               value={statusFilter}
               onValueChange={(v) =>
@@ -82,13 +97,32 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
 
-          {/* Desktop tabs are rendered on the right next to chips; omitted here */}
+            {/* View toggle icon button: larger and with extra left spacing */}
+            <Button
+              type="button"
+              variant={viewMode === 'grid' ? 'secondary' : 'outline'}
+              size="icon"
+              className="ml-2 h-10 w-10"
+              aria-label={
+                viewMode === 'grid'
+                  ? 'Switch to list view'
+                  : 'Switch to grid view'
+              }
+              aria-pressed={viewMode === 'grid'}
+              onClick={onToggleViewMode}
+            >
+              {viewMode === 'grid' ? (
+                <ListIcon className="h-5 w-5" />
+              ) : (
+                <LayoutGridIcon className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
         </div>
 
-        {/* Category chips: below controls on small; inline and right-aligned on largest */}
-        <div className="w-full min-w-0 min-[1400px]:flex-1 min-[1400px]:flex min-[1400px]:items-center min-[1400px]:justify-end min-[1400px]:gap-2">
+        {/* Category chips: left on large; below controls on small */}
+        <div className="w-full min-w-0 min-[1400px]:order-1 min-[1400px]:flex-1 min-[1400px]:flex min-[1400px]:items-center min-[1400px]:justify-start min-[1400px]:gap-2">
           <CategoryChips
             selectedCategorySlug={selectedCategorySlug}
             onCategoryClick={handleCategoryClick}
@@ -96,24 +130,6 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
             categories={categories}
             getCategoryStyle={getCategoryStyle}
           />
-          {/* Status tabs (desktop >=1400px): placed to the right of chips with spacing */}
-          <div className="hidden min-[1400px]:flex items-center ml-4">
-            <Tabs
-              value={statusFilter}
-              onValueChange={(v) =>
-                handleStatusFilterClick((v as 'active' | 'all') || 'active')
-              }
-            >
-              <TabsList className="h-8">
-                <TabsTrigger value="active" className="text-xs">
-                  Active
-                </TabsTrigger>
-                <TabsTrigger value="all" className="text-xs">
-                  All
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
         </div>
       </div>
     </div>
