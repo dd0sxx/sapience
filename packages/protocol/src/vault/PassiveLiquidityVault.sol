@@ -261,9 +261,11 @@ contract PassiveLiquidityVault is
         return totalDeployedAmount;
     }
 
-    function _deployedLiquidityWithCleanup() internal returns (uint256) {
-        // get vault's owned NFTs and sum the collateral of each for each NFT
+    function _getDeploymentAndApprovalsWithCleanup(address excludeProtocol) internal returns (uint256, uint256) {
+        // Calculate deployed liquidity and total approvals in a single loop, cleanup inactive protocols
+        // Returns: (totalDeployedAmount, totalCurrentApprovals excluding excludeProtocol)
         uint256 totalDeployedAmount = 0;
+        uint256 totalCurrentApprovals = 0;
         address[] memory protocols = activeProtocols.values();
         for (
             uint256 protocolIndex = 0;
@@ -275,13 +277,21 @@ contract PassiveLiquidityVault is
             uint256 userCollateralDeposits = pm.getUserCollateralDeposits(
                 address(this)
             );
-            if (userCollateralDeposits == 0) {
-                // remove protocol from active protocols
+            uint256 allowance = _asset.allowance(address(this), protocol);
+            
+            // Remove protocol only if both deposits and allowance are zero
+            if (userCollateralDeposits == 0 && allowance == 0) {
                 activeProtocols.remove(protocol);
             }
+            
             totalDeployedAmount += userCollateralDeposits;
+            
+            // Add to total approvals if not the excluded protocol
+            if (protocol != excludeProtocol) {
+                totalCurrentApprovals += allowance;
+            }
         }
-        return totalDeployedAmount;
+        return (totalDeployedAmount, totalCurrentApprovals);
     }
 
     /**
@@ -598,13 +608,20 @@ contract PassiveLiquidityVault is
         if (amount > availableAssetsValue)
             revert InsufficientAvailableAssets(amount, availableAssetsValue);
 
-        // Check utilization rate limits - cache values to avoid multiple calls
-        uint256 deployedLiquidity = _deployedLiquidityWithCleanup();
+        // Get deployed liquidity and total approvals in a single loop (excluding current protocol)
+        (uint256 deployedLiquidity, uint256 totalCurrentApprovals) = _getDeploymentAndApprovalsWithCleanup(protocol);
         uint256 totalAssetsValue = availableAssetsValue + deployedLiquidity;
-        uint256 newUtilization = ((deployedLiquidity + amount) * WAD) /
-            totalAssetsValue;
-        if (newUtilization > maxUtilizationRate)
-            revert ExceedsMaxUtilization(newUtilization, maxUtilizationRate);
+
+        // Add the new approval amount for this protocol
+        totalCurrentApprovals += amount;
+
+        // Check utilization rate limits - calculate projected utilization from total approvals
+        uint256 projectedUtilization = totalAssetsValue > 0
+            ? (totalCurrentApprovals * WAD) / totalAssetsValue
+            : 0;
+        
+        if (projectedUtilization > maxUtilizationRate)
+            revert ExceedsMaxUtilization(projectedUtilization, maxUtilizationRate);
 
         // Update deployment info - use EnumerableSet for gas efficiency
         activeProtocols.add(protocol);
@@ -613,11 +630,11 @@ contract PassiveLiquidityVault is
 
         emit FundsApproved(msg.sender, amount, protocol);
 
-        // Calculate current utilization for event (avoid external call)
+        // Calculate current utilization for event
         uint256 currentUtilization = totalAssetsValue > 0
             ? ((deployedLiquidity * WAD) / totalAssetsValue)
             : 0;
-        emit UtilizationRateUpdated(currentUtilization, newUtilization);
+        emit UtilizationRateUpdated(currentUtilization, projectedUtilization);
     }
 
     // ============ Signature Functions ============

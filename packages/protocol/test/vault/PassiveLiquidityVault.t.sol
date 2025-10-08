@@ -505,6 +505,58 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
     }
     
+    // Tests that cumulative approvals across multiple protocols respect the max utilization rate
+    function testMultipleProtocolApprovalsCumulativeLimit() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        _approveAndDeposit(user1, depositAmount);
+        
+        // Set max utilization to 80%
+        vm.startPrank(owner);
+        vault.setMaxUtilizationRate(0.8e18); // 80% in WAD
+        vm.stopPrank();
+        
+        vm.startPrank(manager);
+        
+        // First approval: 50% to protocol1 - should succeed
+        uint256 firstApproval = (depositAmount * 5000) / 10000; // 50%
+        vault.approveFundsUsage(address(protocol1), firstApproval);
+        
+        // Second approval: 40% to protocol2 - should fail because 50% + 40% = 90% > 80%
+        uint256 secondApproval = (depositAmount * 4000) / 10000; // 40%
+        
+        // Expected: 90% utilization, max: 80%
+        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 0.9e18, 0.8e18));
+        vault.approveFundsUsage(address(protocol2), secondApproval);
+        
+        vm.stopPrank();
+    }
+    
+    // Tests that cumulative approvals work correctly when one protocol is re-approved
+    function testReApprovalToSameProtocolReplacesAllowance() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        _approveAndDeposit(user1, depositAmount);
+        
+        // Set max utilization to 80%
+        vm.startPrank(owner);
+        vault.setMaxUtilizationRate(0.8e18); // 80% in WAD
+        vm.stopPrank();
+        
+        vm.startPrank(manager);
+        
+        // First approval: 50% to protocol1
+        uint256 firstApproval = (depositAmount * 5000) / 10000; // 50%
+        vault.approveFundsUsage(address(protocol1), firstApproval);
+        
+        // Re-approve protocol1 with 70% - should succeed because it replaces the 50%, not adds to it
+        uint256 reApproval = (depositAmount * 7000) / 10000; // 70%
+        vault.approveFundsUsage(address(protocol1), reApproval);
+        
+        // Verify the approval was updated (should be 70%, not 120%)
+        assertEq(asset.allowance(address(vault), address(protocol1)), reApproval);
+        
+        vm.stopPrank();
+    }
+    
     // Tests that the manager can recall funds from external protocols and utilization rate is updated
     function testRecallFunds() public {
         uint256 depositAmount = DEPOSIT_AMOUNT * 2;
