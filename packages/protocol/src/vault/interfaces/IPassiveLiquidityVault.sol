@@ -82,6 +82,8 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
      */
     function approveFundsUsage(address protocol, uint256 amount) external;
 
+    function cleanInactiveProtocols() external;
+
     // ============ View Functions ============
     
     // function getPendingRequest(uint256 index) external view returns (PendingRequest memory);

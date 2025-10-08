@@ -300,6 +300,7 @@ contract PassiveLiquidityVault is
         uint256 expectedAssets
     ) external nonReentrant whenNotPaused notEmergency {
         if (shares == 0) revert InvalidShares(shares);
+        if (expectedAssets == 0) revert InvalidAmount(expectedAssets);
 
         uint256 balance = balanceOf(msg.sender);
         if (balance < shares)
@@ -343,6 +344,7 @@ contract PassiveLiquidityVault is
         uint256 expectedShares
     ) external nonReentrant whenNotPaused notEmergency {
         if (assets == 0) revert InvalidAmount(assets);
+        if (expectedShares == 0) revert InvalidShares(expectedShares);
         if (
             lastUserInteractionTimestamp[msg.sender] > 0 &&
             lastUserInteractionTimestamp[msg.sender] + interactionDelay >
@@ -682,6 +684,10 @@ contract PassiveLiquidityVault is
             ? ((deployedLiquidity * WAD) / totalAssetsValue)
             : 0;
         emit UtilizationRateUpdated(currentUtilization, projectedUtilization);
+    }
+
+    function cleanInactiveProtocols() external onlyManager {
+        _getDeploymentAndApprovalsWithCleanup(address(0));
     }
 
     // ============ Signature Functions ============
