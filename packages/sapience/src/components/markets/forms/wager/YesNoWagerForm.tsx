@@ -68,6 +68,22 @@ export default function YesNoWagerForm({
     wagerAmount,
   });
 
+  // Calculate payout for share card (same logic as Betslip)
+  const payoutForShare = useMemo(() => {
+    if (!quoteData?.maxSize) return undefined;
+    try {
+      const maxSizeBigInt = BigInt(quoteData.maxSize);
+      const absMaxSize = maxSizeBigInt < 0n ? -maxSizeBigInt : maxSizeBigInt;
+      const numValue = Number(absMaxSize) / 1e18;
+      const precision = 2;
+      const factor = 10 ** precision;
+      const roundedValue = Math.floor(numValue * factor) / factor;
+      return roundedValue.toFixed(precision);
+    } catch {
+      return undefined;
+    }
+  }, [quoteData?.maxSize]);
+
   // Use the createTrade hook
   const { createTrade, isLoading: isCreatingTrade } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
@@ -82,6 +98,12 @@ export default function YesNoWagerForm({
     onSuccess: () => {
       methods.reset();
       onSuccess?.();
+    },
+    shareData: {
+      question: marketGroupData.question || '',
+      side: predictionValue === YES_SQRT_PRICE_X96 ? 'Yes' : 'No',
+      symbol: marketGroupData.collateralSymbol || 'USDC',
+      payout: payoutForShare,
     },
   });
 

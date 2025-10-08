@@ -268,6 +268,7 @@ export function StatsRow({
   scale = 1,
   showReturn = true,
   forceToWinGreen = false,
+  hidePayout = false,
 }: {
   wager?: string;
   payout?: string;
@@ -276,6 +277,7 @@ export function StatsRow({
   scale?: number;
   showReturn?: boolean;
   forceToWinGreen?: boolean;
+  hidePayout?: boolean;
 }) {
   const parseNumber = (val?: string | null): number => {
     if (!val) return 0;
@@ -446,6 +448,7 @@ export function Footer({
   scale = 1,
   showReturn = true,
   forceToWinGreen = false,
+  hidePayout = false,
 }: {
   addr: string;
   avatarUrl?: string | null;
@@ -456,6 +459,7 @@ export function Footer({
   scale?: number;
   showReturn?: boolean;
   forceToWinGreen?: boolean;
+  hidePayout?: boolean;
 }) {
   return (
     <div
@@ -487,6 +491,7 @@ export function Footer({
           symbol={symbol}
           potentialReturn={potentialReturn}
           scale={scale}
+          hidePayout={hidePayout}
           showReturn={showReturn}
           forceToWinGreen={forceToWinGreen}
         />

@@ -23,6 +23,13 @@ export interface CreateLPParams {
   slippagePercent: number;
   enabled?: boolean;
   collateralTokenAddress?: `0x${string}`;
+  // Optional share card data
+  shareData?: {
+    question: string;
+    symbol: string;
+    lowPrice?: string;
+    highPrice?: string;
+  };
 }
 
 /**
@@ -56,6 +63,7 @@ export function useCreateLP({
   slippagePercent,
   enabled = true,
   collateralTokenAddress,
+  shareData,
 }: CreateLPParams): CreateLPResult {
   const { toast } = useToast();
   const [error, setError] = useState<Error | null>(null);
@@ -184,6 +192,22 @@ export function useCreateLP({
         deadline,
       };
       console.log('Liquidity Params:', liquidityParams);
+
+      // Store share data in sessionStorage if provided
+      if (shareData && typeof window !== 'undefined') {
+        try {
+          const lpData = {
+            question: shareData.question,
+            symbol: shareData.symbol,
+            lowPrice: shareData.lowPrice,
+            highPrice: shareData.highPrice,
+            collateral: collateralAmount,
+          };
+          sessionStorage.setItem('sapience:lp-data-temp', JSON.stringify(lpData));
+        } catch (err) {
+          console.error('Failed to store LP data:', err);
+        }
+      }
 
       setProcessingTx(true);
       await sapienceWriteContract({
