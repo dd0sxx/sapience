@@ -1,14 +1,14 @@
-import { Service, type IAgentRuntime, elizaLogger } from '@elizaos/core';
+import { Service, type IAgentRuntime, elizaLogger } from "@elizaos/core";
 
 type McpJsonRpcRequest = {
-  jsonrpc: '2.0';
+  jsonrpc: "2.0";
   id: number | string;
   method: string;
   params?: Record<string, any>;
 };
 
 type McpJsonRpcResponse<T = any> = {
-  jsonrpc: '2.0';
+  jsonrpc: "2.0";
   id: number | string | null;
   result?: T;
   error?: { code: number; message: string; data?: any };
@@ -20,8 +20,9 @@ export type CallToolResult = {
 };
 
 export class SapienceService extends Service {
-  static serviceType = 'sapience';
-  capabilityDescription = 'Access Sapience MCP tools and resources over HTTP transport';
+  static serviceType = "sapience";
+  capabilityDescription =
+    "Access Sapience MCP tools and resources over HTTP transport";
 
   private initialized = false;
   private nextId = 1;
@@ -44,8 +45,8 @@ export class SapienceService extends Service {
         const url = this.serverNameToUrl.get(name);
         if (!url) continue;
         await fetch(`${this.getMcpEndpoint(url)}`, {
-          method: 'DELETE',
-          headers: { 'mcp-session-id': sessionId },
+          method: "DELETE",
+          headers: { "mcp-session-id": sessionId },
         }).catch(() => {});
       }
     } catch (_e) {
@@ -60,24 +61,24 @@ export class SapienceService extends Service {
     if (this.initialized) return;
     try {
       const settings = (this.runtime?.character?.settings as any) || {};
-      const servers: Record<string, { type?: string; url: string }> =
-        settings?.sapience?.servers || {
-          sapience: { type: 'http', url: 'https://api.sapience.xyz' },
-        };
+      const servers: Record<string, { type?: string; url: string }> = settings
+        ?.sapience?.servers || {
+        sapience: { type: "http", url: "https://api.sapience.xyz" },
+      };
 
       for (const [name, def] of Object.entries(servers)) {
         if (!def?.url) continue;
-        const baseUrl = def.url.replace(/\/$/, '');
+        const baseUrl = def.url.replace(/\/$/, "");
         this.serverNameToUrl.set(name, baseUrl);
       }
 
       // Lazily create sessions on first use
       this.initialized = true;
-      elizaLogger.info('[SapienceService] Initialized endpoints', {
+      elizaLogger.info("[SapienceService] Initialized endpoints", {
         servers: Array.from(this.serverNameToUrl.keys()),
       } as any);
     } catch (error) {
-      elizaLogger.error('[SapienceService] Failed to initialize', error);
+      elizaLogger.error("[SapienceService] Failed to initialize", error);
       throw error;
     }
   }
@@ -87,72 +88,86 @@ export class SapienceService extends Service {
     if (existing) return existing;
 
     const url = this.serverNameToUrl.get(serverName);
-    if (!url) throw new Error(`[SapienceService] Unknown server: ${serverName}`);
+    if (!url)
+      throw new Error(`[SapienceService] Unknown server: ${serverName}`);
 
     const req: McpJsonRpcRequest = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: this.nextId++,
-      method: 'server/initialize',
-      params: { clientInfo: { name: 'elizaos', version: '1.0.0' } },
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-03-26",
+        capabilities: {},
+        clientInfo: { name: "elizaos", version: "1.0.0" },
+      },
     };
 
     const res = await fetch(`${this.getMcpEndpoint(url)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Server requires client to accept both JSON and SSE
+        Accept: "application/json, text/event-stream",
+      },
       body: JSON.stringify(req),
     });
 
     if (!res.ok) {
-      const text = await res.text().catch(() => '');
+      const text = await res.text().catch(() => "");
       throw new Error(
-        `[SapienceService] Failed to initialize MCP session (${res.status}): ${text}`
+        `[SapienceService] Failed to initialize MCP session (${res.status}): ${text}`,
       );
     }
 
-    const sessionId = res.headers.get('mcp-session-id');
-    if (!sessionId) throw new Error('[SapienceService] Missing mcp-session-id header');
+    const sessionId = res.headers.get("mcp-session-id");
+    if (!sessionId)
+      throw new Error("[SapienceService] Missing mcp-session-id header");
     this.serverNameToSessionId.set(serverName, sessionId);
     return sessionId;
   }
 
   private getMcpEndpoint(baseUrl: string): string {
-    const normalized = baseUrl.replace(/\/$/, '');
-    return normalized.endsWith('/mcp') ? normalized : `${normalized}/mcp`;
+    const normalized = baseUrl.replace(/\/$/, "");
+    return normalized.endsWith("/mcp") ? normalized : `${normalized}/mcp`;
   }
 
   async callTool(
     serverName: string,
     toolName: string,
-    args: Record<string, any>
+    args: Record<string, any>,
   ): Promise<CallToolResult> {
     await this.initializeFromRuntime();
     const url = this.serverNameToUrl.get(serverName);
-    if (!url) throw new Error(`[SapienceService] Unknown server: ${serverName}`);
+    if (!url)
+      throw new Error(`[SapienceService] Unknown server: ${serverName}`);
     const sessionId = await this.ensureSession(serverName);
 
     const req: McpJsonRpcRequest = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: this.nextId++,
-      method: 'tools/call',
+      method: "tools/call",
       params: { name: toolName, arguments: args || {} },
     };
 
     const res = await fetch(`${this.getMcpEndpoint(url)}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        Accept: "application/json, text/event-stream",
       },
       body: JSON.stringify(req),
     });
 
-    const json = (await res.json().catch(() => ({}))) as McpJsonRpcResponse<CallToolResult>;
+    const json = (await res
+      .json()
+      .catch(() => ({}))) as McpJsonRpcResponse<CallToolResult>;
     if (!res.ok || json.error) {
       return {
         isError: true,
         content: [
           {
-            type: 'text',
+            type: "text",
             text: json.error?.message || `HTTP ${res.status}`,
           },
         ],
@@ -163,36 +178,40 @@ export class SapienceService extends Service {
 
   async readResource(
     serverName: string,
-    uri: string
+    uri: string,
   ): Promise<{ isError?: boolean; content?: Array<any> }> {
     await this.initializeFromRuntime();
     const url = this.serverNameToUrl.get(serverName);
-    if (!url) throw new Error(`[SapienceService] Unknown server: ${serverName}`);
+    if (!url)
+      throw new Error(`[SapienceService] Unknown server: ${serverName}`);
     const sessionId = await this.ensureSession(serverName);
 
     const req: McpJsonRpcRequest = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: this.nextId++,
-      method: 'resources/read',
+      method: "resources/read",
       params: { uri },
     };
 
     const res = await fetch(`${this.getMcpEndpoint(url)}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        Accept: "application/json, text/event-stream",
       },
       body: JSON.stringify(req),
     });
 
-    const json = (await res.json().catch(() => ({}))) as McpJsonRpcResponse<any>;
+    const json = (await res
+      .json()
+      .catch(() => ({}))) as McpJsonRpcResponse<any>;
     if (!res.ok || json.error) {
       return {
         isError: true,
         content: [
           {
-            type: 'text',
+            type: "text",
             text: json.error?.message || `HTTP ${res.status}`,
           },
         ],
@@ -201,5 +220,3 @@ export class SapienceService extends Service {
     return (json.result as any) || { content: [] };
   }
 }
-
-

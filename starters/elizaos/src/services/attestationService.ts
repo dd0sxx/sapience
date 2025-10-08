@@ -1,8 +1,8 @@
-import { elizaLogger, IAgentRuntime, ModelType, Memory } from '@elizaos/core';
+import { elizaLogger, IAgentRuntime, ModelType, Memory } from "@elizaos/core";
 // @ts-ignore - Sapience plugin types not available at build time
-import type { SapienceService } from './sapienceService.js';
-import { buildAttestationCalldata } from '../utils/eas.js';
-import { privateKeyToAddress } from 'viem/accounts';
+import type { SapienceService } from "./sapienceService.js";
+import { buildAttestationCalldata } from "../utils/eas.js";
+import { privateKeyToAddress } from "viem/accounts";
 
 interface AttestationConfig {
   enabled: boolean;
@@ -42,7 +42,7 @@ export class AttestationService {
       minConfidence: 0.6,
       batchSize: 5,
       probabilityChangeThreshold: parseFloat(
-        process.env.PROBABILITY_CHANGE_THRESHOLD || '10'
+        process.env.PROBABILITY_CHANGE_THRESHOLD || "10",
       ), // Default 10% change
     };
 
@@ -50,8 +50,8 @@ export class AttestationService {
     globalInstance = this;
 
     // Initialize service asynchronously
-    this.initializeService().catch(error => {
-      elizaLogger.error('[AttestationService] Failed to initialize:', error);
+    this.initializeService().catch((error) => {
+      elizaLogger.error("[AttestationService] Failed to initialize:", error);
     });
   }
 
@@ -64,73 +64,73 @@ export class AttestationService {
 
   private async initializeService(): Promise<void> {
     try {
-      elizaLogger.info('[AttestationService] Initializing attestation service');
+      elizaLogger.info("[AttestationService] Initializing attestation service");
 
       // Load config from environment or character settings
       const settings = (this.runtime?.character?.settings as any)
         ?.autonomousMode;
       if (settings) {
         this.config = { ...this.config, ...settings };
-        elizaLogger.info('[AttestationService] Config loaded');
+        elizaLogger.info("[AttestationService] Config loaded");
       }
 
       // Wait for Sapience plugin to be available before starting
       if (this.config.enabled) {
         elizaLogger.info(
-          '[AttestationService] Waiting for Sapience plugin to initialize...'
+          "[AttestationService] Waiting for Sapience plugin to initialize...",
         );
         await this.waitForSapiencePlugin();
         await this.startAutonomous();
       }
     } catch (error) {
-      elizaLogger.error('[AttestationService] Failed to initialize:', error);
+      elizaLogger.error("[AttestationService] Failed to initialize:", error);
     }
   }
 
   private async waitForSapiencePlugin(
     maxRetries: number = 30,
-    retryDelay: number = 1000
+    retryDelay: number = 1000,
   ): Promise<void> {
     for (let i = 0; i < maxRetries; i++) {
       const sapienceService = this.runtime.getService(
-        'sapience'
+        "sapience",
       ) as SapienceService;
       if (sapienceService) {
-        elizaLogger.info('[AttestationService] Sapience plugin is available');
+        elizaLogger.info("[AttestationService] Sapience plugin is available");
         return;
       }
 
       if (i === 0) {
         elizaLogger.info(
-          '[AttestationService] Sapience plugin not ready, waiting...'
+          "[AttestationService] Sapience plugin not ready, waiting...",
         );
       }
 
-      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
 
     throw new Error(
-      '[AttestationService] Sapience plugin failed to initialize after waiting'
+      "[AttestationService] Sapience plugin failed to initialize after waiting",
     );
   }
 
   async startAutonomous(): Promise<void> {
     if (this.isRunning) {
-      elizaLogger.warn('[AttestationService] Service already running');
+      elizaLogger.warn("[AttestationService] Service already running");
       return;
     }
 
     try {
       elizaLogger.info(
-        `[AttestationService] Starting (interval: ${this.config.interval}ms)`
+        `[AttestationService] Starting (interval: ${this.config.interval}ms)`,
       );
       console.log(`\nautonomous attestation started:`);
       console.log(`   • interval: ${this.config.interval / 1000} seconds`);
       console.log(
-        `   • min confidence: ${(this.config.minConfidence * 100).toFixed(0)}%`
+        `   • min confidence: ${(this.config.minConfidence * 100).toFixed(0)}%`,
       );
       console.log(
-        `   • batch size: ${this.config.batchSize} markets per cycle\n`
+        `   • batch size: ${this.config.batchSize} markets per cycle\n`,
       );
 
       this.isRunning = true;
@@ -140,21 +140,21 @@ export class AttestationService {
         try {
           await this.attestationCycle();
         } catch (error) {
-          elizaLogger.error('[AttestationService] Cycle error:', error);
+          elizaLogger.error("[AttestationService] Cycle error:", error);
         }
       }, this.config.interval);
 
       // Run initial cycle immediately
       await this.attestationCycle();
     } catch (error) {
-      elizaLogger.error('[AttestationService] Failed to start:', error);
+      elizaLogger.error("[AttestationService] Failed to start:", error);
       this.isRunning = false;
     }
   }
 
   async stop(): Promise<void> {
     if (!this.isRunning) {
-      elizaLogger.warn('[AttestationService] Service not running');
+      elizaLogger.warn("[AttestationService] Service not running");
       return;
     }
 
@@ -164,20 +164,20 @@ export class AttestationService {
     }
 
     this.isRunning = false;
-    elizaLogger.info('[AttestationService] Stopped');
-    console.log('autonomous attestation stopped\n');
+    elizaLogger.info("[AttestationService] Stopped");
+    console.log("autonomous attestation stopped\n");
   }
 
   private async attestationCycle(): Promise<void> {
-    elizaLogger.info('[AttestationService] Starting attestation cycle');
+    elizaLogger.info("[AttestationService] Starting attestation cycle");
 
     try {
       const sapienceService = this.runtime.getService(
-        'sapience'
+        "sapience",
       ) as SapienceService;
       if (!sapienceService) {
         elizaLogger.error(
-          '[AttestationService] Sapience service not available - will retry next cycle'
+          "[AttestationService] Sapience service not available - will retry next cycle",
         );
         return;
       }
@@ -187,36 +187,36 @@ export class AttestationService {
 
       // Fetch active markets
       const marketsResponse = await sapienceService.callTool(
-        'sapience',
-        'list_active_markets',
-        {}
+        "sapience",
+        "list_active_markets",
+        {},
       );
 
       if (!marketsResponse || !marketsResponse.content) {
-        elizaLogger.error('[AttestationService] Failed to fetch markets');
+        elizaLogger.error("[AttestationService] Failed to fetch markets");
         return;
       }
 
-      const marketsText = marketsResponse.content?.[0]?.text ?? '[]';
+      const marketsText = marketsResponse.content?.[0]?.text ?? "[]";
       const markets = JSON.parse(marketsText);
       elizaLogger.info(
-        `[AttestationService] Found ${markets.length} active markets`
+        `[AttestationService] Found ${markets.length} active markets`,
       );
 
       // Filter markets for attestation based on time and probability changes
       const candidateMarkets = await this.filterMarketsForAttestation(markets);
 
       elizaLogger.info(
-        `[AttestationService] ${candidateMarkets.length} markets eligible for attestation`
+        `[AttestationService] ${candidateMarkets.length} markets eligible for attestation`,
       );
 
       console.log(
-        '📊 Markets eligible for attestation:',
+        "📊 Markets eligible for attestation:",
         candidateMarkets.slice(0, 3).map((m: any) => ({
           id: m.id,
-          question: m.question?.substring(0, 50) + '...',
+          question: m.question?.substring(0, 50) + "...",
           reason: m._attestationReason,
-        }))
+        })),
       );
 
       // Process markets in batches
@@ -229,16 +229,16 @@ export class AttestationService {
           const marketId = market.marketId || market.id;
           elizaLogger.error(
             `[AttestationService] Failed to process market ${market.id} (marketId: ${marketId}):`,
-            error
+            error,
           );
         }
       }
 
       elizaLogger.info(
-        '[AttestationService] Attestation cycle completed (retrieval test only)'
+        "[AttestationService] Attestation cycle completed (retrieval test only)",
       );
     } catch (error) {
-      elizaLogger.error('[AttestationService] Cycle failed:', error);
+      elizaLogger.error("[AttestationService] Cycle failed:", error);
     }
   }
 
@@ -249,22 +249,22 @@ export class AttestationService {
     const walletAddress = await this.getWalletAddress();
     if (!walletAddress) {
       elizaLogger.error(
-        '[AttestationService] Could not determine wallet address'
+        "[AttestationService] Could not determine wallet address",
       );
       return candidateMarkets;
     }
 
     console.log(
-      `[AttestationService] Filtering ${markets.length} markets using wallet address: ${walletAddress}`
+      `[AttestationService] Filtering ${markets.length} markets using wallet address: ${walletAddress}`,
     );
 
     // Get ALL attestations by our wallet address once
     console.log(
-      `[AttestationService] Fetching all attestations for wallet: ${walletAddress}`
+      `[AttestationService] Fetching all attestations for wallet: ${walletAddress}`,
     );
     const allMyAttestations = await this.getAllMyAttestations(walletAddress);
     console.log(
-      `[AttestationService] Found ${allMyAttestations.length} total attestations by this wallet`
+      `[AttestationService] Found ${allMyAttestations.length} total attestations by this wallet`,
     );
 
     for (const market of markets) {
@@ -274,18 +274,18 @@ export class AttestationService {
         const marketId = market.marketId || market.id;
 
         console.log(
-          `[AttestationService] Checking market: id=${market.id}, marketId=${marketId}, address=${marketAddress?.substring(0, 8)}..., question="${market.question?.substring(0, 40)}..."`
+          `[AttestationService] Checking market: id=${market.id}, marketId=${marketId}, address=${marketAddress?.substring(0, 8)}..., question="${market.question?.substring(0, 40)}..."`,
         );
 
         // Find attestation matching BOTH marketAddress AND marketId
         const matchingAttestation = allMyAttestations.find(
-          att =>
+          (att) =>
             att.marketAddress?.toLowerCase() === marketAddress?.toLowerCase() &&
-            att.marketId?.toString() === marketId?.toString()
+            att.marketId?.toString() === marketId?.toString(),
         );
 
         console.log(
-          `[AttestationService] Found matching attestation: ${matchingAttestation ? 'YES' : 'NO'}`
+          `[AttestationService] Found matching attestation: ${matchingAttestation ? "YES" : "NO"}`,
         );
 
         const lastAttestation = matchingAttestation || null;
@@ -308,12 +308,12 @@ export class AttestationService {
           if (currentPrediction && lastAttestation.prediction) {
             // Decode the previous prediction from the uint160 value
             const previousProbability = this.decodeProbability(
-              lastAttestation.prediction
+              lastAttestation.prediction,
             );
 
             if (previousProbability !== null) {
               const probabilityChange = Math.abs(
-                currentPrediction.probability - previousProbability
+                currentPrediction.probability - previousProbability,
               );
 
               if (probabilityChange >= this.config.probabilityChangeThreshold) {
@@ -322,7 +322,7 @@ export class AttestationService {
                 continue;
               } else {
                 console.log(
-                  `[AttestationService] Market ${marketId}: 24h+ elapsed but probability only changed by ${probabilityChange.toFixed(1)}% (threshold: ${this.config.probabilityChangeThreshold}%) - skipping`
+                  `[AttestationService] Market ${marketId}: 24h+ elapsed but probability only changed by ${probabilityChange.toFixed(1)}% (threshold: ${this.config.probabilityChangeThreshold}%) - skipping`,
                 );
               }
             }
@@ -333,14 +333,14 @@ export class AttestationService {
 
         // For markets < 24h old, we don't need to check them at all
         console.log(
-          `[AttestationService] Market ${marketId}: Only ${hoursSinceLastAttestation.toFixed(1)}h since last attestation - skipping`
+          `[AttestationService] Market ${marketId}: Only ${hoursSinceLastAttestation.toFixed(1)}h since last attestation - skipping`,
         );
         continue;
       } catch (error) {
         const marketId = market.marketId || market.id;
         elizaLogger.warn(
           `[AttestationService] Could not check attestation status for market ${market.id} (marketId: ${marketId}):`,
-          error
+          error,
         );
         // If we can't check, consider it eligible to be safe
         market._attestationReason = `Could not verify previous attestation (marketId: ${marketId})`;
@@ -390,7 +390,7 @@ export class AttestationService {
         ModelType.TEXT_SMALL,
         {
           prompt: predictionPrompt,
-        }
+        },
       );
 
       let prediction;
@@ -401,7 +401,7 @@ export class AttestationService {
         if (jsonMatch) {
           prediction = JSON.parse(jsonMatch[0]);
         } else {
-          throw new Error('Model did not return JSON format for prediction');
+          throw new Error("Model did not return JSON format for prediction");
         }
       }
 
@@ -411,36 +411,40 @@ export class AttestationService {
         !prediction.reasoning ||
         prediction.confidence === undefined
       ) {
-        throw new Error('Model returned incomplete prediction data');
+        throw new Error("Model returned incomplete prediction data");
       }
 
       return prediction;
     } catch (error) {
       elizaLogger.error(
         `[AttestationService] Failed to generate prediction for market ${market.id}:`,
-        error
+        error,
       );
       return null;
     }
   }
 
-
   private async getWalletAddress(): Promise<string | null> {
     try {
-      const privateKey = process.env.EVM_PRIVATE_KEY || process.env.PRIVATE_KEY || process.env.WALLET_PRIVATE_KEY;
+      const privateKey =
+        process.env.EVM_PRIVATE_KEY ||
+        process.env.PRIVATE_KEY ||
+        process.env.WALLET_PRIVATE_KEY;
 
       if (!privateKey) {
-        elizaLogger.error('[AttestationService] No private key found in environment variables');
+        elizaLogger.error(
+          "[AttestationService] No private key found in environment variables",
+        );
         return null;
       }
       const knownAddress = privateKeyToAddress(privateKey as `0x${string}`);
 
-      console.log('[AttestationService] Using wallet address:', knownAddress);
+      console.log("[AttestationService] Using wallet address:", knownAddress);
       return knownAddress.toLowerCase();
     } catch (error) {
       elizaLogger.error(
-        '[AttestationService] Failed to get wallet address:',
-        error
+        "[AttestationService] Failed to get wallet address:",
+        error,
       );
       return null;
     }
@@ -449,34 +453,34 @@ export class AttestationService {
   private async getAllMyAttestations(walletAddress: string): Promise<any[]> {
     try {
       const sapienceService = this.runtime.getService(
-        'sapience'
+        "sapience",
       ) as SapienceService;
 
       console.log(
-        `[AttestationService] Querying all attestations for wallet: ${walletAddress}`
+        `[AttestationService] Querying all attestations for wallet: ${walletAddress}`,
       );
 
       // Get all attestations by our wallet address
       const result = await sapienceService.callTool(
-        'sapience',
-        'get_attestations_by_address',
+        "sapience",
+        "get_attestations_by_address",
         {
           attesterAddress: walletAddress,
           // Don't filter by marketId - we want ALL attestations for this wallet
-        }
+        },
       );
 
       if (result && result.content) {
-        const text = result.content?.[0]?.text ?? '[]';
+        const text = result.content?.[0]?.text ?? "[]";
         const attestations = JSON.parse(text);
         console.log(
-          `[AttestationService] Retrieved ${attestations.length} attestations for wallet ${walletAddress}`
+          `[AttestationService] Retrieved ${attestations.length} attestations for wallet ${walletAddress}`,
         );
 
         // Sort by createdAt descending so we get most recent first
         return attestations.sort(
           (a: any, b: any) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
       }
 
@@ -484,7 +488,7 @@ export class AttestationService {
     } catch (error) {
       elizaLogger.error(
         `[AttestationService] Failed to get all attestations for wallet ${walletAddress}:`,
-        error
+        error,
       );
       return [];
     }
@@ -501,7 +505,7 @@ export class AttestationService {
       // For now, let's implement a basic decoder
       // The exact formula is: sqrtPriceX96 = sqrt(probability/100) * Q96
       const predictionBigInt = BigInt(predictionValue);
-      const Q96 = BigInt('79228162514264337593543950336');
+      const Q96 = BigInt("79228162514264337593543950336");
 
       // Reverse: sqrt(price) = (sqrtPriceX96 * 10^18) / Q96
       const sqrtPrice =
@@ -518,17 +522,17 @@ export class AttestationService {
     } catch (error) {
       elizaLogger.warn(
         `[AttestationService] Failed to decode probability ${predictionValue}:`,
-        error
+        error,
       );
       return null;
     }
   }
 
   private async testAttestationRetrieval(
-    sapienceService: SapienceService
+    sapienceService: SapienceService,
   ): Promise<void> {
     try {
-      elizaLogger.info('[AttestationService] Testing attestation retrieval...');
+      elizaLogger.info("[AttestationService] Testing attestation retrieval...");
 
       // Try to get the wallet address from the environment
       const privateKey =
@@ -536,10 +540,13 @@ export class AttestationService {
         process.env.WALLET_PRIVATE_KEY ||
         process.env.EVM_PRIVATE_KEY;
       if (
-        process.env.NODE_ENV !== 'production' &&
-        process.env.NODE_ENV !== 'staging'
+        process.env.NODE_ENV !== "production" &&
+        process.env.NODE_ENV !== "staging"
       ) {
-        console.log('[AttestationService] Private key available:', !!privateKey);
+        console.log(
+          "[AttestationService] Private key available:",
+          !!privateKey,
+        );
       }
 
       if (privateKey) {
@@ -548,29 +555,29 @@ export class AttestationService {
 
         // For now, let's try calling get_recent_attestations to see what's in the DB
         const recentResult = await sapienceService.callTool(
-          'sapience',
-          'get_recent_attestations',
-          { limit: 5 }
+          "sapience",
+          "get_recent_attestations",
+          { limit: 5 },
         );
 
         console.log(
-          '[AttestationService] Recent attestations result:',
-          JSON.stringify(recentResult, null, 2)
+          "[AttestationService] Recent attestations result:",
+          JSON.stringify(recentResult, null, 2),
         );
 
         if (recentResult && recentResult.content) {
-          const text = recentResult.content?.[0]?.text ?? '[]';
+          const text = recentResult.content?.[0]?.text ?? "[]";
           const attestations = JSON.parse(text);
           console.log(
-            `[AttestationService] Found ${attestations.length} recent attestations in DB`
+            `[AttestationService] Found ${attestations.length} recent attestations in DB`,
           );
 
           if (attestations.length > 0) {
             console.log(
-              '[AttestationService] Sample attestation:',
-              attestations[0]
+              "[AttestationService] Sample attestation:",
+              attestations[0],
             );
-            console.log('[AttestationService] Attester addresses in DB:', [
+            console.log("[AttestationService] Attester addresses in DB:", [
               ...new Set(attestations.map((a: any) => a.attester)),
             ]);
           }
@@ -579,17 +586,17 @@ export class AttestationService {
         // TODO: Once we figure out how to get the wallet address properly,
         // we can test get_attestations_by_address with the correct address
         console.log(
-          '[AttestationService] Need to implement proper address derivation from private key'
+          "[AttestationService] Need to implement proper address derivation from private key",
         );
       } else {
         elizaLogger.warn(
-          '[AttestationService] No private key found in environment'
+          "[AttestationService] No private key found in environment",
         );
       }
     } catch (error) {
       elizaLogger.error(
-        '[AttestationService] Attestation retrieval test failed:',
-        error
+        "[AttestationService] Attestation retrieval test failed:",
+        error,
       );
     }
   }
@@ -598,10 +605,10 @@ export class AttestationService {
     try {
       const marketId = market.marketId || market.id;
       elizaLogger.info(
-        `[AttestationService] Analyzing market ${market.id} (marketId: ${marketId})`
+        `[AttestationService] Analyzing market ${market.id} (marketId: ${marketId})`,
       );
       console.log(
-        `analyzing market #${marketId}: ${market.question?.substring(0, 80)}...`
+        `analyzing market #${marketId}: ${market.question?.substring(0, 80)}...`,
       );
       console.log(`reason for attestation: ${market._attestationReason}`);
 
@@ -610,20 +617,20 @@ export class AttestationService {
 
       if (!prediction) {
         elizaLogger.error(
-          `[AttestationService] Failed to generate prediction for market ${market.id}`
+          `[AttestationService] Failed to generate prediction for market ${market.id}`,
         );
         return;
       }
 
       console.log(
-        `prediction: ${prediction.probability}% yes (confidence: ${prediction.confidence})`
+        `prediction: ${prediction.probability}% yes (confidence: ${prediction.confidence})`,
       );
       console.log(`reasoning: ${prediction.reasoning}`);
 
       // Check confidence threshold
       if (prediction.confidence < this.config.minConfidence) {
         elizaLogger.info(
-          `[AttestationService] Skipping market ${market.id} - confidence ${prediction.confidence} below threshold`
+          `[AttestationService] Skipping market ${market.id} - confidence ${prediction.confidence} below threshold`,
         );
         return;
       }
@@ -635,20 +642,20 @@ export class AttestationService {
           address:
             market.marketGroupAddress ||
             market.contractAddress ||
-            '0x0000000000000000000000000000000000000000',
+            "0x0000000000000000000000000000000000000000",
           question: market.question,
         },
         prediction,
         parseInt(
           (process.env.CHAIN_ID as string) ||
             ((this.runtime?.character as any)?.settings?.chainId as string) ||
-            '42161'
-        )
+            "42161",
+        ),
       );
 
       if (!attestationData) {
         elizaLogger.error(
-          `[AttestationService] Failed to build attestation for market ${market.id}`
+          `[AttestationService] Failed to build attestation for market ${market.id}`,
         );
         return;
       }
@@ -657,29 +664,29 @@ export class AttestationService {
       const transactionData = {
         to: attestationData.to,
         data: attestationData.data,
-        value: attestationData.value || '0',
+        value: attestationData.value || "0",
       };
 
       // Try to submit using submitTransactionAction
       const actions = this.runtime.actions || [];
-      const submitAction = actions.find(a => a.name === 'SUBMIT_TRANSACTION');
+      const submitAction = actions.find((a) => a.name === "SUBMIT_TRANSACTION");
 
       if (submitAction) {
         try {
           // Create a message for the submit action
           const transactionMessage: Memory = {
-            entityId: '00000000-0000-0000-0000-000000000000' as any,
+            entityId: "00000000-0000-0000-0000-000000000000" as any,
             agentId: this.runtime.agentId,
-            roomId: '00000000-0000-0000-0000-000000000000' as any,
+            roomId: "00000000-0000-0000-0000-000000000000" as any,
             content: {
               text: `Submit this transaction: ${JSON.stringify(transactionData)}`,
-              action: 'SUBMIT_TRANSACTION',
+              action: "SUBMIT_TRANSACTION",
             },
             createdAt: Date.now(),
           };
 
           elizaLogger.info(
-            `[AttestationService] Submitting transaction to ${attestationData.to}`
+            `[AttestationService] Submitting transaction to ${attestationData.to}`,
           );
 
           // Execute the submit transaction action
@@ -688,22 +695,22 @@ export class AttestationService {
             transactionMessage,
             undefined,
             {},
-            undefined
+            undefined,
           );
 
           elizaLogger.info(
-            '[AttestationService] Transaction submission completed'
+            "[AttestationService] Transaction submission completed",
           );
         } catch (error) {
           elizaLogger.error(
             `[AttestationService] Failed to submit transaction:`,
-            error
+            error,
           );
           // Continue even if submission fails - still record the attestation attempt
         }
       } else {
         elizaLogger.warn(
-          '[AttestationService] SUBMIT_TRANSACTION action not available'
+          "[AttestationService] SUBMIT_TRANSACTION action not available",
         );
       }
 
@@ -715,17 +722,17 @@ export class AttestationService {
       });
 
       elizaLogger.info(
-        `[AttestationService] Market ${market.id} attested: ${prediction.probability}% YES (confidence: ${prediction.confidence})`
+        `[AttestationService] Market ${market.id} attested: ${prediction.probability}% YES (confidence: ${prediction.confidence})`,
       );
 
       // Concise attestation summary (max 180 chars)
-      const attestationSummary = `market #${market.id}: ${prediction.probability}% yes. ${prediction.reasoning.substring(0, 100)}${prediction.reasoning.length > 100 ? '...' : ''}`;
+      const attestationSummary = `market #${market.id}: ${prediction.probability}% yes. ${prediction.reasoning.substring(0, 100)}${prediction.reasoning.length > 100 ? "..." : ""}`;
       console.log(`attested: ${attestationSummary}`);
     } catch (error) {
       const marketId = market.marketId || market.id;
       elizaLogger.error(
         `[AttestationService] Failed to process market ${market.id} (marketId: ${marketId}):`,
-        error
+        error,
       );
     }
   }
@@ -749,9 +756,9 @@ export class AttestationService {
       lastCycle:
         this.attestationHistory.size > 0
           ? Math.max(
-              ...Array.from(this.attestationHistory.values()).map(attestation =>
-                attestation.timestamp.getTime()
-              )
+              ...Array.from(this.attestationHistory.values()).map(
+                (attestation) => attestation.timestamp.getTime(),
+              ),
             )
           : null,
     };

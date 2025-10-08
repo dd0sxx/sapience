@@ -54,6 +54,15 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
       );
     }
 
+    // Debug: log headers relevant to MCP negotiation
+    const acceptHeader = req.headers['accept'];
+    const contentTypeHeader = req.headers['content-type'];
+    console.log('[MCP] Headers', {
+      accept: acceptHeader,
+      contentType: contentTypeHeader,
+      hasSessionId: !!req.headers['mcp-session-id'],
+    });
+
     // Ensure request body is an object for initialization detection
     let body: unknown = req.body;
     if (typeof body === 'string') {
@@ -102,6 +111,10 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
         (isInitializeRequest(body as unknown as object) ||
           isJsonRpcInitialize(body))
       ) {
+        console.log('[MCP] Initialize detection flags', {
+          isInitializeRequest: isInitializeRequest(body as unknown as object),
+          isJsonRpcInitialize: isJsonRpcInitialize(body),
+        });
         if (DEBUG_MCP_LOGS) {
           console.log(
             `New session request: ${
@@ -117,7 +130,7 @@ export const handleMcpAppRequests = (app: express.Application, url: string) => {
         const eventStore = new InMemoryEventStore();
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
-          // enableJsonResponse: true,
+          enableJsonResponse: true,
           eventStore, // Enable resumability
           onsessioninitialized: (sessionId) => {
             // Store the transport by session ID
