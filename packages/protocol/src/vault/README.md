@@ -20,16 +20,16 @@ Additional views/utilities:
 ### Core functionality
 - **Request-based operations**: One pending request per user at a time (deposit or withdrawal)
 - **Interaction delay**: Users must wait between requests (default: 1 day)
-- **Request expiration**: Requests expire (default: 2 minutes) and can be cancelled by the user
-- **EOA management**: A designated manager processes requests and deploys/recalls funds
+- **Request expiration**: Requests expire (default: 10 minutes) and can be cancelled by the user
+- **EOA management**: A designated manager processes requests (individually or in batches) and deploys/recalls funds
 - **Utilization limits**: Max utilization (default: 80%) enforced when approving deployments
 - **Emergency mode**: Proportional withdrawals from on-vault balance only
+- **Share locking**: Shares pending withdrawal cannot be transferred until the request is processed or cancelled
 
 ### Safety features
 - **Reentrancy protection** via `ReentrancyGuard`
 - **Pausable** by owner
 - **Access control**: Owner vs Manager responsibilities
-- **Minimum deposit/withdraw size**: Prevents DoS with tiny amounts (`MIN_DEPOSIT`)
 
 ## Architecture
 
@@ -46,13 +46,16 @@ Additional views/utilities:
    - `unconfirmedAssets` tracks assets held for unprocessed deposit requests
 
 3. **Fund Deployment**
-   - Manager can `approveFundsUsage(protocol, amount)` to external protocols
-   - Active protocols tracked; utilization checked before approvals
-   - `totalDeployed()` sums collateral held in supported protocols
+   - Manager can `approveFundsUsage(protocol, amount)` to approve token spending for external protocols
+   - Active protocols tracked; automatically cleaned up when both deposits and allowance reach zero
+   - Utilization limit enforced based on total **approvals** (not just deployed funds) to prevent over-commitment
+   - `totalDeployed()` sums collateral actually deposited in supported protocols
+   - `utilizationRate()` returns deployed/(deployed+available) ratio
 
 4. **Risk Management**
-   - `maxUtilizationRate` cap (in WAD, e.g., 0.8e18 = 80%)
-   - `interactionDelay` between user requests
+   - `maxUtilizationRate` cap (in WAD, e.g., 0.8e18 = 80%) enforced on **total approvals**
+   - Prevents over-commitment by checking approvals before actual deployment
+   - `interactionDelay` between user requests (can be reset to zero when requests expire)
    - `expirationTime` for requests
    - Emergency mode toggle by owner
 
@@ -65,17 +68,14 @@ uint256 public interactionDelay;        // Delay between user requests
 uint256 public expirationTime;          // Request expiration window
 bool public emergencyMode;              // Emergency mode flag
 uint256 public constant WAD = 1e18;     // WAD denominator for high-precision calculations
-uint256 public constant BASIS_POINTS = 10000;
-uint256 public constant MIN_DEPOSIT = 100e18; // Minimum amount guard
 
 // Requests and accounting
 mapping(address => uint256) public lastUserInteractionTimestamp;
 mapping(address => PendingRequest) public pendingRequests;
 uint256 private unconfirmedAssets;      // Deposits awaiting processing
-bool private processingRequests;        // Reentrancy guard for processing
 
 // Active protocols (EnumerableSet)
-// address[] internal via set; exposed through getters
+EnumerableSet.AddressSet private activeProtocols;
 ```
 
 ### Data structures
@@ -96,14 +96,14 @@ struct PendingRequest {
 ### Lifecycle
 1. User submits a request:
    - Deposit: `requestDeposit(assets, expectedShares)` transfers `assets` to the vault and records the request
-   - Withdrawal: `requestWithdrawal(shares, expectedAssets)` records the request (no immediate transfer)
+   - Withdrawal: `requestWithdrawal(shares, expectedAssets)` records the request (no immediate transfer, shares are locked)
 2. Manager validates and processes before `expirationTime`:
    - `processDeposit(requestedBy)` mints `shares` to the user
    - `processWithdrawal(requestedBy)` burns `shares` and transfers `assets` to the user
 3. If not processed in time, users can cancel:
-   - `cancelDeposit()` returns assets
-   - `cancelWithdrawal()` clears the request
-4. Users must respect `interactionDelay` between consecutive requests
+   - `cancelDeposit()` returns assets and resets interaction timestamp (allows immediate new request)
+   - `cancelWithdrawal()` clears the request and resets interaction timestamp (allows immediate new request)
+4. Users must respect `interactionDelay` between consecutive requests (unless cancelled due to expiration)
 
 ### Benefits
 - **Fair processing** under manager control
@@ -145,13 +145,24 @@ vault.emergencyWithdraw(shares);
 
 #### Processing
 ```solidity
+// Process individual requests
 vault.processDeposit(user);
 vault.processWithdrawal(user);
+
+// Batch process multiple requests
+address[] memory depositors = [user1, user2, user3];
+vault.batchProcessDeposit(depositors);
+
+address[] memory withdrawers = [user4, user5, user6];
+vault.batchProcessWithdrawal(withdrawers);
 ```
 
 #### Approving funds usage
 ```solidity
 vault.approveFundsUsage(protocolAddress, amount);
+
+// Clean up inactive protocols (zero deposits and zero allowance)
+vault.cleanInactiveProtocols();
 ```
 
 #### Deployment status
@@ -169,7 +180,7 @@ address first = vault.getActiveProtocol(0);
 vault.setManager(newManager);
 vault.setMaxUtilizationRate(0.8e18);   // 80% in WAD
 vault.setInteractionDelay(1 days);     // default
-vault.setExpirationTime(2 minutes);    // default
+vault.setExpirationTime(10 minutes);   // default
 vault.toggleEmergencyMode();
 vault.pause();
 vault.unpause();
@@ -182,9 +193,11 @@ vault.unpause();
 - `requestWithdrawal(uint256 shares, uint256 expectedAssets)`
 - `cancelDeposit()` / `cancelWithdrawal()`
 - `processDeposit(address requestedBy)` / `processWithdrawal(address requestedBy)` (manager)
+- `batchProcessDeposit(address[] requesters)` / `batchProcessWithdrawal(address[] requesters)` (manager)
 
 ### Manager functions
 - `approveFundsUsage(address protocol, uint256 amount)`
+- `cleanInactiveProtocols()`
 
 ### Emergency
 - `emergencyWithdraw(uint256 shares)`
@@ -194,6 +207,7 @@ vault.unpause();
 - `totalDeployed()`
 - `utilizationRate()`
 - `getActiveProtocolsCount()` / `getActiveProtocols()` / `getActiveProtocol(uint256)`
+- `getLockedShares(address)` / `getAvailableShares(address)`
 
 ## Events
 
@@ -215,9 +229,11 @@ vault.unpause();
 ## Security considerations
 - Reentrancy guarded processing and transfers
 - Strict role separation (Owner vs Manager)
-- Enforced min amounts and interaction delays
+- Enforced interaction delays between user requests
 - Utilization checks on deployments
 - Pausable + emergency mode
+- Share transfer restrictions: Users cannot transfer shares locked in pending withdrawal requests
+- Automatic reset of interaction delay when requests expire and are cancelled
 
 ## Testing
 
