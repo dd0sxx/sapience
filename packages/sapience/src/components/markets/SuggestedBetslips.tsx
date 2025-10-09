@@ -178,7 +178,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                   </div>
                 ))}
                 <div className="px-2 pb-2 pt-2">
-                  <div className="text-sm mt-1 mb-2 py-0.5 flex items-center gap-2">
+                  <div className="text-sm mt-1 mb-2 px-0.5 flex items-center gap-1">
                     <span className="text-muted-foreground">
                       Market Prediction:
                     </span>

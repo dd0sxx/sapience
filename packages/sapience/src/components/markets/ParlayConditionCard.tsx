@@ -244,11 +244,10 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
           </div>
           <div className="mt-auto px-4 pt-0 pb-5">
             <div className="text-xs md:text-sm text-muted-foreground w-full mb-3">
-              <div className="truncate whitespace-nowrap min-w-0 h-4 md:h-5 flex items-center">
-                <span className="text-muted-foreground mr-0.5">
+              <div className="truncate whitespace-nowrap min-w-0 h-4 md:h-5 flex items-center gap-1">
+                <span className="text-muted-foreground">
                   Market Prediction:
                 </span>
-                &nbsp;
                 <MarketPredictionRequest conditionId={id} className="" />
               </div>
             </div>

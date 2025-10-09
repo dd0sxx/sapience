@@ -91,7 +91,7 @@ const ForecastPageImp = () => {
   if (isLoading) {
     return (
       <div className={`min-h-screen bg-transparent pt-24`}>
-        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm">
+        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm rounded-t overflow-hidden">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
@@ -110,7 +110,7 @@ const ForecastPageImp = () => {
   if (error) {
     return (
       <div className={`min-h-screen bg-transparent pt-24`}>
-        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm">
+        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm rounded-t overflow-hidden">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
@@ -186,7 +186,7 @@ const ForecastPageImp = () => {
     <div className={`min-h-screen bg-transparent pt-24`}>
       {/* Main content container with Twitter-like layout */}
       <div
-        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm`}
+        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm rounded-t overflow-hidden`}
       >
         <>
           {/* Tabs */}

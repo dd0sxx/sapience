@@ -26,6 +26,9 @@ import {
   BookOpen,
   Settings,
   ChevronDown,
+  Telescope,
+  Bot,
+  Zap,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -302,7 +305,7 @@ const Header = () => {
       >
         <div className={`mx-auto px-4 md:px-6 transition-all`}>
           <div
-            className={`flex items-center justify-between pointer-events-auto transition-all ${isScrolled ? 'md:bg-background/30 md:backdrop-blur-sm md:ring-1 md:ring-border/20 md:rounded-full' : ''}`}
+            className={`flex items-center justify-between pointer-events-auto transition-all ${isScrolled ? 'md:bg-background/60 md:backdrop-blur-sm md:ring-1 md:ring-border/30 md:rounded-full' : ''}`}
           >
             <div className="flex flex-col pointer-events-auto">
               <div className="flex items-center">
@@ -335,7 +338,7 @@ const Header = () => {
             </div>
 
             {/* Desktop Nav (right-aligned cluster) */}
-            <nav className="hidden md:flex items-center gap-2 lg:gap-3 pointer-events-auto ml-auto mr-4 lg:mr-6">
+            <nav className="hidden md:flex items-center gap-2 lg:gap-3 pointer-events-auto ml-auto mr-3 lg:mr-5">
               <Link
                 href="/markets"
                 className={`${isActive('/markets', pathname) ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors tracking-wide px-3 py-2 rounded-full`}
@@ -357,7 +360,7 @@ const Header = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className={`${isActive('/settings', pathname) ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors tracking-wide px-3 py-2 rounded-full inline-flex items-center gap-1`}
+                    className={`${isActive('/settings', pathname) ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors tracking-wide px-3 py-2 rounded-full inline-flex items-center gap-1 focus:outline-none focus-visible:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none ring-0`}
                   >
                     More
                     <ChevronDown className="h-4 w-4" />
@@ -365,23 +368,39 @@ const Header = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href="/forecast" className="cursor-pointer">
-                      Forecasting
+                    <Link
+                      href="/forecast"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Telescope className="mr-px opacity-75 h-4 w-4" />
+                      <span>Forecasting</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/feed" className="cursor-pointer">
-                      Activity Feed
+                    <Link
+                      href="/feed"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Zap className="mr-px opacity-75 h-4 w-4" />
+                      <span>Activity Feed</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/bots" className="cursor-pointer">
-                      Build Bots
+                    <Link
+                      href="/bots"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Bot className="mr-px opacity-75 h-4 w-4" />
+                      <span>Build Bots</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/settings" className="cursor-pointer">
-                      Settings
+                    <Link
+                      href="/settings"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Settings className="mr-px opacity-75 h-4 w-4" />
+                      <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

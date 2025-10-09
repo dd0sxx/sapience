@@ -561,7 +561,7 @@ const SettingsPageContent = () => {
                         {mounted && (
                           <ToggleGroup
                             type="single"
-                            value={theme ?? 'system'}
+                            value={theme ?? 'dark'}
                             onValueChange={(val) => {
                               if (!val) return;
                               setTheme(val);
