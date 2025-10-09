@@ -39,6 +39,7 @@ export const ColoredRadioOption: React.FC<ColoredRadioOptionProps> = ({
       aria-checked={checked}
       disabled={disabled}
       onClick={onClick}
+      variant="ghost"
       className={cn(
         'text-center justify-start font-normal border flex items-center gap-3 text-foreground',
         className
