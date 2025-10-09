@@ -779,8 +779,8 @@ const Betslip = ({
         <Drawer open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <DrawerTrigger asChild>
             <Button
-              className="fixed shadow-sm left-1/2 -translate-x-1/2 bottom-5 z-40 lg:hidden rounded-full overflow-hidden flex items-center justify-center border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors pointer-events-auto"
-              size="icon"
+              className="fixed inset-x-0 bottom-0 z-40 lg:hidden h-14 rounded-none shadow-sm overflow-hidden flex items-center justify-center border-t border-border bg-background hover:bg-accent hover:text-accent-foreground transition-colors pointer-events-auto w-full"
+              size="default"
               variant="secondary"
             >
               <Image
@@ -788,7 +788,7 @@ const Betslip = ({
                 alt="USDe"
                 width={32}
                 height={32}
-                className="h-full w-full"
+                className="h-6 w-6"
               />
             </Button>
           </DrawerTrigger>

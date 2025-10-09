@@ -1,6 +1,6 @@
 'use client';
 
-import { useIsMobile } from '@sapience/sdk/ui/hooks/use-mobile';
+import { useIsMobile, useIsBelow } from '@sapience/sdk/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FrownIcon } from 'lucide-react';
@@ -173,8 +173,9 @@ const MarketsPage = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Get mobile status
+  // Get mobile/compact status
   const isMobile = useIsMobile();
+  const isCompact = useIsBelow(1024);
   const effectiveViewMode: 'list' | 'grid' = isMobile
     ? 'grid'
     : currentViewMode;
@@ -637,7 +638,7 @@ const MarketsPage = () => {
   return (
     <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
       {/* Render only one betslip instance based on viewport */}
-      {isMobile ? (
+      {isCompact ? (
         <div className="block lg:hidden">
           <Betslip
             isParlayMode={parlayMode}
@@ -647,7 +648,7 @@ const MarketsPage = () => {
       ) : null}
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-4">
+      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-4 pb-16 lg:pb-0">
         {/* Top controls section (not sticky) */}
         <div>
           <div className="mt-2 md:mt-0 mb-4 md:mb-0">
