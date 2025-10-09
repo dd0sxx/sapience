@@ -109,7 +109,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
       <div className="p-0">
         <div className="flex items-center justify-between">
           <h3 className="font-medium text-sm text-muted-foreground">
-            Example Predictions
+            Featured Parlays
           </h3>
           <TooltipProvider>
             <Tooltip>
@@ -117,14 +117,14 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                 <button
                   type="button"
                   onClick={handleRefresh}
-                  aria-label="Randomize example predictions"
+                  aria-label="Randomize featured parlays"
                   className="text-muted-foreground hover:text-foreground p-1 rounded-md"
-                  title="Randomize example predictions"
+                  title="Randomize featured parlays"
                 >
                   <RefreshCw className="w-3 h-3" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Randomize example predictions</TooltipContent>
+              <TooltipContent>Randomize featured parlays</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
