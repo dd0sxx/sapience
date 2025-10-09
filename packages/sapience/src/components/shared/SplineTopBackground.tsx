@@ -77,7 +77,7 @@ const SplineTopBackground = ({
 
   return (
     <div
-      className={`fixed inset-0 pointer-events-none top-0 left-0 w-full h-screen ${
+      className={`absolute top-0 left-0 pointer-events-none w-full h-screen ${
         disableDefaultTransform ? '' : '-scale-y-100 -translate-y-1/4'
       } ${disableDefaultOpacity ? '' : 'opacity-50 dark:opacity-75'} ${
         blendClassName ? blendClassName : ''

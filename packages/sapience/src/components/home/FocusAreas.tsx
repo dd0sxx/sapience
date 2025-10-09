@@ -5,26 +5,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 
-// Create a component to render the SVG icon from the iconSvg string
-const FocusAreaIcon = ({
-  iconSvg,
-  color,
-}: {
-  iconSvg: string;
-  color: string;
-}) => (
-  <div
-    className="rounded-full p-2.5 w-10 h-10 flex items-center justify-center"
-    style={{ backgroundColor: `${color}25` }} // Using 25% opacity version of the color
-  >
-    <div
-      className="w-5 h-5 flex items-center justify-center"
-      style={{ color }}
-      dangerouslySetInnerHTML={{ __html: iconSvg }}
-    />
-  </div>
-);
-
 // Duplicate the array to create a seamless loop
 const extendedFocusAreas = [...FOCUS_AREAS, ...FOCUS_AREAS];
 
@@ -106,7 +86,17 @@ export default function TopicsOfInterest() {
                     style={{ backgroundColor: area.color }}
                   />
                   <div className="flex items-center gap-4 px-6 py-4">
-                    <FocusAreaIcon iconSvg={area.iconSvg} color={area.color} />
+                    <div
+                      className="rounded-full p-2.5 w-10 h-10 flex items-center justify-center"
+                      style={{ backgroundColor: `${area.color}25` }}
+                    >
+                      {area.Icon ? (
+                        <area.Icon
+                          className="w-5 h-5"
+                          style={{ color: area.color }}
+                        />
+                      ) : null}
+                    </div>
                     <h3 className="text-xl font-medium whitespace-nowrap">
                       {area.name}
                     </h3>

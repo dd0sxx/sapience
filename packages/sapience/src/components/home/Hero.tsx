@@ -74,13 +74,12 @@ export default function Hero() {
                 Forecasting Community
               </h1>
 
-              <p className="text-xl md:text-2xl mb-3 text-muted-foreground max-w-[570px]">
+              <p className="text-xl md:text-2xl mb-3 text-muted-foreground">
                 Join experts and enthusiasts forecasting the future of the
                 economy, climate change, culture, and more.
               </p>
             </div>
             <div className="px-0 md:px-8">
-              <FeaturedMarketGroupSection />
               <div className="md:hidden w-full flex justify-center mt-3 mb-3 px-4">
                 <Button
                   variant="link"
@@ -99,6 +98,10 @@ export default function Hero() {
                 </Button>
               </div>
             </div>
+          </div>
+          {/* Full-width featured carousel below container to make it wider */}
+          <div className="w-full">
+            <FeaturedMarketGroupSection />
           </div>
         </div>
       </div>

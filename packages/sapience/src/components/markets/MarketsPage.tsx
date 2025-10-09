@@ -1,6 +1,6 @@
 'use client';
 
-import { useIsMobile } from '@sapience/sdk/ui/hooks/use-mobile';
+import { useIsMobile, useIsBelow } from '@sapience/sdk/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FrownIcon } from 'lucide-react';
@@ -10,6 +10,8 @@ import * as React from 'react';
 
 import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
 import { SearchBar } from '@sapience/sdk/ui';
+import ParlayConditionCard from './ParlayConditionCard';
+import MarketCard from './MarketCard';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
 import FocusAreaFilter from './FocusAreaFilter';
@@ -22,9 +24,11 @@ import {
   type ConditionType,
 } from '~/hooks/graphql/useConditions';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
+import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 import Betslip from '~/components/markets/Betslip';
+import SuggestedBetslips from '~/components/markets/SuggestedBetslips';
 
 // Custom hook for debouncing values
 function useDebounce<T>(value: T, delay: number): T {
@@ -50,7 +54,7 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   loading: () => <div className="w-8 h-8" />,
 });
 
-const DEFAULT_CATEGORY_COLOR = '#71717a';
+const DEFAULT_CATEGORY_COLOR = 'hsl(var(--muted-foreground))';
 
 // Define local interfaces based on expected data shape
 export interface MarketWithContext extends GraphQLMarketType {
@@ -112,12 +116,34 @@ const MarketsPage = () => {
   );
 
   // Parlay Mode toggle
-  const [parlayMode, setParlayMode] = React.useState<boolean>(false);
+  const [parlayMode, setParlayMode] = React.useState<boolean>(true);
+
+  // View mode per browsing mode: list vs grid
+  const [viewModeByMode, setViewModeByMode] = React.useState<{
+    spot: 'list' | 'grid';
+    parlay: 'list' | 'grid';
+  }>({ spot: 'grid', parlay: 'grid' });
+  const currentViewMode = parlayMode
+    ? viewModeByMode.parlay
+    : viewModeByMode.spot;
+  const toggleViewMode = React.useCallback(() => {
+    setViewModeByMode((prev) =>
+      parlayMode
+        ? { ...prev, parlay: prev.parlay === 'list' ? 'grid' : 'list' }
+        : { ...prev, spot: prev.spot === 'list' ? 'grid' : 'list' }
+    );
+  }, [parlayMode]);
 
   // Initialize parlay mode from URL hash unconditionally
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (window.location.hash === '#parlays') {
+    // New: '#spot' indicates singles mode; default (no hash) is parlays
+    if (window.location.hash === '#spot') {
+      setParlayMode(false);
+    } else if (window.location.hash === '#parlays') {
+      // Migrate legacy '#parlays' to default (no hash)
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, '', url);
       setParlayMode(true);
     }
   }, []);
@@ -126,14 +152,14 @@ const MarketsPage = () => {
   const handleParlayModeChange = (enabled: boolean) => {
     setParlayMode(enabled);
     if (typeof window === 'undefined') return;
-    if (enabled) {
-      const newHash = '#parlays';
+    if (!enabled) {
+      const newHash = '#spot';
       if (window.location.hash !== newHash) {
         // Update hash without scrolling or adding a new history entry
         window.history.replaceState(null, '', newHash);
       }
     } else {
-      // Clear hash entirely
+      // Clear hash entirely for default parlays view
       const url = window.location.pathname + window.location.search;
       window.history.replaceState(null, '', url);
     }
@@ -147,8 +173,12 @@ const MarketsPage = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Get mobile status
+  // Get mobile/compact status
   const isMobile = useIsMobile();
+  const isCompact = useIsBelow(1024);
+  const effectiveViewMode: 'list' | 'grid' = isMobile
+    ? 'grid'
+    : currentViewMode;
 
   // Update the state when the URL parameter changes
   React.useEffect(() => {
@@ -575,6 +605,8 @@ const MarketsPage = () => {
     setStatusFilter(filter);
   };
 
+  // No sticky behavior for filters/search
+
   // Helper to find FocusArea data by category slug for UI styling
   const getCategoryStyle = (categorySlug: string): FocusArea | undefined => {
     // First try to find a matching focus area
@@ -584,32 +616,12 @@ const MarketsPage = () => {
       return focusArea;
     }
 
-    // If no matching focus area, create a deterministic color based on the slug
-    // This ensures the same category always gets the same color
-    const DEFAULT_COLORS = [
-      '#3B82F6', // blue-500
-      '#C084FC', // purple-400
-      '#4ADE80', // green-400
-      '#FBBF24', // amber-400
-      '#F87171', // red-400
-      '#22D3EE', // cyan-400
-      '#FB923C', // orange-400
-    ];
-
-    // Use a simple hash function to get a consistent index
-    const hashCode = categorySlug.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + (acc * 32 - acc);
-    }, 0);
-
-    const colorIndex = Math.abs(hashCode) % DEFAULT_COLORS.length;
-
-    // Return a partial focus area with the minimal required properties
+    // If no matching focus area, compute determinstic color from CSS variable palette
     return {
       id: categorySlug,
       name: '', // Will use category.name from database
       resources: [],
-      color: DEFAULT_COLORS[colorIndex],
-      iconSvg: '', // Will use default TagIcon
+      color: getDeterministicCategoryColor(categorySlug),
     };
   };
 
@@ -624,9 +636,9 @@ const MarketsPage = () => {
 
   // Render content once both are loaded
   return (
-    <div className="relative w-full max-w-full overflow-x-hidden flex flex-col lg:flex-row items-start">
+    <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
       {/* Render only one betslip instance based on viewport */}
-      {isMobile ? (
+      {isCompact ? (
         <div className="block lg:hidden">
           <Betslip
             isParlayMode={parlayMode}
@@ -636,16 +648,18 @@ const MarketsPage = () => {
       ) : null}
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0 max-w-full overflow-x-hidden flex flex-col gap-6 pr-0 lg:pr-6">
-        {/* Top controls section with simplified spacing */}
-        <div className="bg-background/90 w-full max-w-full box-border py-3 md:py-2 px-0 md:px-0 min-w-0">
-          <SearchBar
-            isMobile={isMobile}
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
+      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-4 pb-16 lg:pb-0">
+        {/* Top controls section (not sticky) */}
+        <div>
+          <div className="mt-2 md:mt-0 mb-4 md:mb-0">
+            <SearchBar
+              isMobile={isMobile}
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
           <motion.div
-            className="mt-3"
+            className="mt-0 md:mt-3"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
@@ -661,9 +675,17 @@ const MarketsPage = () => {
               categories={categories}
               getCategoryStyle={getCategoryStyle}
               containerClassName="px-0 md:px-0 py-0 w-full max-w-full box-border"
+              viewMode={effectiveViewMode}
+              onToggleViewMode={toggleViewMode}
+              showViewToggle={!isMobile}
             />
           </motion.div>
         </div>
+        {parlayMode &&
+        selectedCategorySlug === null &&
+        searchTerm.trim() === '' ? (
+          <SuggestedBetslips />
+        ) : null}
 
         {/* Results area */}
         <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
@@ -684,60 +706,108 @@ const MarketsPage = () => {
                 </motion.div>
               )}
 
-              {groupedMarketGroups.length > 0 && (
-                <motion.div
-                  key="results-container"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  {sortedDays.map((dayKey) => (
-                    <motion.div
-                      key={dayKey}
-                      className="mb-8"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                    >
-                      <div className="flex flex-col mb-2">
-                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                          {formatEndDate(dayEndTimes[dayKey])}
-                        </h3>
-                        <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
-                          {marketGroupsByDay[dayKey].map((marketGroup) => (
-                            <motion.div
-                              layout
-                              key={marketGroup.key}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.25 }}
-                              className="border-b last:border-b-0 border-border"
-                            >
-                              <MarketGroupsRow
-                                marketAddress={marketGroup.marketAddress}
-                                chainId={marketGroup.chainId}
-                                displayQuestion={
-                                  marketGroup.displayQuestion || 'Loading...'
-                                }
-                                color={marketGroup.color}
-                                market={marketGroup.markets}
-                                isActive={marketGroup.isActive}
-                                marketClassification={
-                                  marketGroup.marketClassification
-                                }
-                                displayUnit={marketGroup.displayUnit}
-                              />
-                            </motion.div>
-                          ))}
+              {groupedMarketGroups.length > 0 &&
+                (effectiveViewMode === 'list' ? (
+                  <motion.div
+                    key="results-container-list"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {sortedDays.map((dayKey) => (
+                      <motion.div
+                        key={dayKey}
+                        className="mb-8"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <div className="flex flex-col mb-2">
+                          <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                            {formatEndDate(dayEndTimes[dayKey])}
+                          </h3>
+                          <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
+                            {marketGroupsByDay[dayKey].map((marketGroup) => (
+                              <motion.div
+                                layout
+                                key={marketGroup.key}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="border-b last:border-b-0 border-border"
+                              >
+                                <MarketGroupsRow
+                                  marketAddress={marketGroup.marketAddress}
+                                  chainId={marketGroup.chainId}
+                                  displayQuestion={
+                                    marketGroup.displayQuestion || 'Loading...'
+                                  }
+                                  color={marketGroup.color}
+                                  market={marketGroup.markets}
+                                  isActive={marketGroup.isActive}
+                                  marketClassification={
+                                    marketGroup.marketClassification
+                                  }
+                                  displayUnit={marketGroup.displayUnit}
+                                />
+                              </motion.div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="results-container-grid"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-sm text-muted-foreground">
+                        {statusFilter === 'all'
+                          ? 'All Prediction Markets'
+                          : 'Ending Soon'}
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                      {groupedMarketGroups.map((group) => {
+                        const preferred =
+                          group.markets.find((m) => m.optionName === 'Yes') ||
+                          group.markets[0];
+                        const yesId = group.markets.find(
+                          (m) => m.optionName === 'Yes'
+                        )?.marketId;
+                        const noId = group.markets.find(
+                          (m) => m.optionName === 'No'
+                        )?.marketId;
+                        return (
+                          <div key={group.key} className="min-h-[160px]">
+                            <MarketCard
+                              chainId={group.chainId}
+                              marketAddress={group.marketAddress}
+                              market={preferred}
+                              yesMarketId={yesId}
+                              noMarketId={noId}
+                              color={group.color}
+                              displayQuestion={
+                                group.displayQuestion || group.marketName
+                              }
+                              isActive={group.isActive}
+                              marketClassification={group.marketClassification}
+                              displayUnit={group.displayUnit}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                ))}
             </AnimatePresence>
           ) : (
             <AnimatePresence mode="wait" key="parlay-mode">
@@ -761,9 +831,9 @@ const MarketsPage = () => {
                   transition={{ duration: 0.25 }}
                   className="w-full pt-48 text-center text-muted-foreground"
                 >
-                  No public conditions found.
+                  No prediction markets found
                 </motion.div>
-              ) : (
+              ) : effectiveViewMode === 'list' ? (
                 <motion.div
                   key="rfq-list"
                   initial={{ opacity: 0 }}
@@ -813,6 +883,36 @@ const MarketsPage = () => {
                     </motion.div>
                   ))}
                 </motion.div>
+              ) : (
+                <motion.div
+                  key="rfq-grid"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-sm text-muted-foreground">
+                      {statusFilter === 'all'
+                        ? 'All Prediction Markets'
+                        : 'Ending Soon'}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                    {filteredRfqConditions.map((c) => {
+                      const categorySlug = c.category?.slug || '';
+                      const styleInfo = categorySlug
+                        ? getCategoryStyle(categorySlug)
+                        : undefined;
+                      const color = styleInfo?.color || DEFAULT_CATEGORY_COLOR;
+                      return (
+                        <div key={c.id} className="min-h-[100px]">
+                          <ParlayConditionCard condition={c} color={color} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
               )}
             </AnimatePresence>
           )}
@@ -821,8 +921,8 @@ const MarketsPage = () => {
 
       {/* Desktop/Tablet sticky betslip sidebar */}
       {!isMobile ? (
-        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-0">
-          <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
+        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-3 xl:ml-4 lg:mr-6">
+          <div className="border border-border rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
               <Betslip
                 variant="panel"

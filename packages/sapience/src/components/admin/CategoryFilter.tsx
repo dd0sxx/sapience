@@ -28,7 +28,7 @@ export default function CategoryFilter({
             id: group.category.id,
             name: group.category.name,
             slug: group.category.slug,
-            color: group.category.color || '#6366F1',
+            color: group.category.color || 'hsl(var(--category-2))',
           },
         ])
     ).values()
