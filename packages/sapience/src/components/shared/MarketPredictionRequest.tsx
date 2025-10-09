@@ -44,27 +44,43 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
   const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
 
   const eagerlyRequestedRef = React.useRef<boolean>(false);
+  const eagerJitterMsRef = React.useRef<number>(Math.floor(Math.random() * 301));
 
   // Generate or retrieve a stable guest maker address for logged-out users
   const guestMakerAddress = React.useMemo<`0x${string}` | null>(() => {
+    if (typeof window === 'undefined') return null;
+    // Try to read a persisted guest address, but don't fail hard if storage isn't available
+    let stored: string | null = null;
     try {
-      if (typeof window === 'undefined') return null;
-      let addr = window.localStorage.getItem('sapience_guest_maker_address');
-      if (!addr) {
-        const bytes = new Uint8Array(20);
-        // Use Web Crypto to generate a random 20-byte address
-        window.crypto.getRandomValues(bytes);
-        addr =
-          '0x' +
-          Array.from(bytes)
-            .map((b) => b.toString(16).padStart(2, '0'))
-            .join('');
-        window.localStorage.setItem('sapience_guest_maker_address', addr);
-      }
-      return addr as `0x${string}`;
+      stored = window.localStorage.getItem('sapience_guest_maker_address');
+    } catch {}
+    if (stored) return stored as `0x${string}`;
+
+    // Generate an ephemeral address for this session
+    let addr: `0x${string}` | null = null;
+    try {
+      const bytes = new Uint8Array(20);
+      (window.crypto || ({} as Crypto)).getRandomValues?.(bytes);
+      if (bytes[0] === undefined) throw new Error('no-crypto');
+      addr = (
+        '0x' +
+        Array.from(bytes)
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')
+      ) as `0x${string}`;
     } catch {
-      return null;
+      // Fallback to Math.random-based generation (less strong, but fine for a UI nonce)
+      const rand = Array.from({ length: 20 }, () => Math.floor(Math.random() * 256));
+      addr = (
+        '0x' + rand.map((b) => b.toString(16).padStart(2, '0')).join('')
+      ) as `0x${string}`;
     }
+
+    // Best-effort persist for future visits
+    try {
+      window.localStorage.setItem('sapience_guest_maker_address', addr);
+    } catch {}
+    return addr;
   }, []);
 
   // Prefer connected wallet address; fall back to guest address
@@ -121,6 +137,19 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     }
   }, [bids, isRequesting, lastMakerWagerWei, onPrediction]);
 
+  // Fallback: if no bids arrive within a reasonable time window, stop requesting
+  React.useEffect(() => {
+    if (!isRequesting) return;
+    const timeoutMs = 15000;
+    const timeout = window.setTimeout(() => {
+      if (requestedPrediction == null && (!bids || bids.length === 0)) {
+        setIsRequesting(false);
+        setQueuedRequest(false);
+      }
+    }, timeoutMs);
+    return () => window.clearTimeout(timeout);
+  }, [isRequesting, bids, requestedPrediction]);
+
   const effectiveOutcomes = React.useMemo<PredictedOutcomeInputStub[]>(() => {
     if (outcomes && outcomes.length > 0) return outcomes;
     if (conditionId) return [{ marketId: conditionId, prediction: true }];
@@ -135,14 +164,19 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
       const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
       setLastMakerWagerWei(wagerWei);
       const payload = buildAuctionStartPayload(effectiveOutcomes);
-      requestQuotes({
-        wager: wagerWei,
-        resolver: payload.resolver,
-        predictedOutcomes: payload.predictedOutcomes,
-        maker: selectedMakerAddress,
-        makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
-      });
-      setQueuedRequest(false);
+      const send = () => {
+        requestQuotes({
+          wager: wagerWei,
+          resolver: payload.resolver,
+          predictedOutcomes: payload.predictedOutcomes,
+          maker: selectedMakerAddress,
+          makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
+        });
+        setQueuedRequest(false);
+      };
+      // Add a small jitter to reduce simultaneous opens across instances
+      const jitter = Math.floor(Math.random() * 301);
+      window.setTimeout(send, jitter);
     } catch {
       setIsRequesting(false);
       setQueuedRequest(false);
@@ -161,19 +195,29 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     setRequestedPrediction(null);
     setIsRequesting(true);
     try {
+      // If outcomes aren't ready or no maker address yet -> queue
       if (effectiveOutcomes.length === 0 || !selectedMakerAddress) {
         setQueuedRequest(true);
       } else {
         const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
         setLastMakerWagerWei(wagerWei);
         const payload = buildAuctionStartPayload(effectiveOutcomes);
-        requestQuotes({
-          wager: wagerWei,
-          resolver: payload.resolver,
-          predictedOutcomes: payload.predictedOutcomes,
-          maker: selectedMakerAddress,
-          makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
-        });
+        const send = () => {
+          requestQuotes({
+            wager: wagerWei,
+            resolver: payload.resolver,
+            predictedOutcomes: payload.predictedOutcomes,
+            maker: selectedMakerAddress,
+            makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
+          });
+        };
+        // Jitter send to avoid concurrency clobbering
+        const jitter = eager ? eagerJitterMsRef.current : 0;
+        if (jitter > 0) {
+          window.setTimeout(send, jitter);
+        } else {
+          send();
+        }
       }
     } catch {
       setIsRequesting(false);
@@ -184,14 +228,23 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     makerNonce,
     requestQuotes,
     isRequesting,
+    eager,
   ]);
 
+  // Only fire eager once both maker address and outcomes are ready
   React.useEffect(() => {
     if (!eager) return;
     if (eagerlyRequestedRef.current) return;
+    if (!selectedMakerAddress) return;
+    if (effectiveOutcomes.length === 0) return;
     eagerlyRequestedRef.current = true;
     handleRequestPrediction();
-  }, [eager, handleRequestPrediction]);
+  }, [
+    eager,
+    selectedMakerAddress,
+    effectiveOutcomes.length,
+    handleRequestPrediction,
+  ]);
 
   return (
     <div
