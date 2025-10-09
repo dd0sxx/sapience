@@ -647,7 +647,7 @@ const MarketsPage = () => {
       ) : null}
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-6">
+      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-4">
         {/* Top controls section (not sticky) */}
         <div>
           <div className="mt-6 md:mt-0">
@@ -918,7 +918,7 @@ const MarketsPage = () => {
 
       {/* Desktop/Tablet sticky betslip sidebar */}
       {!isMobile ? (
-        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30">
+        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-3 xl:ml-4 lg:mr-6">
           <div className="border border-border rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
               <Betslip

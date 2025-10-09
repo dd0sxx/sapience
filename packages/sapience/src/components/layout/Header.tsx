@@ -338,7 +338,7 @@ const Header = () => {
             </div>
 
             {/* Desktop Nav (right-aligned cluster) */}
-            <nav className="hidden md:flex items-center gap-2 lg:gap-3 pointer-events-auto ml-auto mr-3 lg:mr-5">
+            <nav className="hidden md:flex items-center gap-2 lg:gap-3 pointer-events-auto ml-auto mr-2 lg:mr-4">
               <Link
                 href="/markets"
                 className={`${isActive('/markets', pathname) ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors tracking-wide px-3 py-2 rounded-full`}

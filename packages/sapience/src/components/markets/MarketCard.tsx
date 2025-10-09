@@ -110,7 +110,7 @@ const MarketCard = ({
       optionName: 'Yes',
     } as MarketWithContext;
     handleAddToBetSlip(yesMarket, true);
-    router.push('/markets');
+    router.push('/markets#spot');
   };
 
   // Handler for No button
@@ -123,7 +123,7 @@ const MarketCard = ({
       optionName: 'No',
     } as MarketWithContext;
     handleAddToBetSlip(noMkt, false);
-    router.push('/markets');
+    router.push('/markets#spot');
   };
 
   const MarketPrediction = () => {
@@ -321,7 +321,7 @@ const MarketCard = ({
                       true,
                       MarketGroupClassificationEnum.YES_NO
                     );
-                    router.push('/markets');
+                    router.push('/markets#spot');
                   }}
                   onNo={() => {
                     handleAddToBetSlip(
@@ -329,7 +329,7 @@ const MarketCard = ({
                       false,
                       MarketGroupClassificationEnum.YES_NO
                     );
-                    router.push('/markets');
+                    router.push('/markets#spot');
                   }}
                   className="w-full"
                   size="sm"

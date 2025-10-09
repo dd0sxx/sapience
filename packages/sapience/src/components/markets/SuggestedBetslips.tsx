@@ -99,7 +99,9 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
       return result.slice(0, 3);
     };
 
-    return [makeOneCombo(), makeOneCombo()];
+    // Always prepare three combos; UI will hide extras on smaller screens
+    const comboCount = 3;
+    return Array.from({ length: comboCount }, () => makeOneCombo());
   }, [allConditions, nonce]);
 
   return (
@@ -128,13 +130,16 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
         </div>
       </div>
 
-      <div className="mt-2 mb-0 pb-0 grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+      <div className="mt-2 mb-0 pb-0 grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         {isLoading || combos.length === 0 ? (
           <>
             <div className="border border-border rounded bg-card overflow-hidden shadow-md h-20 flex items-center justify-center text-muted-foreground/80">
               Loading…
             </div>
-            <div className="border border-border rounded bg-card overflow-hidden shadow-md h-20 hidden sm:flex items-center justify-center text-muted-foreground/80">
+            <div className="border border-border rounded bg-card overflow-hidden shadow-md h-20 hidden lg:flex items-center justify-center text-muted-foreground/80">
+              Loading…
+            </div>
+            <div className="border border-border rounded bg-card overflow-hidden shadow-md h-20 hidden lg:flex items-center justify-center text-muted-foreground/80">
               Loading…
             </div>
           </>
@@ -142,7 +147,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
           combos.map((combo, idx) => (
             <div
               key={`combo-${idx}`}
-              className="border border-border rounded bg-card overflow-hidden shadow-md p-0"
+              className={`border border-border rounded bg-card overflow-hidden shadow-md p-0 ${idx > 0 ? 'hidden lg:block' : ''}`}
             >
               <div className="space-y-0 flex flex-col">
                 {combo.map((leg, i) => (
