@@ -88,7 +88,7 @@ export default function ShareDialog(props: ShareDialogProps) {
     props.legs,
   ]);
 
-  const imageSrc = `${imagePath}?${queryString}`;
+  const imageSrc = `${imagePath}?${queryString}&t=${Date.now()}`;
 
   return (
     <OgShareDialogBase

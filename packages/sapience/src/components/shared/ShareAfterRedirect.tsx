@@ -277,7 +277,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
 
       let resolved: ExtendedPosition | FormattedAttestation | Parlay | null =
         null;
-      
+
       if (intent.anchor === 'trades' && intent.tradeData) {
         resolved = {
           positionId: 'pending-' + Date.now(),
@@ -312,7 +312,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
           isImmediate: true,
         } as unknown as ExtendedPosition;
       }
-      
+
       // Fallback to GraphQL data if no immediate data
       if (!resolved && (intent.anchor === 'trades' || intent.anchor === 'lp')) {
         const isLp = intent.anchor === 'lp';
