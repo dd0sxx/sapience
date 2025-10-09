@@ -77,6 +77,22 @@ export default function NumericWagerForm({
     wagerAmount,
   });
 
+  // Calculate payout for share card
+  const payoutForShare = useMemo(() => {
+    if (!quoteData?.maxSize) return undefined;
+    try {
+      const maxSizeBigInt = BigInt(quoteData.maxSize);
+      const absMaxSize = maxSizeBigInt < 0n ? -maxSizeBigInt : maxSizeBigInt;
+      const numValue = Number(absMaxSize) / 1e18;
+      const precision = 2;
+      const factor = 10 ** precision;
+      const roundedValue = Math.floor(numValue * factor) / factor;
+      return roundedValue.toFixed(precision);
+    } catch {
+      return undefined;
+    }
+  }, [quoteData?.maxSize]);
+
   // Use the createTrade hook
   const { createTrade, isLoading: isCreatingTrade } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
@@ -91,6 +107,12 @@ export default function NumericWagerForm({
     onSuccess: () => {
       methods.reset();
       onSuccess?.();
+    },
+    shareData: {
+      question: marketGroupData.question || '',
+      side: 'Long', // Numeric markets use Long/Short
+      symbol: marketGroupData.collateralSymbol || 'USDC',
+      payout: payoutForShare,
     },
   });
 

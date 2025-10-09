@@ -98,6 +98,10 @@ export function useModifyTrade({
       successMessage: 'Position modification submission was successful',
       fallbackErrorMessage: 'Failed to modify position',
       redirectProfileAnchor: 'trades',
+      // Provide durable share intent with positionId for modify flows
+      shareIntent: {
+        positionId: String(positionId),
+      },
     });
 
   // Set error if approval error occurs

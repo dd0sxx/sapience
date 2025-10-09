@@ -206,7 +206,6 @@ export default function BetslipSinglesForm({
                 />
               </div>
             )}
-            <WagerDisclaimer className="mt-2 mb-3" />
             <Button
               type="submit"
               variant="default"
@@ -218,6 +217,7 @@ export default function BetslipSinglesForm({
             >
               Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
             </Button>
+            <WagerDisclaimer className="mt-3" />
           </>
         )}
       </form>

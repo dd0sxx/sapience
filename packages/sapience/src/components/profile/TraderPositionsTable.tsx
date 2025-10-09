@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -272,25 +272,6 @@ export default function TraderPositionsTable({
   >(null);
   const [selectedPositionSnapshot, setSelectedPositionSnapshot] =
     useState<PositionType | null>(null);
-  // ---
-  const selectedPosition = useMemo(() => {
-    if (openSharePositionId === null) return null;
-    return (
-      validPositions.find(
-        (p) => String(p.positionId) === String(openSharePositionId)
-      ) || null
-    );
-  }, [validPositions, openSharePositionId]);
-  // Refresh snapshot with the latest position object if available; keep old snapshot if temporarily missing
-  useEffect(() => {
-    if (openSharePositionId === null) return;
-    if (selectedPosition) {
-      setSelectedPositionSnapshot(selectedPosition);
-      // ---
-    } else {
-      // ---
-    }
-  }, [openSharePositionId, selectedPosition]);
 
   const tableColumns = useMemo(
     () =>
@@ -705,7 +686,6 @@ export default function TraderPositionsTable({
                       onClick={() => {
                         setSelectedPositionSnapshot(position);
                         setOpenSharePositionId(position.positionId);
-                        // ---
                       }}
                     >
                       Share

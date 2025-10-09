@@ -118,6 +118,10 @@ export function useModifyLP({
       successMessage: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submission was successful`,
       fallbackErrorMessage: `Liquidity ${isAddMode ? 'increase' : 'decrease'} failed`,
       redirectProfileAnchor: 'lp',
+      // Provide durable share intent with positionId for modify flows
+      shareIntent: {
+        positionId,
+      },
     });
 
   // Helper function to call increaseLiquidityPosition

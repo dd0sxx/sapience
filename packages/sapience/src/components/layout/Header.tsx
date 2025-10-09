@@ -19,13 +19,24 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/sdk/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen, Settings } from 'lucide-react';
+import {
+  LogOut,
+  Menu,
+  User,
+  BookOpen,
+  Settings,
+  ChevronDown,
+  Telescope,
+  Bot,
+  Zap,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
+import { useEffect, useRef, useState } from 'react';
 import { useDisconnect } from 'wagmi';
 import CollateralBalanceButton from './CollateralBalanceButton';
 // Chat button moved to app layout as a floating action button
@@ -188,6 +199,59 @@ const Header = () => {
   const { hasConnectedWallet } = useConnectedWallet();
   const { data: ensName } = useEnsName(connectedWallet?.address || '');
   const { disconnect } = useDisconnect();
+  const pathname = usePathname();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const thresholdRef = useRef(12);
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const recalcThreshold = () => {
+      try {
+        const isDesktop =
+          typeof window !== 'undefined' &&
+          window.matchMedia('(min-width: 768px)').matches;
+        let next = 4; // small default for mobile
+        if (isDesktop) {
+          const el = headerRef.current;
+          if (el) {
+            const pt = parseFloat(getComputedStyle(el).paddingTop || '0');
+            // Trigger after crossing half the initial top padding
+            next = Math.max(0, pt * 0.5);
+          } else {
+            next = 12; // reasonable fallback
+          }
+        }
+        thresholdRef.current = next;
+        if (typeof window !== 'undefined') {
+          setIsScrolled(window.scrollY > next);
+        }
+      } catch {
+        /* noop */
+      }
+    };
+
+    const onScroll = () => {
+      try {
+        setIsScrolled(window.scrollY > thresholdRef.current);
+      } catch {
+        /* noop */
+      }
+    };
+
+    recalcThreshold();
+    onScroll();
+    window.addEventListener('resize', recalcThreshold);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('resize', recalcThreshold);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+
+  const hasDisconnect = (
+    x: unknown
+  ): x is { disconnect: () => Promise<void> | void } =>
+    typeof (x as { disconnect?: unknown }).disconnect === 'function';
 
   const handleLogout = async () => {
     try {
@@ -214,7 +278,9 @@ const Header = () => {
         for (const w of wallets) {
           try {
             // Some wallet connectors expose a disconnect method
-            await (w as any)?.disconnect?.();
+            if (hasDisconnect(w)) {
+              await Promise.resolve(w.disconnect());
+            }
           } catch {
             /* noop */
           }
@@ -233,143 +299,212 @@ const Header = () => {
   return (
     <>
       {/* Top Header Bar */}
-      <header className="w-full pt-3 pb-2 md:py-6 z-[50] fixed top-0 left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip md:bg-transparent md:backdrop-blur-0 md:border-b-0 md:overflow-visible">
-        <div className="mx-auto px-4 md:px-6 flex items-center justify-between">
-          <div className="flex flex-col pointer-events-auto">
-            <div className="flex items-center">
-              <div className="flex flex-col order-2 md:order-1">
-                <div className="flex items-center p-2 pr-4 md:pr-1 md:bg-background/30 md:backdrop-blur-sm md:rounded-full">
-                  <Link href="/" className="inline-block">
-                    <div className="flex items-center gap-2">
-                      <LottieIcon
-                        animationPath="/lottie/logomark.json"
-                        width={32}
-                        height={32}
-                        className="opacity-80"
-                      />
-                      <span className="text-2xl font-normal">Sapience</span>
-                    </div>
-                  </Link>
-                  {/* Desktop Sidebar Trigger (inside header) */}
-                  <SidebarTrigger
-                    id="nav-sidebar"
-                    className="hidden md:flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6"
-                  />
+      <header
+        ref={headerRef}
+        className="w-full pt-3 pb-2 md:py-6 z-[50] fixed top-0 left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip md:bg-transparent md:backdrop-blur-0 md:border-b-0 md:overflow-visible"
+      >
+        <div className={`mx-auto px-4 md:px-6 transition-all`}>
+          <div
+            className={`flex items-center justify-between pointer-events-auto transition-all ${isScrolled ? 'md:bg-background/60 md:backdrop-blur-sm md:ring-1 md:ring-border/30 md:rounded-full' : ''}`}
+          >
+            <div className="flex flex-col pointer-events-auto">
+              <div className="flex items-center">
+                <div className="flex flex-col order-2 md:order-1">
+                  <div className="flex items-center p-2 pr-4 md:pr-1 md:rounded-full">
+                    <Link href="/" className="inline-block">
+                      <div className="flex items-center gap-2">
+                        <LottieIcon
+                          animationPath="/lottie/logomark.json"
+                          width={32}
+                          height={32}
+                          className="opacity-80"
+                        />
+                        <span className="text-2xl font-normal">Sapience</span>
+                      </div>
+                    </Link>
+                  </div>
+                  <div className="-mt-3.5 ml-[124px] text-xs tracking-wider text-muted-foreground scale-75 origin-left font-medium">
+                    BETA
+                  </div>
                 </div>
-                <div className="-mt-3.5 ml-[124px] text-xs tracking-wider text-muted-foreground scale-75 origin-left font-medium">
-                  BETA
-                </div>
-              </div>
-              {/* Mobile Sidebar Trigger (outside blurred div, to the right) */}
-              <SidebarTrigger
-                id="nav-sidebar"
-                className="md:hidden mr-0.5 order-1 md:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
-              >
-                <Menu className="h-5 w-5" />
-              </SidebarTrigger>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
-            {ready && !hasConnectedWallet && (
-              <Link href="/settings" className="hidden md:block">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="rounded-full md:h-9 md:w-9"
+                {/* Mobile Sidebar Trigger (outside blurred div, to the right) */}
+                <SidebarTrigger
+                  id="nav-sidebar"
+                  className="md:hidden mr-0.5 order-1 md:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
-                  <Settings className="h-4 w-4" />
-                  <span className="sr-only">Settings</span>
-                </Button>
+                  <Menu className="h-5 w-5" />
+                </SidebarTrigger>
+              </div>
+            </div>
+
+            {/* Desktop Nav (right-aligned cluster) */}
+            <nav className="hidden md:flex items-center gap-2 lg:gap-3 pointer-events-auto ml-auto mr-2 lg:mr-4">
+              <Link
+                href="/markets"
+                className={`${isActive('/markets', pathname) ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors tracking-wide px-3 py-2 rounded-full`}
+              >
+                Prediction Markets
               </Link>
-            )}
-            {ready && hasConnectedWallet && (
-              <CollateralBalanceButton className="hidden md:flex" />
-            )}
-            {ready && hasConnectedWallet && (
+              <Link
+                href="/leaderboard"
+                className={`${isActive('/leaderboard', pathname) ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors tracking-wide px-3 py-2 rounded-full`}
+              >
+                Leaderboard
+              </Link>
+              <Link
+                href="/vaults"
+                className={`${isActive('/vaults', pathname) ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors tracking-wide px-3 py-2 rounded-full`}
+              >
+                Vaults
+              </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="default"
-                    className="rounded-sm md:rounded-full h-10 w-10 md:h-9 md:w-auto ml-1.5 md:ml-0 gap-2 p-0 md:pl-2 md:pr-3 overflow-hidden"
+                  <button
+                    className={`${isActive('/settings', pathname) ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors tracking-wide px-3 py-2 rounded-full inline-flex items-center gap-1 focus:outline-none focus-visible:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none ring-0`}
                   >
-                    {connectedWallet?.address ? (
-                      <>
-                        {/* Mobile: avatar fills the entire circular button */}
-                        <EnsAvatar
-                          address={connectedWallet.address}
-                          className="h-full w-full ring-inset md:hidden"
-                          width={40}
-                          height={40}
-                        />
-                        {/* Desktop: small avatar next to address */}
-                        <EnsAvatar
-                          address={connectedWallet.address}
-                          className="hidden md:inline-flex h-6.5 w-6.5 rounded-full"
-                          width={24}
-                          height={24}
-                        />
-                      </>
-                    ) : (
-                      <User className="h-5 w-5" />
-                    )}
-                    {connectedWallet?.address && (
-                      <span className="hidden md:inline text-sm">
-                        {ensName || shortenAddress(connectedWallet.address)}
-                      </span>
-                    )}
-                    <span className="sr-only">User Menu</span>
-                  </Button>
+                    More
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {connectedWallet?.address && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={`/profile/${connectedWallet.address}`}
-                        className="flex items-center"
-                      >
-                        <User className="mr-0.5 opacity-75 h-4 w-4" />
-                        <span>Your Profile</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem asChild>
-                    <Link href="/settings" className="flex items-center">
-                      <Settings className="mr-0.5 opacity-75 h-4 w-4" />
+                    <Link
+                      href="/forecast"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Telescope className="mr-px opacity-75 h-4 w-4" />
+                      <span>Forecasting</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/feed"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Zap className="mr-px opacity-75 h-4 w-4" />
+                      <span>Activity Feed</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/bots"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Bot className="mr-px opacity-75 h-4 w-4" />
+                      <span>Build Bots</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/settings"
+                      className="cursor-pointer flex items-center"
+                    >
+                      <Settings className="mr-px opacity-75 h-4 w-4" />
                       <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="flex items-center cursor-pointer"
-                  >
-                    <LogOut className="mr-0.5 opacity-75 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
-            {/* Address now displayed inside the black default button on desktop */}
-            {ready && !hasConnectedWallet && (
-              <Button
-                onClick={() => {
-                  try {
-                    connectOrCreateWallet();
-                  } catch {
-                    /* noop */
-                  }
-                }}
-                className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
-              >
-                <span>Log in</span>
-              </Button>
-            )}
+            </nav>
+
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
+              {/* Settings icon button replaced by text link in desktop nav */}
+              {ready && hasConnectedWallet && (
+                <CollateralBalanceButton className="hidden md:flex" />
+              )}
+              {ready && hasConnectedWallet && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="default"
+                      className="rounded-sm md:rounded-full h-10 w-10 md:h-9 md:w-auto ml-1.5 md:ml-0 gap-2 p-0 md:pl-2 md:pr-3 overflow-hidden"
+                    >
+                      {connectedWallet?.address ? (
+                        <>
+                          {/* Mobile: avatar fills the entire circular button */}
+                          <EnsAvatar
+                            address={connectedWallet.address}
+                            className="h-full w-full ring-inset md:hidden"
+                            width={40}
+                            height={40}
+                          />
+                          {/* Desktop: small avatar next to address */}
+                          <EnsAvatar
+                            address={connectedWallet.address}
+                            className="hidden md:inline-flex h-6.5 w-6.5 rounded-full"
+                            width={24}
+                            height={24}
+                          />
+                        </>
+                      ) : (
+                        <User className="h-5 w-5" />
+                      )}
+                      {connectedWallet?.address && (
+                        <span className="hidden md:inline text-sm">
+                          {ensName || shortenAddress(connectedWallet.address)}
+                        </span>
+                      )}
+                      <span className="sr-only">User Menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {connectedWallet?.address && (
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={`/profile/${connectedWallet.address}`}
+                          className="flex items-center"
+                        >
+                          <User className="mr-0.5 opacity-75 h-4 w-4" />
+                          <span>Your Profile</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/settings"
+                        className="flex items-center md:hidden"
+                      >
+                        <Settings className="mr-0.5 opacity-75 h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="flex items-center cursor-pointer"
+                    >
+                      <LogOut className="mr-0.5 opacity-75 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {/* Address now displayed inside the black default button on desktop */}
+              {ready && !hasConnectedWallet && (
+                <Button
+                  onClick={() => {
+                    try {
+                      connectOrCreateWallet();
+                    } catch {
+                      /* noop */
+                    }
+                  }}
+                  className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
+                >
+                  <span>Log in</span>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Desktop Sidebar */}
-      <Sidebar id="nav-sidebar" variant="sidebar" collapsible="offcanvas">
+      {/* Mobile Sidebar only */}
+      <Sidebar
+        id="nav-sidebar"
+        variant="sidebar"
+        collapsible="offcanvas"
+        className="md:hidden"
+      >
         <SidebarContent>
           <NavLinks />
         </SidebarContent>

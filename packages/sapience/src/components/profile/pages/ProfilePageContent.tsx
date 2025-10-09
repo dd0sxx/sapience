@@ -31,6 +31,7 @@ import LottieLoader from '~/components/shared/LottieLoader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
 import ProfileStats from '~/components/profile/ProfileStats';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
+import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
 
 const TAB_VALUES = ['trades', 'parlays', 'lp', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -184,10 +185,9 @@ const ProfilePageContent = () => {
     didAutoRedirectRef.current = true;
   }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts]);
 
-  // No feature flag; nothing to monitor
-
   return (
     <div className="container max-w-6xl mx-auto py-24 lg:py-32 px-4">
+      <ShareAfterRedirect address={address} />
       <div className="mb-5 lg:mb-10">
         <ProfileHeader address={address} />
       </div>

@@ -192,7 +192,10 @@ const QuestionSelect = ({
       {/* Search input always visible above dropdown */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-          <Search className="h-5 w-5 text-muted-foreground" />
+          <Search
+            className="h-4 w-4 md:h-5 md:w-5 text-foreground/70"
+            strokeWidth={2}
+          />
         </div>
         <Input
           ref={inputRef}
@@ -205,7 +208,7 @@ const QuestionSelect = ({
               ? 'Search questions...'
               : 'Search questions or market groups...'
           }
-          className="pl-10 h-12 text-base pr-10"
+          className="pl-9 md:pl-10 h-11 md:h-12 text-base md:text-base lg:text-[1.05rem] pr-10"
         />
         {inputValue && (
           <button

@@ -19,7 +19,6 @@ import {
 import LoaderWithMessage from '~/components/shared/LoaderWithMessage';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import AddressFilter from '~/components/shared/AddressFilter';
-import SplineTopBackground from '~/components/shared/SplineTopBackground';
 
 type FeedTransaction = Pick<
   TransactionType,
@@ -348,7 +347,6 @@ export default function FeedPage() {
   if (!initialLoaded) {
     return (
       <div className="relative min-h-screen">
-        <SplineTopBackground />
         <div className="my-20 pt-1 px-3 md:px-6 lg:px-8 pr-4 md:pr-6 lg:pr-6 relative">
           <div className="mx-auto w-full">
             {errorMessage ? (
@@ -457,7 +455,6 @@ export default function FeedPage() {
 
   return (
     <div className="relative min-h-screen">
-      <SplineTopBackground />
       <div className="my-20 pt-1 px-3 md:px-6 lg:px-8 pr-4 md:pr-6 lg:pr-6 relative">
         <div className="mx-auto w-full">
           <div className="mt-3 mb-6 xl:mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">

@@ -5,8 +5,9 @@ const manifest = (): MetadataRoute.Manifest => ({
   name: 'Sapience',
   lang: 'en',
   start_url: '/markets',
-  background_color: '#FFFFFF',
-  theme_color: '#FFFFFF',
+  // Use HSL to comply with lint rule disallowing hex literals
+  background_color: 'hsl(0 0% 100%)',
+  theme_color: 'hsl(240 10% 3.9%)',
   dir: 'ltr',
   display: 'standalone',
   prefer_related_applications: false,

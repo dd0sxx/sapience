@@ -78,39 +78,6 @@ const InstallDialog = () => {
 
   useEffect(() => {
     try {
-      // Gate the install dialog behind the scrim auth
-      const authed =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('isAuthenticated') === 'true'
-          : false;
-
-      if (!authed) {
-        setCanShow(false);
-        setIsOpen(false);
-        const onAuthed = () => {
-          try {
-            // Re-run logic once authenticated
-            setCanShow(true);
-            if (shouldOpenInstallDialog()) setIsOpen(true);
-          } catch {
-            // ignore
-          }
-        };
-        if (typeof window !== 'undefined') {
-          window.addEventListener('sapience-authenticated', onAuthed, {
-            once: true,
-          } as AddEventListenerOptions);
-        }
-        return () => {
-          if (typeof window !== 'undefined') {
-            window.removeEventListener(
-              'sapience-authenticated',
-              onAuthed as EventListener
-            );
-          }
-        };
-      }
-
       setCanShow(true);
       if (shouldOpenInstallDialog()) setIsOpen(true);
     } catch {
