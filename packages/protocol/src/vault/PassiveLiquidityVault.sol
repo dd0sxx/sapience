@@ -59,10 +59,13 @@ contract PassiveLiquidityVault is
     IERC20 private immutable _asset;
     uint8 private immutable _underlyingDecimals;
 
-    // ============ Custom Errors ============
+    // ============ Default Values ============
 
-    // Standard function errors (functions that revert with NotImplemented)
-    error NotImplemented();
+    uint256 private constant DEFAULT_MAX_UTILIZATION_RATE = 0.8e18; // 80% in WAD
+    uint256 private constant DEFAULT_INTERACTION_DELAY = 1 days;
+    uint256 private constant DEFAULT_EXPIRATION_TIME = 10 minutes;
+
+    // ============ Custom Errors ============
 
     // Access control errors
     error OnlyManager(address caller, address expectedManager);
@@ -84,7 +87,6 @@ contract PassiveLiquidityVault is
     );
     error InsufficientAvailableAssets(uint256 requested, uint256 available);
     error ExceedsMaxUtilization(uint256 current, uint256 max);
-    error AmountTooSmall(uint256 amount, uint256 minimum);
 
     // Queue errors
     error NoPendingRequests(address user);
@@ -104,6 +106,7 @@ contract PassiveLiquidityVault is
 
     // Additional errors
     error RequestExpired();
+    error SharesLockedForWithdrawal(address user, uint256 lockedShares, uint256 attemptedTransfer);
 
     // ============ Events ============
     // Events are defined in the IPassiveLiquidityVault interface
@@ -113,14 +116,14 @@ contract PassiveLiquidityVault is
     /// @notice The EOA manager who can deploy funds to other protocols
     address public manager;
 
-    /// @notice Maximum utilization rate (in basis points, e.g., 8000 = 80%)
-    uint256 public maxUtilizationRate = 8000; // 80%
+    /// @notice Maximum utilization rate (in WAD, e.g., 0.8e18 = 80%)
+    uint256 public maxUtilizationRate = DEFAULT_MAX_UTILIZATION_RATE; // 80%
 
     /// @notice Interaction delay in seconds between user requests (default: 1 day)
-    uint256 public interactionDelay = 1 days;
+    uint256 public interactionDelay = DEFAULT_INTERACTION_DELAY; // 1 day
 
     /// @notice Expiration time in seconds for user requests before they can be cancelled (default: 10 minutes)
-    uint256 public expirationTime = 10 minutes;
+    uint256 public expirationTime = DEFAULT_EXPIRATION_TIME; // 10 minutes
 
     /// @notice Mapping of user to their last interaction timestamp (used to enforce interaction delay)
     mapping(address => uint256) public lastUserInteractionTimestamp;
@@ -131,28 +134,14 @@ contract PassiveLiquidityVault is
     /// @notice Emergency mode flag
     bool public emergencyMode = false;
 
-    /// @notice Basis points denominator (10000 = 100%)
-    uint256 public constant BASIS_POINTS = 10000;
-
-    /// @notice Minimum deposit amount. Used also as min withdrawal amount unless available is less than minimum. A large enough amount to prevent DoS attacks on deposits or withdrawals
-    uint256 public constant MIN_DEPOSIT = 100e18; // 100 token (assuming 18 decimals)
-
-    /// @notice Default maximum utilization rate (80%)
-    uint256 private constant DEFAULT_MAX_UTILIZATION_RATE = 8000;
-
-    /// @notice Default interaction delay (1 day)
-    uint256 private constant DEFAULT_INTERACTION_DELAY = 1 days;
-
-    /// @notice Default expiration time (10 minutes)
-    uint256 private constant DEFAULT_EXPIRATION_TIME = 10 minutes;
+    /// @notice WAD denominator for high-precision calculations (1e18 = 100%)
+    uint256 public constant WAD = 1e18;
 
     /// @notice Total assets reserved for pending deposit requests
     uint256 private unconfirmedAssets = 0;
 
     /// @notice Mapping of user to their pending request (only one request per user at a time)
     mapping(address => PendingRequest) public pendingRequests;
-
-    bool private processingRequests = false;
 
     // ============ Modifiers ============
 
@@ -185,9 +174,6 @@ contract PassiveLiquidityVault is
         _underlyingDecimals = success ? assetDecimals : 18;
 
         manager = _manager;
-        maxUtilizationRate = DEFAULT_MAX_UTILIZATION_RATE;
-        interactionDelay = DEFAULT_INTERACTION_DELAY;
-        expirationTime = DEFAULT_EXPIRATION_TIME;
     }
 
     /**
@@ -239,7 +225,7 @@ contract PassiveLiquidityVault is
         uint256 totalAssetsValue = availableAssetsValue + deployedLiquidity;
         return
             totalAssetsValue > 0
-                ? ((deployedLiquidity * BASIS_POINTS) / totalAssetsValue)
+                ? ((deployedLiquidity * WAD) / totalAssetsValue)
                 : 0;
     }
 
@@ -262,9 +248,11 @@ contract PassiveLiquidityVault is
         return totalDeployedAmount;
     }
 
-    function _deployedLiquidityWithCleanup() internal returns (uint256) {
-        // get vault's owned NFTs and sum the collateral of each for each NFT
+    function _getDeploymentAndApprovalsWithCleanup(address excludeProtocol) internal returns (uint256, uint256) {
+        // Calculate deployed liquidity and total approvals in a single loop, cleanup inactive protocols
+        // Returns: (totalDeployedAmount, totalCurrentApprovals excluding excludeProtocol)
         uint256 totalDeployedAmount = 0;
+        uint256 totalCurrentApprovals = 0;
         address[] memory protocols = activeProtocols.values();
         for (
             uint256 protocolIndex = 0;
@@ -276,13 +264,21 @@ contract PassiveLiquidityVault is
             uint256 userCollateralDeposits = pm.getUserCollateralDeposits(
                 address(this)
             );
-            if (userCollateralDeposits == 0) {
-                // remove protocol from active protocols
+            uint256 allowance = _asset.allowance(address(this), protocol);
+            
+            // Remove protocol only if both deposits and allowance are zero
+            if (userCollateralDeposits == 0 && allowance == 0) {
                 activeProtocols.remove(protocol);
             }
+            
             totalDeployedAmount += userCollateralDeposits;
+            
+            // Add to total approvals if not the excluded protocol
+            if (protocol != excludeProtocol) {
+                totalCurrentApprovals += allowance;
+            }
         }
-        return totalDeployedAmount;
+        return (totalDeployedAmount, totalCurrentApprovals);
     }
 
     /**
@@ -296,36 +292,35 @@ contract PassiveLiquidityVault is
         uint256 expectedAssets
     ) external nonReentrant whenNotPaused notEmergency {
         if (shares == 0) revert InvalidShares(shares);
-        if (balanceOf(msg.sender) < shares)
+        if (expectedAssets == 0) revert InvalidAmount(expectedAssets);
+
+        uint256 balance = balanceOf(msg.sender);
+        if (balance < shares)
             revert InsufficientBalance(
                 msg.sender,
                 shares,
-                balanceOf(msg.sender)
+                balance
             );
         if (
             lastUserInteractionTimestamp[msg.sender] > 0 &&
             lastUserInteractionTimestamp[msg.sender] + interactionDelay >
             block.timestamp
         ) revert InteractionDelayNotExpired();
+
+        PendingRequest storage request = pendingRequests[msg.sender];
         if (
-            pendingRequests[msg.sender].user == msg.sender &&
-            !pendingRequests[msg.sender].processed
+            request.user == msg.sender &&
+            !request.processed
         ) revert PendingRequestNotProcessed(msg.sender);
 
         lastUserInteractionTimestamp[msg.sender] = block.timestamp;
 
-        // Revert if withdrawal is small unless it's the full balance
-        if (shares < balanceOf(msg.sender) && expectedAssets < MIN_DEPOSIT)
-            revert AmountTooSmall(expectedAssets, MIN_DEPOSIT);
-
-        pendingRequests[msg.sender] = IPassiveLiquidityVault.PendingRequest({
-            user: msg.sender,
-            isDeposit: false,
-            shares: shares,
-            assets: expectedAssets,
-            timestamp: block.timestamp,
-            processed: false
-        });
+        request.user = msg.sender;
+        request.isDeposit = false;
+        request.shares = shares;
+        request.assets = expectedAssets;
+        request.timestamp = block.timestamp;
+        request.processed = false;
 
         emit PendingRequestCreated(msg.sender, false, shares, expectedAssets);
     }
@@ -340,16 +335,16 @@ contract PassiveLiquidityVault is
         uint256 assets,
         uint256 expectedShares
     ) external nonReentrant whenNotPaused notEmergency {
-        if (assets < MIN_DEPOSIT) revert AmountTooSmall(assets, MIN_DEPOSIT);
+        if (assets == 0) revert InvalidAmount(assets);
+        if (expectedShares == 0) revert InvalidShares(expectedShares);
         if (
             lastUserInteractionTimestamp[msg.sender] > 0 &&
             lastUserInteractionTimestamp[msg.sender] + interactionDelay >
             block.timestamp
         ) revert InteractionDelayNotExpired();
-        if (
-            pendingRequests[msg.sender].user == msg.sender &&
-            !pendingRequests[msg.sender].processed
-        ) revert PendingRequestNotProcessed(msg.sender);
+        PendingRequest storage request = pendingRequests[msg.sender];
+        if (request.user == msg.sender && !request.processed)
+            revert PendingRequestNotProcessed(msg.sender);
 
         lastUserInteractionTimestamp[msg.sender] = block.timestamp;
 
@@ -360,14 +355,12 @@ contract PassiveLiquidityVault is
         if (balanceBefore + assets != balanceAfter)
             revert TransferFailed(balanceBefore, assets, balanceAfter);
 
-        pendingRequests[msg.sender] = IPassiveLiquidityVault.PendingRequest({
-            user: msg.sender,
-            isDeposit: true,
-            shares: expectedShares,
-            assets: assets,
-            timestamp: block.timestamp,
-            processed: false
-        });
+        request.user = msg.sender;
+        request.isDeposit = true;
+        request.shares = expectedShares;
+        request.assets = assets;
+        request.timestamp = block.timestamp;
+        request.processed = false;
 
         unconfirmedAssets += assets;
 
@@ -417,13 +410,8 @@ contract PassiveLiquidityVault is
         // Clear the request first to prevent reentrancy
         request.user = address(0);
 
-        // Safely decrease unconfirmed assets with underflow protection
-        if (unconfirmedAssets >= assetsToReturn) {
-            unconfirmedAssets -= assetsToReturn;
-        } else {
-            // This should never happen in normal operation, but handle gracefully
-            unconfirmedAssets = 0;
-        }
+        // Decrease unconfirmed assets 
+        unconfirmedAssets -= assetsToReturn;
 
         // Transfer assets from vault to user
         uint256 balanceBefore = _asset.balanceOf(address(this));
@@ -451,14 +439,42 @@ contract PassiveLiquidityVault is
     function processDeposit(
         address requestedBy
     ) external nonReentrant onlyManager {
+        _processDeposit(requestedBy);
+    }
+
+    /**
+     * @notice Batch process multiple pending deposit requests (manager only)
+     * @param requesters Array of addresses who made deposit requests
+     * @dev Processes each deposit request, reverts if any request fails
+     */
+    function batchProcessDeposit(
+        address[] calldata requesters
+    ) external nonReentrant onlyManager {
+        for (uint256 i = 0; i < requesters.length; i++) {
+            _processDeposit(requesters[i]);
+        }
+    }
+
+
+    function _processDeposit(
+        address requestedBy
+    ) internal {    
         PendingRequest storage request = pendingRequests[requestedBy];
-        if (request.user == address(0) || request.processed)
+        
+        // Check for no pending request
+        if (request.user == address(0) || request.processed) {
             revert NoPendingRequests(requestedBy);
-        if (!request.isDeposit) revert NoPendingDeposit(requestedBy);
+        }
+        
+        // Check for wrong request type
+        if (!request.isDeposit) {
+            revert NoPendingDeposit(requestedBy);
+        }
 
         // Check if request has expired
-        if (request.timestamp + expirationTime <= block.timestamp)
+        if (request.timestamp + expirationTime <= block.timestamp) {
             revert RequestExpired();
+        }
 
         request.processed = true;
         unconfirmedAssets -= request.assets;
@@ -481,14 +497,41 @@ contract PassiveLiquidityVault is
     function processWithdrawal(
         address requestedBy
     ) external nonReentrant onlyManager {
+        _processWithdrawal(requestedBy);
+    }
+
+    /**
+     * @notice Batch process multiple pending withdrawal requests (manager only)
+     * @param requesters Array of addresses who made withdrawal requests
+     * @dev Processes each withdrawal request, reverts if any request fails
+     */
+    function batchProcessWithdrawal(
+        address[] calldata requesters
+    ) external nonReentrant onlyManager {
+        for (uint256 i = 0; i < requesters.length; i++) {
+            _processWithdrawal(requesters[i]);
+        }
+    }
+
+    function _processWithdrawal(
+        address requestedBy
+    ) internal {
         PendingRequest storage request = pendingRequests[requestedBy];
-        if (request.user == address(0) || request.processed)
+        
+        // Check for no pending request
+        if (request.user == address(0) || request.processed) {
             revert NoPendingRequests(requestedBy);
-        if (request.isDeposit) revert NoPendingWithdrawal(requestedBy);
+        }
+        
+        // Check for wrong request type
+        if (request.isDeposit) {
+            revert NoPendingWithdrawal(requestedBy);
+        }
 
         // Check if request has expired
-        if (request.timestamp + expirationTime <= block.timestamp)
+        if (request.timestamp + expirationTime <= block.timestamp) {
             revert RequestExpired();
+        }
 
         request.processed = true;
         _burn(requestedBy, request.shares);
@@ -497,8 +540,9 @@ contract PassiveLiquidityVault is
         uint256 balanceBefore = _asset.balanceOf(address(this));
         _asset.safeTransfer(request.user, request.assets);
         uint256 balanceAfter = _asset.balanceOf(address(this));
-        if (balanceBefore != request.assets + balanceAfter)
+        if (balanceBefore != request.assets + balanceAfter) {
             revert TransferFailed(balanceBefore, request.assets, balanceAfter);
+        }
 
         emit PendingRequestProcessed(
             requestedBy,
@@ -542,7 +586,7 @@ contract PassiveLiquidityVault is
         // Ensure we don't withdraw more than available
         if (withdrawAmount > vaultBalance)
             revert InsufficientAvailableAssets(withdrawAmount, vaultBalance);
-        if (withdrawAmount == 0) revert AmountTooSmall(withdrawAmount, 1); // Prevent zero withdrawals
+        if (withdrawAmount == 0) revert InvalidAmount(withdrawAmount); // Prevent zero withdrawals
 
         _burn(msg.sender, shares);
         uint256 balanceBefore = _asset.balanceOf(address(this));
@@ -552,6 +596,34 @@ contract PassiveLiquidityVault is
             revert TransferFailed(balanceBefore, withdrawAmount, balanceAfter);
 
         emit EmergencyWithdrawal(msg.sender, shares, withdrawAmount);
+    }
+
+    /**
+     * @notice Override ERC20 _update to prevent transfers of shares locked for withdrawal
+     * @param from Address sending tokens (address(0) for minting)
+     * @param to Address receiving tokens (address(0) for burning)
+     * @param value Amount of tokens being transferred
+     * @dev Prevents users from transferring shares that are locked in pending withdrawal requests
+     */
+    function _update(address from, address to, uint256 value) internal virtual override {
+        // Only check transfer restrictions for non-mint operations (from != address(0))
+        // Allow burns (to == address(0)) as they are part of withdrawal processing
+        if (from != address(0) && to != address(0)) {
+            PendingRequest storage request = pendingRequests[from];
+            
+            // Check if the sender has a pending withdrawal request
+            if (request.user == from && !request.isDeposit && !request.processed) {
+                uint256 currentBalance = balanceOf(from);
+                uint256 lockedShares = request.shares;
+                
+                // Check if the transfer would leave insufficient shares for the pending withdrawal
+                if (currentBalance < lockedShares + value) {
+                    revert SharesLockedForWithdrawal(from, lockedShares, value);
+                }
+            }
+        }
+        
+        super._update(from, to, value);
     }
 
     // ============ Manager Functions ============
@@ -572,13 +644,20 @@ contract PassiveLiquidityVault is
         if (amount > availableAssetsValue)
             revert InsufficientAvailableAssets(amount, availableAssetsValue);
 
-        // Check utilization rate limits - cache values to avoid multiple calls
-        uint256 deployedLiquidity = _deployedLiquidityWithCleanup();
+        // Get deployed liquidity and total approvals in a single loop (excluding current protocol)
+        (uint256 deployedLiquidity, uint256 totalCurrentApprovals) = _getDeploymentAndApprovalsWithCleanup(protocol);
         uint256 totalAssetsValue = availableAssetsValue + deployedLiquidity;
-        uint256 newUtilization = ((deployedLiquidity + amount) * BASIS_POINTS) /
-            totalAssetsValue;
-        if (newUtilization > maxUtilizationRate)
-            revert ExceedsMaxUtilization(newUtilization, maxUtilizationRate);
+
+        // Add the new approval amount for this protocol
+        totalCurrentApprovals += amount;
+
+        // Check utilization rate limits - calculate projected utilization from total approvals
+        uint256 projectedUtilization = totalAssetsValue > 0
+            ? (totalCurrentApprovals * WAD) / totalAssetsValue
+            : 0;
+        
+        if (projectedUtilization > maxUtilizationRate)
+            revert ExceedsMaxUtilization(projectedUtilization, maxUtilizationRate);
 
         // Update deployment info - use EnumerableSet for gas efficiency
         activeProtocols.add(protocol);
@@ -587,11 +666,15 @@ contract PassiveLiquidityVault is
 
         emit FundsApproved(msg.sender, amount, protocol);
 
-        // Calculate current utilization for event (avoid external call)
+        // Calculate current utilization for event
         uint256 currentUtilization = totalAssetsValue > 0
-            ? ((deployedLiquidity * BASIS_POINTS) / totalAssetsValue)
+            ? ((deployedLiquidity * WAD) / totalAssetsValue)
             : 0;
-        emit UtilizationRateUpdated(currentUtilization, newUtilization);
+        emit UtilizationRateUpdated(currentUtilization, projectedUtilization);
+    }
+
+    function cleanInactiveProtocols() external onlyManager {
+        _getDeploymentAndApprovalsWithCleanup(address(0));
     }
 
     // ============ Signature Functions ============
@@ -617,6 +700,36 @@ contract PassiveLiquidityVault is
         uint256 balance = _asset.balanceOf(address(this));
         // Subtract unconfirmed assets (pending deposit requests)
         return balance > unconfirmedAssets ? balance - unconfirmedAssets : 0;
+    }
+
+    /**
+     * @notice Get the number of shares locked for a pending withdrawal request
+     * @param user Address of the user
+     * @return Number of shares locked for withdrawal, 0 if no pending withdrawal
+     */
+    function getLockedShares(address user) external view returns (uint256) {
+        PendingRequest storage request = pendingRequests[user];
+        if (request.user == user && !request.isDeposit && !request.processed) {
+            return request.shares;
+        }
+        return 0;
+    }
+
+    /**
+     * @notice Get the number of shares available for transfer (total balance minus locked shares)
+     * @param user Address of the user
+     * @return Number of shares available for transfer
+     */
+    function getAvailableShares(address user) external view returns (uint256) {
+        uint256 totalBalance = balanceOf(user);
+        uint256 locked = 0;
+        
+        PendingRequest storage request = pendingRequests[user];
+        if (request.user == user && !request.isDeposit && !request.processed) {
+            locked = request.shares;
+        }
+        
+        return totalBalance > locked ? totalBalance - locked : 0;
     }
 
     /**
@@ -655,11 +768,11 @@ contract PassiveLiquidityVault is
 
     /**
      * @notice Set maximum utilization rate
-     * @param newMaxRate New maximum utilization rate (in basis points)
+     * @param newMaxRate New maximum utilization rate (in WAD, e.g., 0.8e18 = 80%)
      */
     function setMaxUtilizationRate(uint256 newMaxRate) external onlyOwner {
-        if (newMaxRate > BASIS_POINTS)
-            revert InvalidRate(newMaxRate, BASIS_POINTS);
+        if (newMaxRate > WAD)
+            revert InvalidRate(newMaxRate, WAD);
         uint256 oldRate = maxUtilizationRate;
         maxUtilizationRate = newMaxRate;
         emit UtilizationRateUpdated(oldRate, newMaxRate);

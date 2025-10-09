@@ -18,6 +18,7 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
         uint256 timestamp;
         bool processed;
     }
+
     // ============ Events ============
     
     event PendingRequestCreated(address indexed user, bool direction, uint256 shares, uint256 assets);
@@ -31,7 +32,7 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     event ExpirationTimeUpdated(uint256 oldExpirationTime, uint256 newExpirationTime);
     event InteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
     event EmergencyModeUpdated(bool emergencyMode);
-    
+
     // ============ State Variables ============
     
     function manager() external view returns (address);
@@ -55,6 +56,9 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     
     function processDeposit(address requestedBy) external;
     function processWithdrawal(address requestedBy) external;
+    
+    function batchProcessDeposit(address[] calldata requesters) external;
+    function batchProcessWithdrawal(address[] calldata requesters) external;
 
     /**
      * @notice Approve funds usage to an external protocol
@@ -63,12 +67,16 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
      */
     function approveFundsUsage(address protocol, uint256 amount) external;
 
+    function cleanInactiveProtocols() external;
+
     // ============ View Functions ============
     
     // function getPendingRequest(uint256 index) external view returns (PendingRequest memory);
     function getActiveProtocolsCount() external view returns (uint256);
     function getActiveProtocols() external view returns (address[] memory);
     function getActiveProtocol(uint256 index) external view returns (address);
+    function getLockedShares(address user) external view returns (uint256);
+    function getAvailableShares(address user) external view returns (uint256);
     // function getPendingDeposit(address user) external view returns (uint256 amount);
     // function getDepositRequest(uint256 index) external view returns (PendingRequest memory);
 

@@ -13,7 +13,6 @@ import "./interfaces/IPredictionStructs.sol";
 import "./interfaces/IPredictionMarketResolver.sol";
 import "./interfaces/IPredictionEvents.sol";
 import "./utils/SignatureProcessor.sol";
-import "../market/interfaces/ISapience.sol";
 import "../vault/interfaces/IPassiveLiquidityVault.sol";
 
 /**
@@ -212,16 +211,16 @@ contract PredictionMarket is
         if (prediction.settled) revert PredictionAlreadySettled();
 
         // 3- Ask resolver if markets are settled, and if prediction succeeded or not, it means maker won
-        (bool isValid, , bool makerWon) = IPredictionMarketResolver(
+        (bool isResolved, , bool parlaySuccess) = IPredictionMarketResolver(
             prediction.resolver
-        ).resolvePrediction(prediction.encodedPredictedOutcomes);
+        ).getPredictionResolution(prediction.encodedPredictedOutcomes);
 
-        if (!isValid) revert PredictionResolutionFailed();
+        if (!isResolved) revert PredictionResolutionFailed();
 
         // 4- Send collateral to winner
         uint256 payout = prediction.makerCollateral +
             prediction.takerCollateral;
-        address winner = makerWon ? prediction.maker : prediction.taker;
+        address winner = parlaySuccess ? prediction.maker : prediction.taker;
 
         _safeTransferOut(config.collateralToken, winner, payout);
 
@@ -231,7 +230,7 @@ contract PredictionMarket is
 
         // 5- Set the prediction state (identify who won and set as closed)
         prediction.settled = true;
-        prediction.makerWon = makerWon;
+        prediction.makerWon = parlaySuccess;
 
         // 6- Burn NFTs
         _burn(prediction.makerNftTokenId);
@@ -244,7 +243,7 @@ contract PredictionMarket is
             prediction.makerNftTokenId,
             prediction.takerNftTokenId,
             payout,
-            makerWon,
+            prediction.makerWon,
             refCode
         );
     }
@@ -495,7 +494,10 @@ contract PredictionMarket is
 
     // ============ Internal Functions ============
 
-    /// @dev Prevent transfers to PassiveLiquidityVault contracts
+    /**
+     * @dev Prevent transfers to PassiveLiquidityVault contracts
+     * @notice This prevents prediction NFTs from being deposited into vaults
+     */
     function _verifyTransfer(address , address to, uint256 ) internal virtual {
         // Prevent transfers to PassiveLiquidityVault contracts
         if (_isPassiveLiquidityVault(to)) {
@@ -503,7 +505,13 @@ contract PredictionMarket is
         }
     }
 
-    /// @dev Override ERC721 ownership update to keep auxiliary mappings and prediction parties in sync.
+    /**
+     * @dev Override ERC721 ownership update to keep auxiliary mappings and prediction parties in sync
+     * @notice When an NFT is transferred, this updates:
+     *   - The maker/taker in the prediction data
+     *   - The role-based NFT ownership indexes (nftByMakerAddress, nftByTakerAddress)
+     *   - User collateral deposit tracking (for user-to-user transfers)
+     */
     function _update(address to, uint256 tokenId, address auth)
         internal
         override
@@ -593,6 +601,19 @@ contract PredictionMarket is
         }
     }
 
+    /**
+     * @dev Internal function to create a prediction after collateral has been transferred
+     * @notice This is called by both mint() and fillOrder()
+     * @param encodedPredictedOutcomes Encoded prediction outcomes for resolver validation
+     * @param resolver Address of the resolver contract
+     * @param maker Address of the maker (prediction creator)
+     * @param taker Address of the taker (counterparty)
+     * @param makerCollateral Amount of collateral from maker
+     * @param takerCollateral Amount of collateral from taker
+     * @param refCode Reference code for tracking
+     * @return makerNftTokenId The NFT token ID for the maker
+     * @return takerNftTokenId The NFT token ID for the taker
+     */
     function _createPrediction(
         bytes memory encodedPredictedOutcomes,
         address resolver,
@@ -653,6 +674,13 @@ contract PredictionMarket is
         );
     }
 
+    /**
+     * @dev Safe transfer in with fee-on-transfer protection
+     * @notice Verifies the contract actually received the expected amount
+     * @param token The ERC20 token address
+     * @param from The address to transfer from
+     * @param amount The expected amount to receive
+     */
     function _safeTransferIn(
         address token,
         address from,
@@ -661,10 +689,18 @@ contract PredictionMarket is
         uint256 initialBalance = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(from, address(this), amount);
         uint256 finalBalance = IERC20(token).balanceOf(address(this));
-        // for in bound transfers we need to ensure contract collateral increased at least by the amount
+        // For inbound transfers, ensure contract balance increased by at least the amount
+        // This protects against fee-on-transfer tokens
         if (finalBalance < initialBalance + amount) revert TransferFailed();
     }
 
+    /**
+     * @dev Safe transfer out with balance verification
+     * @notice Ensures the contract doesn't lose more than the intended amount
+     * @param token The ERC20 token address
+     * @param to The address to transfer to
+     * @param amount The amount to send
+     */
     function _safeTransferOut(
         address token,
         address to,
@@ -673,7 +709,7 @@ contract PredictionMarket is
         uint256 initialBalance = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransfer(to, amount);
         uint256 finalBalance = IERC20(token).balanceOf(address(this));
-        // for out bound transfers we need to ensure contract collateral deducted no more than the amount
+        // For outbound transfers, ensure contract balance decreased by no more than the amount
         if (finalBalance + amount < initialBalance) revert TransferFailed();
     }
 }

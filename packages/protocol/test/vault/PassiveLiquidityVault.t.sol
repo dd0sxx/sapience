@@ -335,19 +335,6 @@ contract PassiveLiquidityVaultTest is Test {
         assertEq(vault.availableAssets(), amount1 + amount2);
     }
     
-    // Tests that deposits below the minimum amount are rejected
-    function testDepositTooSmall() public {
-        uint256 amount = vault.MIN_DEPOSIT() - 1;
-        
-        vm.startPrank(user1);
-        asset.approve(address(vault), amount);
-        
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.AmountTooSmall.selector, amount, vault.MIN_DEPOSIT()));
-        vault.requestDeposit(amount, amount);
-        
-        vm.stopPrank();
-    }
-    
     // Tests that deposits are blocked when the contract is paused
     function testDepositWhenPaused() public {
         vm.startPrank(owner);
@@ -462,7 +449,7 @@ contract PassiveLiquidityVaultTest is Test {
         _deployFunds(address(protocol1), deployAmount);
         
         assertEq(vault.totalDeployed(), deployAmount);
-        assertEq(vault.utilizationRate(), 5000); // 50%
+        assertEq(vault.utilizationRate(), 0.5e18); // 50% in WAD
         assertEq(protocol1.getBalance(), deployAmount);
         assertEq(vault.getActiveProtocolsCount(), 1);
         assertEq(vault.getActiveProtocol(0), address(protocol1));
@@ -491,7 +478,7 @@ contract PassiveLiquidityVaultTest is Test {
         
         // Set max utilization to 50%
         vm.startPrank(owner);
-        vault.setMaxUtilizationRate(5000);
+        vault.setMaxUtilizationRate(0.5e18); // 50% in WAD
         vm.stopPrank();
         
         uint256 deployAmount = (depositAmount * 6000) / 10000; // 60% utilization
@@ -499,8 +486,60 @@ contract PassiveLiquidityVaultTest is Test {
         vm.startPrank(manager);
         asset.approve(address(protocol1), deployAmount);
         
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 6000, 5000));
+        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 0.6e18, 0.5e18));
         vault.approveFundsUsage(address(protocol1), deployAmount);
+        
+        vm.stopPrank();
+    }
+    
+    // Tests that cumulative approvals across multiple protocols respect the max utilization rate
+    function testMultipleProtocolApprovalsCumulativeLimit() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        _approveAndDeposit(user1, depositAmount);
+        
+        // Set max utilization to 80%
+        vm.startPrank(owner);
+        vault.setMaxUtilizationRate(0.8e18); // 80% in WAD
+        vm.stopPrank();
+        
+        vm.startPrank(manager);
+        
+        // First approval: 50% to protocol1 - should succeed
+        uint256 firstApproval = (depositAmount * 5000) / 10000; // 50%
+        vault.approveFundsUsage(address(protocol1), firstApproval);
+        
+        // Second approval: 40% to protocol2 - should fail because 50% + 40% = 90% > 80%
+        uint256 secondApproval = (depositAmount * 4000) / 10000; // 40%
+        
+        // Expected: 90% utilization, max: 80%
+        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 0.9e18, 0.8e18));
+        vault.approveFundsUsage(address(protocol2), secondApproval);
+        
+        vm.stopPrank();
+    }
+    
+    // Tests that cumulative approvals work correctly when one protocol is re-approved
+    function testReApprovalToSameProtocolReplacesAllowance() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        _approveAndDeposit(user1, depositAmount);
+        
+        // Set max utilization to 80%
+        vm.startPrank(owner);
+        vault.setMaxUtilizationRate(0.8e18); // 80% in WAD
+        vm.stopPrank();
+        
+        vm.startPrank(manager);
+        
+        // First approval: 50% to protocol1
+        uint256 firstApproval = (depositAmount * 5000) / 10000; // 50%
+        vault.approveFundsUsage(address(protocol1), firstApproval);
+        
+        // Re-approve protocol1 with 70% - should succeed because it replaces the 50%, not adds to it
+        uint256 reApproval = (depositAmount * 7000) / 10000; // 70%
+        vault.approveFundsUsage(address(protocol1), reApproval);
+        
+        // Verify the approval was updated (should be 70%, not 120%)
+        assertEq(asset.allowance(address(vault), address(protocol1)), reApproval);
         
         vm.stopPrank();
     }
@@ -546,21 +585,21 @@ contract PassiveLiquidityVaultTest is Test {
         
         // Set max utilization to 95% for this test
         vm.startPrank(owner);
-        vault.setMaxUtilizationRate(9500);
+        vault.setMaxUtilizationRate(0.95e18); // 95% in WAD
         vm.stopPrank();
         
         // Deploy 80% of funds
         uint256 deployAmount = (depositAmount * 8000) / 10000;
         _deployFunds(address(protocol1), deployAmount);
         
-        assertEq(vault.utilizationRate(), 8000);
+        assertEq(vault.utilizationRate(), 0.8e18); // 80% in WAD
         
         // Deploy more to reach 90% (but stay within max utilization)
         uint256 additionalDeploy = (depositAmount * 1000) / 10000;
         _deployFunds(address(protocol2), additionalDeploy);
         
-        // Should be 90% utilization
-        assertTrue(vault.utilizationRate() >= 8900 && vault.utilizationRate() <= 9100, "Utilization rate out of expected range");
+        // Should be 90% utilization (0.89e18 to 0.91e18 in WAD)
+        assertTrue(vault.utilizationRate() >= 0.89e18 && vault.utilizationRate() <= 0.91e18, "Utilization rate out of expected range");
     }
     
     // ============ Admin Function Tests ============
@@ -578,7 +617,7 @@ contract PassiveLiquidityVaultTest is Test {
     
     // Tests that the owner can set a new maximum utilization rate
     function testSetMaxUtilizationRate() public {
-        uint256 newMaxRate = 9000;
+        uint256 newMaxRate = 0.9e18; // 90% in WAD
         
         vm.startPrank(owner);
         vault.setMaxUtilizationRate(newMaxRate);
@@ -1121,6 +1160,387 @@ contract PassiveLiquidityVaultTest is Test {
         assertFalse(processed, "Request should not be processed yet");
         
         console.log("SUCCESS: Interaction delay properly enforced for withdrawal after processed deposit");
+    }
+
+    // ============ Batch Processing Tests ============
+
+    function test_batchProcessDeposit() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // Three users request deposits
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        vm.warp(block.timestamp + 1);
+        vm.startPrank(user2);
+        asset.approve(address(vault), depositAmount * 2);
+        vault.requestDeposit(depositAmount * 2, depositAmount * 2);
+        vm.stopPrank();
+        
+        vm.warp(block.timestamp + 1);
+        vm.startPrank(user3);
+        asset.approve(address(vault), depositAmount * 3);
+        vault.requestDeposit(depositAmount * 3, depositAmount * 3);
+        vm.stopPrank();
+        
+        // Manager batch processes all deposits
+        address[] memory requesters = new address[](3);
+        requesters[0] = user1;
+        requesters[1] = user2;
+        requesters[2] = user3;
+        
+        vm.prank(manager);
+        vault.batchProcessDeposit(requesters);
+        
+        // Verify all deposits were processed
+        assertEq(vault.balanceOf(user1), depositAmount);
+        assertEq(vault.balanceOf(user2), depositAmount * 2);
+        assertEq(vault.balanceOf(user3), depositAmount * 3);
+    }
+
+    function test_batchProcessWithdrawal() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // Setup: users deposit first
+        _approveAndDeposit(user1, depositAmount);
+        vm.warp(block.timestamp + 1 days + 1);
+        _approveAndDeposit(user2, depositAmount * 2);
+        vm.warp(block.timestamp + 1 days + 1);
+        _approveAndDeposit(user3, depositAmount * 3);
+        
+        // Users request withdrawals
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(user1);
+        vault.requestWithdrawal(depositAmount, depositAmount);
+        
+        vm.warp(block.timestamp + 1);
+        vm.prank(user2);
+        vault.requestWithdrawal(depositAmount * 2, depositAmount * 2);
+        
+        vm.warp(block.timestamp + 1);
+        vm.prank(user3);
+        vault.requestWithdrawal(depositAmount * 3, depositAmount * 3);
+        
+        // Manager batch processes all withdrawals
+        address[] memory requesters = new address[](3);
+        requesters[0] = user1;
+        requesters[1] = user2;
+        requesters[2] = user3;
+        
+        uint256 user1BalanceBefore = asset.balanceOf(user1);
+        uint256 user2BalanceBefore = asset.balanceOf(user2);
+        uint256 user3BalanceBefore = asset.balanceOf(user3);
+        
+        vm.prank(manager);
+        vault.batchProcessWithdrawal(requesters);
+        
+        // Verify all withdrawals were processed
+        assertEq(vault.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user2), 0);
+        assertEq(vault.balanceOf(user3), 0);
+        
+        assertEq(asset.balanceOf(user1), user1BalanceBefore + depositAmount);
+        assertEq(asset.balanceOf(user2), user2BalanceBefore + depositAmount * 2);
+        assertEq(asset.balanceOf(user3), user3BalanceBefore + depositAmount * 3);
+    }
+
+    function test_batchProcessRevertsOnFirstFailure() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // User1 and user3 request deposits (user2 doesn't)
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        vm.warp(block.timestamp + 11 minutes); // Make user1's request expire
+        
+        vm.startPrank(user3);
+        asset.approve(address(vault), depositAmount * 3);
+        vault.requestDeposit(depositAmount * 3, depositAmount * 3);
+        vm.stopPrank();
+        
+        // Manager batch processes including user1 (expired), user2 (no request), and user3 (valid)
+        address[] memory requesters = new address[](3);
+        requesters[0] = user1; // Expired request - will cause revert
+        requesters[1] = user2; // No request
+        requesters[2] = user3; // Valid request
+        
+        // Expect revert on user1's expired request
+        vm.prank(manager);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.RequestExpired.selector
+            )
+        );
+        vault.batchProcessDeposit(requesters);
+        
+        // Verify no one got shares (batch reverted)
+        assertEq(vault.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user2), 0);
+        assertEq(vault.balanceOf(user3), 0);
+    }
+
+    function test_batchProcessRevertsRollsBackAllChanges() public {
+        uint256 depositAmount = DEPOSIT_AMOUNT;
+        
+        // Only user1 requests deposit
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Manager tries to batch process user1 and user2 (no request)
+        address[] memory requesters = new address[](2);
+        requesters[0] = user1; // Valid - would process successfully
+        requesters[1] = user2; // No request - will cause revert
+        
+        vm.prank(manager);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.NoPendingRequests.selector,
+                user2
+            )
+        );
+        vault.batchProcessDeposit(requesters);
+        
+        // Verify no one got shares (entire batch reverted, rolling back user1's processing)
+        assertEq(vault.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user2), 0);
+    }
+
+    // ============ Share Transfer Restriction Tests ============
+
+    function test_transferBlockedWhenSharesLockedForWithdrawal() public {
+        // Setup: User deposits and receives shares
+        uint256 depositAmount = 1000 * 10 ** 18;
+        asset.mint(user1, depositAmount);
+        
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Manager processes deposit
+        vm.prank(manager);
+        vault.processDeposit(user1);
+        
+        uint256 userShares = vault.balanceOf(user1);
+        assertEq(userShares, depositAmount);
+        
+        // User requests withdrawal for all shares
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(user1);
+        vault.requestWithdrawal(userShares, depositAmount);
+        
+        // Verify shares are locked
+        assertEq(vault.getLockedShares(user1), userShares);
+        assertEq(vault.getAvailableShares(user1), 0);
+        
+        // User tries to transfer shares and should fail
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.SharesLockedForWithdrawal.selector,
+                user1,
+                userShares,
+                userShares
+            )
+        );
+        vault.transfer(user2, userShares);
+    }
+
+    function test_partialTransferBlockedWhenInsufficientUnlockedShares() public {
+        // Setup: User deposits and receives shares
+        uint256 depositAmount = 1000 * 10 ** 18;
+        asset.mint(user1, depositAmount);
+        
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Manager processes deposit
+        vm.prank(manager);
+        vault.processDeposit(user1);
+        
+        uint256 userShares = vault.balanceOf(user1);
+        
+        // User requests withdrawal for half of their shares
+        uint256 withdrawalShares = userShares / 2;
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(user1);
+        vault.requestWithdrawal(withdrawalShares, depositAmount / 2);
+        
+        // Verify locked shares
+        assertEq(vault.getLockedShares(user1), withdrawalShares);
+        assertEq(vault.getAvailableShares(user1), withdrawalShares);
+        
+        // User tries to transfer more than available unlocked shares
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.SharesLockedForWithdrawal.selector,
+                user1,
+                withdrawalShares,
+                withdrawalShares + 1
+            )
+        );
+        vault.transfer(user2, withdrawalShares + 1);
+        
+        // User can transfer exactly the available shares
+        vm.prank(user1);
+        vault.transfer(user2, withdrawalShares);
+        
+        assertEq(vault.balanceOf(user1), withdrawalShares); // Locked shares remain
+        assertEq(vault.balanceOf(user2), withdrawalShares); // Transferred shares
+    }
+
+    function test_transferAllowedAfterWithdrawalProcessed() public {
+        // Setup: User deposits and receives shares
+        uint256 depositAmount = 1000 * 10 ** 18;
+        asset.mint(user1, depositAmount);
+        
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Manager processes deposit
+        vm.prank(manager);
+        vault.processDeposit(user1);
+        
+        uint256 userShares = vault.balanceOf(user1);
+        
+        // User requests withdrawal
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(user1);
+        vault.requestWithdrawal(userShares, depositAmount);
+        
+        // Verify shares are locked
+        assertEq(vault.getLockedShares(user1), userShares);
+        
+        // Manager processes withdrawal
+        vm.prank(manager);
+        vault.processWithdrawal(user1);
+        
+        // Verify shares are no longer locked (user has 0 shares now)
+        assertEq(vault.getLockedShares(user1), 0);
+        assertEq(vault.balanceOf(user1), 0);
+    }
+
+    function test_transferAllowedAfterWithdrawalCancelled() public {
+        // Setup: User deposits and receives shares
+        uint256 depositAmount = 1000 * 10 ** 18;
+        asset.mint(user1, depositAmount);
+        
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Manager processes deposit
+        vm.prank(manager);
+        vault.processDeposit(user1);
+        
+        uint256 userShares = vault.balanceOf(user1);
+        
+        // User requests withdrawal
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(user1);
+        vault.requestWithdrawal(userShares, depositAmount);
+        
+        // Verify shares are locked
+        assertEq(vault.getLockedShares(user1), userShares);
+        assertEq(vault.getAvailableShares(user1), 0);
+        
+        // Wait for expiration and cancel withdrawal
+        vm.warp(block.timestamp + 11 minutes);
+        vm.prank(user1);
+        vault.cancelWithdrawal();
+        
+        // Verify shares are no longer locked
+        assertEq(vault.getLockedShares(user1), 0);
+        assertEq(vault.getAvailableShares(user1), userShares);
+        
+        // Transfer should now succeed
+        vm.prank(user1);
+        vault.transfer(user2, userShares);
+        
+        assertEq(vault.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user2), userShares);
+    }
+
+    function test_noTransferRestrictionForDepositRequests() public {
+        // Setup: User deposits and receives shares
+        uint256 initialDeposit = 1000 * 10 ** 18;
+        asset.mint(user1, initialDeposit * 2); // Mint extra for second deposit
+        
+        vm.startPrank(user1);
+        asset.approve(address(vault), initialDeposit);
+        vault.requestDeposit(initialDeposit, initialDeposit);
+        vm.stopPrank();
+        
+        // Manager processes deposit
+        vm.prank(manager);
+        vault.processDeposit(user1);
+        
+        uint256 userShares = vault.balanceOf(user1);
+        
+        // User requests another deposit (not a withdrawal)
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.startPrank(user1);
+        asset.approve(address(vault), initialDeposit);
+        vault.requestDeposit(initialDeposit, initialDeposit);
+        vm.stopPrank();
+        
+        // Verify no shares are locked (deposit requests don't lock shares)
+        assertEq(vault.getLockedShares(user1), 0);
+        assertEq(vault.getAvailableShares(user1), userShares);
+        
+        // Transfer should succeed
+        vm.prank(user1);
+        vault.transfer(user2, userShares);
+        
+        assertEq(vault.balanceOf(user1), 0);
+        assertEq(vault.balanceOf(user2), userShares);
+    }
+
+    function test_getLockedSharesReturnsZeroWithNoRequest() public {
+        assertEq(vault.getLockedShares(user1), 0);
+        assertEq(vault.getAvailableShares(user1), 0);
+    }
+
+    function test_getAvailableSharesCalculatesCorrectly() public {
+        // Setup: User deposits and receives shares
+        uint256 depositAmount = 1000 * 10 ** 18;
+        asset.mint(user1, depositAmount);
+        
+        vm.startPrank(user1);
+        asset.approve(address(vault), depositAmount);
+        vault.requestDeposit(depositAmount, depositAmount);
+        vm.stopPrank();
+        
+        // Manager processes deposit
+        vm.prank(manager);
+        vault.processDeposit(user1);
+        
+        uint256 userShares = vault.balanceOf(user1);
+        
+        // Before withdrawal request
+        assertEq(vault.getAvailableShares(user1), userShares);
+        
+        // Request withdrawal for 30% of shares
+        uint256 withdrawalShares = (userShares * 30) / 100;
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(user1);
+        vault.requestWithdrawal(withdrawalShares, (depositAmount * 30) / 100);
+        
+        // After withdrawal request
+        assertEq(vault.getAvailableShares(user1), userShares - withdrawalShares);
+        assertEq(vault.getLockedShares(user1), withdrawalShares);
     }
 }
 
