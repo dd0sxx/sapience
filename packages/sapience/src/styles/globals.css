@@ -47,7 +47,7 @@
     --category-2: 270 95% 75%; /* purple */
     --category-3: 142 72% 45%; /* green */
     --category-4: 38 92% 55%; /* amber */
-    --category-5: 0 84% 60%; /* red */
+    --category-5: 350 90% 55%; /* red (deeper, less orange) */
     --category-6: 330 80% 68%; /* pink */
     --category-7: 24 95% 56%; /* orange */
     --radius: 0.5rem;
@@ -92,7 +92,7 @@
     --category-2: 270 95% 82%;
     --category-3: 142 72% 60%;
     --category-4: 38 92% 66%;
-    --category-5: 0 84% 70%;
+    --category-5: 350 90% 62%;
     --category-6: 330 85% 72%;
     --category-7: 24 95% 66%;
   }
