@@ -110,7 +110,7 @@ const MarketCard = ({
       optionName: 'Yes',
     } as MarketWithContext;
     handleAddToBetSlip(yesMarket, true);
-    router.push('/markets');
+    router.push('/markets#spot');
   };
 
   // Handler for No button
@@ -123,7 +123,7 @@ const MarketCard = ({
       optionName: 'No',
     } as MarketWithContext;
     handleAddToBetSlip(noMkt, false);
-    router.push('/markets');
+    router.push('/markets#spot');
   };
 
   const MarketPrediction = () => {
@@ -244,7 +244,7 @@ const MarketCard = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="bg-card border rounded-md border-border/70 flex flex-row items-stretch h-full md:min-h-[160px] relative overflow-hidden shadow shadow-md transition-shadow duration-200"
+        className="bg-card border rounded-md border-border/70 flex flex-row items-stretch h-full md:min-h-[160px] relative overflow-hidden shadow-sm transition-shadow duration-200"
       >
         <div
           className="w-1 min-w-[4px] max-w-[4px]"
@@ -300,7 +300,7 @@ const MarketCard = ({
                   onYes={handleYesClick}
                   onNo={handleNoClick}
                   className="w-full"
-                  size="md"
+                  size="sm"
                   selectedYes={yesNoSelection.selectedYes}
                   selectedNo={yesNoSelection.selectedNo}
                   yesOddsText={
@@ -321,7 +321,7 @@ const MarketCard = ({
                       true,
                       MarketGroupClassificationEnum.YES_NO
                     );
-                    router.push('/markets');
+                    router.push('/markets#spot');
                   }}
                   onNo={() => {
                     handleAddToBetSlip(
@@ -329,10 +329,10 @@ const MarketCard = ({
                       false,
                       MarketGroupClassificationEnum.YES_NO
                     );
-                    router.push('/markets');
+                    router.push('/markets#spot');
                   }}
                   className="w-full"
-                  size="md"
+                  size="sm"
                   yesOddsText={
                     showAmericanOdds
                       ? toAmericanOdds(latestPrices[market.marketId])

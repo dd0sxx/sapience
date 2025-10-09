@@ -9,45 +9,29 @@ import {
   type CarouselApi,
 } from '@sapience/sdk/ui/components/ui/carousel';
 import { useSidebar } from '@sapience/sdk/ui/components/ui/sidebar';
-import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
-import MarketCard from '../markets/MarketCard';
-import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
-import type { MarketGroupClassification } from '~/lib/types';
-import { getYAxisConfig, formatQuestion } from '~/lib/utils/util';
+import ParlayConditionCard from '../markets/ParlayConditionCard';
+import { useConditions } from '~/hooks/graphql/useConditions';
+import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 
 // Removed LottieLoader in favor of simple fade-in cards and fixed-height placeholder
 
-// Define local interfaces based on MarketGroupsList structure
-export interface MarketWithContext extends GraphQLMarketType {
-  marketAddress: string;
-  chainId: number;
-  collateralAsset: string;
-  categorySlug: string;
-  categoryId: string;
-}
-
-// Interface for the final grouped market data structure
-interface GroupedMarketGroup {
-  key: string;
-  marketAddress: string;
-  chainId: number;
-  marketName: string;
-  collateralAsset: string;
+// Interface for featured conditions in the homepage carousel
+interface FeaturedCondition {
+  id: string;
+  question: string;
+  shortName?: string | null;
+  endTime: number;
+  description?: string | null;
   color: string;
-  categorySlug: string;
   categoryId: string;
-  marketQuestion?: string | null;
-  markets: MarketWithContext[];
-  displayQuestion?: string;
-  isActive?: boolean;
-  marketClassification?: MarketGroupClassification;
-  displayUnit?: string;
+  categorySlug: string;
 }
 
 export default function FeaturedMarketGroupCards() {
-  // Use the same hook as MarketGroupsList
-  const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
-    useEnrichedMarketGroups();
+  // Fetch recent conditions
+  const { data: conditions, isLoading: isLoadingConditions } = useConditions({
+    take: 100,
+  });
 
   // Per-mount random seed to vary picks between mounts but keep them stable within a session
   const [randomSeed] = React.useState<number>(() => Math.random());
@@ -64,165 +48,57 @@ export default function FeaturedMarketGroupCards() {
     };
   }, []);
 
-  // Process market groups with same logic as MarketGroupsList but only take first 8
-  const groupedMarketGroups: GroupedMarketGroup[] = React.useMemo(() => {
-    if (!enrichedMarketGroups) return [];
+  // Build featured conditions with category variety; target 8 items
+  const featuredConditions: FeaturedCondition[] = React.useMemo(() => {
+    if (!conditions) return [];
 
     const rng = createRng(randomSeed);
+    const now = Math.floor(Date.now() / 1000);
 
-    // 1. Only consider deployed market groups and deployed markets
-    const deployedGroups = enrichedMarketGroups.filter((group) => {
-      const hasAddress =
-        typeof group.address === 'string' && group.address.length > 0;
-      const hasDeployedMarkets = Array.isArray(group.markets)
-        ? group.markets.some(
-            (m) =>
-              typeof m.poolAddress === 'string' &&
-              m.poolAddress.length > 0 &&
-              m.poolAddress !== '0x'
-          )
-        : false;
-      return hasAddress && hasDeployedMarkets;
+    // 1) Active + public conditions
+    const activePublic = conditions.filter((c) => {
+      if (typeof c.endTime !== 'number' || c.endTime <= 0) return false;
+      if (!c.public) return false;
+      return now <= c.endTime;
     });
 
-    // 2. Map to MarketWithContext[] (no category filter for homepage)
-    const allMarkets: MarketWithContext[] = deployedGroups.flatMap(
-      (marketGroup) => {
-        return (
-          marketGroup.markets
-            // Only include deployed markets (with a valid poolAddress)
-            .filter(
-              (market) =>
-                typeof market.poolAddress === 'string' &&
-                market.poolAddress.length > 0 &&
-                market.poolAddress !== '0x'
-            )
-            .filter(
-              (market) =>
-                // Ensure startTimestamp and endTimestamp are numbers
-                typeof market.startTimestamp === 'number' &&
-                typeof market.endTimestamp === 'number'
-            )
-            .map((market): MarketWithContext => {
-              return {
-                ...market,
-                startTimestamp: market.startTimestamp,
-                endTimestamp: market.endTimestamp,
-                marketAddress: marketGroup.address!,
-                chainId: marketGroup.chainId,
-                collateralAsset: marketGroup.collateralAsset!,
-                categorySlug: marketGroup.category.slug,
-                categoryId: marketGroup.category.id.toString(),
-              };
-            })
-        );
-      }
-    );
+    // 2) Map with color metadata
+    const mapped: FeaturedCondition[] = activePublic.map((c) => {
+      const slug = c.category?.slug || '';
+      const styleInfo = getCategoryStyle(slug);
+      const color = styleInfo?.color || 'hsl(var(--muted-foreground))';
+      return {
+        id: c.id,
+        question: c.question,
+        shortName: c.shortName,
+        endTime: c.endTime,
+        description: c.description,
+        color,
+        categoryId: String(c.category?.id ?? ''),
+        categorySlug: slug,
+      };
+    });
 
-    // 2. Filter markets based on status (only active markets for homepage)
-    const now = Math.floor(Date.now() / 1000);
-    const filteredMarketsByStatus: MarketWithContext[] = allMarkets.filter(
-      (market) => {
-        if (
-          typeof market.endTimestamp !== 'number' ||
-          market.endTimestamp <= 0
-        ) {
-          return false;
-        }
-        if (!market.public) return false;
-        // Only show active markets on homepage
-        return now <= market.endTimestamp;
-      }
-    );
-
-    // 3. Group filtered markets by market group key
-    const groupedByMarketKey = filteredMarketsByStatus.reduce<
-      Record<string, MarketWithContext[]>
-    >((acc, market) => {
-      const key = `${market.chainId}-${market.marketAddress}`;
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(market);
-      return acc;
-    }, {});
-
-    // 4. Convert grouped markets to GroupedMarketGroup[]
-    const result: GroupedMarketGroup[] = Object.entries(groupedByMarketKey).map(
-      ([key, markets]) => {
-        const firstMarket = markets[0];
-        const enrichedGroup = deployedGroups.find(
-          (group) =>
-            group.chainId === firstMarket.chainId &&
-            group.address === firstMarket.marketAddress
-        );
-
-        if (!enrichedGroup) {
-          throw new Error(`Could not find enriched group for key: ${key}`);
-        }
-
-        // Get display unit from yAxisConfig
-        let displayUnit = '';
-        if (enrichedGroup) {
-          const yAxisConfig = getYAxisConfig(enrichedGroup);
-          displayUnit = yAxisConfig.unit;
-        }
-
-        // Always prefer a market-level question for display
-        const allMarketsInGroup = enrichedGroup?.markets || [];
-        const marketWithQuestion =
-          markets.find((m) => !!m.question) ||
-          allMarketsInGroup.find((m) => !!m.question) ||
-          null;
-        const displayQuestion =
-          (marketWithQuestion &&
-            (formatQuestion(marketWithQuestion.question) ||
-              marketWithQuestion.question)) ||
-          enrichedGroup.question ||
-          '';
-
-        return {
-          key,
-          marketAddress: firstMarket.marketAddress,
-          chainId: firstMarket.chainId,
-          marketName: enrichedGroup.question || '',
-          collateralAsset: firstMarket.collateralAsset,
-          color: enrichedGroup.category.color || '#71717a',
-          categorySlug: firstMarket.categorySlug,
-          categoryId: firstMarket.categoryId,
-          marketQuestion: enrichedGroup.question,
-          markets,
-          displayQuestion,
-          isActive: markets.some((market) => now <= market.endTimestamp!),
-          marketClassification: enrichedGroup.marketClassification,
-          displayUnit,
-        };
-      }
-    );
-
-    // 5. Randomize selection prioritizing category variety and avoiding repeats
-    // Group by category and pick exactly one group per category that has at least one active market
-    const byCategory = result.reduce<Record<string, GroupedMarketGroup[]>>(
-      (acc, group) => {
-        const key = group.categoryId || 'unknown';
+    // 3) One per category when possible
+    const byCategory = mapped.reduce<Record<string, FeaturedCondition[]>>(
+      (acc, cond) => {
+        const key = cond.categoryId || 'unknown';
         if (!acc[key]) acc[key] = [];
-        acc[key].push(group);
+        acc[key].push(cond);
         return acc;
       },
       {}
     );
 
-    // For each category, choose one representative active group at random (seeded)
-    const onePerCategory: GroupedMarketGroup[] = Object.values(byCategory)
-      .map((groups) => {
-        const activeGroups = groups.filter((g) => g.isActive);
-        if (activeGroups.length === 0) return null;
-        const randomIndex = Math.floor(rng() * activeGroups.length);
-        return activeGroups[randomIndex];
+    const onePerCategory: FeaturedCondition[] = Object.values(byCategory)
+      .map((conds) => {
+        if (conds.length === 0) return null;
+        const randomIndex = Math.floor(rng() * conds.length);
+        return conds[randomIndex];
       })
-      .filter((g): g is GroupedMarketGroup => g !== null);
+      .filter((c): c is FeaturedCondition => c !== null);
 
-    // Shuffle to randomize display order across categories
+    // 4) Shuffle and fill up to 8
     function shuffle<T>(arr: T[]): T[] {
       const copy = arr.slice();
       for (let i = copy.length - 1; i > 0; i--) {
@@ -234,34 +110,29 @@ export default function FeaturedMarketGroupCards() {
 
     const randomized = shuffle(onePerCategory);
 
-    // Ensure we have at least 8 items; allow repeat categories if needed
-    const selectedKeys = new Set(randomized.map((g) => g.key));
-    const activePool = result.filter((g) => g.isActive);
-    const remaining = shuffle(
-      activePool.filter((g) => !selectedKeys.has(g.key))
-    );
+    const selectedIds = new Set(randomized.map((c) => c.id));
+    const remaining = shuffle(mapped.filter((c) => !selectedIds.has(c.id)));
 
-    const filled: GroupedMarketGroup[] = [...randomized];
-    for (const g of remaining) {
+    const filled: FeaturedCondition[] = [...randomized];
+    for (const c of remaining) {
       if (filled.length >= 8) break;
-      filled.push(g);
+      filled.push(c);
     }
 
-    // If still fewer than 8 total active groups exist, repeat from start
+    // 5) If still fewer than 8 items, repeat from start
     if (filled.length < 8 && filled.length > 0) {
       let i = 0;
       while (filled.length < 8) {
         filled.push(filled[i % filled.length]);
         i++;
-        // Safety to avoid infinite loop, though conditions should prevent it
         if (i > 32) break;
       }
     }
 
     return filled;
-  }, [enrichedMarketGroups, createRng, randomSeed]);
+  }, [conditions, createRng, randomSeed]);
 
-  if (isLoadingMarketGroups) {
+  if (isLoadingConditions) {
     return (
       <section className="pt-0 px-0 w-full relative z-10">
         <div className="w-full px-0">
@@ -277,28 +148,24 @@ export default function FeaturedMarketGroupCards() {
   return (
     <section className="pt-0 px-0 w-full relative z-10">
       <div className="w-full px-0">
-        {groupedMarketGroups.length === 0 ? (
+        {featuredConditions.length === 0 ? (
           // Always reserve space, even when no items yet
           <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 h-[150px] md:h-[160px]" />
         ) : (
-          <MobileAndDesktopLists groupedMarketGroups={groupedMarketGroups} />
+          <MobileAndDesktopLists items={featuredConditions} />
         )}
       </div>
     </section>
   );
 }
 
-function MobileAndDesktopLists({
-  groupedMarketGroups,
-}: {
-  groupedMarketGroups: GroupedMarketGroup[];
-}) {
+function MobileAndDesktopLists({ items }: { items: FeaturedCondition[] }) {
   const { state, openMobile } = useSidebar();
   const [mobileApi, setMobileApi] = React.useState<CarouselApi | null>(null);
   const [desktopApi, setDesktopApi] = React.useState<CarouselApi | null>(null);
   const hasRandomizedMobileStart = React.useRef(false);
   const hasRandomizedDesktopStart = React.useRef(false);
-  const items = React.useMemo(() => groupedMarketGroups, [groupedMarketGroups]);
+  const memoItems = React.useMemo(() => items, [items]);
 
   const autoScrollPluginMobile = React.useMemo(
     () =>
@@ -332,35 +199,35 @@ function MobileAndDesktopLists({
   // Randomize starting slide (mobile) once on init
   React.useEffect(() => {
     if (!mobileApi || hasRandomizedMobileStart.current) return;
-    if (items.length === 0) return;
-    const startIndex = Math.floor(Math.random() * items.length);
+    if (memoItems.length === 0) return;
+    const startIndex = Math.floor(Math.random() * memoItems.length);
     try {
       mobileApi.scrollTo(startIndex, true);
     } catch {
       console.error('Error scrolling to random index', startIndex);
     }
     hasRandomizedMobileStart.current = true;
-  }, [mobileApi, items.length]);
+  }, [mobileApi, memoItems.length]);
 
   // Randomize starting slide (desktop) once on init
   React.useEffect(() => {
     if (!desktopApi || hasRandomizedDesktopStart.current) return;
-    if (items.length === 0) return;
-    const startIndex = Math.floor(Math.random() * items.length);
+    if (memoItems.length === 0) return;
+    const startIndex = Math.floor(Math.random() * memoItems.length);
     try {
       desktopApi.scrollTo(startIndex, true);
     } catch {
       console.error('Error scrolling to random index', startIndex);
     }
     hasRandomizedDesktopStart.current = true;
-  }, [desktopApi, items.length]);
+  }, [desktopApi, memoItems.length]);
 
   const desktopItemClass = React.useMemo(() => {
-    // Always show 3 items per row on desktop when possible
-    if (items.length >= 3) return 'pl-8 basis-1/2 lg:basis-1/3 h-full';
-    if (items.length === 2) return 'pl-8 basis-[60%] lg:basis-1/2 h-full';
-    return 'pl-8 basis-[80%] lg:basis-2/3 h-full';
-  }, [items.length]);
+    // Narrower cards to fit more within the hero width
+    if (memoItems.length >= 3) return 'pl-8 basis-1/3 lg:basis-1/4 h-full';
+    if (memoItems.length === 2) return 'pl-8 basis-1/2 lg:basis-1/3 h-full';
+    return 'pl-8 basis-[65%] lg:basis-1/2 h-full';
+  }, [memoItems.length]);
 
   return (
     <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 min-h-[150px] md:min-h-[160px]">
@@ -382,40 +249,20 @@ function MobileAndDesktopLists({
           className="w-full h-full"
         >
           <CarouselContent className="-ml-8 items-stretch h-full">
-            {items.map((marketGroup) => {
-              // choose a single representative market per group
-              const preferred =
-                marketGroup.markets.find((m) => m.optionName === 'Yes') ||
-                marketGroup.markets[0];
-              // attempt to locate complementary yes/no ids when present
-              const yesId = marketGroup.markets.find(
-                (m) => m.optionName === 'Yes'
-              )?.marketId;
-              const noId = marketGroup.markets.find(
-                (m) => m.optionName === 'No'
-              )?.marketId;
-              return (
-                <CarouselItem
-                  key={marketGroup.key}
-                  className="pl-8 basis-[80%] h-full"
-                >
-                  <MarketCard
-                    chainId={marketGroup.chainId}
-                    marketAddress={marketGroup.marketAddress}
-                    market={preferred}
-                    yesMarketId={yesId}
-                    noMarketId={noId}
-                    color={marketGroup.color}
-                    displayQuestion={
-                      marketGroup.displayQuestion || marketGroup.marketName
-                    }
-                    isActive={marketGroup.isActive}
-                    marketClassification={marketGroup.marketClassification}
-                    displayUnit={marketGroup.displayUnit}
-                  />
-                </CarouselItem>
-              );
-            })}
+            {memoItems.map((c) => (
+              <CarouselItem key={c.id} className="pl-8 basis-[70%] h-full">
+                <ParlayConditionCard
+                  condition={{
+                    id: c.id,
+                    question: c.question,
+                    shortName: c.shortName,
+                    endTime: c.endTime,
+                    description: c.description,
+                  }}
+                  color={c.color}
+                />
+              </CarouselItem>
+            ))}
           </CarouselContent>
         </Carousel>
       </div>
@@ -429,38 +276,20 @@ function MobileAndDesktopLists({
           className="w-full h-full"
         >
           <CarouselContent className="-ml-8 items-stretch h-full">
-            {items.map((marketGroup) => {
-              const preferred =
-                marketGroup.markets.find((m) => m.optionName === 'Yes') ||
-                marketGroup.markets[0];
-              const yesId = marketGroup.markets.find(
-                (m) => m.optionName === 'Yes'
-              )?.marketId;
-              const noId = marketGroup.markets.find(
-                (m) => m.optionName === 'No'
-              )?.marketId;
-              return (
-                <CarouselItem
-                  key={marketGroup.key}
-                  className={`${desktopItemClass} h-full`}
-                >
-                  <MarketCard
-                    chainId={marketGroup.chainId}
-                    marketAddress={marketGroup.marketAddress}
-                    market={preferred}
-                    yesMarketId={yesId}
-                    noMarketId={noId}
-                    color={marketGroup.color}
-                    displayQuestion={
-                      marketGroup.displayQuestion || marketGroup.marketName
-                    }
-                    isActive={marketGroup.isActive}
-                    marketClassification={marketGroup.marketClassification}
-                    displayUnit={marketGroup.displayUnit}
-                  />
-                </CarouselItem>
-              );
-            })}
+            {memoItems.map((c) => (
+              <CarouselItem key={c.id} className={`${desktopItemClass} h-full`}>
+                <ParlayConditionCard
+                  condition={{
+                    id: c.id,
+                    question: c.question,
+                    shortName: c.shortName,
+                    endTime: c.endTime,
+                    description: c.description,
+                  }}
+                  color={c.color}
+                />
+              </CarouselItem>
+            ))}
           </CarouselContent>
         </Carousel>
       </div>
