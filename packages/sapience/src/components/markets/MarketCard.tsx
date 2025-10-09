@@ -300,7 +300,7 @@ const MarketCard = ({
                   onYes={handleYesClick}
                   onNo={handleNoClick}
                   className="w-full"
-                  size="md"
+                  size="sm"
                   selectedYes={yesNoSelection.selectedYes}
                   selectedNo={yesNoSelection.selectedNo}
                   yesOddsText={
@@ -332,7 +332,7 @@ const MarketCard = ({
                     router.push('/markets');
                   }}
                   className="w-full"
-                  size="md"
+                  size="sm"
                   yesOddsText={
                     showAmericanOdds
                       ? toAmericanOdds(latestPrices[market.marketId])

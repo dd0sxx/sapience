@@ -256,7 +256,7 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
               onYes={handleYes}
               onNo={handleNo}
               className="w-full"
-              size="md"
+              size="sm"
               selectedYes={selectionState.selectedYes}
               selectedNo={selectionState.selectedNo}
             />

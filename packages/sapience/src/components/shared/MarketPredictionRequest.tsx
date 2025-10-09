@@ -7,21 +7,28 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
-import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import {
+  buildAuctionStartPayload,
+  type PredictedOutcomeInputStub,
+} from '~/lib/auction/buildAuctionPayload';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
 
 export interface MarketPredictionRequestProps {
   conditionId?: string;
+  outcomes?: PredictedOutcomeInputStub[];
   onPrediction?: (probability: number) => void;
   className?: string;
   inline?: boolean;
+  eager?: boolean;
 }
 
 const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
   conditionId,
+  outcomes,
   onPrediction,
   className,
   inline = true,
+  eager = true,
 }) => {
   const [requestedPrediction, setRequestedPrediction] = React.useState<
     number | null
@@ -35,6 +42,8 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
   const { address: makerAddress } = useAccount();
   const { requestQuotes, bids } = useAuctionStart();
   const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
+
+  const eagerlyRequestedRef = React.useRef<boolean>(false);
 
   const { data: makerNonce } = useReadContract({
     address: PREDICTION_MARKET_ADDRESS,
@@ -87,16 +96,25 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     }
   }, [bids, isRequesting, lastMakerWagerWei, onPrediction]);
 
+  const effectiveOutcomes = React.useMemo<PredictedOutcomeInputStub[]>(() => {
+    if (outcomes && outcomes.length > 0) return outcomes;
+    if (conditionId) return [{ marketId: conditionId, prediction: true }];
+    return [];
+  }, [outcomes, conditionId]);
+
   React.useEffect(() => {
     if (!queuedRequest) return;
     if (!isRequesting) return;
-    if (!conditionId || !makerAddress || makerNonce === undefined) return;
+    if (
+      effectiveOutcomes.length === 0 ||
+      !makerAddress ||
+      makerNonce === undefined
+    )
+      return;
     try {
       const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
       setLastMakerWagerWei(wagerWei);
-      const payload = buildAuctionStartPayload([
-        { marketId: conditionId, prediction: true },
-      ]);
+      const payload = buildAuctionStartPayload(effectiveOutcomes);
       requestQuotes({
         wager: wagerWei,
         resolver: payload.resolver,
@@ -112,7 +130,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
   }, [
     queuedRequest,
     isRequesting,
-    conditionId,
+    effectiveOutcomes,
     makerAddress,
     makerNonce,
     requestQuotes,
@@ -123,14 +141,16 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     setRequestedPrediction(null);
     setIsRequesting(true);
     try {
-      if (!conditionId || !makerAddress || makerNonce === undefined) {
+      if (
+        effectiveOutcomes.length === 0 ||
+        !makerAddress ||
+        makerNonce === undefined
+      ) {
         setQueuedRequest(true);
       } else {
         const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
         setLastMakerWagerWei(wagerWei);
-        const payload = buildAuctionStartPayload([
-          { marketId: conditionId, prediction: true },
-        ]);
+        const payload = buildAuctionStartPayload(effectiveOutcomes);
         requestQuotes({
           wager: wagerWei,
           resolver: payload.resolver,
@@ -142,7 +162,20 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     } catch {
       setIsRequesting(false);
     }
-  }, [conditionId, makerAddress, makerNonce, requestQuotes, isRequesting]);
+  }, [
+    effectiveOutcomes,
+    makerAddress,
+    makerNonce,
+    requestQuotes,
+    isRequesting,
+  ]);
+
+  React.useEffect(() => {
+    if (!eager) return;
+    if (eagerlyRequestedRef.current) return;
+    eagerlyRequestedRef.current = true;
+    handleRequestPrediction();
+  }, [eager, handleRequestPrediction]);
 
   return (
     <div

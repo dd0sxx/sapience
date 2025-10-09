@@ -16,6 +16,7 @@ import {
 } from '~/hooks/graphql/useConditions';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
+import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
 type SuggestedBetslipsProps = {
   onRefresh?: () => void;
@@ -177,6 +178,17 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                   </div>
                 ))}
                 <div className="px-2 pb-2 pt-2">
+                  <div className="text-sm mt-1 mb-2 py-0.5 flex items-center gap-2">
+                    <span className="text-muted-foreground">
+                      Market Prediction:
+                    </span>
+                    <MarketPredictionRequest
+                      outcomes={combo.map((leg) => ({
+                        marketId: leg.condition.id,
+                        prediction: leg.prediction,
+                      }))}
+                    />
+                  </div>
                   <Button
                     className="w-full"
                     variant="outline"
