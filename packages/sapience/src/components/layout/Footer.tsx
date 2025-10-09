@@ -28,8 +28,26 @@ const Footer = () => {
           </a>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3 text-xs">
+            <Link
+              href="https://docs.sapience.xyz/terms-of-service"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center font-normal text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Terms
+            </Link>
+            <Link
+              href="https://docs.sapience.xyz/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center font-normal text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Privacy Policy
+            </Link>
+          </div>
+          <div className="flex items-center gap-2">
             <Button size="icon" className="h-4 w-4 rounded-full" asChild>
               <a
                 href="https://github.com/sapiencexyz/sapience"
@@ -99,24 +117,6 @@ const Footer = () => {
                 />
               </a>
             </Button>
-          </div>
-          <div className="flex items-center gap-3 text-xs">
-            <Link
-              href="https://docs.sapience.xyz/terms-of-service"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center font-normal text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Terms
-            </Link>
-            <Link
-              href="https://docs.sapience.xyz/privacy-policy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center font-normal text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Privacy Policy
-            </Link>
           </div>
         </div>
       </div>

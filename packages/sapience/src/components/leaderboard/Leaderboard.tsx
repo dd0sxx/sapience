@@ -241,7 +241,7 @@ const PnLLeaderboard = () => {
                 colSpan={columns.length}
                 className="h-24 text-center text-muted-foreground text-sm md:text-base"
               >
-                No results found for this period
+                Results pending
               </TableCell>
             </TableRow>
           )}
@@ -342,25 +342,36 @@ const AccuracyLeaderboard = () => {
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow
-              key={row.id}
-              className="hover:bg-muted/50 border-b last:border-b-0"
-            >
-              {row.getVisibleCells().map((cell) => (
-                <TableCell
-                  key={cell.id}
-                  className={cn('p-3 text-sm md:text-base', {
-                    'text-right font-normal': cell.column.id === 'rank',
-                    'w-14 md:w-16': cell.column.id === 'rank',
-                    'text-right': cell.column.id === 'accuracyScore',
-                  })}
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
+          {table.getRowModel().rows.length > 0 ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                className="hover:bg-muted/50 border-b last:border-b-0"
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className={cn('p-3 text-sm md:text-base', {
+                      'text-right font-normal': cell.column.id === 'rank',
+                      'w-14 md:w-16': cell.column.id === 'rank',
+                      'text-right': cell.column.id === 'accuracyScore',
+                    })}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-muted-foreground text-sm md:text-base"
+              >
+                No results found for this period
+              </TableCell>
             </TableRow>
-          ))}
+          )}
         </TableBody>
       </Table>
     </div>

@@ -131,10 +131,10 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
       <div className="mt-2 mb-0 pb-0 grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
         {isLoading || combos.length === 0 ? (
           <>
-            <div className="border border-border rounded bg-card overflow-hidden shadow-lg h-20 flex items-center justify-center text-muted-foreground/80">
+            <div className="border border-border rounded bg-card overflow-hidden shadow-md h-20 flex items-center justify-center text-muted-foreground/80">
               Loading…
             </div>
-            <div className="border border-border rounded bg-card overflow-hidden shadow-lg h-20 hidden sm:flex items-center justify-center text-muted-foreground/80">
+            <div className="border border-border rounded bg-card overflow-hidden shadow-md h-20 hidden sm:flex items-center justify-center text-muted-foreground/80">
               Loading…
             </div>
           </>
@@ -142,7 +142,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
           combos.map((combo, idx) => (
             <div
               key={`combo-${idx}`}
-              className="border border-border rounded bg-card overflow-hidden shadow-lg p-0"
+              className="border border-border rounded bg-card overflow-hidden shadow-md p-0"
             >
               <div className="space-y-0 flex flex-col">
                 {combo.map((leg, i) => (
