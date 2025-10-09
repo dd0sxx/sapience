@@ -122,7 +122,8 @@ export default function IndividualPositionRow({
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex-1">
           <h3 className="text-md text-foreground pr-2 whitespace-normal break-words">
-            {question}&nbsp;&nbsp;
+            {question}
+            {'\u00A0'}
             <span className="relative -top-[0.75px]">
               <ReadOnlyPredictionBadge
                 positionId={positionId}
@@ -220,8 +221,8 @@ export function ReadOnlyPredictionBadge({
       variant="outline"
       className={
         isYes
-          ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 dark:bg-emerald-600 dark:text-foreground shrink-0'
-          : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 dark:bg-red-600 dark:text-foreground shrink-0'
+          ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 dark:bg-emerald-500/70 dark:text-foreground shrink-0'
+          : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 dark:bg-rose-500/70 dark:text-foreground shrink-0'
       }
     >
       {label}

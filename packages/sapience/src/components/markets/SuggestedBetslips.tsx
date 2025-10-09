@@ -168,7 +168,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                         <span className="relative -top-0.5 ml-2 shrink-0">
                           <Badge
                             variant="outline"
-                            className={`${leg.prediction ? 'px-2 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 dark:bg-emerald-600 dark:text-foreground shrink-0' : 'px-2 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 dark:bg-red-600 dark:text-foreground shrink-0'}`}
+                            className={`${leg.prediction ? 'px-2 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 dark:bg-emerald-500/70 dark:text-foreground shrink-0' : 'px-2 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 dark:bg-rose-500/70 dark:text-foreground shrink-0'}`}
                           >
                             {leg.prediction ? 'Yes' : 'No'}
                           </Badge>

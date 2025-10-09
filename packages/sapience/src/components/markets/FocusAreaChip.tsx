@@ -12,7 +12,6 @@ interface FocusAreaChipProps {
   color: string;
   selected: boolean;
   onClick: () => void;
-  iconSvg?: string;
   IconComponent?: React.ComponentType<{
     className?: string;
     style?: React.CSSProperties;
@@ -29,11 +28,39 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
   color,
   selected,
   onClick,
-  iconSvg,
   IconComponent,
   className,
   iconSize = 'md',
 }) => {
+  const withAlpha = React.useCallback((c: string, alpha: number) => {
+    // Hex color (#RRGGBB or #RGB) -> append alpha as 2-digit hex
+    const hexMatch = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
+    if (hexMatch.test(c)) {
+      const a = Math.max(0, Math.min(1, alpha));
+      const aHex = Math.round(a * 255)
+        .toString(16)
+        .padStart(2, '0');
+      return `${c}${aHex}`;
+    }
+
+    // hsl(...) or rgb(...) support modern slash alpha syntax
+    const toSlashAlpha = (fn: 'hsl' | 'rgb', inside: string) =>
+      `${fn}(${inside} / ${alpha})`;
+
+    if (c.startsWith('hsl(')) {
+      const inside = c.slice(4, -1);
+      return toSlashAlpha('hsl', inside);
+    }
+    if (c.startsWith('rgb(')) {
+      const inside = c.slice(4, -1);
+      return toSlashAlpha('rgb', inside);
+    }
+
+    // Generic var(...) like hsl(var(--primary)) should be handled above via hsl( ... ),
+    // but if not matched, fallback to original color (no alpha)
+    return c;
+  }, []);
+
   const labelRef = React.useRef<HTMLSpanElement>(null);
   const [, setLabelWidth] = React.useState<number>(0);
 
@@ -59,14 +86,14 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
     ? {
         className: `${CHIP_BASE} bg-[var(--chip-bg-strong)] border border-transparent ring-1 ring-[var(--chip-ring)]`,
         style: {
-          ['--chip-bg-strong' as any]: `${color}33`,
-          ['--chip-ring' as any]: `${color}66`,
+          ['--chip-bg-strong' as any]: withAlpha(color, 0.2),
+          ['--chip-ring' as any]: withAlpha(color, 0.4),
         } as React.CSSProperties,
       }
     : {
         className: `${CHIP_BASE} bg-[var(--chip-bg)] border border-transparent`,
         style: {
-          ['--chip-bg' as any]: `${color}1A`,
+          ['--chip-bg' as any]: withAlpha(color, 0.1),
         } as React.CSSProperties,
       };
 
@@ -76,7 +103,8 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
   const desktopResponsiveClassName = 'md:h-8 md:px-0 md:gap-0 md:justify-start';
   const desktopTransitionClassName = 'md:transition-none';
 
-  const iconDimensionClass = iconSize === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
+  // Slightly reduced icon sizes
+  const iconDimensionClass = iconSize === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
 
   const chipButton = (
     <motion.button
@@ -89,22 +117,13 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
       aria-label={label}
     >
       <span className="inline-flex items-center justify-center md:w-8 md:h-8">
-        {iconSvg ? (
+        {IconComponent && (
           <span
-            className={`${iconDimensionClass} inline-flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:block`}
+            className={`${iconDimensionClass} inline-flex items-center justify-center`}
             aria-hidden="true"
-            style={{ color }}
-            dangerouslySetInnerHTML={{ __html: iconSvg }}
-          />
-        ) : (
-          IconComponent && (
-            <span
-              className={`${iconDimensionClass} inline-flex items-center justify-center`}
-              aria-hidden="true"
-            >
-              <IconComponent className={iconDimensionClass} style={{ color }} />
-            </span>
-          )
+          >
+            <IconComponent className={iconDimensionClass} style={{ color }} />
+          </span>
         )}
       </span>
       {/* Mobile label (always visible on mobile to preserve existing behavior) */}
@@ -121,7 +140,7 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
       >
         <motion.span
           ref={labelRef}
-          className="pl-1.5 font-medium pr-3 text-foreground/80 inline-block"
+          className="pl-0.5 font-medium pr-3 text-foreground/80 inline-block"
           initial={false}
           animate={{ opacity: selected ? 1 : 0 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}

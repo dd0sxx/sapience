@@ -125,7 +125,7 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
                 </div>
               </DialogContent>
             </Dialog>
-            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+            <div className="mt-2 text-sm text-muted-foreground flex items-center gap-1">
               <span className="text-muted-foreground">Market Prediction:</span>
               <MarketPredictionRequest conditionId={id} />
             </div>

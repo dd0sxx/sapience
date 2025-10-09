@@ -9,10 +9,7 @@ import type {
   Position as PositionType,
 } from '@sapience/sdk/types/graphql';
 
-import {
-  DEFAULT_FOCUS_AREA,
-  getFocusAreaMap,
-} from '~/lib/constants/focusAreas';
+import { getFocusAreaMap } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 
@@ -68,7 +65,7 @@ export const useCategories = () => {
 
 export interface EnrichedMarketGroup
   extends Omit<MarketGroupType, 'category' | 'markets'> {
-  category: CategoryType & { iconSvg?: string; color?: string };
+  category: CategoryType & { color?: string };
   markets: MarketType[];
   latestMarketId?: bigint;
   marketClassification: MarketGroupClassification;
@@ -272,13 +269,12 @@ export const getEnrichedMarketGroups = async () => {
     (marketGroup: MarketGroupType): EnrichedMarketGroup => {
       const focusAreaData = focusAreaMap.get(marketGroup?.category?.slug || '');
 
-      let categoryInfo: CategoryType & { iconSvg?: string; color?: string };
+      let categoryInfo: CategoryType & { color?: string };
       if (marketGroup.category && focusAreaData) {
         categoryInfo = {
           ...marketGroup.category,
           marketGroups: marketGroup.category.marketGroups,
-          iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
-          color: focusAreaData?.color || '#9CA3AF', // Tailwind gray-400
+          color: focusAreaData?.color || 'hsl(var(--muted-foreground))',
         };
       } else {
         categoryInfo = {
@@ -289,9 +285,8 @@ export const getEnrichedMarketGroups = async () => {
           resources: [],
           marketGroups: [],
           conditions: [],
-          iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
-          color: '#9CA3AF', // Tailwind gray-400
-        } as unknown as CategoryType & { iconSvg?: string; color?: string };
+          color: 'hsl(var(--muted-foreground))',
+        } as unknown as CategoryType & { color?: string };
       }
 
       const mappedMarkets = (marketGroup.markets || []).map(

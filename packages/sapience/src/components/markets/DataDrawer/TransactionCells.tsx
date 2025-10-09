@@ -81,7 +81,7 @@ export function getRowLeftBarColor(
   const lowerType = String(tx.type || '').toLowerCase();
   const normalizedType = lowerType.replace(/[^a-z]/g, '');
   if (normalizedType.includes('parlay')) {
-    return '#000000';
+    return 'hsl(var(--foreground))';
   }
   // For forecasts, fall through to category color logic below (no special override)
   const position = tx.position || {};

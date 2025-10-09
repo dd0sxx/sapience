@@ -83,7 +83,7 @@ export default function QuoteDisplay({
   if (isLoading) {
     return (
       <div className="mt-3">
-        <div className="flex items-center gap-2 rounded-md border-[1.5px] border-[#91B3F0]/80 bg-[#91B3F0]/20 px-3 py-2.5 w-full whitespace-nowrap h-12">
+        <div className="flex items-center gap-2 rounded-md border-[1.5px] border-primary/30 bg-primary/10 px-3 py-2.5 w-full whitespace-nowrap h-12">
           <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
             <Image
               src="/usde.svg"
@@ -120,7 +120,7 @@ export default function QuoteDisplay({
 
   return (
     <div className="mt-3">
-      <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-[#91B3F0]/80 bg-[#91B3F0]/20 px-3 py-2.5 w-full whitespace-nowrap h-12">
+      <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-primary/30 bg-primary/10 px-3 py-2.5 w-full whitespace-nowrap h-12">
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
           <Image
             src="/usde.svg"

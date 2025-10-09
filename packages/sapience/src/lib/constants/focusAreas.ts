@@ -1,9 +1,23 @@
+import type * as React from 'react';
+import {
+  TrendingUp,
+  Coins,
+  CloudSun,
+  Landmark,
+  FlaskConical,
+  Medal,
+  Tv,
+} from 'lucide-react';
+
 export interface FocusArea {
   id: string;
   name: string;
   resources: string[];
-  iconSvg: string;
   color: string;
+  Icon?: React.ComponentType<{
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
 }
 
 export const FOCUS_AREAS: FocusArea[] = [
@@ -11,11 +25,8 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'economy-finance',
     name: 'Economy & Finance',
     resources: [],
-    iconSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="10" cy="10" r="5"/>
-  <circle cx="14" cy="14" r="5" />
-</svg>`,
-    color: '#4ADE80', // green-400
+    color: 'hsl(var(--category-3))',
+    Icon: TrendingUp,
   },
   {
     id: 'crypto',
@@ -28,89 +39,43 @@ export const FOCUS_AREAS: FocusArea[] = [
       'celestia-blobspace',
       'bitcoin-fees',
     ],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="5" cy="5" r="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="19" cy="5" r="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="5" cy="19" r="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="19" cy="19" r="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M5 7V17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M7 5H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M7 19H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M19 7V17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M6.5 6.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M17.5 6.5L13.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M6.5 17.5L10.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M17.5 17.5L13.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>`,
-    color: '#C084FC', // purple-400
+    color: 'hsl(var(--category-2))',
+    Icon: Coins,
   },
   {
     id: 'weather',
     name: 'Weather',
     resources: [],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M12 2V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M12 17V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M2 12H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M17 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M4.93 4.93L8.05 8.05" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M15.95 15.95L19.07 19.07" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M4.93 19.07L8.05 15.95" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M15.95 8.05L19.07 4.93" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`,
-    color: '#93C5FD', // blue-300 (lighter than the previous blue-500)
+    color: 'hsl(var(--category-1))',
+    Icon: CloudSun,
   },
   {
     id: 'geopolitics',
     name: 'Geopolitics',
     resources: [],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3 21H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M5 21V7L13 3V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M19 21V11L13 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M9 9V9.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M9 13V13.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M9 17V17.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>`,
-    color: '#F87171', // red-400
+    color: 'hsl(var(--category-5))',
+    Icon: Landmark,
   },
   {
     id: 'tech-science',
     name: 'Tech & Science',
     resources: [],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="8" r="2.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="7" cy="14" r="2.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="17" cy="14" r="2.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M9.5 8.5L7.5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M14.5 8.5L16.5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M9 14.5H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>`,
-    color: '#FBBF24', // amber-400
+    color: 'hsl(var(--category-4))',
+    Icon: FlaskConical,
   },
   {
     id: 'sports',
     name: 'Sports',
     resources: [],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="9" width="2" height="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <rect x="19" y="9" width="2" height="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <rect x="5" y="11" width="14" height="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>`,
-    color: '#F97316', // orange-500
+    color: 'hsl(var(--category-7))',
+    Icon: Medal,
   },
   {
     id: 'culture',
     name: 'Culture',
     resources: [],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 6c-2 -1.5 -5 -1.5 -8 0v10c3 -1.5 6 -1.5 8 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M12 6c2 -1.5 5 -1.5 8 0v10c-3 -1.5 -6 -1.5 -8 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M12 6v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>`,
-    color: '#D946EF', // fuchsia-500
+    color: 'hsl(var(--category-2))',
+    Icon: Tv,
   },
 ];
 
@@ -121,7 +86,7 @@ export const getFocusAreaMap = () => {
     FOCUS_AREAS.map((area) => [
       area.id,
       {
-        iconSvg: area.iconSvg,
+        Icon: area.Icon,
         color: area.color,
         name: area.name,
       },

@@ -363,12 +363,12 @@ const ForecastPageImp = () => {
                     style={{ backgroundColor: `${focusArea.color}1A` }}
                   >
                     <div style={{ transform: 'scale(0.5)' }}>
-                      <div
-                        style={{ color: focusArea.color }}
-                        dangerouslySetInnerHTML={{
-                          __html: focusArea.iconSvg,
-                        }}
-                      />
+                      {focusArea.Icon ? (
+                        <focusArea.Icon
+                          className="w-4 h-4"
+                          style={{ color: focusArea.color }}
+                        />
+                      ) : null}
                     </div>
                   </div>
                   <span className="font-medium">{focusArea.name}</span>

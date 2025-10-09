@@ -1,8 +1,9 @@
 import type * as React from 'react';
-import { LayoutGridIcon, TagIcon } from 'lucide-react';
+import { LayoutGridIcon } from 'lucide-react';
 import { Skeleton } from '@sapience/sdk/ui/components/ui/skeleton';
 import FocusAreaChip from './FocusAreaChip';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 
 interface Category {
   id: number;
@@ -17,12 +18,10 @@ interface CategoryChipsProps {
   categories: Category[] | null | undefined;
   getCategoryStyle: (
     categorySlug: string
-  ) =>
-    | { id: string; name: string; color: string; iconSvg?: string }
-    | undefined;
+  ) => { id: string; name: string; color: string } | undefined;
 }
 
-const DEFAULT_CATEGORY_COLOR = '#71717a';
+const DEFAULT_CATEGORY_COLOR = 'hsl(var(--muted-foreground))';
 
 const CategoryChips: React.FC<CategoryChipsProps> = ({
   selectedCategorySlug,
@@ -41,7 +40,7 @@ const CategoryChips: React.FC<CategoryChipsProps> = ({
         <div className="inline-flex min-w-max min-[1400px]:flex flex-nowrap whitespace-nowrap items-center gap-3.5 md:gap-4 pr-1 md:pr-0">
           <FocusAreaChip
             label="All Focus Areas"
-            color={DEFAULT_CATEGORY_COLOR}
+            color={'hsl(var(--primary))'}
             selected={selectedCategorySlug === null}
             onClick={() => onCategoryClick(null)}
             className="py-1.5"
@@ -62,6 +61,7 @@ const CategoryChips: React.FC<CategoryChipsProps> = ({
               const styleInfo = getCategoryStyle(category.slug);
               const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
               const displayName = styleInfo?.name || category.name;
+              const IconForCategory = getCategoryIcon(category.slug);
 
               return (
                 <FocusAreaChip
@@ -70,8 +70,7 @@ const CategoryChips: React.FC<CategoryChipsProps> = ({
                   color={categoryColor}
                   selected={selectedCategorySlug === category.slug}
                   onClick={() => onCategoryClick(category.slug)}
-                  iconSvg={styleInfo?.iconSvg}
-                  IconComponent={styleInfo?.iconSvg ? undefined : TagIcon}
+                  IconComponent={IconForCategory}
                 />
               );
             })}

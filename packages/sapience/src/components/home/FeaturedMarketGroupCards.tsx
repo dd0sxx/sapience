@@ -187,7 +187,7 @@ export default function FeaturedMarketGroupCards() {
           chainId: firstMarket.chainId,
           marketName: enrichedGroup.question || '',
           collateralAsset: firstMarket.collateralAsset,
-          color: enrichedGroup.category.color || '#71717a',
+          color: enrichedGroup.category.color || 'hsl(var(--muted-foreground))',
           categorySlug: firstMarket.categorySlug,
           categoryId: firstMarket.categoryId,
           marketQuestion: enrichedGroup.question,

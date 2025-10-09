@@ -24,6 +24,7 @@ import {
   type ConditionType,
 } from '~/hooks/graphql/useConditions';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
+import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 import Betslip from '~/components/markets/Betslip';
@@ -53,7 +54,7 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   loading: () => <div className="w-8 h-8" />,
 });
 
-const DEFAULT_CATEGORY_COLOR = '#71717a';
+const DEFAULT_CATEGORY_COLOR = 'hsl(var(--muted-foreground))';
 
 // Define local interfaces based on expected data shape
 export interface MarketWithContext extends GraphQLMarketType {
@@ -614,32 +615,12 @@ const MarketsPage = () => {
       return focusArea;
     }
 
-    // If no matching focus area, create a deterministic color based on the slug
-    // This ensures the same category always gets the same color
-    const DEFAULT_COLORS = [
-      '#3B82F6', // blue-500
-      '#C084FC', // purple-400
-      '#4ADE80', // green-400
-      '#FBBF24', // amber-400
-      '#F87171', // red-400
-      '#22D3EE', // cyan-400
-      '#FB923C', // orange-400
-    ];
-
-    // Use a simple hash function to get a consistent index
-    const hashCode = categorySlug.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + (acc * 32 - acc);
-    }, 0);
-
-    const colorIndex = Math.abs(hashCode) % DEFAULT_COLORS.length;
-
-    // Return a partial focus area with the minimal required properties
+    // If no matching focus area, compute determinstic color from CSS variable palette
     return {
       id: categorySlug,
       name: '', // Will use category.name from database
       resources: [],
-      color: DEFAULT_COLORS[colorIndex],
-      iconSvg: '', // Will use default TagIcon
+      color: getDeterministicCategoryColor(categorySlug),
     };
   };
 
@@ -699,7 +680,9 @@ const MarketsPage = () => {
             />
           </motion.div>
         </div>
-        {parlayMode ? <SuggestedBetslips /> : null}
+        {parlayMode && selectedCategorySlug === null ? (
+          <SuggestedBetslips />
+        ) : null}
 
         {/* Results area */}
         <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">

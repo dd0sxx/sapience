@@ -36,11 +36,11 @@ const QuestionItem = ({
   // Get category color for the left border
   const getCategoryColor = () => {
     if (isMarketGroup) {
-      return item.category?.color || '#9CA3AF';
+      return item.category?.color || 'hsl(var(--muted-foreground))';
     }
 
     // For individual markets, get from group
-    return item.group?.category?.color || '#9CA3AF';
+    return item.group?.category?.color || 'hsl(var(--muted-foreground))';
   };
 
   const categoryColor = getCategoryColor();
