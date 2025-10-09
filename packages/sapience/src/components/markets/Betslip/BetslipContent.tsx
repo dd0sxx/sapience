@@ -42,6 +42,8 @@ interface BetslipContentProps {
   collateralSymbol?: string;
   collateralDecimals?: number;
   minWager?: string;
+  // PredictionMarket contract address for fetching maker nonce
+  predictionMarketAddress?: `0x${string}`;
 }
 
 export const BetslipContent = ({
@@ -61,6 +63,7 @@ export const BetslipContent = ({
   collateralSymbol,
   collateralDecimals,
   minWager,
+  predictionMarketAddress,
 }: BetslipContentProps) => {
   const {
     betSlipPositions,
@@ -145,6 +148,7 @@ export const BetslipContent = ({
               collateralSymbol={collateralSymbol}
               collateralDecimals={collateralDecimals}
               minWager={minWager}
+              predictionMarketAddress={predictionMarketAddress}
             />
           )}
         </div>

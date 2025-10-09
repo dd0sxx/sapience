@@ -176,7 +176,7 @@ function toast({ ...props }: Toast & CustomToastProps) {
         ...defaultStyle,
         ...props.style,
       },
-      onOpenChange: (open) => {
+      onOpenChange: (open: boolean) => {
         if (!open) dismiss();
       },
     },

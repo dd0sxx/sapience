@@ -47,7 +47,7 @@ export function usePositionValueAndFees(
 ) {
   const { enabled = true } = options;
   const { abi } = getSapienceAbi();
-  const sapienceAbi = abi as Abi;
+  const sapienceAbi = abi;
   const SLOW_REFETCH_MS = 120_000; // 2 minutes
   // no-op
 

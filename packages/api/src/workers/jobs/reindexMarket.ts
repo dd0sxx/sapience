@@ -1,6 +1,5 @@
-import Sapience from '@sapience/protocol/deployments/Sapience.json';
+import { foilAbi } from '@sapience/sdk';
 import * as Sentry from '@sentry/node';
-import { Abi } from 'viem';
 import {
   initializeMarket,
   reindexMarketGroupEvents,
@@ -47,7 +46,7 @@ export async function reindexMarket(
       marketChainId: chainId,
       deployment: {
         address,
-        abi: Sapience.abi as Abi,
+        abi: foilAbi,
         deployTimestamp: marketEntity.deployTimestamp?.toString() || '0',
         deployTxnBlockNumber:
           marketEntity.deployTxnBlockNumber?.toString() || '0',

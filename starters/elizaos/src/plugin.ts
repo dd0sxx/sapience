@@ -12,7 +12,7 @@ import { SapienceService } from "./services/sapienceService.js";
 export const customActionsPlugin: Plugin = {
   name: "custom-actions",
   description: "Custom attestation logic for prediction agent",
-  
+
   // Custom actions for attestation and autonomous mode control
   actions: [
     attestMarketAction,
@@ -20,15 +20,15 @@ export const customActionsPlugin: Plugin = {
     callToolAction,
     readResourceAction,
     simulateTransactionAction,
-    submitTransactionAction
+    submitTransactionAction,
   ],
-  
+
   // No providers - we use sapience plugin for data
   providers: [],
-  
+
   // Register local Sapience MCP service so runtime.getService('sapience') works
   services: [SapienceService],
-  
+
   evaluators: [],
 };
 

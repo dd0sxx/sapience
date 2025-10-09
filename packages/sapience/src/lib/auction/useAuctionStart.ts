@@ -15,6 +15,7 @@ export interface AuctionParams {
   resolver: string; // contract address for market validation
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   maker: `0x${string}`; // maker EOA address
+  makerNonce: number; // nonce for the maker
 }
 
 export interface QuoteBid {
@@ -23,6 +24,7 @@ export interface QuoteBid {
   takerWager: string; // wei
   takerDeadline: number; // unix seconds
   takerSignature: string; // Taker's bid signature
+  makerNonce: number; // nonce for the maker
 }
 
 // Struct shape expected by PredictionMarket.mint()
@@ -33,6 +35,8 @@ export interface MintPredictionRequestData {
   takerCollateral: string; // wei
   maker: `0x${string}`;
   taker: `0x${string}`;
+  // Optional here; the submit hook will fetch and inject the correct nonce
+  makerNonce?: string | bigint;
   takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
   takerDeadline: string; // unix seconds (uint256 string)
   refCode: `0x${string}`; // bytes32
@@ -127,6 +131,7 @@ export function useAuctionStart() {
                   takerWager,
                   takerDeadline,
                   takerSignature: b.takerSignature || '0x',
+                  makerNonce: b.makerNonce || 0,
                 } as QuoteBid;
               } catch {
                 return null;
@@ -166,6 +171,7 @@ export function useAuctionStart() {
           resolver: params.resolver,
           predictedOutcomes: params.predictedOutcomes,
           maker: params.maker,
+          makerNonce: params.makerNonce,
         },
       };
 
@@ -269,6 +275,7 @@ export function useAuctionStart() {
           takerSignature: args.selectedBid.takerSignature as `0x${string}`,
           takerDeadline: String(args.selectedBid.takerDeadline),
           refCode: args.refCode || (zeroBytes32 as `0x${string}`),
+          makerNonce: String(args.selectedBid.makerNonce),
         };
       } catch {
         return null;
@@ -320,6 +327,7 @@ export function buildMintPredictionRequestData(args: {
       takerSignature: args.selectedBid.takerSignature as `0x${string}`,
       takerDeadline: String(args.selectedBid.takerDeadline),
       refCode: args.refCode || (zeroBytes32 as `0x${string}`),
+      makerNonce: String(args.selectedBid.makerNonce),
     };
 
     return out;
