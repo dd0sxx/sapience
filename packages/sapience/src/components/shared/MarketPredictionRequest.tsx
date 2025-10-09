@@ -45,13 +45,38 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
 
   const eagerlyRequestedRef = React.useRef<boolean>(false);
 
+  // Generate or retrieve a stable guest maker address for logged-out users
+  const guestMakerAddress = React.useMemo<`0x${string}` | null>(() => {
+    try {
+      if (typeof window === 'undefined') return null;
+      let addr = window.localStorage.getItem('sapience_guest_maker_address');
+      if (!addr) {
+        const bytes = new Uint8Array(20);
+        // Use Web Crypto to generate a random 20-byte address
+        window.crypto.getRandomValues(bytes);
+        addr =
+          '0x' +
+          Array.from(bytes)
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+        window.localStorage.setItem('sapience_guest_maker_address', addr);
+      }
+      return addr as `0x${string}`;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Prefer connected wallet address; fall back to guest address
+  const selectedMakerAddress = makerAddress ?? guestMakerAddress ?? undefined;
+
   const { data: makerNonce } = useReadContract({
     address: PREDICTION_MARKET_ADDRESS,
     abi: predictionMarketAbi,
     functionName: 'nonces',
-    args: makerAddress ? [makerAddress] : undefined,
+    args: selectedMakerAddress ? [selectedMakerAddress] : undefined,
     chainId: DEFAULT_CHAIN_ID,
-    query: { enabled: !!makerAddress && !!PREDICTION_MARKET_ADDRESS },
+    query: { enabled: !!selectedMakerAddress && !!PREDICTION_MARKET_ADDRESS },
   });
 
   const formatPriceAsPercentage = React.useCallback((price: number) => {
@@ -105,12 +130,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
   React.useEffect(() => {
     if (!queuedRequest) return;
     if (!isRequesting) return;
-    if (
-      effectiveOutcomes.length === 0 ||
-      !makerAddress ||
-      makerNonce === undefined
-    )
-      return;
+    if (effectiveOutcomes.length === 0 || !selectedMakerAddress) return;
     try {
       const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
       setLastMakerWagerWei(wagerWei);
@@ -119,8 +139,8 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
         wager: wagerWei,
         resolver: payload.resolver,
         predictedOutcomes: payload.predictedOutcomes,
-        maker: makerAddress,
-        makerNonce: Number(makerNonce),
+        maker: selectedMakerAddress,
+        makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
       });
       setQueuedRequest(false);
     } catch {
@@ -131,7 +151,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     queuedRequest,
     isRequesting,
     effectiveOutcomes,
-    makerAddress,
+    selectedMakerAddress,
     makerNonce,
     requestQuotes,
   ]);
@@ -141,11 +161,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     setRequestedPrediction(null);
     setIsRequesting(true);
     try {
-      if (
-        effectiveOutcomes.length === 0 ||
-        !makerAddress ||
-        makerNonce === undefined
-      ) {
+      if (effectiveOutcomes.length === 0 || !selectedMakerAddress) {
         setQueuedRequest(true);
       } else {
         const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
@@ -155,8 +171,8 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
           wager: wagerWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          maker: makerAddress,
-          makerNonce: Number(makerNonce),
+          maker: selectedMakerAddress,
+          makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
         });
       }
     } catch {
@@ -164,7 +180,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     }
   }, [
     effectiveOutcomes,
-    makerAddress,
+    selectedMakerAddress,
     makerNonce,
     requestQuotes,
     isRequesting,
