@@ -33,49 +33,57 @@ const CategoryChips: React.FC<CategoryChipsProps> = ({
   return (
     <div className="w-full max-w-full min-w-0 box-border mx-0 mt-1.5 min-[1400px]:mt-0 pb-0 md:pb-0 min-[1400px]:w-auto min-[1400px]:max-w-none">
       {/* Mobile: wrapping container with x-scroll; desktop: natural width and right align controlled by parent */}
-      <div
-        className="overflow-x-auto overflow-y-hidden md:overflow-visible touch-pan-x overscroll-x-contain w-full max-w-full min-w-0 py-1 px-1 md:px-0 min-[1400px]:w-auto min-[1400px]:max-w-none"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        <div className="inline-flex min-w-max min-[1400px]:flex flex-nowrap whitespace-nowrap items-center gap-3.5 md:gap-4 pr-1 md:pr-0">
-          <FocusAreaChip
-            label="All Focus Areas"
-            color={'hsl(var(--primary))'}
-            selected={selectedCategorySlug === null}
-            onClick={() => onCategoryClick(null)}
-            className="py-1.5"
-            IconComponent={Shapes}
-            iconSize="md"
-            selectedVariant="muted"
-          />
+      <div className="relative w-[100dvw] md:w-full max-w-none md:max-w-full min-w-0 -ml-4 md:ml-0">
+        <div
+          className="overflow-x-auto overflow-y-hidden md:overflow-visible touch-pan-x overscroll-x-contain w-full max-w-full min-w-0 py-1 px-1 md:px-0 min-[1400px]:w-auto"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <div className="inline-flex min-w-max min-[1400px]:flex flex-nowrap whitespace-nowrap items-center gap-3.5 md:gap-4 px-3 md:px-0">
+            <FocusAreaChip
+              label="All Focus Areas"
+              color={'hsl(var(--primary))'}
+              selected={selectedCategorySlug === null}
+              onClick={() => onCategoryClick(null)}
+              className="py-1.5"
+              IconComponent={Shapes}
+              iconSize="md"
+              selectedVariant="muted"
+            />
 
-          {isLoading &&
-            [...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-8 w-24 rounded-full" />
-            ))}
+            {isLoading &&
+              [...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-8 w-24 rounded-full" />
+              ))}
 
-          {!isLoading &&
-            categories &&
-            FOCUS_AREAS.map((focusArea) => {
-              const category = categories.find((c) => c.slug === focusArea.id);
-              if (!category) return null;
-              const styleInfo = getCategoryStyle(category.slug);
-              const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
-              const displayName = styleInfo?.name || category.name;
-              const IconForCategory = getCategoryIcon(category.slug);
+            {!isLoading &&
+              categories &&
+              FOCUS_AREAS.map((focusArea) => {
+                const category = categories.find(
+                  (c) => c.slug === focusArea.id
+                );
+                if (!category) return null;
+                const styleInfo = getCategoryStyle(category.slug);
+                const categoryColor =
+                  styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
+                const displayName = styleInfo?.name || category.name;
+                const IconForCategory = getCategoryIcon(category.slug);
 
-              return (
-                <FocusAreaChip
-                  key={category.id}
-                  label={displayName}
-                  color={categoryColor}
-                  selected={selectedCategorySlug === category.slug}
-                  onClick={() => onCategoryClick(category.slug)}
-                  IconComponent={IconForCategory}
-                />
-              );
-            })}
+                return (
+                  <FocusAreaChip
+                    key={category.id}
+                    label={displayName}
+                    color={categoryColor}
+                    selected={selectedCategorySlug === category.slug}
+                    onClick={() => onCategoryClick(category.slug)}
+                    IconComponent={IconForCategory}
+                  />
+                );
+              })}
+          </div>
         </div>
+        {/* Mobile gradient overlays to indicate horizontal scroll */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-8 md:hidden z-10 bg-gradient-to-r from-background to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 md:hidden z-10 bg-gradient-to-l from-background to-transparent" />
       </div>
     </div>
   );

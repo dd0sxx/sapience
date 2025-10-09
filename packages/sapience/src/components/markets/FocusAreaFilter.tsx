@@ -84,7 +84,7 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
           </div>
 
           {/* Status tabs: visible on all sizes; right-aligned on large */}
-          <div className="ml-auto min-[1400px]:flex items-center mr-0 gap-2">
+          <div className="ml-auto flex flex-nowrap items-center mr-0 gap-2">
             <Tabs
               value={statusFilter}
               onValueChange={(v) =>

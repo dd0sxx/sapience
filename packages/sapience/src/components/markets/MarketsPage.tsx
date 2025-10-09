@@ -650,7 +650,7 @@ const MarketsPage = () => {
       <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-6 pr-0 lg:pr-4">
         {/* Top controls section (not sticky) */}
         <div>
-          <div className="mt-6 md:mt-0">
+          <div className="mt-2 md:mt-0 mb-4 md:mb-0">
             <SearchBar
               isMobile={isMobile}
               value={searchTerm}
@@ -658,7 +658,7 @@ const MarketsPage = () => {
             />
           </div>
           <motion.div
-            className="mt-2 md:mt-3"
+            className="mt-0 md:mt-3"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
@@ -680,7 +680,9 @@ const MarketsPage = () => {
             />
           </motion.div>
         </div>
-        {parlayMode && selectedCategorySlug === null ? (
+        {parlayMode &&
+        selectedCategorySlug === null &&
+        searchTerm.trim() === '' ? (
           <SuggestedBetslips />
         ) : null}
 
