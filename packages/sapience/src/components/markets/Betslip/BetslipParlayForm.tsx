@@ -174,11 +174,12 @@ export default function BetslipParlayForm({
               <div className="flex items-start gap-3">
                 <div className="flex-1">
                   <h3 className="text-md text-foreground whitespace-normal break-words">
-                    {s.question}{' '}
+                    {s.question}
+                    {'\u00A0'}
                     <span className="relative -top-0.5">
                       <Badge
                         variant="outline"
-                        className={`${s.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'}`}
+                        className={`${s.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 dark:bg-emerald-500/70 dark:text-foreground shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 dark:bg-rose-500/70 dark:text-foreground shrink-0'}`}
                       >
                         {s.prediction ? 'Yes' : 'No'}
                       </Badge>
@@ -240,7 +241,7 @@ export default function BetslipParlayForm({
 
                   return (
                     <div className="mt-3">
-                      <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-[#91B3F0]/80 bg-[#91B3F0]/20 px-3 py-2.5 w-full min-h-[48px]">
+                      <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-primary/30 bg-primary/10 px-3 py-2.5 w-full min-h-[48px]">
                         <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
                           <Image
                             src="/usde.svg"
@@ -267,7 +268,6 @@ export default function BetslipParlayForm({
                     </div>
                   );
                 })()}
-                <WagerDisclaimer className="mt-4 mb-4" />
                 <Button
                   className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={
@@ -292,10 +292,10 @@ export default function BetslipParlayForm({
                     Limit Order
                   </button>
                 </div>
+                <WagerDisclaimer className="mt-3" />
               </div>
             ) : (
               <div className="text-center">
-                <WagerDisclaimer className="mt-4 mb-4" />
                 <Button
                   className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={true}
@@ -323,6 +323,7 @@ export default function BetslipParlayForm({
                     Some combinations may not receive bids
                   </div>
                 ) : null}
+                <WagerDisclaimer className="mt-3" />
               </div>
             )}
           </div>

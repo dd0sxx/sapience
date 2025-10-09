@@ -53,7 +53,7 @@ export default function YesNoSplitButton({
         className={cn(
           common,
           selectedYes
-            ? 'text-emerald-900 dark:text-white/90 bg-emerald-500/60 hover:bg-emerald-500/70 dark:bg-emerald-500/70 dark:hover:bg-emerald-500/80 border-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)] dark:shadow-[0_0_0_2px_rgba(16,185,129,0.45)]'
+            ? 'text-emerald-900 dark:text-white/90 bg-emerald-500/50 hover:bg-emerald-500/60 dark:bg-emerald-500/70 dark:hover:bg-emerald-500/80 border-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)] dark:shadow-[0_0_0_2px_rgba(16,185,129,0.45)]'
             : 'text-emerald-700 dark:text-white/90 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-400/60 shadow-[0_0_0_1px_rgba(16,185,129,0.18)] hover:shadow-[0_0_0_1px_rgba(16,185,129,0.28),_0_0_10px_rgba(16,185,129,0.18)] dark:shadow-[0_0_0_1px_rgba(16,185,129,0.28)] dark:hover:shadow-[0_0_0_1px_rgba(16,185,129,0.4),_0_0_12px_rgba(16,185,129,0.3)]'
         )}
       >
@@ -77,7 +77,7 @@ export default function YesNoSplitButton({
         className={cn(
           common,
           selectedNo
-            ? 'text-rose-900 dark:text-white/90 bg-rose-500/60 hover:bg-rose-500/70 dark:bg-rose-500/70 dark:hover:bg-rose-500/80 border-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.35)] dark:shadow-[0_0_0_2px_rgba(244,63,94,0.45)]'
+            ? 'text-rose-900 dark:text-white/90 bg-rose-500/50 hover:bg-rose-500/60 dark:bg-rose-500/70 dark:hover:bg-rose-500/80 border-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.35)] dark:shadow-[0_0_0_2px_rgba(244,63,94,0.45)]'
             : 'text-rose-700 dark:text-white/90 bg-rose-500/10 hover:bg-rose-500/20 border-rose-400/60 shadow-[0_0_0_1px_rgba(244,63,94,0.18)] hover:shadow-[0_0_0_1px_rgba(244,63,94,0.28),_0_0_10px_rgba(244,63,94,0.18)] dark:shadow-[0_0_0_1px_rgba(244,63,94,0.28)] dark:hover:shadow-[0_0_0_1px_rgba(244,63,94,0.4),_0_0_12px_rgba(244,63,94,0.3)]'
         )}
       >

@@ -17,11 +17,12 @@ import { useEffect, useRef, useState } from 'react';
 
 import { LineType } from '@sapience/sdk/types/charts'; // Import LineType
 import type { PriceChartDataPoint } from './usePriceChartData'; // Import the shared type
+import { getUpColor, getDownColor, getCssVarHsl } from '~/lib/theme/cssVars';
 
-// Reusable colors (consider moving to a shared constants file)
-export const GREEN = '#22c55e'; // Tailwind green-500 to match orderbook
-export const RED = '#ef4444'; // Tailwind red-500 to match orderbook
-export const BLUE = '#3F59DA';
+// Colors from CSS variables to respect theme
+export const GREEN = getUpColor();
+export const RED = getDownColor();
+export const BLUE = getCssVarHsl('--chart-1');
 
 interface UseLightweightChartProps {
   containerRef: React.RefObject<HTMLDivElement>;
@@ -89,9 +90,13 @@ export const useLightweightChart = ({
       layout: {
         // Transparent background in dark mode so container color shows through
         background: {
-          color: resolvedTheme === 'dark' ? 'transparent' : '#ffffff',
+          color:
+            resolvedTheme === 'dark' ? 'transparent' : getCssVarHsl('--card'),
         },
-        textColor: resolvedTheme === 'dark' ? '#e4e4e7' : '#111827',
+        textColor:
+          resolvedTheme === 'dark'
+            ? getCssVarHsl('--muted-foreground')
+            : getCssVarHsl('--foreground'),
       },
       grid: {
         vertLines: {
@@ -111,7 +116,7 @@ export const useLightweightChart = ({
         mode: CrosshairMode.Normal,
       },
       timeScale: {
-        borderColor: resolvedTheme === 'dark' ? '#3f3f46' : '#e5e7eb',
+        borderColor: getCssVarHsl('--border'),
         timeVisible: true,
         secondsVisible: false,
         maxBarSpacing: 30,
@@ -119,7 +124,7 @@ export const useLightweightChart = ({
         // fixLeftEdge: true, // Avoid fixing left edge
       },
       rightPriceScale: {
-        borderColor: resolvedTheme === 'dark' ? '#3f3f46' : '#e5e7eb',
+        borderColor: getCssVarHsl('--border'),
         visible: true,
         autoScale: true, // Enable auto-scaling
       },

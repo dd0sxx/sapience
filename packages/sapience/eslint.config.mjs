@@ -25,6 +25,14 @@ export default typescriptPlugin.config(
       },
     },
   },
+
+  // Targeted overrides: allow hex in OG renderer and manifest where required
+  {
+    files: ['src/app/manifest.ts', 'src/app/og/**/*.{ts,tsx}', 'src/lib/theme/ogPalette.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
   {
     files: ['**/*.ts', '**/*.tsx'],
     plugins: {
@@ -41,7 +49,15 @@ export default typescriptPlugin.config(
       'no-console': 'off',
       'semi': ['warn', 'always'],
       'complexity': 'off',
-      'no-restricted-syntax': 'off',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "Literal[value=/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]",
+          message:
+            'Avoid raw hex color literals; use theme tokens (Tailwind classes or cssVars helpers).',
+        },
+      ],
       'no-empty-pattern': 'warn',
       'no-plusplus': 'off',
       'no-restricted-globals': 'warn',

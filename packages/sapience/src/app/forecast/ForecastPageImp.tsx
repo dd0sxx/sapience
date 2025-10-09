@@ -11,7 +11,6 @@ import {
   TooltipTrigger,
 } from '@sapience/sdk/ui/components/ui/tooltip';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
-import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -65,7 +64,6 @@ const TabsHeader = ({
 };
 
 const ForecastPageImp = () => {
-  const { hasConnectedWallet } = useConnectedWallet();
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<CommentFilters | null>(null);
@@ -92,12 +90,8 @@ const ForecastPageImp = () => {
   // Show loading state while data is being fetched
   if (isLoading) {
     return (
-      <div
-        className={`min-h-screen bg-background ${
-          hasConnectedWallet ? 'pt-32' : 'pt-24 md:pt-0'
-        }`}
-      >
-        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
+      <div className={`min-h-screen bg-transparent pt-24`}>
+        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm rounded-t overflow-hidden">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
@@ -115,12 +109,8 @@ const ForecastPageImp = () => {
   // Show error state if data fetching failed
   if (error) {
     return (
-      <div
-        className={`min-h-screen bg-background ${
-          hasConnectedWallet ? 'pt-24' : 'pt-24 md:pt-0'
-        }`}
-      >
-        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
+      <div className={`min-h-screen bg-transparent pt-24`}>
+        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm rounded-t overflow-hidden">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
@@ -193,14 +183,10 @@ const ForecastPageImp = () => {
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div
-      className={`min-h-screen bg-background ${
-        hasConnectedWallet ? 'pt-16 mt-2' : 'pt-16 mt-2 md:pt-0 md:mt-0'
-      }`}
-    >
+    <div className={`min-h-screen bg-transparent pt-24`}>
       {/* Main content container with Twitter-like layout */}
       <div
-        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card ${hasConnectedWallet ? 'md:mt-2' : 'md:mt-0'}`}
+        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card/70 backdrop-blur-sm rounded-t overflow-hidden`}
       >
         <>
           {/* Tabs */}
@@ -251,7 +237,7 @@ const ForecastPageImp = () => {
           </div>
 
           {/* Category Selection Section */}
-          <div className="bg-background z-5 relative">
+          <div className="bg-background/60 backdrop-blur-sm z-5 relative">
             <div
               className={`flex overflow-x-auto max-w-[100dvw] no-scrollbar ${
                 isPopoverOpen ? 'overflow-x-hidden' : ''
@@ -377,12 +363,12 @@ const ForecastPageImp = () => {
                     style={{ backgroundColor: `${focusArea.color}1A` }}
                   >
                     <div style={{ transform: 'scale(0.5)' }}>
-                      <div
-                        style={{ color: focusArea.color }}
-                        dangerouslySetInnerHTML={{
-                          __html: focusArea.iconSvg,
-                        }}
-                      />
+                      {focusArea.Icon ? (
+                        <focusArea.Icon
+                          className="w-4 h-4"
+                          style={{ color: focusArea.color }}
+                        />
+                      ) : null}
                     </div>
                   </div>
                   <span className="font-medium">{focusArea.name}</span>

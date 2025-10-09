@@ -187,7 +187,7 @@ export default function FeaturedMarketGroupCards() {
           chainId: firstMarket.chainId,
           marketName: enrichedGroup.question || '',
           collateralAsset: firstMarket.collateralAsset,
-          color: enrichedGroup.category.color || '#71717a',
+          color: enrichedGroup.category.color || 'hsl(var(--muted-foreground))',
           categorySlug: firstMarket.categorySlug,
           categoryId: firstMarket.categoryId,
           marketQuestion: enrichedGroup.question,
@@ -356,10 +356,10 @@ function MobileAndDesktopLists({
   }, [desktopApi, items.length]);
 
   const desktopItemClass = React.useMemo(() => {
-    // Always show 3 items per row on desktop when possible
-    if (items.length >= 3) return 'pl-8 basis-1/2 lg:basis-1/3 h-full';
-    if (items.length === 2) return 'pl-8 basis-[60%] lg:basis-1/2 h-full';
-    return 'pl-8 basis-[80%] lg:basis-2/3 h-full';
+    // Narrower cards to fit more within the hero width
+    if (items.length >= 3) return 'pl-8 basis-1/3 lg:basis-1/4 h-full';
+    if (items.length === 2) return 'pl-8 basis-1/2 lg:basis-1/3 h-full';
+    return 'pl-8 basis-[65%] lg:basis-1/2 h-full';
   }, [items.length]);
 
   return (
@@ -397,7 +397,7 @@ function MobileAndDesktopLists({
               return (
                 <CarouselItem
                   key={marketGroup.key}
-                  className="pl-8 basis-[80%] h-full"
+                  className="pl-8 basis-[70%] h-full"
                 >
                   <MarketCard
                     chainId={marketGroup.chainId}
