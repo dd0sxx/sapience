@@ -190,6 +190,12 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                         Market Prediction:
                       </span>
                       <MarketPredictionRequest
+                        key={`mpr-${nonce}-${combo
+                          .map(
+                            (leg) =>
+                              `${leg.condition.id}:${leg.prediction ? '1' : '0'}`
+                          )
+                          .join('|')}`}
                         outcomes={combo.map((leg) => ({
                           marketId: leg.condition.id,
                           prediction: leg.prediction,

@@ -48,6 +48,36 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     Math.floor(Math.random() * 301)
   );
 
+  // Track viewport visibility to trigger eager load only when visible
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const [isInViewport, setIsInViewport] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (!eager) return;
+    const target = rootRef.current;
+    if (!target) return;
+
+    let observer: IntersectionObserver | null = null;
+    try {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry?.isIntersecting) {
+            setIsInViewport(true);
+            observer?.disconnect();
+          }
+        },
+        { root: null, rootMargin: '0px', threshold: 0.01 }
+      );
+      observer.observe(target);
+    } catch {
+      // If IntersectionObserver is unavailable, fall back to allowing eager
+      setIsInViewport(true);
+    }
+
+    return () => observer?.disconnect();
+  }, [eager]);
+
   // Generate or retrieve a stable guest maker address for logged-out users
   const guestMakerAddress = React.useMemo<`0x${string}` | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -242,12 +272,14 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
   React.useEffect(() => {
     if (!eager) return;
     if (eagerlyRequestedRef.current) return;
+    if (!isInViewport) return;
     if (!selectedMakerAddress) return;
     if (effectiveOutcomes.length === 0) return;
     eagerlyRequestedRef.current = true;
     handleRequestPrediction();
   }, [
     eager,
+    isInViewport,
     selectedMakerAddress,
     effectiveOutcomes.length,
     handleRequestPrediction,
@@ -255,6 +287,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
 
   return (
     <div
+      ref={rootRef}
       className={
         inline ? `inline-flex items-center ${className || ''}` : className
       }
