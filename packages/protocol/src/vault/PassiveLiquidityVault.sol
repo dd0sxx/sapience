@@ -410,13 +410,8 @@ contract PassiveLiquidityVault is
         // Clear the request first to prevent reentrancy
         request.user = address(0);
 
-        // Safely decrease unconfirmed assets with underflow protection
-        if (unconfirmedAssets >= assetsToReturn) {
-            unconfirmedAssets -= assetsToReturn;
-        } else {
-            // This should never happen in normal operation, but handle gracefully
-            unconfirmedAssets = 0;
-        }
+        // Decrease unconfirmed assets 
+        unconfirmedAssets -= assetsToReturn;
 
         // Transfer assets from vault to user
         uint256 balanceBefore = _asset.balanceOf(address(this));
