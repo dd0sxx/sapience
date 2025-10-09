@@ -903,7 +903,7 @@ const MarketsPage = () => {
                         : undefined;
                       const color = styleInfo?.color || DEFAULT_CATEGORY_COLOR;
                       return (
-                        <div key={c.id} className="min-h-[160px]">
+                        <div key={c.id} className="min-h-[100px]">
                           <ParlayConditionCard condition={c} color={color} />
                         </div>
                       );

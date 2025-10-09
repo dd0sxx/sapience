@@ -2,11 +2,6 @@
 
 import * as React from 'react';
 import { motion } from 'framer-motion';
-import { parseUnits } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
-import { predictionMarketAbi } from '@sapience/sdk';
-import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   Dialog,
   DialogContent,
@@ -16,9 +11,6 @@ import {
 } from '@sapience/sdk/ui/components/ui/dialog';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
-import { useAuctionStart } from '~/lib/auction/useAuctionStart';
-import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
-import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
@@ -41,24 +33,6 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
   const { id, question, shortName, endTime, description } = condition;
   const { addParlaySelection, removeParlaySelection, parlaySelections } =
     useBetSlipContext();
-  const [, setRequestedPrediction] = React.useState<number | null>(null);
-  const [isRequesting, setIsRequesting] = React.useState<boolean>(false);
-  const [lastMakerWagerWei, setLastMakerWagerWei] = React.useState<
-    string | null
-  >(null);
-  const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
-  const { address: makerAddress } = useAccount();
-  const { requestQuotes, bids } = useAuctionStart();
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
-
-  const { data: makerNonce } = useReadContract({
-    address: PREDICTION_MARKET_ADDRESS,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
-    args: makerAddress ? [makerAddress] : undefined,
-    chainId: DEFAULT_CHAIN_ID,
-    query: { enabled: !!makerAddress && !!PREDICTION_MARKET_ADDRESS },
-  });
 
   const displayQ = shortName || question;
 
@@ -111,76 +85,8 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
     addParlaySelection,
   ]);
 
-  // Complete when ack/bids arrive, if we were requesting
-  React.useEffect(() => {
-    if (!isRequesting) return;
-    if (!bids || bids.length === 0) return;
-    try {
-      // Filter non-expired bids if deadlines are present
-      const nowMs = Date.now();
-      const valid = bids.filter((b) => {
-        try {
-          const dl = Number(b?.takerDeadline || 0);
-          return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
-        } catch {
-          return true;
-        }
-      });
-      const list = valid.length > 0 ? valid : bids;
-      // Pick highest takerWager as best payout
-      const bestBid = list.reduce((acc, cur) => {
-        try {
-          return BigInt(cur.takerWager) > BigInt(acc.takerWager) ? cur : acc;
-        } catch {
-          return acc;
-        }
-      }, list[0]);
-      const maker = BigInt(String(lastMakerWagerWei || '0'));
-      const taker = BigInt(String(bestBid?.takerWager || '0'));
-      const denom = maker + taker;
-      const prob = denom > 0n ? Number(maker) / Number(denom) : 0.5;
-      // Clamp probability to [0.01, 0.99] to avoid edge cases in display
-      const clamped = Math.max(0.01, Math.min(0.99, prob));
-      setRequestedPrediction(clamped);
-    } catch {
-      setRequestedPrediction(0.5);
-    } finally {
-      setIsRequesting(false);
-    }
-  }, [bids, isRequesting, lastMakerWagerWei]);
-
-  // If a request was queued before wallet/nonce were available, send when ready
-  React.useEffect(() => {
-    if (!queuedRequest) return;
-    if (!isRequesting) return;
-    if (!id || !makerAddress || makerNonce === undefined) return;
-    try {
-      const wagerWei = parseUnits(DEFAULT_WAGER_AMOUNT, 18).toString();
-      setLastMakerWagerWei(wagerWei);
-      const payload = buildAuctionStartPayload([
-        { marketId: id, prediction: true },
-      ]);
-      requestQuotes({
-        wager: wagerWei,
-        resolver: payload.resolver,
-        predictedOutcomes: payload.predictedOutcomes,
-        maker: makerAddress,
-        makerNonce: Number(makerNonce),
-      });
-      setQueuedRequest(false);
-    } catch {
-      // If building request fails, exit requesting state
-      setIsRequesting(false);
-      setQueuedRequest(false);
-    }
-  }, [
-    queuedRequest,
-    isRequesting,
-    id,
-    makerAddress,
-    makerNonce,
-    requestQuotes,
-  ]);
+  // Prediction requests are handled by <MarketPredictionRequest />; no local
+  // auction/nonce state is required here.
 
   return (
     <div className="w-full h-full">
@@ -188,7 +94,7 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="bg-card border rounded-md border-border/70 flex flex-row items-stretch h-full md:min-h-[160px] relative overflow-hidden shadow-sm transition-shadow duration-200"
+        className="bg-card border rounded-md border-border/70 flex flex-row items-stretch h-full md:min-h-[100px] relative overflow-hidden shadow-sm transition-shadow duration-200"
       >
         <div
           className="w-1 min-w-[4px] max-w-[4px]"
@@ -197,9 +103,9 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
         <div className="flex-1 flex flex-col h-full">
           <div className="block group">
             <div className="transition-colors">
-              <div className="flex flex-col px-4 py-3 gap-3">
+              <div className="flex flex-col px-4 py-3 gap-2">
                 <div className="flex flex-col min-w-0 flex-1">
-                  <h3 className="leading-snug min-h-[44px]">
+                  <h3 className="text-base leading-snug min-h-[44px]">
                     <Dialog>
                       <DialogTrigger asChild>
                         <button type="button" className="text-left w-full">
@@ -242,7 +148,7 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
               </div>
             </div>
           </div>
-          <div className="mt-auto px-4 pt-0 pb-5">
+          <div className="mt-auto px-4 pt-0 pb-4">
             <div className="text-xs md:text-sm text-muted-foreground w-full mb-3">
               <div className="truncate whitespace-nowrap min-w-0 h-4 md:h-5 flex items-center gap-1">
                 <span className="text-muted-foreground">

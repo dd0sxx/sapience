@@ -74,7 +74,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'culture',
     name: 'Culture',
     resources: [],
-    color: 'hsl(var(--category-2))',
+    color: 'hsl(var(--category-6))',
     Icon: Tv,
   },
 ];
