@@ -767,7 +767,9 @@ const MarketsPage = () => {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium text-sm text-muted-foreground">
-                        Ending Soon
+                        {statusFilter === 'all'
+                          ? 'All Prediction Markets'
+                          : 'Ending Soon'}
                       </h3>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -826,7 +828,7 @@ const MarketsPage = () => {
                   transition={{ duration: 0.25 }}
                   className="w-full pt-48 text-center text-muted-foreground"
                 >
-                  No public conditions found.
+                  No prediction markets found
                 </motion.div>
               ) : effectiveViewMode === 'list' ? (
                 <motion.div
@@ -888,7 +890,9 @@ const MarketsPage = () => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-sm text-muted-foreground">
-                      Ending Soon
+                      {statusFilter === 'all'
+                        ? 'All Prediction Markets'
+                        : 'Ending Soon'}
                     </h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">

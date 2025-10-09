@@ -567,7 +567,9 @@ export function useChatConnection(isOpen: boolean, addressOverride?: string) {
     return !!userAddress;
   }, [requireAuth, userAddress]);
 
-  const canType = useMemo(() => canChat, [canChat]);
+  // Allow typing regardless of auth/wallet connection status; sending will still
+  // trigger the appropriate login/auth flow when required.
+  const canType = useMemo(() => true, []);
 
   // Clear chat auth when wallet disconnects or address changes
   const prevAddressRef = useRef<string | null>(null);

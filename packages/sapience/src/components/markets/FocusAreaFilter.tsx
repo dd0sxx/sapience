@@ -7,6 +7,12 @@ import {
   TabsTrigger,
 } from '@sapience/sdk/ui/components/ui/tabs';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/sdk/ui/components/ui/tooltip';
 import { LayoutGridIcon, ListIcon } from 'lucide-react';
 import CategoryChips from './CategoryChips';
 import type { FocusArea } from '~/lib/constants/focusAreas';
@@ -63,13 +69,13 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
               <TabsList className="inline-flex items-center p-1">
                 <TabsTrigger
                   value="perps"
-                  className="text-xs px-3 h-8 leading-none rounded-md"
+                  className="text-sm px-3 h-8 leading-none rounded-md"
                 >
                   Parlays
                 </TabsTrigger>
                 <TabsTrigger
                   value="spot"
-                  className="text-xs px-3 h-8 leading-none rounded-md"
+                  className="text-sm px-3 h-8 leading-none rounded-md"
                 >
                   Spot
                 </TabsTrigger>
@@ -88,13 +94,13 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
               <TabsList className="inline-flex items-center p-1">
                 <TabsTrigger
                   value="active"
-                  className="text-xs px-3 h-8 leading-none rounded-md"
+                  className="text-sm px-3 h-8 leading-none rounded-md"
                 >
                   Active
                 </TabsTrigger>
                 <TabsTrigger
                   value="all"
-                  className="text-xs px-3 h-8 leading-none rounded-md"
+                  className="text-sm px-3 h-8 leading-none rounded-md"
                 >
                   All
                 </TabsTrigger>
@@ -102,25 +108,34 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
             </Tabs>
 
             {visibleViewToggle ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="ml-2 h-10 w-10 hidden md:inline-flex"
-                aria-label={
-                  viewMode === 'grid'
-                    ? 'Switch to list view'
-                    : 'Switch to grid view'
-                }
-                aria-pressed={viewMode === 'grid'}
-                onClick={onToggleViewMode}
-              >
-                {viewMode === 'grid' ? (
-                  <ListIcon className="h-5 w-5" />
-                ) : (
-                  <LayoutGridIcon className="h-5 w-5" />
-                )}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      className="ml-2 h-10 w-10 hidden md:inline-flex"
+                      aria-label={
+                        viewMode === 'grid'
+                          ? 'Switch to list view'
+                          : 'Switch to grid view'
+                      }
+                      aria-pressed={viewMode === 'grid'}
+                      onClick={onToggleViewMode}
+                    >
+                      {viewMode === 'grid' ? (
+                        <ListIcon className="h-5 w-5" />
+                      ) : (
+                        <LayoutGridIcon className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {viewMode === 'grid' ? 'Toggle rows' : 'Toggle cards'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ) : null}
           </div>
         </div>
