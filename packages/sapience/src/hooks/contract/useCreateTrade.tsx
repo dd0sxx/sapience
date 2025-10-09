@@ -23,6 +23,13 @@ export interface CreateTradeParams {
   collateralTokenAddress?: Hash;
   onTxHash?: (txHash: Hash) => void;
   onSuccess?: () => void;
+  // Optional share card data
+  shareData?: {
+    question: string;
+    side: 'Yes' | 'No' | 'Long' | 'Short';
+    symbol: string;
+    payout?: string; // Optional payout amount
+  };
 }
 
 /**
@@ -55,6 +62,7 @@ export function useCreateTrade({
   collateralTokenAddress,
   onSuccess,
   onTxHash,
+  shareData,
 }: CreateTradeParams): CreateTradeResult {
   const [error, setError] = useState<Error | null>(null);
 
@@ -107,6 +115,8 @@ export function useCreateTrade({
       successMessage: 'Trade position submission was successful',
       fallbackErrorMessage: 'Failed to create trade position',
       redirectProfileAnchor: 'trades',
+      // Minimal share intent; callers can override by passing OG via UI layer later
+      shareIntent: {},
     });
 
   // Function to actually create the trader position using sendCalls
@@ -127,6 +137,26 @@ export function useCreateTrade({
     }
 
     setError(null); // Clear previous errors
+
+    // Store share data in sessionStorage if provided
+    if (shareData && typeof window !== 'undefined') {
+      try {
+        const tradeData = {
+          question: shareData.question,
+          wager: collateralAmount,
+          payout: shareData.payout,
+          symbol: shareData.symbol,
+          side: shareData.side,
+          marketId: numericMarketId,
+        };
+        sessionStorage.setItem(
+          'sapience:trade-data-temp',
+          JSON.stringify(tradeData)
+        );
+      } catch (err) {
+        console.error('Failed to store trade data:', err);
+      }
+    }
 
     try {
       // 30 minutes from now

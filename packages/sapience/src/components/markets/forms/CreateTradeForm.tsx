@@ -187,6 +187,21 @@ export function CreateTradeForm({
 
   const showPriceImpactWarning = priceImpact > HIGH_PRICE_IMPACT;
 
+  const { displayQuestion } = useMarketPage();
+
+  const payoutForShare = React.useMemo(() => {
+    try {
+      const num = parseFloat(sizeInput || '0');
+      if (isNaN(num) || num <= 0) return undefined;
+      const precision = 2;
+      const factor = 10 ** precision;
+      const roundedValue = Math.floor(num * factor) / factor;
+      return roundedValue.toFixed(precision);
+    } catch {
+      return undefined;
+    }
+  }, [sizeInput]);
+
   const { createTrade, isLoading: isCreatingTrade } = useCreateTrade({
     marketAddress,
     marketAbi,
@@ -200,6 +215,12 @@ export function CreateTradeForm({
     onSuccess: () => {
       form.reset();
       onSuccess?.();
+    },
+    shareData: {
+      question: displayQuestion || '',
+      side: direction === 'Long' ? 'Long' : 'Short',
+      symbol: collateralAssetTicker || 'Tokens',
+      payout: payoutForShare,
     },
   });
 
