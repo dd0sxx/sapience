@@ -18,6 +18,7 @@ interface FocusAreaChipProps {
   }>;
   className?: string;
   iconSize?: 'sm' | 'md';
+  selectedVariant?: 'default' | 'muted';
 }
 
 const CHIP_BASE =
@@ -31,6 +32,7 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
   IconComponent,
   className,
   iconSize = 'md',
+  selectedVariant = 'default',
 }) => {
   const withAlpha = React.useCallback((c: string, alpha: number) => {
     // Hex color (#RRGGBB or #RGB) -> append alpha as 2-digit hex
@@ -82,12 +84,20 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
     return () => resizeObserver.disconnect();
   }, [label, iconSize]);
   // Desktop behavior: when unselected, show icon-only circular chip; when selected, show icon + text pill
+  const isMutedSelected = selected && selectedVariant === 'muted';
+
   const selectedStyles = selected
     ? {
         className: `${CHIP_BASE} bg-[var(--chip-bg-strong)] border border-transparent ring-1 ring-[var(--chip-ring)]`,
         style: {
-          ['--chip-bg-strong' as any]: withAlpha(color, 0.2),
-          ['--chip-ring' as any]: withAlpha(color, 0.4),
+          ['--chip-bg-strong' as any]: withAlpha(
+            color,
+            isMutedSelected ? 0.14 : 0.2
+          ),
+          ['--chip-ring' as any]: withAlpha(
+            color,
+            isMutedSelected ? 0.24 : 0.4
+          ),
         } as React.CSSProperties,
       }
     : {
@@ -140,7 +150,7 @@ const FocusAreaChip: React.FC<FocusAreaChipProps> = ({
       >
         <motion.span
           ref={labelRef}
-          className="pl-0.5 font-medium pr-3 text-foreground/80 inline-block"
+          className="font-medium pr-3 text-foreground/80 inline-block"
           initial={false}
           animate={{ opacity: selected ? 1 : 0 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}

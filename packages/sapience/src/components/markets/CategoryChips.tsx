@@ -1,5 +1,5 @@
 import type * as React from 'react';
-import { LayoutGridIcon } from 'lucide-react';
+import { Shapes } from 'lucide-react';
 import { Skeleton } from '@sapience/sdk/ui/components/ui/skeleton';
 import FocusAreaChip from './FocusAreaChip';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -44,8 +44,9 @@ const CategoryChips: React.FC<CategoryChipsProps> = ({
             selected={selectedCategorySlug === null}
             onClick={() => onCategoryClick(null)}
             className="py-1.5"
-            IconComponent={LayoutGridIcon}
+            IconComponent={Shapes}
             iconSize="md"
+            selectedVariant="muted"
           />
 
           {isLoading &&
