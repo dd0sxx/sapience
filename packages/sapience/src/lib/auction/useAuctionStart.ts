@@ -141,7 +141,7 @@ export function useAuctionStart() {
         // ignore
       }
     };
-    ws.onclose = (ev) => {
+    ws.onclose = () => {
       wsRef.current = null;
     };
     ws.addEventListener('error', () => {});

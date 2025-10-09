@@ -44,7 +44,9 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
   const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
 
   const eagerlyRequestedRef = React.useRef<boolean>(false);
-  const eagerJitterMsRef = React.useRef<number>(Math.floor(Math.random() * 301));
+  const eagerJitterMsRef = React.useRef<number>(
+    Math.floor(Math.random() * 301)
+  );
 
   // Generate or retrieve a stable guest maker address for logged-out users
   const guestMakerAddress = React.useMemo<`0x${string}` | null>(() => {
@@ -53,7 +55,9 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     let stored: string | null = null;
     try {
       stored = window.localStorage.getItem('sapience_guest_maker_address');
-    } catch {}
+    } catch {
+      /* storage unavailable */
+    }
     if (stored) return stored as `0x${string}`;
 
     // Generate an ephemeral address for this session
@@ -62,24 +66,27 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
       const bytes = new Uint8Array(20);
       (window.crypto || ({} as Crypto)).getRandomValues?.(bytes);
       if (bytes[0] === undefined) throw new Error('no-crypto');
-      addr = (
-        '0x' +
+      addr = ('0x' +
         Array.from(bytes)
           .map((b) => b.toString(16).padStart(2, '0'))
-          .join('')
-      ) as `0x${string}`;
+          .join('')) as `0x${string}`;
     } catch {
       // Fallback to Math.random-based generation (less strong, but fine for a UI nonce)
-      const rand = Array.from({ length: 20 }, () => Math.floor(Math.random() * 256));
-      addr = (
-        '0x' + rand.map((b) => b.toString(16).padStart(2, '0')).join('')
-      ) as `0x${string}`;
+      const rand = Array.from({ length: 20 }, () =>
+        Math.floor(Math.random() * 256)
+      );
+      addr = ('0x' +
+        rand
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('')) as `0x${string}`;
     }
 
     // Best-effort persist for future visits
     try {
       window.localStorage.setItem('sapience_guest_maker_address', addr);
-    } catch {}
+    } catch {
+      /* storage unavailable */
+    }
     return addr;
   }, []);
 
