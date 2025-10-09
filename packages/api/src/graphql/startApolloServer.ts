@@ -7,6 +7,13 @@ import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
+import {
+  createComplexityRule,
+  simpleEstimator,
+  fieldExtensionsEstimator,
+} from 'graphql-query-complexity';
+import { GraphQLError, GraphQLSchema } from 'graphql';
+import type { ApolloServerPlugin } from '@apollo/server';
 
 // Import only the query (read-only) resolvers from generated TypeGraphQL
 import {
@@ -227,7 +234,14 @@ export const initializeApolloServer = async () => {
     emitSchemaFile: true,
   });
 
-  // Create Apollo Server with the combined schema and depth limit
+  // Get max complexity from environment variable or use default
+  const maxComplexity = process.env.GRAPHQL_MAX_COMPLEXITY
+    ? parseInt(process.env.GRAPHQL_MAX_COMPLEXITY, 10)
+    : 1000;
+
+  console.log(`GraphQL query complexity limit set to: ${maxComplexity}`);
+
+  // Create Apollo Server with the combined schema, depth limit, and query complexity limit
   const apolloServer = new ApolloServer({
     schema,
     formatError: (error) => {
@@ -235,7 +249,20 @@ export const initializeApolloServer = async () => {
       return error;
     },
     introspection: true,
-    validationRules: [depthLimit(5)],
+    validationRules: [
+      depthLimit(5),
+      createComplexityRule({
+        maximumComplexity: maxComplexity,
+        variables: {},
+        estimators: [
+          fieldExtensionsEstimator(),
+          simpleEstimator({ defaultComplexity: 1 }),
+        ],
+        onComplete: (complexity: number) => {
+          console.log(`Query complexity: ${complexity}`);
+        },
+      }),
+    ],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,
