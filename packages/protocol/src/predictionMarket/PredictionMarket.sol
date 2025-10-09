@@ -211,16 +211,16 @@ contract PredictionMarket is
         if (prediction.settled) revert PredictionAlreadySettled();
 
         // 3- Ask resolver if markets are settled, and if prediction succeeded or not, it means maker won
-        (bool isValid, , bool makerWon) = IPredictionMarketResolver(
+        (bool isResolved, , bool parlaySuccess) = IPredictionMarketResolver(
             prediction.resolver
-        ).resolvePrediction(prediction.encodedPredictedOutcomes);
+        ).getPredictionResolution(prediction.encodedPredictedOutcomes);
 
-        if (!isValid) revert PredictionResolutionFailed();
+        if (!isResolved) revert PredictionResolutionFailed();
 
         // 4- Send collateral to winner
         uint256 payout = prediction.makerCollateral +
             prediction.takerCollateral;
-        address winner = makerWon ? prediction.maker : prediction.taker;
+        address winner = parlaySuccess ? prediction.maker : prediction.taker;
 
         _safeTransferOut(config.collateralToken, winner, payout);
 
@@ -230,7 +230,7 @@ contract PredictionMarket is
 
         // 5- Set the prediction state (identify who won and set as closed)
         prediction.settled = true;
-        prediction.makerWon = makerWon;
+        prediction.makerWon = parlaySuccess;
 
         // 6- Burn NFTs
         _burn(prediction.makerNftTokenId);
@@ -243,7 +243,7 @@ contract PredictionMarket is
             prediction.makerNftTokenId,
             prediction.takerNftTokenId,
             payout,
-            makerWon,
+            prediction.makerWon,
             refCode
         );
     }

@@ -253,7 +253,7 @@ contract PredictionMarketSapienceIntegrationTest is Test {
         uint256 makerBalanceBeforeBurn = predictionCollateralToken.balanceOf(maker);
         
         // Check what the resolver thinks about the prediction
-        (bool isValid, IPredictionMarketResolver.Error error, bool makerWon) = sapienceResolver.resolvePrediction(encodedOutcomes);
+        (bool isResolved, IPredictionMarketResolver.Error error, bool parlaySuccess) = sapienceResolver.getPredictionResolution(encodedOutcomes);
         
         vm.prank(maker);
         predictionMarket.burn(makerNftId, keccak256("integration-test"));

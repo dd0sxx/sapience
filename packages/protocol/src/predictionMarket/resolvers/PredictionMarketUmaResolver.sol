@@ -146,21 +146,21 @@ contract PredictionMarketUmaResolver is
         return (isValid, error);
     }
 
-    function resolvePrediction(
+    function getPredictionResolution(
         bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isValid, Error error, bool makerWon) {
+    ) external view returns (bool isResolved, Error error, bool parlaySuccess) {
         PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(
             encodedPredictedOutcomes
         );
-        makerWon = true;
-        isValid = true;
+        parlaySuccess = true;
+        isResolved = true;
         error = Error.NO_ERROR;
         bool hasUnsettledMarkets = false;
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             bytes32 marketId = predictedOutcomes[i].marketId;
             if (marketId == bytes32(0)) {
-                isValid = false;
+                isResolved = false;
                 error = Error.INVALID_MARKET;
                 break;
             }
@@ -182,19 +182,19 @@ contract PredictionMarketUmaResolver is
             bool marketOutcome = market.resolvedToYes;
 
             if (predictedOutcomes[i].prediction != marketOutcome) {
-                makerWon = false;
+                parlaySuccess = false;
                 // Decisive loss on a settled market: return valid with no error
-                return (true, Error.NO_ERROR, makerWon);
+                return (true, Error.NO_ERROR, parlaySuccess);
             }
         }
 
-        if (isValid && hasUnsettledMarkets) {
+        if (isResolved && hasUnsettledMarkets) {
             // No decisive loss found, but at least one market is unsettled
-            isValid = false;
+            isResolved = false;
             error = Error.MARKET_NOT_SETTLED;
         }
 
-        return (isValid, error, makerWon);
+        return (isResolved, error, parlaySuccess);
     }
 
     // ============ Prediction Outcomes Encoding and Decoding Functions ============
