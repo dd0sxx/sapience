@@ -137,7 +137,7 @@ export function useCreateTrade({
     }
 
     setError(null); // Clear previous errors
-    
+
     // Store share data in sessionStorage if provided
     if (shareData && typeof window !== 'undefined') {
       try {
@@ -149,7 +149,10 @@ export function useCreateTrade({
           side: shareData.side,
           marketId: numericMarketId,
         };
-        sessionStorage.setItem('sapience:trade-data-temp', JSON.stringify(tradeData));
+        sessionStorage.setItem(
+          'sapience:trade-data-temp',
+          JSON.stringify(tradeData)
+        );
       } catch (err) {
         console.error('Failed to store trade data:', err);
       }

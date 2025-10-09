@@ -90,7 +90,7 @@ const Betslip = ({
       redirectProfileAnchor: 'trades',
       shareIntent: {}, // Will be populated dynamically in handleIndividualSubmit
     });
-  
+
   // Removed repetitive debug log
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -672,24 +672,28 @@ const Betslip = ({
     if (positionsWithMarketData[0]) {
       const firstPos = positionsWithMarketData[0];
       const positionId = firstPos.position.id;
-      const wagerAmount = formValues?.positions?.[positionId]?.wagerAmount || '0';
-      const predictionValue = formValues?.positions?.[positionId]?.predictionValue || '';
-      
+      const wagerAmount =
+        formValues?.positions?.[positionId]?.wagerAmount || '0';
+      const predictionValue =
+        formValues?.positions?.[positionId]?.predictionValue || '';
+
       // Get the quote data for this position to get the payout (maxSize)
       const marketAddress = firstPos.position.marketAddress as `0x${string}`;
-      const marketId = firstPos.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
-        ? Number(predictionValue || firstPos.position.marketId)
-        : firstPos.position.marketId;
-      
+      const marketId =
+        firstPos.marketClassification ===
+        MarketGroupClassification.MULTIPLE_CHOICE
+          ? Number(predictionValue || firstPos.position.marketId)
+          : firstPos.position.marketId;
+
       const { expectedPrice } = getQuoteParamsFromPosition({
         positionId,
-        marketGroupData: firstPos.marketGroupData,
-        marketClassification: firstPos.marketClassification,
+        marketGroupData: firstPos.marketGroupData!,
+        marketClassification: firstPos.marketClassification!,
         predictionValue,
         wagerAmount: wagerAmount,
         isFlipped: formValues?.positions?.[positionId]?.isFlipped,
       });
-      
+
       const parsedWagerAmount = parseUnits(wagerAmount, COLLATERAL_DECIMALS);
       const quoteKey = generateQuoteQueryKey(
         firstPos.position.chainId,
@@ -698,15 +702,19 @@ const Betslip = ({
         expectedPrice,
         parsedWagerAmount
       );
-      
-      const quoteData = queryClient.getQueryData<ReturnType<typeof useQuoter>['quoteData']>(quoteKey);
-      
+
+      const quoteData =
+        queryClient.getQueryData<ReturnType<typeof useQuoter>['quoteData']>(
+          quoteKey
+        );
+
       // Calculate payout from maxSize
       let payoutAmount = '0';
       if (quoteData?.maxSize) {
         try {
           const maxSizeBigInt = BigInt(quoteData.maxSize);
-          const absMaxSize = maxSizeBigInt < 0n ? -maxSizeBigInt : maxSizeBigInt;
+          const absMaxSize =
+            maxSizeBigInt < 0n ? -maxSizeBigInt : maxSizeBigInt;
           // Use Math.floor to match NumberDisplay formatting (rounds down)
           const numValue = Number(absMaxSize) / 1e18;
           const precision = 2;
@@ -717,17 +725,18 @@ const Betslip = ({
           payoutAmount = '0';
         }
       }
-      
+
       // Determine the direction/side based on the prediction value
       let side = 'Yes'; // default
       if (firstPos.marketClassification === MarketGroupClassification.YES_NO) {
         side = predictionValue === YES_SQRT_PRICE_X96 ? 'Yes' : 'No';
-      } else if (firstPos.marketClassification === MarketGroupClassification.SCALAR) {
-        // For scalar markets, could be Long/Short based on the position
+      } else if (
+        firstPos.marketClassification === MarketGroupClassification.NUMERIC
+      ) {
         // TODO: Determine Long/Short based on market data
         side = 'Long'; // placeholder
       }
-      
+
       // Store supplemental trade data that will be picked up by ShareAfterRedirect
       const tradeDataIntent = {
         address: address?.toLowerCase(),
@@ -740,11 +749,14 @@ const Betslip = ({
           symbol: firstPos.marketGroupData?.collateralSymbol || 'USDC',
           side: side,
           marketId: firstPos.position.marketId,
-        }
+        },
       };
-      
+
       // Store it temporarily - will be merged with the real intent by useSapienceWriteContract
-      sessionStorage.setItem('sapience:trade-data-temp', JSON.stringify(tradeDataIntent.tradeData));
+      sessionStorage.setItem(
+        'sapience:trade-data-temp',
+        JSON.stringify(tradeDataIntent.tradeData)
+      );
     }
 
     sendCalls({

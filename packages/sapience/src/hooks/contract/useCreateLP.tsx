@@ -203,7 +203,10 @@ export function useCreateLP({
             highPrice: shareData.highPrice,
             collateral: collateralAmount,
           };
-          sessionStorage.setItem('sapience:lp-data-temp', JSON.stringify(lpData));
+          sessionStorage.setItem(
+            'sapience:lp-data-temp',
+            JSON.stringify(lpData)
+          );
         } catch (err) {
           console.error('Failed to store LP data:', err);
         }

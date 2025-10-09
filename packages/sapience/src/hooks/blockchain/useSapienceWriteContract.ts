@@ -161,7 +161,9 @@ export function useSapienceWriteContract({
         let tempTradeData = null;
         if (redirectProfileAnchor === 'trades') {
           try {
-            const tempData = window.sessionStorage.getItem('sapience:trade-data-temp');
+            const tempData = window.sessionStorage.getItem(
+              'sapience:trade-data-temp'
+            );
             if (tempData) {
               tempTradeData = JSON.parse(tempData);
               window.sessionStorage.removeItem('sapience:trade-data-temp');
@@ -175,7 +177,9 @@ export function useSapienceWriteContract({
         let tempLpData = null;
         if (redirectProfileAnchor === 'lp') {
           try {
-            const tempData = window.sessionStorage.getItem('sapience:lp-data-temp');
+            const tempData = window.sessionStorage.getItem(
+              'sapience:lp-data-temp'
+            );
             if (tempData) {
               tempLpData = JSON.parse(tempData);
               window.sessionStorage.removeItem('sapience:lp-data-temp');

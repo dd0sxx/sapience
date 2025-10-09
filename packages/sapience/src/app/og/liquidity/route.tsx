@@ -69,7 +69,7 @@ export async function GET(req: Request) {
                     color: 'rgba(255,255,255,0.64)',
                   }}
                 >
-                  Prediction Market
+                  Providing Prediction Market Liquidity For
                 </div>
                 <div
                   style={{

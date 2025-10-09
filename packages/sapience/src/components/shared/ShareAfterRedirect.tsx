@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Address } from 'viem';
 import { formatUnits } from 'viem';
 
-import type { Position as PositionType } from '@sapience/ui/types/graphql';
+import type { Position as PositionType } from '@sapience/sdk/types/graphql';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
@@ -16,6 +16,15 @@ import { SCHEMA_UID } from '~/lib/constants/eas';
 
 type Anchor = 'trades' | 'lp' | 'forecasts' | 'parlays';
 
+// Extended position type for immediate share cards with additional data
+type ExtendedPosition = PositionType & {
+  payout?: string;
+  side?: string;
+  lowPrice?: string;
+  highPrice?: string;
+  isImmediate?: boolean;
+};
+
 type ShareIntentStored = {
   address: string;
   anchor: Anchor;
@@ -23,6 +32,21 @@ type ShareIntentStored = {
   txHash?: string;
   positionId?: string | number;
   og?: { imagePath: string; params?: Record<string, any> };
+  tradeData?: {
+    question: string;
+    wager: string;
+    payout?: string;
+    symbol: string;
+    side: string;
+    marketId?: number;
+  };
+  lpData?: {
+    question: string;
+    symbol: string;
+    lowPrice?: string;
+    highPrice?: string;
+    collateral?: string;
+  };
 };
 
 export default function ShareAfterRedirect({ address }: { address: Address }) {
@@ -63,7 +87,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
   }, []);
 
   const [currentAnchor, setCurrentAnchor] = useState<Anchor | null>(null);
-  
+
   useEffect(() => {
     const updateAnchor = () => {
       if (typeof window === 'undefined') return;
@@ -79,13 +103,13 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
         setCurrentAnchor(null);
       }
     };
-    
+
     // Update immediately
     updateAnchor();
-    
+
     // Listen for hash changes
     window.addEventListener('hashchange', updateAnchor);
-    
+
     return () => window.removeEventListener('hashchange', updateAnchor);
   }, []);
 
@@ -93,13 +117,13 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
   const toOgUrl = useCallback(
     (
       anchor: Anchor,
-      entity: PositionType | FormattedAttestation | Parlay
+      entity: ExtendedPosition | FormattedAttestation | Parlay
     ): string | null => {
       const qp = new URLSearchParams();
       qp.set('addr', lowerAddress);
       try {
         if (anchor === 'trades' && entity) {
-          const pos = entity as PositionType;
+          const pos = entity as ExtendedPosition;
           const q =
             pos?.market?.marketGroup?.question || pos?.market?.question || '';
           if (q) qp.set('q', q);
@@ -110,26 +134,29 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
           if (symbol) qp.set('symbol', symbol);
           const wager = pos?.collateral || pos?.transactions?.[0]?.collateral;
           if (wager) qp.set('wager', String(wager));
-          
-          // Add payout if available
+
+          // Add payout if available (from immediate data)
           const payout = pos?.payout;
           if (payout) qp.set('payout', String(payout));
-          
-          // Add direction/side for the trade
+
+          // Add direction/side for the trade (from immediate data)
           const side = pos?.side || '';
           if (side) {
             // Convert side to dir parameter format expected by OG route
             if (side.toLowerCase() === 'yes' || side.toLowerCase() === 'long') {
               qp.set('dir', 'on yes');
-            } else if (side.toLowerCase() === 'no' || side.toLowerCase() === 'short') {
+            } else if (
+              side.toLowerCase() === 'no' ||
+              side.toLowerCase() === 'short'
+            ) {
               qp.set('dir', 'on no');
             }
           }
-          
+
           return `/og/trade?${qp.toString()}`;
         }
         if (anchor === 'lp' && entity) {
-          const pos = entity as PositionType;
+          const pos = entity as ExtendedPosition;
           const q =
             pos?.market?.marketGroup?.question || pos?.market?.question || '';
           if (q) qp.set('q', q);
@@ -138,6 +165,13 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
             pos?.market?.marketGroup?.baseTokenName ||
             '';
           if (symbol) qp.set('symbol', symbol);
+
+          // Add price range for LP positions (from immediate data)
+          const lowPrice = pos?.lowPrice;
+          const highPrice = pos?.highPrice;
+          if (lowPrice) qp.set('low', String(lowPrice));
+          if (highPrice) qp.set('high', String(highPrice));
+
           return `/og/liquidity?${qp.toString()}`;
         }
         if (anchor === 'forecasts' && entity) {
@@ -152,7 +186,8 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
           const parlay = entity as Parlay;
           const legs = (parlay?.predictedOutcomes || [])
             .map((o) => {
-              const question = (o?.condition?.shortName as string) ||
+              const question =
+                (o?.condition?.shortName as string) ||
                 (o?.condition?.question as string);
               const choice = o?.prediction ? 'Yes' : 'No';
               return question ? `${question}|${choice}` : null;
@@ -161,23 +196,26 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
           if (legs.length > 0) {
             legs.forEach((l) => qp.append('leg', String(l)));
           }
-          
+
           const collateralDecimals = 18;
           const collateralSymbol = 'testUSDe';
           if (parlay?.makerCollateral) {
-            const wager= parseFloat(formatUnits(BigInt(parlay.makerCollateral), collateralDecimals)).toFixed(2); // not sure if this is too much lol
+            const wager = parseFloat(
+              formatUnits(BigInt(parlay.makerCollateral), collateralDecimals)
+            ).toFixed(2); // not sure if this is too much lol
             qp.set('wager', wager);
           }
-          
-         
+
           if (parlay?.totalCollateral) {
             const totalCollateralBigInt = BigInt(parlay.totalCollateral);
-            const payout = parseFloat(formatUnits(totalCollateralBigInt, collateralDecimals)).toFixed(2); //same here
+            const payout = parseFloat(
+              formatUnits(totalCollateralBigInt, collateralDecimals)
+            ).toFixed(2); //same here
             qp.set('payout', payout);
           }
-          
+
           qp.set('symbol', collateralSymbol);
-          
+
           return `/og/parlay?${qp.toString()}`;
         }
       } catch {
@@ -237,13 +275,51 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
       const minTs = ts - windowMs;
       const maxTs = ts + windowMs;
 
-      let resolved: PositionType | FormattedAttestation | Parlay | null = null;
-      if (intent.anchor === 'trades' || intent.anchor === 'lp') {
+      let resolved: ExtendedPosition | FormattedAttestation | Parlay | null =
+        null;
+      
+      if (intent.anchor === 'trades' && intent.tradeData) {
+        resolved = {
+          positionId: 'pending-' + Date.now(),
+          market: {
+            question: intent.tradeData.question,
+            marketGroup: {
+              collateralSymbol: intent.tradeData.symbol,
+            },
+          },
+          collateral: intent.tradeData.wager,
+          payout: intent.tradeData.payout,
+          side: intent.tradeData.side,
+          marketId: intent.tradeData.marketId,
+          isImmediate: true,
+        } as unknown as ExtendedPosition;
+      }
+
+      // For LP, if we have lpData in the intent, use it immediately
+      if (intent.anchor === 'lp' && intent.lpData) {
+        resolved = {
+          positionId: 'pending-' + Date.now(),
+          market: {
+            question: intent.lpData.question,
+            marketGroup: {
+              collateralSymbol: intent.lpData.symbol,
+            },
+          },
+          collateral: intent.lpData.collateral,
+          lowPrice: intent.lpData.lowPrice,
+          highPrice: intent.lpData.highPrice,
+          isLP: true,
+          isImmediate: true,
+        } as unknown as ExtendedPosition;
+      }
+      
+      // Fallback to GraphQL data if no immediate data
+      if (!resolved && (intent.anchor === 'trades' || intent.anchor === 'lp')) {
         const isLp = intent.anchor === 'lp';
         const list: PositionType[] = (positions || []).filter(
           (p: PositionType) => Boolean(p?.isLP) === isLp
         );
-        
+
         // Check if we have positions data and log key info
 
         // Try by positionId
@@ -256,7 +332,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
         // Try by txHash - check ALL positions, not just filtered list
         if (!resolved && intent.txHash) {
           const txh = String(intent.txHash).toLowerCase();
-          
+
           // First try in the filtered list
           resolved =
             list.find((p: PositionType) =>
@@ -265,17 +341,18 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
                   String(t?.event?.transactionHash || '').toLowerCase() === txh
               )
             ) || null;
-          
+
           // If not found, try ALL positions (maybe isLP flag is wrong)
           if (!resolved) {
-            resolved = 
+            resolved =
               (positions || []).find((p: PositionType) =>
                 (p?.transactions || []).some(
                   (t: any) =>
-                    String(t?.event?.transactionHash || '').toLowerCase() === txh
+                    String(t?.event?.transactionHash || '').toLowerCase() ===
+                    txh
                 )
               ) || null;
-            }
+          }
         }
         // Fallback by recency window
         if (!resolved) {
@@ -305,7 +382,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
             ) => b.candidateTs - a.candidateTs
           );
           resolved = within[0]?.p || null;
-          
+
           // Only log when we actually find something or fail definitively
         }
       } else if (intent.anchor === 'forecasts') {
@@ -316,51 +393,13 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
           ) || null;
       } else if (intent.anchor === 'parlays') {
         const list: Parlay[] = parlays || [];
-        const filtered = list.filter((p: Parlay) => Number(p.mintedAt) * 1000 >= minTs);
-        resolved = filtered
-            .sort(
-              (a: Parlay, b: Parlay) => Number(b.mintedAt) - Number(a.mintedAt)
-            )[0] || null;
-      }
-      
-      // For trades, if we have tradeData in the intent, use it immediately
-      if (!resolved && intent.anchor === 'trades' && intent.tradeData) {
-        resolved = {
-          // Create a minimal position object from stored data
-          positionId: 'pending-' + Date.now(),
-          market: {
-            question: intent.tradeData.question,
-            marketGroup: {
-              collateralSymbol: intent.tradeData.symbol,
-            }
-          },
-          collateral: intent.tradeData.wager,
-          payout: intent.tradeData.payout, // Include payout!
-          side: intent.tradeData.side,
-          marketId: intent.tradeData.marketId,
-          // Add a flag to indicate this is immediate data
-          isImmediate: true
-        };
-      }
-
-      // For LP, if we have lpData in the intent, use it immediately
-      if (!resolved && intent.anchor === 'lp' && intent.lpData) {
-        resolved = {
-          // Create a minimal LP position object from stored data
-          positionId: 'pending-' + Date.now(),
-          market: {
-            question: intent.lpData.question,
-            marketGroup: {
-              collateralSymbol: intent.lpData.symbol,
-            }
-          },
-          collateral: intent.lpData.collateral,
-          lowPrice: intent.lpData.lowPrice,
-          highPrice: intent.lpData.highPrice,
-          isLP: true,
-          // Add a flag to indicate this is immediate data
-          isImmediate: true
-        };
+        const filtered = list.filter(
+          (p: Parlay) => Number(p.mintedAt) * 1000 >= minTs
+        );
+        resolved =
+          filtered.sort(
+            (a: Parlay, b: Parlay) => Number(b.mintedAt) - Number(a.mintedAt)
+          )[0] || null;
       }
 
       if (resolved) {
@@ -368,41 +407,6 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
         if (src) {
           clearInterval(timer);
           setImageSrc(src);
-          setOpen(true);
-          clearIntent();
-        }
-      } else {
-        // After 15 seconds, show a generic share card if we have a txHash
-        const elapsed = now - start;
-        if (elapsed > 15000 && intent.txHash) {
-          // Try to find ANY recent trade to get basic info
-          let anyRecentTrade;
-          try {
-            anyRecentTrade = list
-              .filter((p: PositionType) => {
-                const created = Number(p?.createdAt ?? 0);
-                return created >= minTs / 1000 - 30; // within 30s before action
-              })
-              .sort((a: PositionType, b: PositionType) => 
-                Number(b?.createdAt ?? 0) - Number(a?.createdAt ?? 0)
-              )[0];
-          } catch (err) {
-            anyRecentTrade = null;
-          }
-          
-          let genericUrl;
-          if (anyRecentTrade) {
-            try {
-              genericUrl = toOgUrl(intent.anchor, anyRecentTrade);
-            } catch {
-              genericUrl = `/og/trade?addr=${lowerAddress}&q=Trade%20Completed&wager=--&payout=--&symbol=USDC`;
-            }
-          } else {
-            genericUrl = `/og/trade?addr=${lowerAddress}&q=Trade%20Completed&wager=--&payout=--&symbol=USDC`;
-          }
-          
-          clearInterval(timer);
-          setImageSrc(genericUrl);
           setOpen(true);
           clearIntent();
         }
