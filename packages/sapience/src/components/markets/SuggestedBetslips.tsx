@@ -119,7 +119,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                   className="text-muted-foreground hover:text-foreground p-1 rounded-md"
                   title="Randomize example predictions"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="w-3 h-3" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>Randomize example predictions</TooltipContent>
@@ -128,13 +128,13 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
         </div>
       </div>
 
-      <div className="mt-1 mb-0 pb-0 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+      <div className="mt-2 mb-0 pb-0 grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
         {isLoading || combos.length === 0 ? (
           <>
-            <div className="border border-border rounded bg-card overflow-hidden h-20 flex items-center justify-center text-muted-foreground/80">
+            <div className="border border-border rounded bg-card overflow-hidden shadow-lg h-20 flex items-center justify-center text-muted-foreground/80">
               Loading…
             </div>
-            <div className="border border-border rounded bg-card overflow-hidden h-20 hidden sm:flex items-center justify-center text-muted-foreground/80">
+            <div className="border border-border rounded bg-card overflow-hidden shadow-lg h-20 hidden sm:flex items-center justify-center text-muted-foreground/80">
               Loading…
             </div>
           </>
@@ -142,7 +142,7 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
           combos.map((combo, idx) => (
             <div
               key={`combo-${idx}`}
-              className="border border-border rounded bg-card overflow-hidden p-0"
+              className="border border-border rounded bg-card overflow-hidden shadow-lg p-0"
             >
               <div className="space-y-0 flex flex-col">
                 {combo.map((leg, i) => (
@@ -158,17 +158,17 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                             leg.condition.category?.slug
                           ),
                           // Extend 1px to cover parent's border-b on non-last rows
-                          marginBottom: i === combo.length - 1 ? 0 : -1,
+                          marginBottom: -1,
                         }}
                       />
                       <div className="flex-1 min-w-0 px-3 py-2 flex items-center justify-between gap-2">
                         <h3 className="text-sm text-foreground truncate">
                           {leg.condition.shortName || leg.condition.question}
                         </h3>
-                        <span className="relative -top-0.5 shrink-0">
+                        <span className="relative -top-0.5 ml-2 shrink-0">
                           <Badge
                             variant="outline"
-                            className={`${leg.prediction ? 'px-2 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0' : 'px-2 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'}`}
+                            className={`${leg.prediction ? 'px-2 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 dark:bg-emerald-600 dark:text-foreground shrink-0' : 'px-2 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 dark:bg-red-600 dark:text-foreground shrink-0'}`}
                           >
                             {leg.prediction ? 'Yes' : 'No'}
                           </Badge>
@@ -177,37 +177,40 @@ const SuggestedBetslips: React.FC<SuggestedBetslipsProps> = ({
                     </div>
                   </div>
                 ))}
-                <div className="px-2 pb-2 pt-2">
-                  <div className="text-sm mt-1 mb-2 px-0.5 flex items-center gap-1">
-                    <span className="text-muted-foreground">
-                      Market Prediction:
-                    </span>
-                    <MarketPredictionRequest
-                      outcomes={combo.map((leg) => ({
-                        marketId: leg.condition.id,
-                        prediction: leg.prediction,
-                      }))}
-                    />
-                  </div>
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={() => {
-                      combo.forEach((leg) => {
-                        addParlaySelection({
-                          conditionId: leg.condition.id,
-                          question:
-                            leg.condition.shortName || leg.condition.question,
+                <div className="flex items-stretch">
+                  <div className="w-1 self-stretch bg-foreground" />
+                  <div className="flex-1 pl-3 pr-2 pb-2 pt-2">
+                    <div className="text-sm mb-2 px-0.5 flex items-center gap-1">
+                      <span className="text-muted-foreground">
+                        Market Prediction:
+                      </span>
+                      <MarketPredictionRequest
+                        outcomes={combo.map((leg) => ({
+                          marketId: leg.condition.id,
                           prediction: leg.prediction,
+                        }))}
+                      />
+                    </div>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        combo.forEach((leg) => {
+                          addParlaySelection({
+                            conditionId: leg.condition.id,
+                            question:
+                              leg.condition.shortName || leg.condition.question,
+                            prediction: leg.prediction,
+                          });
                         });
-                      });
-                    }}
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add Predictions
-                  </Button>
+                      }}
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add Predictions
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

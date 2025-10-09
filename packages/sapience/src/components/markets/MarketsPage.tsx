@@ -932,7 +932,7 @@ const MarketsPage = () => {
       {/* Desktop/Tablet sticky betslip sidebar */}
       {!isMobile ? (
         <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30">
-          <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
+          <div className="border border-border rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
               <Betslip
                 variant="panel"

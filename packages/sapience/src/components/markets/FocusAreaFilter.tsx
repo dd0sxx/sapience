@@ -101,11 +101,10 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
               </TabsList>
             </Tabs>
 
-            {/* View toggle icon button: larger and with extra left spacing, hidden when requested */}
             {visibleViewToggle ? (
               <Button
                 type="button"
-                variant={viewMode === 'grid' ? 'secondary' : 'outline'}
+                variant="secondary"
                 size="icon"
                 className="ml-2 h-10 w-10 hidden md:inline-flex"
                 aria-label={

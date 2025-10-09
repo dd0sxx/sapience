@@ -178,7 +178,7 @@ export default function BetslipParlayForm({
                     <span className="relative -top-0.5">
                       <Badge
                         variant="outline"
-                        className={`${s.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'}`}
+                        className={`${s.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 dark:bg-emerald-600 dark:text-foreground shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 dark:bg-red-600 dark:text-foreground shrink-0'}`}
                       >
                         {s.prediction ? 'Yes' : 'No'}
                       </Badge>
