@@ -149,8 +149,8 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
             </div>
           </div>
           <div className="mt-auto px-4 pt-0 pb-4">
-            <div className="text-xs md:text-sm text-muted-foreground w-full mb-3">
-              <div className="truncate whitespace-nowrap min-w-0 h-4 md:h-5 flex items-center gap-1">
+            <div className="text-sm text-muted-foreground w-full mb-3">
+              <div className="truncate whitespace-nowrap min-w-0 h-5 flex items-center gap-1">
                 <span className="text-muted-foreground">
                   Market Prediction:
                 </span>
