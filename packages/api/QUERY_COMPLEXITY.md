@@ -1,6 +1,6 @@
 # GraphQL Query Complexity
 
-This project now includes query complexity analysis to protect the GraphQL API from resource exhaustion and DoS attacks.
+This project now includes query complexity analysis to protect the GraphQL API from resource exhaustion and DoS attacks using [`graphql-validation-complexity`](https://www.npmjs.com/package/graphql-validation-complexity).
 
 ## Overview
 
@@ -20,68 +20,60 @@ If not set, the default maximum complexity is **1000**.
 
 ### How Complexity is Calculated
 
-- Each field in a query has a complexity score (default: 1)
-- Complexity is calculated recursively for all nested fields
-- The total complexity is the sum of all field complexities
+The complexity calculation uses the following rules:
+
+- **Scalar fields**: Cost of 1 per field
+- **Object fields**: Cost of 0 (we count the scalar fields inside)
+- **List fields**: Cost is multiplied by 10 (configurable via `listFactor`)
 
 **Example:**
 
 ```graphql
 query {
-  markets {           # complexity: 1
-    id               # complexity: 1
-    name             # complexity: 1
-    positions {      # complexity: 1
-      id            # complexity: 1
-      amount        # complexity: 1
+  markets {           # list: base cost × 10
+    id               # scalar: 1
+    name             # scalar: 1
+    positions {      # list: base cost × 10
+      id            # scalar: 1
+      amount        # scalar: 1
     }
   }
 }
-# Total complexity: 6
+# Calculation: ((1 + 1 + (1 + 1) × 10) × 10) = 130
 ```
 
-## Custom Field Complexity
+## Adjusting Complexity Factors
 
-You can set custom complexity values for specific fields using the `@Extensions` decorator in TypeGraphQL:
+You can customize the complexity calculation in `/packages/api/src/graphql/startApolloServer.ts`:
 
 ```typescript
-@ObjectType()
-class Market {
-  @Field()
-  @Extensions({ complexity: 10 })
-  expensiveCalculation: number;
-}
+createComplexityLimitRule(maxComplexity, {
+  scalarCost: 1,        // Cost per scalar field (default: 1)
+  objectCost: 0,        // Cost per object field (default: 0)
+  listFactor: 10,       // Multiply cost by this for lists (default: 10)
+  onCost: (cost: number) => {
+    console.log(`Query complexity: ${cost}`);
+  },
+})
 ```
 
-Or using field extensions in the schema:
-
-```typescript
-{
-  type: GraphQLObjectType,
-  fields: {
-    expensiveField: {
-      type: GraphQLString,
-      extensions: {
-        complexity: 20
-      }
-    }
-  }
-}
-```
+**Tips:**
+- Increase `listFactor` if you want to penalize nested list queries more heavily
+- Adjust `scalarCost` to change the base cost of all fields
+- Set `objectCost` > 0 if you want to add cost for object traversal itself
 
 ## Error Response
 
-When a query exceeds the maximum complexity, the API returns:
+When a query exceeds the maximum complexity, the API returns a GraphQL validation error:
 
 ```json
 {
   "errors": [
     {
-      "message": "Query is too complex: 1500. Maximum allowed complexity: 1000",
+      "message": "The query exceeds the maximum cost of 1000. Actual cost is 1500",
+      "locations": [...],
       "extensions": {
-        "code": "COMPLEXITY_LIMIT_EXCEEDED",
-        "complexity": 1500,
-        "maxComplexity": 1000
+        "code": "GRAPHQL_VALIDATION_FAILED"
       }
     }
   ]
@@ -110,7 +102,7 @@ You can monitor these logs to:
 
 ## Related
 
-This feature is powered by [`graphql-query-complexity`](https://www.npmjs.com/package/graphql-query-complexity).
+This feature is powered by [`graphql-validation-complexity`](https://www.npmjs.com/package/graphql-validation-complexity).
 
-For more advanced configuration options, see the package documentation.
+For more advanced configuration options, see the [package documentation](https://github.com/4Catalyzer/graphql-validation-complexity).
 
