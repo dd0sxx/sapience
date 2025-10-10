@@ -1,94 +1,206 @@
 ---
 title: "Market Types"
-description: "Binary, numeric, and conditional (parlay) market formats."
+description: "Batch Auctions and Spot Markets — two complementary trading systems."
 ---
 
 ### Market Types
 
-Sapience supports a variety of prediction market formats so traders and builders can choose the design best suited to their question:
+Sapience supports two complementary trading systems designed for different use cases and trading styles.
 
-- **Binary Markets** – The simplest format: Yes/No outcomes. Example: “Will Candidate X win the election?” A “Yes” share pays $1 if correct, $0 otherwise.
-- **Numeric Markets** – Used when the outcome is a number or range, such as “What will ETH’s price be on December 31?” Traders can position across bands or continuous outcomes.
-- **Conditional Markets (Parlays)** – Bundle multiple outcomes together into one position. Example: “Will Team A win and turnout exceed 60%?” All conditions must resolve correctly for payout. Parlays enable creative, higher-reward forecasts.
+**Batch Auctions** power conditional predictions (parlays), where you combine multiple outcomes into a single prediction. Trades execute through an RFQ-like matching system with discrete clearing events.
 
+**Spot Markets** enable direct price discovery for single outcomes, where YES tokens trade continuously against USDe in CLOB-like order books with concentrated liquidity.
 
+See the [Glossary](/user-guide/other-resources/glossary) for concise definitions of conditions, prediction outcomes, parlays, and spot markets.
 
-## Order Book Markets (CLOB-like)
-
-- Onchain order book; effectively CLOB-like with concentrated liquidity (similar to Uniswap v3's concentrated liquidity model)
-- Continuous matching; no native onchain resting limit orders
-- Maker/taker model; capital efficient via price ranges
-- Great for intraday trading and tight spreads
-- Limit-like behavior via bot-managed quotes/cancels
-- Data surfaces: on-chain events; order book snapshots (app layer); GraphQL
-
-## Batch Auction Markets (RFQ-like)
-
-- Batch auction / RFQ / intents-driven matching
-- Quotes are explicit price-constrained intents submitted off-chain to the relayer/auction
-- Discrete clearing events with netting; efficient for episodic flow
-- Components: Relayer, Quoter, contracts (market group, settlement adapters), indexer
-- Lifecycle: open → quote → cross → submit → settle
-- Data surfaces: WebSocket topics (quotes, provisional crosses, prints); GraphQL entities
-- See also: API → Batch Auction Relayer (topics, quote formats); API → Quoter (programmatic pricing/sizing); API → GraphQL (indexed data)
+---
 
 ## Comparison
 
-| Dimension | Order Book Markets (CLOB-like) | Batch Auction Markets (RFQ-like) |
+| Dimension | Spot Markets | Batch Auctions |
 | --- | --- | --- |
-| Price representation | YES price in [0,1] | clearing/quote price per batch/intention |
-| Liquidity model | maker/taker + concentrated liquidity | commit/reveal, batch clearing, or RFQ matching |
-| Matching | continuous matching; limit-like via bot-enforced price discipline | discrete batch/intent settlement with explicit limit quotes |
-| Capital efficiency | high via concentration | high via netting and batch clearing |
-| Slippage dynamics | function of book depth | function of batch/quote quality |
-| Fees/incentives | maker/taker, rebates possible | auction/relayer fees, quote incentives |
-| Composability | onchain positions, tradable | intent-style settlement, programmable quotes |
-| Settlement interface | Order Book settlement adapter (CLOB-like) | Auction/Intent settlement adapter |
+| **Use case** | Single outcome trading, price discovery | Multi-condition predictions (parlays) |
+| **Trading model** | Continuous CLOB-like order book | RFQ / intents with discrete clearing |
+| **Price representation** | YES price in [0,1] ≈ implied probability | Clearing/quote price per wager |
+| **Liquidity model** | Maker/taker with concentrated liquidity (Uniswap v3-style) | Batch clearing with netting |
+| **Matching** | Continuous; limit-like via bot-managed quotes | Discrete auction settlement with explicit quotes |
+| **Capital efficiency** | High via liquidity concentration in ranges | High via batch netting and RFQ flow |
+| **Best for** | Intraday trading, tight spreads, single markets | Conditional forecasts, episodic flow, parlays |
+| **Data access** | Onchain events, order book snapshots, GraphQL | WebSocket (quotes, crosses, prints), GraphQL |
+| **Base entity** | Market Group (contract for YES/NO markets) | Condition (discrete statement to be resolved) |
+
+---
+
+## Batch Auctions
+
+Batch Auctions power Sapience's primary system for conditional predictions. They enable you to combine multiple prediction outcomes into a single parlay and trade them through a short-lived RFQ-style matching process.
+
+### Overview
+
+**Parlays** let you express multi-condition forecasts. Example: "Team A wins AND turnout ≥ 60%." If every condition resolves as predicted, the parlay wins; one incorrect leg loses the entire position.
+
+- **Why parlays?** Higher potential payout for compound forecasts, simple win/lose outcome, and expressive predictions beyond a single market.
+- **Probability intuition:** When outcomes are independent, the parlay's implied probability is the product of individual probabilities — hence lower combined probability and higher potential payoff.
+
+### How Batch Auctions Work
+
+Batch Auctions use an **RFQ (Request-for-Quote) model** with discrete clearing events:
+
+1. **Maker starts an auction** by announcing their parlay (predicted outcomes + wager) to the WebSocket relayer
+2. **Takers submit competing bids** with their desired wager amounts and signed quotes
+3. **Maker selects the best bid** (typically highest wager among non-expired quotes)
+4. **On-chain settlement** mints the prediction NFTs for both maker and taker
+
+**Lifecycle:** open → quote → cross → submit → settle
+
+**Components:**
+- **Relayer:** WebSocket server that broadcasts auctions and validates bids (~60s TTL per auction)
+- **Quoter:** Optional bot that programmatically prices and sizes quotes
+- **Conditions:** The base unit — discrete statements (claim + end time) that resolve onchain
+- **Settlement:** UMA's optimistic oracle verifies conditions and finalizes outcomes
+
+### Conditions
+
+**Conditions** are the fundamental building block for Batch Auctions:
+
+- **Definition:** A discrete statement to be resolved with a claim, end time, and resolution status
+- **Composability:** Single conditions can be traded alone, or multiple conditions combined into parlays
+- **Key fields:** `claimStatement`, `endTime`, category, status (open → closed → resolved)
+- **Resolution:** Each condition is verified onchain via UMA's optimistic oracle
+
+### Settlement & Resolution
+
+After conditions close, resolution follows this flow:
+
+1. An assertion with the proposed result is submitted with a bond
+2. A liveness window allows disputes; disputes trigger UMA adjudication
+3. If truthful (or undisputed), the result is accepted onchain
+4. Parlays are evaluated: all conditions must match predictions for a win
+
+See [Oracles & Settlement](/builder-guide/reference/oracles-and-settlement) for full technical details.
+
+### Data Access
+
+- **WebSocket:** Real-time auction starts, bids, provisional crosses, and prints
+- **GraphQL:** Indexed conditions, parlay positions, historical trades
+- **API Reference:** [Batch Auction Relayer](/builder-guide/reference/auction-relayer) for message schemas and validation
+
+### Where Conditions Show Up
+
+- **UI:** Parlay mode and auction lists display public conditions
+- **API/GraphQL:** `conditions` queries; quotes and prints reference `conditionId`
+- **Admin:** CSV import and CRUD for creating/editing conditions
+
+---
+
+## Spot Markets
+
+Spot Markets enable continuous trading of single outcomes through onchain order books. YES tokens trade directly against USDe with concentrated liquidity, providing tight spreads and efficient price discovery.
+
+### Overview
+
+**Spot Markets** are ideal when you want to express a view on a single outcome without combining conditions. Prices directly reflect market-implied probabilities.
+
+- **YES price ↔ probability:** Prices live in [0,1]. A YES price of 0.72 suggests roughly 72% implied probability.
+
+`p_implied ≈ YES price`
+
+- **Payout:** If the market resolves Yes, YES holders receive the full notional; if No, YES settles to zero.
+
+### How Spot Markets Work
+
+Spot Markets use a **CLOB-like order book** with concentrated liquidity mechanics (inspired by Uniswap v3):
+
+- **Onchain order book** with continuous matching
+- **Maker/taker model** where liquidity providers supply capital in price ranges
+- **No native resting limit orders** on-chain, but bots can achieve limit-like behavior by managing quotes and cancels
+- **Capital efficient:** Liquidity concentrates in active price ranges rather than spreading across the full curve
+
+**Best for:** Intraday trading, tight spreads, active markets with continuous flow
+
+### Binary vs Numeric Markets
+
+Spot Markets support two settlement types:
+
+**Binary (Yes/No)**
+- Classic prediction market format
+- Example: "Will Candidate X win the election?"
+- Settlement: YES token settles to upper bound (1.0) if true, lower bound (0.0) if false
+
+**Numeric (Expiring Futures)**
+- Result is a number within a defined range
+- Example: "ETH price on Dec 31" settling between $1,000 and $5,000
+- Settlement: Market settles to the actual numeric value within the range
+- Binary markets are the special case where the range extremes represent Yes/No
+
+### Market Groups
+
+**Market Groups** are the onchain contract foundation for Spot Markets:
+
+- **Definition:** The onchain contract that anchors a set of YES/NO markets sharing the same question and parameters
+- **Role:** Holds market parameters, mints/burns positions, manages collateral
+- **Structure:** A market group may host multiple market instances (e.g., rolling epochs) for the same question over time
+- **Naming note:** In smart contracts you may see groups referred to as "markets" and individual instances as "epochs". In the app and docs we use "market group" for the contract and "market" for an individual trading instance.
+
+### Settlement
+
+When a Spot Market resolves:
+
+1. An assertion with the settlement value is submitted (via UMA's optimistic oracle)
+2. After the liveness period, the result is finalized onchain
+3. Binary markets clamp to their lower/upper bounds; numeric markets settle to the reported value
+4. YES token holders can redeem based on the settlement price
+
+See [Resolution & Disputes](/user-guide/trading/resolution-and-disputes) for details on the dispute process.
+
+### Data Access
+
+- **Onchain events:** Market creation, trades, liquidity changes, settlements
+- **Order book snapshots:** App-layer aggregation of current bids/offers
+- **GraphQL:** `marketGroups` queries and `market.marketGroup` relations for historical data
+
+### Where Market Groups Show Up
+
+- **UI:** Market lists are grouped by `market group`; detail pages show the group and its epochs
+- **API/GraphQL:** `marketGroups` queries return groups with nested `markets` array
+- **Admin:** Created via Market Group forms or imports; deployed from a factory contract
+
+---
 
 ## Why Not Conditional Tokens?
 
-Conditional tokens are a powerful primitive, but they introduce UX and capital-efficiency constraints for our target use cases.
+Conditional tokens are a powerful primitive, but they introduce UX and capital-efficiency constraints for the trading patterns Sapience supports.
 
 ### Limitations
-- **Liquidity fragmentation** – Splitting collateral into multiple outcome tokens spreads liquidity thin and creates friction.  
-- **Complex settlement and redemption** – Users face multi-step flows (split, merge, redeem) that add UX overhead.  
-- **Workflow mismatch** – Conditional tokens are less natural for intent-driven, RFQ, or batch auction designs without significant extra abstraction.  
-- **Collateral inefficiency** – In a binary market, $100 collateral becomes $100 “Yes” and $100 “No” tokens. If only one side trades, half the capital sits idle. This inefficiency grows worse as the number of outcomes increases.  
 
-## Sapience Approach
+- **Liquidity fragmentation** – Splitting collateral into multiple outcome tokens spreads liquidity thin and creates friction.
+- **Complex settlement and redemption** – Users face multi-step flows (split, merge, redeem) that add UX overhead.
+- **Workflow mismatch** – Conditional tokens are less natural for intent-driven, RFQ, or batch auction designs without significant abstraction.
+- **Collateral inefficiency** – In a binary market, $100 collateral becomes $100 "Yes" + $100 "No" tokens. If only one side trades, half the capital sits idle. This inefficiency compounds as outcomes multiply.
 
-Instead of relying directly on conditional tokens, Sapience builds on more expressive and efficient market mechanisms:
+### Sapience Approach
 
-- **Concentrated-Liquidity AMMs (Uniswap v3-style, orderbook-like)**  
-  Virtual tokens (e.g. vGAS/vGWEI) are only tradable inside their designated pool. LPs provide capital in ranges, so liquidity is concentrated where it matters — giving an *order book feel* without requiring a full CLOB.  
+Sapience builds on more efficient mechanisms:
+
+- **Concentrated-Liquidity AMMs (Uniswap v3-style)**  
+  Virtual tokens (e.g., vGAS/vGWEI) are only tradable inside their designated pool. LPs provide capital in ranges, concentrating liquidity where it matters — giving an order book feel without a full CLOB.
+
 - **Unified collateral pool**  
-  Collateral never fragments into idle Yes/No tokens. In binary markets this yields roughly **2× higher capital efficiency** versus conditional tokens, and in multi-outcome or continuous markets the gains can be even greater.  
+  Collateral never fragments into idle Yes/No tokens. In binary markets this yields roughly **2× higher capital efficiency** versus conditional tokens. In multi-outcome or continuous markets, the gains are even greater.
+
 - **Batch Auctions for RFQ / Intents**  
-  Netting orders in discrete batches allows efficient clearing and fits naturally with intent-driven workflows.  
+  Netting orders in discrete batches allows efficient clearing and fits naturally with intent-driven workflows, avoiding the split/merge overhead of conditional tokens.
+
 - **Unified APIs and Pluggable Settlement Adapters**  
-  Abstracting away the settlement layer allows flexible integrations (conditional tokens if desired, or alternative primitives) without fragmenting liquidity or UX.  
+  Abstracting the settlement layer allows flexible integrations without fragmenting liquidity or UX.
 
-## Key Entities
+---
 
-### Market Groups (Order Book Markets)
+## Related Pages
 
-- Definition: The onchain contract instance that anchors a set of YES/NO markets sharing the same question and parameters.
-- Role: Holds market parameters, mints/burns positions, and is the contract you interact with for deploy and settle actions.
-- Structure: A market group may host multiple market instances (e.g., rolling epochs) for the same question over time.
-- Naming note: In smart contracts you may see groups referred to as “markets” and individual instances as “epochs”. In the app and docs we use “market group” for the contract and “market” for an individual trading instance.
-- Where it shows up:
-  - UI: Lists are grouped by `market group`; details pages are scoped to a group.
-  - API/GraphQL: `marketGroups` queries and `market.marketGroup` relations.
-  - Admin: Created via Market Group forms or imports; deployed from a factory.
-
-### Conditions (Batch Auction Markets)
-
-- Definition: A discrete statement to be resolved (claim + end time) that batch auctions and RFQ quotes reference. Quotes are submitted against a `conditionId`.
-- Role: Binds intents, quotes, and settlement. Clearing events and prints are scoped to a condition, and oracle resolution finalizes it.
-- Key fields: `claimStatement`, `endTime`, optional categorization/metadata; status progresses from open → closed → resolved.
-- Composability: Conditions power single-name auctions and parlays by allowing multiple conditions to be combined.
-- Where it shows up:
-  - UI: Parlay mode and auction lists display public conditions.
-  - API/GraphQL: `conditions` queries; quotes and prints reference `conditionId`.
-  - Admin: CSV import and CRUD for creating/editing conditions.
+- [Market Lifecycle](/user-guide/trading/market-lifecycle) — How markets are created, traded, and resolved
+- [Pricing & Order Types](/user-guide/trading/pricing-and-order-types) — Order types and pricing mechanics
+- [Resolution & Disputes](/user-guide/trading/resolution-and-disputes) — Oracle process and dispute resolution
+- [Fees & Incentives](/user-guide/fees-and-incentives) — Fee structures and trading incentives
+- [Glossary](/user-guide/other-resources/glossary) — Definitions of key terms
 
