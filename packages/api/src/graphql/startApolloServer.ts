@@ -258,11 +258,11 @@ export const initializeApolloServer = async () => {
         createError: (max: number, actual: number) => {
           const errorMessage = `Query complexity limit exceeded. Maximum allowed: ${max}, Actual: ${actual}`;
           const exceededBy = actual - max;
-          
+
           console.error(
             `Complexity limit exceeded! Max: ${max}, Actual: ${actual} (exceeded by ${exceededBy})`
           );
-          
+
           //only report to Sentry if complexity is significantly exceeded (>50% over limit)
           const exceededThreshold = max * 1.5;
           if (actual > exceededThreshold) {
@@ -280,7 +280,7 @@ export const initializeApolloServer = async () => {
               },
             });
           }
-          
+
           return new Error(errorMessage);
         },
       }),

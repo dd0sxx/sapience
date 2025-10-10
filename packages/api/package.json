@@ -76,7 +76,7 @@
     "graphql": "16.10.0",
     "graphql-depth-limit": "1.1.0",
     "graphql-scalars": "1.24.2",
-    "graphql-validation-complexity": "^0.4.2",
+    "graphql-validation-complexity": "0.4.2",
     "pg": "8.13.1",
     "prettier": "3.3.3",
     "prisma": "6.10.1",

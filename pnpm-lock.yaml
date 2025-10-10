@@ -88,7 +88,7 @@ importers:
         specifier: 1.24.2
         version: 1.24.2(graphql@16.10.0)
       graphql-validation-complexity:
-        specifier: ^0.4.2
+        specifier: 0.4.2
         version: 0.4.2(graphql@16.10.0)
       pg:
         specifier: 8.13.1
