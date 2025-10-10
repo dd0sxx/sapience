@@ -29,9 +29,9 @@ export const ColoredRadioOption: React.FC<ColoredRadioOptionProps> = ({
 
   const variantClasses =
     resolvedVariant === 'yes'
-      ? 'border-green-500 bg-green-500/10 text-green-600 hover:bg-green-500/15'
+      ? 'border-green-500 bg-green-500/10 text-foreground hover:bg-green-500/15'
       : resolvedVariant === 'no'
-        ? 'border-red-500 bg-red-500/10 text-red-600 hover:bg-red-500/15'
+        ? 'border-red-500 bg-red-500/10 text-foreground hover:bg-red-500/15'
         : '';
 
   return (

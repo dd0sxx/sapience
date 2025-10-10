@@ -32,7 +32,7 @@ export default function QuoteDisplay({
   if (isCompact) {
     if (isLoading) {
       return (
-      <div className="mt-1.5 mb-2 text-right text-xs">
+        <div className="mt-1.5 mb-2 text-right text-xs">
           <span className="font-medium text-foreground">{labelText}</span>{' '}
           <span className="text-muted-foreground">Loading...</span>
         </div>
