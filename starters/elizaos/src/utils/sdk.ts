@@ -149,13 +149,6 @@ export async function loadCreateMcpClient(): Promise<
     if (mod && typeof mod.createMcpClient === "function") {
       return mod.createMcpClient.bind(mod);
     }
-    // Try potential subpaths if available
-    try {
-      const m = await import("@sapience/sdk/mcp/client");
-      if (m && typeof (m as any).createMcpClient === "function") {
-        return (m as any).createMcpClient.bind(m);
-      }
-    } catch {}
   } catch {}
   // Fallback to local implementation
   return (opts) => createLocalMcpClient(opts);

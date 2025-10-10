@@ -7,8 +7,8 @@ export const character: Character = {
     "@elizaos/plugin-sql",
     "@elizaos/plugin-bootstrap",
 
-    // Model provider - OpenAI for GPT-4 access
-    "@elizaos/plugin-openai",
+    // Model provider
+    "@elizaos/plugin-openrouter",
   ],
   settings: {
     secrets: {},
@@ -25,7 +25,7 @@ export const character: Character = {
       servers: {
         sapience: {
           type: "http",
-          url: "http://localhost:3001/mcp", // url: 'https://api.sapience.xyz/mcp',
+          url: 'https://api.sapience.xyz/mcp',
         },
       },
     },
