@@ -20,12 +20,12 @@ export default function ElizaHomepageFeature() {
                 />
               </div>
               <p className="text-muted-foreground text-lg mb-6">
-                Build AI agents that forecast the future and participate in
-                prediction markets using the ElizaOS plug-in.
+                Deploy an AI agent that forecasts the future in minutes. Add
+                your own edge and have it participate in prediction markets.
               </p>
               <div className="pt-2 gap-2 flex flex-wrap justify-start">
                 <a
-                  href="https://eliza.how/"
+                  href="https://docs.sapience.xyz/builder-guide/guides/forecasting-agent"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -41,7 +41,7 @@ export default function ElizaHomepageFeature() {
                   </Button>
                 </a>
                 <a
-                  href="https://github.com/sapiencexyz/sage"
+                  href="https://github.com/sapiencexyz/sapience/tree/main/starters/elizaos"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-3 sm:ml-5"
