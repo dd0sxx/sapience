@@ -20,8 +20,9 @@ export default function ElizaHomepageFeature() {
                 />
               </div>
               <p className="text-muted-foreground text-lg mb-6">
-                Deploy an AI agent that conducts research and generates predictions in minutes. Add
-                your own edge and have it participate in prediction markets.
+                Deploy an AI agent that conducts research and generates
+                predictions in minutes. Add your own edge and have it
+                participate in prediction markets.
               </p>
               <div className="pt-2 gap-2 flex flex-wrap justify-start">
                 <a

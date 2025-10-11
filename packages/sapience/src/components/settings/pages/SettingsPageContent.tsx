@@ -887,7 +887,11 @@ const SettingsPageContent = () => {
                         to send and receive signed messages
                       </p>
                     </div>
-                    
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="appearance">
               <Card className="bg-background">
                 <CardContent className="p-8">
