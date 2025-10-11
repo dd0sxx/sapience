@@ -1,31 +1,93 @@
 ---
 title: "Trading on Sapience — Overview"
-description: "How trading works across market types and liquidity structures."
+description: "A beginner's guide to trading on Sapience prediction markets."
 ---
 
-### Overview
+## Overview
 
-Trading on Sapience means you’re participating in onchain prediction markets where every outcome, trade, and payout is transparent. The system is built to serve everyone — from casual forecasters to pro traders — with features that make trading efficient, fair, and composable.
+Trading on Sapience means putting USDe behind your forecasts. When you think an outcome is more likely than the market does, you can buy shares and profit if you're right. Every trade, price, and payout lives onchain — fully transparent and verifiable.
 
-**Architecture Overview**
 
-- Sapience supports different market types (binary outcomes, numeric / continuous, conditional marketplaces like parlays).
-- There are two main liquidity structures: batch auctions and CLOB-style (central order book) setups, depending on how active or long-lived the market is.
-- USDe serves as the native collateral: it’s reward-bearing, meaning holding or using USDe has yield advantages baked in.
-- Liquidity doesn’t stay locked in inactive markets; it moves where demand exists, so pricing and depth stay healthier.
+## How Prediction Markets Work
 
-DIAGRAM
+In a prediction market, **prices reflect probabilities**. When you see a YES token trading at $0.72, the market is implying roughly a 72% chance that outcome will happen. If you believe the true probability is higher, you buy YES tokens. If you think it's lower, you can take the other side.
 
-**Explore each section for detailed explanations on:**
+Most markets start as **binary** — a question with two possible outcomes (Yes or No). For example: "Will Candidate X win the election?" You buy YES shares if you believe the answer is yes, or NO shares if you believe it's no.
 
-- Market Types – Binary, numeric, and conditional markets (like parlays).
-- Market Creation & Lifecycle – How markets are proposed, traded, resolved, and settled.
-- Pricing – How shares are priced through batch auctions, RFQ quotes, and order books.
-- Resolution & Disputes – Oracles, clarification process, and how disputes are handled.
-- Order Types – Market orders, conditional bundles, and parlay wagers.
-- Liquidity Provision – How LPs provide capital, earn fees, and use vaults.
-- Trading Fees – Fee structures, discounts, and how they reward active participation.
-- Deposits & Withdrawals – Using USDe as collateral and how funds flow in/out of the protocol.
-- Risk & Safeguards – How Sapience protects LPs through batch auctions and portfolio-level risk management.
+**Payout structure is simple:**
+- If the outcome you predicted is correct, each share you hold is worth $1.00
+- If you're wrong, your shares settle to $0
 
+This binary structure creates a straightforward risk/reward dynamic: the lower the price you pay, the higher your potential return if you're correct.
+
+
+## What Makes Sapience Different
+
+Sapience is built to handle different trading styles and forecast complexities:
+
+**Two Market Types**
+- **Batch Auctions** enable you to combine multiple outcomes into parlays, where all predictions must be correct for a payout — Sapience's primary trading system
+- **Spot Markets** let you trade single outcomes continuously with tight spreads — ideal for active trading and price discovery
+
+**USDe as Collateral**  
+USDe is the stablecoin used across Sapience. Learn more about [Ethena](https://ethena.fi/)
+
+**Fully Onchain**  
+Every market, trade, and settlement happens onchain. This makes Sapience transparent, composable with other protocols, and accessible to bots and automated strategies.
+
+**Capital Efficient**  
+Sapience uses batch netting in auctions and concentrated liquidity (similar to Uniswap v3) in Spot Markets, keeping spreads tight and capital working efficiently.
+
+See [Market Types](/user-guide/trading/market-types) for technical details on how Batch Auctions and Spot Markets work under the hood.
+
+
+## Your Trading Options
+
+Sapience supports multiple ways to participate:
+
+**Build Parlays**  
+Use Batch Auctions to combine multiple predictions into one position. Example: "Team A wins AND turnout exceeds 60%." Both conditions must resolve as predicted for the parlay to win. The upside? Higher potential payouts for compound forecasts. The risk? One wrong leg loses the entire position.
+
+Parlays trade through an RFQ-style process: you announce your parlay to the network, market makers submit competing quotes, and you select the best price. This batch clearing model concentrates liquidity and enables efficient pricing across many conditions.
+
+**Trade Single Outcomes**  
+Use Spot Markets when you want to express a view on one question. Trades execute continuously against an onchain order book. Best for: intraday trading, active price discovery, tight spreads.
+
+**Provide Liquidity**  
+Earn fees by supplying capital to markets. Liquidity providers (LPs) deposit collateral into pools or vaults and collect a share of trading fees. Learn more in [Liquidity Provisioning](/user-guide/liquidity-provisioning).
+
+
+## Getting Started
+
+Here's a typical flow for your first trade:
+
+1. **Find a market** — Browse categories, search for questions, or explore featured markets
+2. **Deposit USDe** — Transfer collateral into Sapience. See [Deposits & Withdrawals](/user-guide/deposits-and-withdrawals)
+3. **Place a trade** — Build a parlay in Batch Auctions or buy YES/NO shares in Spot Markets
+4. **Monitor your position** — Track your open positions and market prices as events unfold
+5. **Settlement** — When the market resolves, winning positions automatically settle to $1.00
+
+The entire process is transparent and onchain. You can verify every trade, price, and resolution.
+
+
+## Key Concepts to Know
+
+- **Wager** — Your prediction outcomes plus the USDe you stake on them
+- **Settlement** — When a verifier (oracle) determines the outcome and distributes funds
+- **Verifier** — A smart contract that connects to an oracle network to resolve conditions
+- **Parlay** — A group of prediction outcomes where all must be correct to win
+- **Condition** — A discrete statement that will be true or false at a specific future time
+
+See the [Glossary](/user-guide/other-resources/glossary) for complete definitions of all terms.
+
+
+## What's Next
+
+This overview introduced the basics. Dive deeper with these pages:
+
+- [Market Types](/user-guide/trading/market-types) — Detailed comparison of Batch Auctions vs Spot Markets
+- [Market Lifecycle](/user-guide/trading/market-lifecycle) — How markets are created, traded, and resolved
+- [Pricing & Order Types](/user-guide/trading/pricing-and-order-types) — Order types and pricing mechanics
+- [Resolution & Disputes](/user-guide/trading/resolution-and-disputes) — Oracle process and how disputes work
+- [Fees & Incentives](/user-guide/fees-and-incentives) — Fee structures and trading rewards
 

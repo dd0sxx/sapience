@@ -90,9 +90,7 @@ export function useAuctionStart() {
     if (!wsUrl) return null;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
-    ws.addEventListener('open', () => {
-      console.log('[OTC-WS] open');
-    });
+    ws.addEventListener('open', () => {});
     ws.onmessage = (evt) => {
       try {
         const msg = JSON.parse(evt.data as string);
@@ -110,11 +108,8 @@ export function useAuctionStart() {
           // Only accept bids for the latest auction id
           const targetAuctionId: string | null =
             rawBids.length > 0 ? rawBids[0]?.auctionId || null : null;
-          if (
-            !targetAuctionId ||
-            targetAuctionId !== latestAuctionIdRef.current
-          )
-            return;
+          if (!targetAuctionId) return;
+          if (targetAuctionId !== latestAuctionIdRef.current) return;
           const normalized: QuoteBid[] = rawBids
             .map((b) => {
               try {
@@ -146,16 +141,10 @@ export function useAuctionStart() {
         // ignore
       }
     };
-    ws.onclose = (ev) => {
-      console.log('[OTC-WS] close', {
-        code: ev?.code,
-        reason: ev?.reason,
-      });
+    ws.onclose = () => {
       wsRef.current = null;
     };
-    ws.addEventListener('error', (err) => {
-      console.log('[OTC-WS] error', err);
-    });
+    ws.addEventListener('error', () => {});
     return ws;
   }, [wsUrl, auctionId]);
 
@@ -187,7 +176,6 @@ export function useAuctionStart() {
             isAwaitingAckRef.current = true;
             inflightRef.current = key;
             ws.send(JSON.stringify(payload));
-            console.log('[OTC-WS] sent auction.start');
             setAuctionId(null); // Will be set when we receive auction.ack
             setBids([]);
             lastAuctionRef.current = params;

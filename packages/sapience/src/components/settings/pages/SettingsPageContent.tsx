@@ -887,8 +887,68 @@ const SettingsPageContent = () => {
                         to send and receive signed messages
                       </p>
                     </div>
+                    
+            <TabsContent value="appearance">
+              <Card className="bg-background">
+                <CardContent className="p-8">
+                  <div className="space-y-6">
+                    <div className="grid gap-2">
+                      <Label htmlFor="theme">Theme</Label>
+                      <div id="theme" className="flex flex-col gap-1">
+                        {mounted && (
+                          <ToggleGroup
+                            type="single"
+                            value={theme ?? 'dark'}
+                            onValueChange={(val) => {
+                              if (!val) return;
+                              setTheme(val);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="w-full md:w-auto bg-background py-1 rounded-lg justify-start gap-2 md:gap-3"
+                          >
+                            <ToggleGroupItem
+                              value="light"
+                              aria-label="Light mode"
+                            >
+                              <Sun className="h-4 w-4" />
+                              <span>Light</span>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                              value="system"
+                              aria-label="System mode"
+                            >
+                              <Monitor className="h-4 w-4" />
+                              <span>System</span>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                              value="dark"
+                              aria-label="Dark mode"
+                            >
+                              <Moon className="h-4 w-4" />
+                              <span>Dark</span>
+                            </ToggleGroupItem>
+                          </ToggleGroup>
+                        )}
+                      </div>
+                    </div>
 
-                    {/* Back up action moved to Preferences tab */}
+                    <div className="grid gap-1">
+                      <Label htmlFor="show-american-odds">
+                        Show American Odds
+                      </Label>
+                      <div
+                        id="show-american-odds"
+                        className="flex items-center h-10"
+                      >
+                        <Switch
+                          checked={Boolean(
+                            showAmericanOdds ?? defaults.showAmericanOdds
+                          )}
+                          onCheckedChange={(val) => setShowAmericanOdds(val)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

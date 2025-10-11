@@ -6,37 +6,37 @@ import {
   Memory,
   ModelType,
   State,
-} from '@elizaos/core';
-import type { SapienceService } from '../services/sapienceService.js';
-import { buildAttestationCalldata } from '../utils/eas.js';
+} from "@elizaos/core";
+import type { SapienceService } from "../services/sapienceService.js";
+import { loadSdk } from "../utils/sdk.js";
 
 export const attestMarketAction: Action = {
-  name: 'ATTEST_MARKET',
+  name: "ATTEST_MARKET",
   similes: [
-    'predict market',
-    'analyze market',
-    'make prediction',
-    'attest to market',
+    "predict market",
+    "analyze market",
+    "make prediction",
+    "attest to market",
   ],
   description:
-    'Analyze a prediction market, create an attestation, and submit it on-chain',
+    "Analyze a prediction market, create an attestation, and submit it on-chain",
 
   validate: async (
     runtime: IAgentRuntime,
-    message: Memory
+    message: Memory,
   ): Promise<boolean> => {
-    const text = message.content?.text?.toLowerCase() || '';
+    const text = message.content?.text?.toLowerCase() || "";
 
     // Check if sapience service is available
-    const sapienceService = runtime.getService('sapience') as SapienceService;
+    const sapienceService = runtime.getService("sapience") as SapienceService;
     if (!sapienceService) {
-      elizaLogger.warn('Sapience service not available');
+      elizaLogger.warn("Sapience service not available");
       return false;
     }
 
     // Check for attestation/prediction keywords
-    const keywords = ['predict', 'attest', 'analyze', 'market'];
-    return keywords.some(keyword => text.includes(keyword));
+    const keywords = ["predict", "attest", "analyze", "market"];
+    return keywords.some((keyword) => text.includes(keyword));
   },
 
   handler: async (
@@ -44,10 +44,10 @@ export const attestMarketAction: Action = {
     message: Memory,
     state?: State,
     options?: any,
-    callback?: HandlerCallback
+    callback?: HandlerCallback,
   ): Promise<void> => {
     try {
-      const text = message.content?.text || '';
+      const text = message.content?.text || "";
 
       // Extract market ID from message
       const marketIdMatch = text.match(/market\s*#?(\d+)/i);
@@ -63,31 +63,36 @@ export const attestMarketAction: Action = {
       elizaLogger.info(`Analyzing market ${marketId}`);
 
       // Get market data from Sapience MCP
-      const sapienceService = runtime.getService('sapience') as SapienceService;
+      const sapienceService = runtime.getService("sapience") as SapienceService;
 
       // Get all active markets to find the requested one
       const marketsResponse = await sapienceService.callTool(
-        'sapience',
-        'list_active_markets',
-        {}
+        "sapience",
+        "list_active_markets",
+        {},
       );
 
-      if (!marketsResponse || !marketsResponse.content || !marketsResponse.content[0] || typeof marketsResponse.content[0].text !== 'string') {
-        throw new Error('Failed to fetch markets from Sapience');
+      if (
+        !marketsResponse ||
+        !marketsResponse.content ||
+        !marketsResponse.content[0] ||
+        typeof marketsResponse.content[0].text !== "string"
+      ) {
+        throw new Error("Failed to fetch markets from Sapience");
       }
 
       const markets = JSON.parse(marketsResponse.content[0].text as string);
 
       const marketInfo = markets.find(
-        (m: any) => m.id === marketId || m.id === marketId.toString()
+        (m: any) => m.id === marketId || m.id === marketId.toString(),
       );
 
       if (!marketInfo) {
         // Debug: show first market structure
         if (markets.length > 0) {
           console.log(
-            'First market object:',
-            JSON.stringify(markets[0], null, 2)
+            "First market object:",
+            JSON.stringify(markets[0], null, 2),
           );
         }
 
@@ -95,7 +100,7 @@ export const attestMarketAction: Action = {
           .map((m: any) => `${m.id} (${typeof m.id})`)
           .slice(0, 10);
         await callback?.({
-          text: `Market #${marketId} not found. Looking for marketId=${marketId} (type: ${typeof marketId}). Available market IDs: ${availableIds.join(', ')}`,
+          text: `Market #${marketId} not found. Looking for marketId=${marketId} (type: ${typeof marketId}). Available market IDs: ${availableIds.join(", ")}`,
           content: {},
         });
         return;
@@ -137,11 +142,11 @@ export const attestMarketAction: Action = {
           try {
             prediction = JSON.parse(jsonMatch[0]);
           } catch (innerError) {
-            elizaLogger.error('Failed to parse extracted JSON:', innerError);
-            throw new Error('Model did not return valid JSON for prediction');
+            elizaLogger.error("Failed to parse extracted JSON:", innerError);
+            throw new Error("Model did not return valid JSON for prediction");
           }
         } else {
-          throw new Error('Model did not return JSON format for prediction');
+          throw new Error("Model did not return JSON format for prediction");
         }
       }
 
@@ -151,30 +156,32 @@ export const attestMarketAction: Action = {
         !prediction.reasoning ||
         prediction.confidence === undefined
       ) {
-        elizaLogger.error('Invalid prediction format:', prediction);
-        throw new Error('Model returned incomplete prediction data');
+        elizaLogger.error("Invalid prediction format:", prediction);
+        throw new Error("Model returned incomplete prediction data");
       }
-      console.log('HELLOFRIEND', marketInfo);
-
+      const { buildAttestationCalldata } = await loadSdk();
+      const resolvedMarketId = Number(
+        (marketInfo as any).marketId ?? (marketInfo as any).id,
+      );
       const attestationData = await buildAttestationCalldata(
         {
-          marketId: parseInt(marketInfo.marketId),
+          marketId: resolvedMarketId,
           address: marketInfo.marketGroupAddress,
           question: marketInfo.question,
         },
         prediction,
-        42161 // Arbitrum chain ID
+        42161, // Arbitrum chain ID
       );
 
       if (!attestationData) {
-        throw new Error('Failed to build attestation');
+        throw new Error("Failed to build attestation");
       }
 
       // Format transaction data for submitTransactionAction
       const transactionData = {
         to: attestationData.to,
         data: attestationData.data,
-        value: attestationData.value || '0',
+        value: attestationData.value || "0",
       };
 
       // Create a memory/message with the transaction data that submitTransactionAction can process
@@ -184,7 +191,7 @@ export const attestMarketAction: Action = {
         roomId: message.roomId,
         content: {
           text: `Submit this transaction: ${JSON.stringify(transactionData)}`,
-          action: 'SUBMIT_TRANSACTION',
+          action: "SUBMIT_TRANSACTION",
         },
         createdAt: Date.now(),
       };
@@ -193,10 +200,10 @@ export const attestMarketAction: Action = {
       const actions = runtime.actions || [];
 
       // Find the SUBMIT_TRANSACTION action from plugin-sapience
-      const submitAction = actions.find(a => a.name === 'SUBMIT_TRANSACTION');
+      const submitAction = actions.find((a) => a.name === "SUBMIT_TRANSACTION");
 
       if (submitAction) {
-        elizaLogger.info('Found SUBMIT_TRANSACTION action, executing...');
+        elizaLogger.info("Found SUBMIT_TRANSACTION action, executing...");
 
         // Execute the submit transaction action
         try {
@@ -205,7 +212,7 @@ export const attestMarketAction: Action = {
             transactionMessage,
             state,
             options,
-            undefined
+            undefined,
           );
 
           // Send response to user
@@ -231,7 +238,7 @@ Transaction submitted to Arbitrum. Check the logs for transaction details.
 
           return;
         } catch (txError) {
-          elizaLogger.error('Failed to submit transaction:', txError);
+          elizaLogger.error("Failed to submit transaction:", txError);
           await callback?.({
             text: `Prediction complete but transaction failed: ${txError.message}`,
             content: { prediction, marketInfo },
@@ -239,7 +246,7 @@ Transaction submitted to Arbitrum. Check the logs for transaction details.
         }
       } else {
         elizaLogger.warn(
-          'SUBMIT_TRANSACTION action not found, returning transaction data for manual submission'
+          "SUBMIT_TRANSACTION action not found, returning transaction data for manual submission",
         );
 
         // Fallback: just return the transaction data
@@ -270,7 +277,7 @@ To submit: say "submit transaction"
 
       return;
     } catch (error) {
-      elizaLogger.error('Error in attestMarketAction:', error);
+      elizaLogger.error("Error in attestMarketAction:", error);
       await callback?.({
         text: `Error analyzing market: ${error.message}`,
         content: {},
@@ -282,22 +289,22 @@ To submit: say "submit transaction"
   examples: [
     [
       {
-        name: '{{user1}}',
-        content: { text: 'predict market 147' },
+        name: "{{user1}}",
+        content: { text: "predict market 147" },
       },
       {
-        name: '{{agent}}',
-        content: { text: 'Analyzing market 147 and generating attestation...' },
+        name: "{{agent}}",
+        content: { text: "Analyzing market 147 and generating attestation..." },
       },
     ],
     [
       {
-        name: '{{user1}}',
-        content: { text: 'analyze market #89' },
+        name: "{{user1}}",
+        content: { text: "analyze market #89" },
       },
       {
-        name: '{{agent}}',
-        content: { text: 'Let me analyze market 89 for you...' },
+        name: "{{agent}}",
+        content: { text: "Let me analyze market 89 for you..." },
       },
     ],
   ],

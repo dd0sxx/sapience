@@ -108,17 +108,6 @@ const AddressDisplay = ({
     >
       <span className={`font-mono ${nameTextClass}`}>{displayName}</span>
       <div className={`flex items-center ${iconsGapClass}`}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`${buttonSizeClass} ${buttonSvgOverrideClass}`}
-          onClick={handleCopy}
-        >
-          <Copy
-            className={`${iconSizeClass} text-muted-foreground hover:text-foreground`}
-          />
-        </Button>
-
         {!disableProfileLink && (
           <Link href={`/profile/${address}`} className="flex items-center">
             <Button
@@ -147,6 +136,14 @@ const AddressDisplay = ({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="z-[70] w-30 p-1 flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              >
+                <Copy className="h-3 w-3 text-muted-foreground" />
+                <span className="font-medium">Copy Address</span>
+              </button>
               <a
                 href={`https://app.zerion.io/${address}/history`}
                 target="_blank"

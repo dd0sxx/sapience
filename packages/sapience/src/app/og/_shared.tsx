@@ -1,4 +1,5 @@
 import { getBlockieSrc } from '~/lib/avatar';
+import { og } from '~/lib/theme/ogPalette';
 
 export const BASE_WIDTH = 1200;
 export const BASE_HEIGHT = 630;
@@ -161,7 +162,7 @@ export function PredictionsLabel({
         fontSize: 24 * scale,
         lineHeight: `${30 * scale}px`,
         fontWeight: 600,
-        color: 'rgba(255,255,255,0.64)',
+        color: og.colors.mutedWhite64,
       }}
     >
       {against
@@ -251,7 +252,7 @@ export function BottomIdentity({
           fontSize: 20 * scale,
           lineHeight: `${24 * scale}px`,
           fontWeight: 600,
-          color: 'rgba(255,255,255,0.72)',
+          color: og.colors.mutedWhite64,
         }}
       >
         {truncateAddress(addr)}
@@ -290,7 +291,9 @@ export function StatsRow({
       ? Math.round((returnNum / wagerNum) * 100)
       : null;
   const returnColor =
-    returnPercent !== null && returnPercent < 100 ? '#DD524C' : '#22C55F';
+    returnPercent !== null && returnPercent < 100
+      ? og.colors.danger
+      : og.colors.success;
   const hasReturn = Boolean(potentialReturn && showReturn);
   const labelWrapperStyle: React.CSSProperties = {
     display: 'flex',
@@ -301,7 +304,7 @@ export function StatsRow({
     fontSize: 32 * scale,
     lineHeight: `${32 * scale}px`,
     fontWeight: 800,
-    color: '#FFFFFF',
+    color: og.colors.white,
   };
   const colStyle: React.CSSProperties = {
     display: 'flex',
@@ -348,7 +351,7 @@ export function StatsRow({
                   marginTop: 0,
                   lineHeight: `${24 * scale}px`,
                   fontWeight: 600,
-                  color: '#FFFFFF',
+                  color: og.colors.white,
                 }}
               >
                 {symbolText}
@@ -366,7 +369,7 @@ export function StatsRow({
             <div
               style={{
                 ...valueStyle,
-                color: forceToWinGreen ? '#22C55F' : valueStyle.color,
+                color: forceToWinGreen ? og.colors.success : valueStyle.color,
               }}
             >
               {payout}
@@ -379,7 +382,7 @@ export function StatsRow({
                   marginTop: 0,
                   lineHeight: `${24 * scale}px`,
                   fontWeight: 600,
-                  color: forceToWinGreen ? '#22C55F' : '#FFFFFF',
+                  color: forceToWinGreen ? og.colors.success : og.colors.white,
                 }}
               >
                 {symbolText}
@@ -424,11 +427,11 @@ export function StatsRow({
           fontSize: 27 * scale,
           lineHeight: `${36 * scale}px`,
           fontWeight: 600,
-          color: 'rgba(255,255,255,0.56)',
+          color: og.colors.mutedWhite56,
         }}
       >
         <span>Forecast the future on</span>
-        <span style={{ marginLeft: 6 * scale, color: '#FFFFFF' }}>
+        <span style={{ marginLeft: 6 * scale, color: og.colors.white }}>
           www.sapience.xyz
         </span>
       </div>
@@ -516,7 +519,7 @@ export function LiquidityStatsRow({
     fontSize: 32 * scale,
     lineHeight: `${32 * scale}px`,
     fontWeight: 800,
-    color: '#FFFFFF',
+    color: og.colors.white,
   };
   const colStyle: React.CSSProperties = {
     display: 'flex',
@@ -548,7 +551,7 @@ export function LiquidityStatsRow({
                 marginTop: 0,
                 lineHeight: `${24 * scale}px`,
                 fontWeight: 600,
-                color: '#FFFFFF',
+                color: og.colors.white,
               }}
             >
               {symbolText}
@@ -570,7 +573,7 @@ export function LiquidityStatsRow({
                 marginTop: 0,
                 lineHeight: `${24 * scale}px`,
                 fontWeight: 600,
-                color: '#FFFFFF',
+                color: og.colors.white,
               }}
             >
               {symbolText}
@@ -590,7 +593,7 @@ export function LiquidityStatsRow({
                 fontSize: 32 * scale,
                 lineHeight: `${40 * scale}px`,
                 fontWeight: 800,
-                color: '#22C55F',
+                color: og.colors.success,
               }}
             >
               1%
@@ -606,11 +609,11 @@ export function LiquidityStatsRow({
           fontSize: 27 * scale,
           lineHeight: `${36 * scale}px`,
           fontWeight: 600,
-          color: 'rgba(255,255,255,0.56)',
+          color: og.colors.mutedWhite56,
         }}
       >
         <span>Forecast the future on</span>
-        <span style={{ marginLeft: 6 * scale, color: '#FFFFFF' }}>
+        <span style={{ marginLeft: 6 * scale, color: og.colors.white }}>
           www.sapience.xyz
         </span>
       </div>
@@ -687,7 +690,7 @@ export function ForecastStatsRow({
     fontSize: 32 * scale,
     lineHeight: `${40 * scale}px`,
     fontWeight: 800,
-    color: '#FFFFFF',
+    color: og.colors.white,
   };
   const colStyle: React.CSSProperties = {
     display: 'flex',
@@ -701,7 +704,9 @@ export function ForecastStatsRow({
     return Number.isFinite(n) ? n : null;
   })();
   const oddsColor =
-    oddsNumber !== null && oddsNumber < 50 ? '#DD524C' : '#22C55F';
+    oddsNumber !== null && oddsNumber < 50
+      ? og.colors.danger
+      : og.colors.success;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <div
@@ -760,11 +765,11 @@ export function ForecastStatsRow({
           fontSize: 27 * scale,
           lineHeight: `${36 * scale}px`,
           fontWeight: 600,
-          color: 'rgba(255,255,255,0.56)',
+          color: og.colors.mutedWhite56,
         }}
       >
         <span>Forecast the future on</span>
-        <span style={{ marginLeft: 6 * scale, color: '#FFFFFF' }}>
+        <span style={{ marginLeft: 6 * scale, color: og.colors.white }}>
           www.sapience.xyz
         </span>
       </div>
@@ -828,8 +833,8 @@ export function baseContainerStyle(): React.CSSProperties {
     flexDirection: 'column',
     justifyContent: 'space-between',
     padding: 0,
-    background: '#040613',
-    color: '#F6F7F9',
+    background: og.colors.backgroundDark,
+    color: og.colors.foregroundLight,
     fontFamily:
       'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
     position: 'relative',
@@ -923,14 +928,18 @@ type PillTone = 'success' | 'danger' | 'neutral' | 'info';
 
 const pillTones: Record<PillTone, { bg: string; fg: string; border: string }> =
   {
-    success: { bg: '#22C55F', fg: '#FFFFFF', border: 'none' },
-    danger: { bg: '#DD524C', fg: '#FFFFFF', border: 'none' },
+    success: { bg: og.colors.success, fg: og.colors.white, border: 'none' },
+    danger: { bg: og.colors.danger, fg: og.colors.white, border: 'none' },
     neutral: {
-      bg: 'rgba(11,16,33,0.06)',
-      fg: '#0B1021',
-      border: 'rgba(11,16,33,0.12)',
+      bg: og.colors.neutralBg06,
+      fg: og.colors.neutralFg,
+      border: og.colors.neutralBorder12,
     },
-    info: { bg: 'rgba(59,130,246,0.12)', fg: '#3B82F6', border: '#3B82F6' },
+    info: {
+      bg: og.colors.infoBg12,
+      fg: og.colors.info,
+      border: og.colors.info,
+    },
   };
 
 export function Pill({
@@ -1098,3 +1107,5 @@ export function buildCacheHeaders(searchParams: URLSearchParams): HeadersInit {
   }
   return { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=60' };
 }
+
+export { og };

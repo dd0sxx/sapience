@@ -67,15 +67,39 @@ export default function BetslipParlayForm({
     null
   );
 
+  // Generate or retrieve a stable guest maker address for logged-out users
+  const guestMakerAddress = useMemo<`0x${string}` | null>(() => {
+    try {
+      if (typeof window === 'undefined') return null;
+      let addr = window.localStorage.getItem('sapience_guest_maker_address');
+      if (!addr) {
+        const bytes = new Uint8Array(20);
+        window.crypto.getRandomValues(bytes);
+        addr =
+          '0x' +
+          Array.from(bytes)
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+        window.localStorage.setItem('sapience_guest_maker_address', addr);
+      }
+      return addr as `0x${string}`;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Prefer connected wallet address; fall back to guest address
+  const selectedMakerAddress = makerAddress ?? guestMakerAddress ?? undefined;
+
   // Fetch maker nonce from PredictionMarket contract
   const { data: makerNonce } = useReadContract({
     address: predictionMarketAddress,
     abi: predictionMarketAbi,
     functionName: 'nonces',
-    args: makerAddress ? [makerAddress] : undefined,
+    args: selectedMakerAddress ? [selectedMakerAddress] : undefined,
     chainId,
     query: {
-      enabled: !!makerAddress && !!predictionMarketAddress,
+      enabled: !!selectedMakerAddress && !!predictionMarketAddress,
     },
   });
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
@@ -129,9 +153,10 @@ export default function BetslipParlayForm({
   // Trigger RFQ quote requests when selections or wager change
   useEffect(() => {
     if (!requestQuotes) return;
-    if (!makerAddress) return;
+    if (!selectedMakerAddress) return;
     if (!parlaySelections || parlaySelections.length === 0) return;
-    if (makerNonce === undefined) return; // Wait for maker nonce to be fetched
+    // If a wallet is connected, require a real makerNonce before broadcasting RFQ
+    if (makerAddress && makerNonce === undefined) return;
     const wagerStr = parlayWagerAmount || '0';
     try {
       const decimals = Number.isFinite(collateralDecimals as number)
@@ -148,8 +173,8 @@ export default function BetslipParlayForm({
         wager: wagerWei,
         resolver: payload.resolver,
         predictedOutcomes: payload.predictedOutcomes,
-        maker: makerAddress,
-        makerNonce: Number(makerNonce),
+        maker: selectedMakerAddress,
+        makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
       };
       requestQuotes(params);
       setLastQuoteRequestMs(Date.now());
@@ -161,8 +186,9 @@ export default function BetslipParlayForm({
     parlaySelections,
     parlayWagerAmount,
     collateralDecimals,
-    makerAddress,
+    selectedMakerAddress,
     makerNonce,
+    makerAddress,
   ]);
 
   return (
@@ -174,11 +200,12 @@ export default function BetslipParlayForm({
               <div className="flex items-start gap-3">
                 <div className="flex-1">
                   <h3 className="text-md text-foreground whitespace-normal break-words">
-                    {s.question}{' '}
+                    {s.question}
+                    {'\u00A0'}
                     <span className="relative -top-0.5">
                       <Badge
                         variant="outline"
-                        className={`${s.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'}`}
+                        className={`${s.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 dark:bg-emerald-500/70 dark:text-foreground shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 dark:bg-rose-500/70 dark:text-foreground shrink-0'}`}
                       >
                         {s.prediction ? 'Yes' : 'No'}
                       </Badge>
@@ -239,8 +266,8 @@ export default function BetslipParlayForm({
                   const suffix = secs === 1 ? 'second' : 'seconds';
 
                   return (
-                    <div className="mt-3">
-                      <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-[#91B3F0]/80 bg-[#91B3F0]/20 px-3 py-2.5 w-full min-h-[48px]">
+                    <div className="mt-3 mb-3">
+                      <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-ethena/80 bg-ethena/20 px-3 py-2.5 w-full min-h-[48px] shadow-[0_0_10px_rgba(136,180,245,0.25)]">
                         <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
                           <Image
                             src="/usde.svg"
@@ -267,7 +294,6 @@ export default function BetslipParlayForm({
                     </div>
                   );
                 })()}
-                <WagerDisclaimer className="mt-4 mb-4" />
                 <Button
                   className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={
@@ -292,10 +318,10 @@ export default function BetslipParlayForm({
                     Limit Order
                   </button>
                 </div>
+                <WagerDisclaimer className="mt-3" />
               </div>
             ) : (
               <div className="text-center">
-                <WagerDisclaimer className="mt-4 mb-4" />
                 <Button
                   className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                   disabled={true}
@@ -323,6 +349,7 @@ export default function BetslipParlayForm({
                     Some combinations may not receive bids
                   </div>
                 ) : null}
+                <WagerDisclaimer className="mt-3" />
               </div>
             )}
           </div>

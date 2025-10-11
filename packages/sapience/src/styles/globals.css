@@ -8,7 +8,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 99%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
@@ -27,11 +27,31 @@
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 240 10% 3.9%;
+    /* App-specific brand accents */
+    --ethena: 219 76% 75%; /* #91B3F0 */
+    /* Semantic tokens */
+    --success: 142 72% 35%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 12%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    /* Trading semantics */
+    --up: 142 72% 35%;
+    --down: 0 84% 60%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    /* Category palette (used for deterministic category coloring) */
+    --category-1: 217 91% 60%; /* blue */
+    --category-2: 270 95% 75%; /* purple */
+    --category-3: 142 72% 45%; /* green */
+    --category-4: 38 92% 55%; /* amber */
+    --category-5: 350 90% 55%; /* red (deeper, less orange) */
+    --category-6: 330 80% 68%; /* pink */
+    --category-7: 24 95% 56%; /* orange */
     --radius: 0.5rem;
   }
   .dark {
@@ -54,11 +74,31 @@
     --border: 222 8% 22%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
+    /* App-specific brand accents */
+    --ethena: 219 76% 75%; /* #91B3F0 */
+    /* Semantic tokens */
+    --success: 142 72% 45%;
+    --success-foreground: 0 0% 8%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 8%;
+    --info: 217 91% 70%;
+    --info-foreground: 0 0% 8%;
+    /* Trading semantics */
+    --up: 142 72% 45%;
+    --down: 0 84% 65%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    /* Category palette */
+    --category-1: 217 91% 75%;
+    --category-2: 270 95% 82%;
+    --category-3: 142 72% 60%;
+    --category-4: 38 92% 66%;
+    --category-5: 350 90% 62%;
+    --category-6: 330 85% 72%;
+    --category-7: 24 95% 66%;
   }
 }
 

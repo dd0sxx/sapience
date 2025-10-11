@@ -38,11 +38,19 @@ export const collateralToken: ChainAddressMap = {
   },
 } as const;
 
+export const eas: ChainAddressMap = {
+  42161: {
+    address: '0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458',
+    legacy: [] as const,
+  },
+} as const;
+
 export const contracts = {
   predictionMarket,
   umaResolver,
   passiveLiquidityVault,
   collateralToken,
+  eas,
 };
 
 

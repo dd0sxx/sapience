@@ -122,8 +122,8 @@ export default defineConfig({
             link: "/user-guide/introduction/what-is-sapience",
           },
           {
-            text: "Why Build on Sapience?",
-            link: "/user-guide/introduction/why-build-on-sapience",
+            text: "Glossary",
+            link: "/user-guide/other-resources/glossary",
           },
         ],
       },

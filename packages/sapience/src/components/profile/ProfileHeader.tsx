@@ -32,7 +32,7 @@ export default function ProfileHeader({ address }: ProfileHeaderProps) {
           <AddressDisplay
             address={address}
             disableProfileLink
-            className="text-xl"
+            className="text-xl !gap-1.5"
           />
         </div>
       </div>

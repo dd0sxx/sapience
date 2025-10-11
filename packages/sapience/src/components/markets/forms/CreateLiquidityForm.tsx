@@ -29,7 +29,7 @@ import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { priceToTick, tickToPrice } from '~/lib/utils/tickUtils';
-import { getChainShortName } from '~/lib/utils/util';
+import { getChainShortName, formatFiveSigFigs } from '~/lib/utils/util';
 
 export type LiquidityFormMarketDetails = {
   marketAddress: `0x${string}`;
@@ -148,6 +148,19 @@ export function CreateLiquidityForm({
     tickSpacing, // Pass the tick spacing to the quoter
   });
 
+  // Get market question from context
+  const { displayQuestion } = useMarketPage();
+
+  // Prepare share data with formatted prices using existing utility
+  const shareData = {
+    question: displayQuestion || '',
+    symbol: collateralAssetTicker || 'Tokens',
+    lowPrice: lowPriceInput ? formatFiveSigFigs(parseFloat(lowPriceInput)) : '',
+    highPrice: highPriceInput
+      ? formatFiveSigFigs(parseFloat(highPriceInput))
+      : '',
+  };
+
   // Use the enhanced LP creation hook (now handles token approval internally)
   const {
     createLP,
@@ -171,6 +184,7 @@ export function CreateLiquidityForm({
     slippagePercent: slippageAsNumber,
     enabled: isConnected && !!marketAddress,
     collateralTokenAddress: collateralAssetAddress,
+    shareData,
   });
 
   // Format token amounts for display

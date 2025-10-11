@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { og } from '../_shared';
 import {
   WIDTH,
   HEIGHT,
@@ -69,7 +70,7 @@ export async function GET(req: Request) {
                     color: 'rgba(255,255,255,0.64)',
                   }}
                 >
-                  Prediction Market
+                  Providing Prediction Market Liquidity For
                 </div>
                 <div
                   style={{
@@ -85,7 +86,7 @@ export async function GET(req: Request) {
                       lineHeight: `${48 * scale}px`,
                       fontWeight: 700,
                       letterSpacing: -0.16 * scale,
-                      color: '#F6F7F9',
+                      color: og.colors.foregroundLight,
                     }}
                   >
                     {question}
@@ -121,8 +122,8 @@ export async function GET(req: Request) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#040613',
-            color: '#F6F7F9',
+            background: og.colors.backgroundDark,
+            color: og.colors.foregroundLight,
             fontFamily:
               'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
           }}

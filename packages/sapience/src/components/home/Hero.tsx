@@ -36,7 +36,10 @@ export default function Hero() {
 
   return (
     <>
-      <div className="relative h-[100dvh] w-full flex flex-col justify-end pt-6 md:pt-0 pb-2 md:pb-3 lg:pb-4">
+      <div
+        id="hero"
+        className="relative h-[100dvh] w-full flex flex-col justify-end pt-6 md:pt-0 pb-2 md:pb-3 lg:pb-4"
+      >
         {/* Spline embed background - made larger than viewport */}
         <div
           className="absolute inset-0 z-0 light"
@@ -61,8 +64,11 @@ export default function Hero() {
           />
         </div>
 
-        {/* Bottom fade overlay to soften the iframe edge */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 md:h-40 z-[1] bg-gradient-to-b from-transparent to-[hsl(var(--background))]" />
+        {/* Subtle bottom fade into background to smooth transition from Spline */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[120px] z-[5] bg-gradient-to-b from-transparent to-[hsl(var(--background))]"
+          aria-hidden
+        />
 
         {/* Content container - positioned at bottom, left-aligned */}
         <div className="w-full z-10">
@@ -74,13 +80,12 @@ export default function Hero() {
                 Forecasting Community
               </h1>
 
-              <p className="text-xl md:text-2xl mb-3 text-muted-foreground max-w-[570px]">
+              <p className="text-xl md:text-2xl mb-3 text-muted-foreground">
                 Join experts and enthusiasts forecasting the future of the
                 economy, climate change, culture, and more.
               </p>
             </div>
             <div className="px-0 md:px-8">
-              <FeaturedMarketGroupSection />
               <div className="md:hidden w-full flex justify-center mt-3 mb-3 px-4">
                 <Button
                   variant="link"
@@ -99,6 +104,10 @@ export default function Hero() {
                 </Button>
               </div>
             </div>
+          </div>
+          {/* Full-width featured carousel below container to make it wider */}
+          <div className="w-full">
+            <FeaturedMarketGroupSection />
           </div>
         </div>
       </div>

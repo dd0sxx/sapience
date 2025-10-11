@@ -34,8 +34,10 @@
     "@elizaos/core": "latest",
     "@elizaos/plugin-bootstrap": "latest",
     "@elizaos/plugin-openai": "^1.5.15",
+    "@elizaos/plugin-openrouter": "^1.5.14",
     "@elizaos/plugin-sql": "latest",
     "@elizaos/server": "latest",
+    "@sapience/sdk": "latest",
     "@tanstack/react-query": "5.29.0",
     "clsx": "2.1.1",
     "dotenv": "17.2.1",
@@ -44,7 +46,7 @@
     "tailwind-merge": "2.6.0",
     "tailwindcss": "4.1.10",
     "viem": "2.33.3",
-    "zod": "3.24.2"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/react": "18.3.3",
@@ -56,8 +58,10 @@
     "vite": "6.0.1"
   },
   "scripts": {
-    "start": "elizaos start",
+    "prestart": "pnpm run build",
+    "start": "bun x elizaos start",
     "dev": "bun x elizaos dev",
+    "dev:local-sdk": "SAPIENCE_SDK_PATH=../../packages/sdk/dist/index.js bun x elizaos dev",
     "dev:panel": "vite",
     "build": "tsc --noEmit && vite build && tsup",
     "lint": "prettier --write ./src",
