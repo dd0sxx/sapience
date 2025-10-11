@@ -305,7 +305,7 @@ const Header = () => {
       >
         <div className={`mx-auto px-4 md:px-6 transition-all`}>
           <div
-            className={`flex items-center justify-between pointer-events-auto transition-all ${isScrolled ? 'md:bg-background/60 md:backdrop-blur-sm md:border-y md:border-border/30 md:rounded-full' : ''}`}
+            className={`flex items-center justify-between pointer-events-auto transition-all ${isScrolled ? 'md:bg-background/60 md:backdrop-blur-sm md:border-y md:border-border/30 md:rounded-l-full md:rounded-r-none' : ''}`}
           >
             <div className="flex flex-col pointer-events-auto">
               <div className="flex items-center">
