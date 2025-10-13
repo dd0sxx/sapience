@@ -131,7 +131,7 @@ export default function ParlayLegsList({
             return (
               <div
                 key={idx}
-                className="text-sm inline-flex items-center gap-2 shrink-0"
+                className="text-sm flex items-center gap-2"
               >
                 {isHexId ? (
                   <Popover>
