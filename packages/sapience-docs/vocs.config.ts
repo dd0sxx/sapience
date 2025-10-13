@@ -57,16 +57,20 @@ export default defineConfig({
           { text: "Get Started", link: "/builder-guide/getting-started/get-started" },
           { text: "Forecasting Agent", link: "/builder-guide/guides/forecasting-agent" },
           {
-            text: "Prediction Market Trading Bot",
+            text: "Trading Agent",
+            link: "/builder-guide/guides/trading-auction-intent-markets",
+          },
+          {
+            text: "Market Making Agent",
+            link: "/builder-guide/guides/market-making-agent",
+          },
+          {
+            text: "Spot Market Trading Agent",
             link: "/builder-guide/guides/trading-bots",
           },
           {
-            text: "Liquidity Provisioning Bot",
+            text: "Spot Market Liquidity Agent",
             link: "/builder-guide/guides/liquidity-provisioning-bots",
-          },
-          {
-            text: "Auction Market Bot",
-            link: "/builder-guide/guides/trading-auction-intent-markets",
           },
           { text: "Custom Trading App", link: "/builder-guide/guides/custom-trading-app" },
           {
