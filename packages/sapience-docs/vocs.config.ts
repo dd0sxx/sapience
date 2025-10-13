@@ -48,21 +48,13 @@ export default defineConfig({
   },
   sidebar: {
     "/": [
+      { text: "Open App", link: "https://sapience.xyz" },
       { text: "User Guide", link: "/user-guide/introduction/what-is-sapience", match: "/user-guide" as any },
-      { text: "Builder Guide", link: "/builder-guide/getting-started/what-is-sapience", match: "/builder-guide" as any },
-      {
-        text: "Getting Started",
-        items: [
-          {
-            text: "What is Sapience?",
-            link: "/builder-guide/getting-started/what-is-sapience",
-          },
-          { text: "Quickstart", link: "/builder-guide/getting-started/quickstart" },
-        ],
-      },
+      { text: "Builder Guide", link: "/builder-guide/getting-started/quickstart", match: "/builder-guide" as any },
       {
         text: "Build Something Awesome",
         items: [
+          { text: "Quickstart", link: "/builder-guide/getting-started/quickstart" },
           { text: "Forecasting Agent", link: "/builder-guide/guides/forecasting-agent" },
           {
             text: "Prediction Market Trading Bot",
@@ -112,8 +104,9 @@ export default defineConfig({
       { text: "Contributing", link: "/builder-guide/contributing" },
     ],
     "/user-guide": [
+      { text: "Open App", link: "https://sapience.xyz" },
       { text: "User Guide", link: "/user-guide/introduction/what-is-sapience", match: "/user-guide" as any },
-      { text: "Builder Guide", link: "/builder-guide/getting-started/what-is-sapience", match: "/builder-guide" as any },
+      { text: "Builder Guide", link: "/builder-guide/getting-started/quickstart", match: "/builder-guide" as any },
       {
         text: "Introduction",
         items: [
@@ -183,10 +176,6 @@ export default defineConfig({
             link: "/user-guide/other-resources/community",
           },
           { text: "FAQ", link: "/user-guide/other-resources/faq" },
-          {
-            text: "Glossary of Terms",
-            link: "/user-guide/other-resources/glossary",
-          },
         ],
       },
     ],
