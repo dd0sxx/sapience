@@ -16,33 +16,24 @@ import BuilderGuideAlert from '../../../components/BuilderGuideAlert'
 
 In [the next guide](/builder-guide/guides/trading-bots), you can have it **automatically submit a $1 wager based on its forecasts**.
 
-## Get Keys
-
-- An OpenRouter API key (recommended):
-  - Create a key at [https://openrouter.ai](https://openrouter.ai)
-  - Pick a model id from [https://openrouter.ai/models](https://openrouter.ai/models), e.g. `openai/gpt-4o-mini` or `anthropic/claude-3.5-sonnet`
-  - You can also use direct provider keys (OpenAI/Anthropic), but OpenRouter simplifies billing and model choice
-- A dedicated Ethereum wallet private key for publishing forecasts
-  - Never reuse a personal wallet; keep a small amount of gas on Arbitrum
-  - Export instructions: [MetaMask export guide](https://support.metamask.io/configure/accounts/how-to-export-an-accounts-private-key/)
-
 ## One‑Click Deploy
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/vfc8cZ?referralCode=DbBhWB)
 
 ### Environment Variables
 
+For setup details on your `OPENROUTER_API_KEY` and `ETHEREUM_PRIVATE_KEY`, see Get Started: [OpenRouter setup](/builder-guide/getting-started/get-started#openrouter-setup) and [Private key generation](/builder-guide/getting-started/get-started#private-key-generation).
+
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `OPENAI_BASE_URL` | `https://openrouter.ai/api/v1` | Point OpenAI SDK to OpenRouter |
-| `OPENAI_API_KEY` | — | Your OpenRouter API key (works with OpenAI SDKs) |
-| `MODEL` | `openai/gpt-4o` | OpenRouter model id (override per template) |
+| `OPENROUTER_API_KEY` | — | Your OpenRouter API key |
 | `ETHEREUM_PRIVATE_KEY` | — | Publishes forecasts to EAS; required for visibility/leaderboard |
-| `EVM_PROVIDER_URL` | `https://arb1.arbitrum.io/rpc` | Which RPC to use to connect to an Ethereum blockchain |
+| `MODEL` | `openai/gpt-4o` | OpenRouter model id |
+| `EVM_PROVIDER_URL` | `https://arb1.arbitrum.io/rpc` | Which RPC to use to connect to an Ethereum blockchain, consider a paid provider like Infura |
 
 ## Customize Your Agent
 
-We strongly recommend using an [LLM-powered code editor](/builder-guide/getting-started/quickstart) to customize your agent.
+We strongly recommend using an [LLM-powered code editor](/builder-guide/getting-started/get-started) to customize your agent.
 
 ### Eject to your GitHub and pull locally
 

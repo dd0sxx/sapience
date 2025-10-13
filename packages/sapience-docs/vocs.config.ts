@@ -50,11 +50,11 @@ export default defineConfig({
     "/": [
       { text: "Open App", link: "https://sapience.xyz" },
       { text: "User Guide", link: "/user-guide/introduction/what-is-sapience", match: "/user-guide" as any },
-      { text: "Builder Guide", link: "/builder-guide/getting-started/quickstart", match: "/builder-guide" as any },
+      { text: "Builder Guide", link: "/builder-guide/getting-started/get-started", match: "/builder-guide" as any },
       {
         text: "Build Something Awesome",
         items: [
-          { text: "Quickstart", link: "/builder-guide/getting-started/quickstart" },
+          { text: "Get Started", link: "/builder-guide/getting-started/get-started" },
           { text: "Forecasting Agent", link: "/builder-guide/guides/forecasting-agent" },
           {
             text: "Prediction Market Trading Bot",
@@ -106,7 +106,7 @@ export default defineConfig({
     "/user-guide": [
       { text: "Open App", link: "https://sapience.xyz" },
       { text: "User Guide", link: "/user-guide/introduction/what-is-sapience", match: "/user-guide" as any },
-      { text: "Builder Guide", link: "/builder-guide/getting-started/quickstart", match: "/builder-guide" as any },
+      { text: "Builder Guide", link: "/builder-guide/getting-started/get-started", match: "/builder-guide" as any },
       {
         text: "Introduction",
         items: [

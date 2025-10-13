@@ -42,7 +42,7 @@
 }
 
 .vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"],
-.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/quickstart"] {
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/get-started"] {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
@@ -56,20 +56,20 @@
 }
 
 .vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"]:hover,
-.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/quickstart"]:hover {
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/get-started"]:hover {
   border-bottom-color: rgba(145, 179, 240, 0.6);
 }
 
 /* Active tab state */
 .vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[data-active="true"][href="/user-guide/introduction/what-is-sapience"],
-.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[data-active="true"][href="/builder-guide/getting-started/quickstart"] {
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[data-active="true"][href="/builder-guide/getting-started/get-started"] {
   border-bottom-color: rgba(145, 179, 240, 0.8);
   color: #7AA1EE;
 }
 
 /* Fallback: when a runtime script adds .is-active-tab to top anchors */
 .vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a.is-active-tab[href="/user-guide/introduction/what-is-sapience"],
-.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a.is-active-tab[href="/builder-guide/getting-started/quickstart"] {
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a.is-active-tab[href="/builder-guide/getting-started/get-started"] {
   border-bottom-color: rgba(145, 179, 240, 0.8);
   color: #7AA1EE;
 }
@@ -82,7 +82,7 @@
 }
 
 /* Section-aware active tab: highlight Builder Guide when any non-user-guide section is active */
-.vocs_Sidebar_group:has(.vocs_Sidebar_items a[href^="/builder-guide/"][data-active="true"]) > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/quickstart"] {
+.vocs_Sidebar_group:has(.vocs_Sidebar_items a[href^="/builder-guide/"][data-active="true"]) > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/get-started"] {
   border-bottom-color: rgba(145, 179, 240, 0.8);
   color: #7AA1EE;
 }
