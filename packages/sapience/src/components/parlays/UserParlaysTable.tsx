@@ -96,10 +96,14 @@ export default function UserParlaysTable({
   const queryClient = useQueryClient();
   const { address: connectedAddress } = useAccount();
   const hasWallet = Boolean(connectedAddress);
+  const [claimingTokenId, setClaimingTokenId] = React.useState<bigint | null>(
+    null
+  );
   const { burn, isPending: isClaimPending } = usePredictionMarketWriteContract({
     successMessage: 'Claim submitted',
     fallbackErrorMessage: 'Claim failed',
     onSuccess: () => {
+      setClaimingTokenId(null);
       const addr = String(account || '').toLowerCase();
       queryClient
         .invalidateQueries({ queryKey: ['userParlays', addr] })
@@ -722,13 +726,18 @@ export default function UserParlaysTable({
                       connectedAddress &&
                       connectedAddress.toLowerCase() ===
                         String(account || '').toLowerCase();
+                    const isThisTokenClaiming =
+                      isClaimPending && claimingTokenId === res.tokenId;
                     return isOwnerConnected ? (
                       <Button
                         size="sm"
-                        onClick={() => burn(res.tokenId, ZERO_REF_CODE)}
+                        onClick={() => {
+                          setClaimingTokenId(res.tokenId);
+                          burn(res.tokenId, ZERO_REF_CODE);
+                        }}
                         disabled={isClaimPending}
                       >
-                        {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
+                        {isThisTokenClaiming ? 'Claiming...' : 'Claim Winnings'}
                       </Button>
                     ) : (
                       <TooltipProvider>
@@ -772,15 +781,19 @@ export default function UserParlaysTable({
                     connectedAddress &&
                     connectedAddress.toLowerCase() ===
                       String(account || '').toLowerCase();
+                  const isThisTokenClaiming =
+                    isClaimPending &&
+                    claimingTokenId === row.original.tokenIdToClaim;
                   return isOwnerConnected ? (
                     <Button
                       size="sm"
-                      onClick={() =>
-                        burn(row.original.tokenIdToClaim!, ZERO_REF_CODE)
-                      }
+                      onClick={() => {
+                        setClaimingTokenId(row.original.tokenIdToClaim!);
+                        burn(row.original.tokenIdToClaim!, ZERO_REF_CODE);
+                      }}
                       disabled={isClaimPending}
                     >
-                      {isClaimPending ? 'Claiming...' : 'Claim Winnings'}
+                      {isThisTokenClaiming ? 'Claiming...' : 'Claim Winnings'}
                     </Button>
                   ) : (
                     <TooltipProvider>
