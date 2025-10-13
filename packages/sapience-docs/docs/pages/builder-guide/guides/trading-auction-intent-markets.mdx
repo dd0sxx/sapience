@@ -1,5 +1,5 @@
 ---
-title: "Build a Batch Auction Bot"
+title: "Build a Auction Bot"
 description: "Connect, listen for auctions, and reply with signed bids in minutes."
 ---
 
@@ -7,15 +7,15 @@ import BuilderGuideAlert from '../../../components/BuilderGuideAlert'
 
 <BuilderGuideAlert />
 
-# Build a Batch Auction Bot
+# Build a Auction Bot
 
-This guide walks you through integrating with the Batch Auction Relayer to submit competitive, time-bound bids. You will:
+This guide walks you through integrating with the Auction Relayer to submit competitive, time-bound bids. You will:
 
 - Connect to the WebSocket
 - Listen for `auction.started`
 - Submit `bid.submit` with a short deadline and a signature placeholder
 
-For deeper details, see Reference → Batch Auction Relayer.
+For deeper details, see Reference → Auction Relayer.
 
 ## Prerequisites
 
@@ -143,6 +143,6 @@ ws.send(JSON.stringify(bid));
 
 ## Reference
 
-- Message details, validation, and typed signatures: `[Batch Auction Relayer Reference](/builder-guide/reference/auction-relayer)`
+- Message details, validation, and typed signatures: `[Auction Relayer Reference](/builder-guide/reference/auction-relayer)`
 - Contract context and on-chain semantics: `packages/protocol/src/predictionMarket/PredictionMarket.sol`
 

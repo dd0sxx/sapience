@@ -19,14 +19,13 @@ Most markets start as **binary** — a question with two possible outcomes (Yes 
 
 This binary structure creates a straightforward risk/reward dynamic: the lower the price you pay, the higher your potential return if you're correct.
 
-
 ## What Makes Sapience Different
 
 Sapience is built to handle different trading styles and forecast complexities:
 
 **Two Market Types**
-- **Batch Auctions** enable you to combine multiple outcomes into parlays, where all predictions must be correct for a payout — Sapience's primary trading system
-- **Spot Markets** let you trade single outcomes continuously with tight spreads — ideal for active trading and price discovery
+- **[Auctions](/user-guide/trading/auction-markets)** enable you to combine multiple outcomes into parlays, where all predictions must be correct for a payout — Sapience's primary trading system
+- **[Spot Markets](/user-guide/trading/spot-markets)** let you trade single outcomes continuously with tight spreads — ideal for active trading and price discovery
 
 **USDe as Collateral**  
 USDe is the stablecoin used across Sapience. Learn more about [Ethena](https://ethena.fi/)
@@ -37,15 +36,14 @@ Every market, trade, and settlement happens onchain. This makes Sapience transpa
 **Capital Efficient**  
 Sapience uses batch netting in auctions and concentrated liquidity (similar to Uniswap v3) in Spot Markets, keeping spreads tight and capital working efficiently.
 
-See [Market Types](/user-guide/trading/market-types) for technical details on how Batch Auctions and Spot Markets work under the hood.
-
+See [Auction Markets](/user-guide/trading/auction-markets) and [Spot Markets](/user-guide/trading/spot-markets) for details on how each works.
 
 ## Your Trading Options
 
 Sapience supports multiple ways to participate:
 
 **Build Parlays**  
-Use Batch Auctions to combine multiple predictions into one position. Example: "Team A wins AND turnout exceeds 60%." Both conditions must resolve as predicted for the parlay to win. The upside? Higher potential payouts for compound forecasts. The risk? One wrong leg loses the entire position.
+Use Auctions to combine multiple predictions into one position. Example: "Team A wins AND turnout exceeds 60%." Both conditions must resolve as predicted for the parlay to win. The upside? Higher potential payouts for compound forecasts. The risk? One wrong leg loses the entire position.
 
 Parlays trade through an RFQ-style process: you announce your parlay to the network, market makers submit competing quotes, and you select the best price. This batch clearing model concentrates liquidity and enables efficient pricing across many conditions.
 
@@ -55,19 +53,17 @@ Use Spot Markets when you want to express a view on one question. Trades execute
 **Provide Liquidity**  
 Earn fees by supplying capital to markets. Liquidity providers (LPs) deposit collateral into pools or vaults and collect a share of trading fees. Learn more in [Liquidity Provisioning](/user-guide/liquidity-provisioning).
 
-
 ## Getting Started
 
 Here's a typical flow for your first trade:
 
 1. **Find a market** — Browse categories, search for questions, or explore featured markets
 2. **Deposit USDe** — Transfer collateral into Sapience. See [Deposits & Withdrawals](/user-guide/deposits-and-withdrawals)
-3. **Place a trade** — Build a parlay in Batch Auctions or buy YES/NO shares in Spot Markets
+3. **Place a trade** — Build a parlay in Auctions or buy YES/NO shares in Spot Markets
 4. **Monitor your position** — Track your open positions and market prices as events unfold
 5. **Settlement** — When the market resolves, winning positions automatically settle to $1.00
 
 The entire process is transparent and onchain. You can verify every trade, price, and resolution.
-
 
 ## Key Concepts to Know
 
@@ -79,14 +75,11 @@ The entire process is transparent and onchain. You can verify every trade, price
 
 See the [Glossary](/user-guide/other-resources/glossary) for complete definitions of all terms.
 
-
 ## What's Next
 
 This overview introduced the basics. Dive deeper with these pages:
 
-- [Market Types](/user-guide/trading/market-types) — Detailed comparison of Batch Auctions vs Spot Markets
-- [Market Lifecycle](/user-guide/trading/market-lifecycle) — How markets are created, traded, and resolved
-- [Pricing & Order Types](/user-guide/trading/pricing-and-order-types) — Order types and pricing mechanics
-- [Resolution & Disputes](/user-guide/trading/resolution-and-disputes) — Oracle process and how disputes work
-- [Fees & Incentives](/user-guide/fees-and-incentives) — Fee structures and trading rewards
+- [Auction Markets](/user-guide/trading/auction-markets) — Building parlays and RFQ-based auctions
+- [Spot Markets](/user-guide/trading/spot-markets) — Single-outcome trading and order books
+- [Verification & Settlement](/user-guide/trading/resolution-and-disputes) — Oracle process and how disputes work
 

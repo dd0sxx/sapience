@@ -65,7 +65,7 @@ export default defineConfig({
             link: "/builder-guide/guides/liquidity-provisioning-bots",
           },
           {
-            text: "Batch Auction Market Bot",
+            text: "Auction Market Bot",
             link: "/builder-guide/guides/trading-auction-intent-markets",
           },
           { text: "Custom Trading App", link: "/builder-guide/guides/custom-trading-app" },
@@ -80,7 +80,7 @@ export default defineConfig({
         items: [
           { text: "GraphQL", link: "/builder-guide/api/graphql" },
           { text: "Quoter", link: "/builder-guide/api/quoter" },
-          { text: "Batch Auction Relayer", link: "/builder-guide/api/auction-relayer" },
+          { text: "Auction Relayer", link: "/builder-guide/api/auction-relayer" },
           { text: "MCP", link: "/builder-guide/api/mcp" },
         ],
       },
@@ -92,7 +92,7 @@ export default defineConfig({
             link: "/builder-guide/reference/contracts-and-addresses",
           },
           { text: "GraphQL Schema", link: "/builder-guide/reference/graphql-schema" },
-          { text: "Batch Auction Relayer", link: "/builder-guide/reference/auction-relayer" },
+          { text: "Auction Relayer", link: "/builder-guide/reference/auction-relayer" },
           {
             text: "Oracles & Settlement",
             link: "/builder-guide/reference/oracles-and-settlement",
@@ -121,50 +121,26 @@ export default defineConfig({
         ],
       },
       {
-        text: "Trading on Sapience",
+        text: "Trading Prediction Markets",
         items: [
           { text: "Overview", link: "/user-guide/trading/overview" },
-          { text: "Market Types", link: "/user-guide/trading/market-types" },
-          {
-            text: "Market Lifecycle",
-            link: "/user-guide/trading/market-lifecycle",
-          },
-          {
-            text: "Pricing & Order Types",
-            link: "/user-guide/trading/pricing-and-order-types",
-          },
-          {
-            text: "Resolution & Disputes",
-            link: "/user-guide/trading/resolution-and-disputes",
-          },
+          { text: "Deposits & Withdrawals", link: "/user-guide/deposits-and-withdrawals" },
+          { text: "Auction Markets", link: "/user-guide/trading/auction-markets" },
+          { text: "Spot Markets", link: "/user-guide/trading/spot-markets" },
+          { text: "Verification & Settlement", link: "/user-guide/trading/resolution-and-disputes" },
         ],
       },
       {
-        text: "Liquidity Provisioning",
+        text: "Providing Liquidity",
         items: [
-          { text: "Overview", link: "/user-guide/liquidity-provisioning" },
-          {
-            text: "Tutorial",
-            link: "/user-guide/liquidity-provisioning/tutorial",
-          },
+          { text: "Overview", link: "/user-guide/liquidity-overview" },
+          { text: "Auction Liquidity", link: "/user-guide/batch-auction-liquidity" },
+          { text: "Spot Liquidity", link: "/user-guide/liquidity-provisioning" },
+          { text: "Liquidity Vaults", link: "/user-guide/liquidity-vaults" },
         ],
       },
       {
-        text: "Deposits & Withdrawals",
-        items: [
-          { text: "Overview", link: "/user-guide/deposits-and-withdrawals" },
-        ],
-      },
-      {
-        text: "Risks & Safeguards",
-        items: [{ text: "Overview", link: "/user-guide/risks-and-safeguards" }],
-      },
-      {
-        text: "Fees & Incentives",
-        items: [{ text: "Overview", link: "/user-guide/fees-and-incentives" }],
-      },
-      {
-        text: "Other Resources",
+        text: "Resources",
         items: [
           { text: "Audits", link: "/user-guide/other-resources/audits" },
           {

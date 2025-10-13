@@ -1,0 +1,76 @@
+---
+title: "Spot Markets"
+description: "Trade single outcomes continuously via onchain order books with concentrated liquidity."
+---
+
+## Spot Markets
+
+### Overview
+
+Spot Markets enable continuous trading of single outcomes through onchain order books. YES tokens trade directly against USDe with concentrated liquidity, providing tight spreads and efficient price discovery.
+
+Spot Markets are ideal when you want to express a view on a single outcome without combining conditions. Prices directly reflect market-implied probabilities.
+
+- **YES price ↔ probability:** Prices live in [0,1]. A YES price of 0.72 suggests roughly 72% implied probability.
+  `p_implied ≈ YES price`
+- **Payout:** If the market resolves Yes, YES holders receive the full notional; if No, YES settles to zero.
+
+### How Spot Markets Work
+
+Spot Markets use a **CLOB-like order book** with concentrated liquidity mechanics (inspired by Uniswap v3):
+
+- Onchain order book with continuous matching
+- Maker/taker model where liquidity providers supply capital in price ranges
+- No native resting limit orders on-chain, but bots can achieve limit-like behavior by managing quotes and cancels
+- Capital efficient: Liquidity concentrates in active price ranges rather than spreading across the full curve
+
+Best for: Intraday trading, tight spreads, active markets with continuous flow
+
+### Binary vs Numeric Markets
+
+Spot Markets support two settlement types:
+
+**Binary (Yes/No)**
+- Classic prediction market format
+- Example: "Will Candidate X win the election?"
+- Settlement: YES token settles to upper bound (1.0) if true, lower bound (0.0) if false
+
+**Numeric (Expiring Futures)**
+- Result is a number within a defined range
+- Example: "ETH price on Dec 31" settling between $1,000 and $5,000
+- Settlement: Market settles to the actual numeric value within the range
+- Binary markets are the special case where the range extremes represent Yes/No
+
+### Market Groups
+
+Market Groups are the onchain contract foundation for Spot Markets:
+
+- **Definition:** The onchain contract that anchors a set of YES/NO markets sharing the same question and parameters
+- **Role:** Holds market parameters, mints/burns positions, manages collateral
+- **Structure:** A market group may host multiple market instances (e.g., rolling epochs) for the same question over time
+- **Naming note:** In smart contracts you may see groups referred to as "markets" and individual instances as "epochs". In the app and docs we use "market group" for the contract and "market" for an individual trading instance.
+
+### Settlement
+
+When a Spot Market resolves:
+
+1. An assertion with the settlement value is submitted (via UMA's optimistic oracle)
+2. After the liveness period, the result is finalized onchain
+3. Binary markets clamp to their lower/upper bounds; numeric markets settle to the reported value
+4. YES token holders can redeem based on the settlement price
+
+See [Verification & Settlement](/user-guide/trading/resolution-and-disputes) for details on the dispute process.
+
+### Data Access
+
+- **Onchain events:** Market creation, trades, liquidity changes, settlements
+- **Order book snapshots:** App-layer aggregation of current bids/offers
+- **GraphQL:** `marketGroups` queries and `market.marketGroup` relations for historical data
+
+### Where Market Groups Show Up
+
+- **UI:** Market lists are grouped by market group; detail pages show the group and its epochs
+- **API/GraphQL:** `marketGroups` queries return groups with nested `markets` array
+- **Admin:** Created via Market Group forms or imports; deployed from a factory contract
+
+

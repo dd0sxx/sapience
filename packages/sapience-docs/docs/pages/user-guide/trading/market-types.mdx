@@ -1,13 +1,13 @@
 ---
 title: "Market Types"
-description: "Batch Auctions and Spot Markets — two complementary trading systems."
+description: "Auctions and Spot Markets — two complementary trading systems."
 ---
 
 ### Market Types
 
 Sapience supports two complementary trading systems designed for different use cases and trading styles.
 
-**Batch Auctions** power conditional predictions (parlays), where you combine multiple outcomes into a single prediction. Trades execute through an RFQ-like matching system with discrete clearing events.
+**Auctions** power conditional predictions (parlays), where you combine multiple outcomes into a single prediction. Trades execute through an RFQ-like matching system with discrete clearing events.
 
 **Spot Markets** enable direct price discovery for single outcomes, where YES tokens trade continuously against USDe in CLOB-like order books with concentrated liquidity.
 
@@ -17,7 +17,7 @@ See the [Glossary](/user-guide/other-resources/glossary) for concise definitions
 
 ## Comparison
 
-| Dimension | Spot Markets | Batch Auctions |
+| Dimension | Spot Markets | Auctions |
 | --- | --- | --- |
 | **Use case** | Single outcome trading, price discovery | Multi-condition predictions (parlays) |
 | **Trading model** | Continuous CLOB-like order book | RFQ / intents with discrete clearing |
@@ -31,9 +31,9 @@ See the [Glossary](/user-guide/other-resources/glossary) for concise definitions
 
 ---
 
-## Batch Auctions
+## Auctions
 
-Batch Auctions power Sapience's primary system for conditional predictions. They enable you to combine multiple prediction outcomes into a single parlay and trade them through a short-lived RFQ-style matching process.
+Auctions power Sapience's primary system for conditional predictions. They enable you to combine multiple prediction outcomes into a single parlay and trade them through a short-lived RFQ-style matching process.
 
 ### Overview
 
@@ -42,9 +42,9 @@ Batch Auctions power Sapience's primary system for conditional predictions. They
 - **Why parlays?** Higher potential payout for compound forecasts, simple win/lose outcome, and expressive predictions beyond a single market.
 - **Probability intuition:** When outcomes are independent, the parlay's implied probability is the product of individual probabilities — hence lower combined probability and higher potential payoff.
 
-### How Batch Auctions Work
+### How Auctions Work
 
-Batch Auctions use an **RFQ (Request-for-Quote) model** with discrete clearing events:
+Auctions use an **RFQ (Request-for-Quote) model** with discrete clearing events:
 
 1. **Maker starts an auction** by announcing their parlay (predicted outcomes + wager) to the WebSocket relayer
 2. **Takers submit competing bids** with their desired wager amounts and signed quotes
@@ -61,7 +61,7 @@ Batch Auctions use an **RFQ (Request-for-Quote) model** with discrete clearing e
 
 ### Conditions
 
-**Conditions** are the fundamental building block for Batch Auctions:
+**Conditions** are the fundamental building block for Auctions:
 
 - **Definition:** A discrete statement to be resolved with a claim, end time, and resolution status
 - **Composability:** Single conditions can be traded alone, or multiple conditions combined into parlays
@@ -83,7 +83,7 @@ See [Oracles & Settlement](/builder-guide/reference/oracles-and-settlement) for 
 
 - **WebSocket:** Real-time auction starts, bids, provisional crosses, and prints
 - **GraphQL:** Indexed conditions, parlay positions, historical trades
-- **API Reference:** [Batch Auction Relayer](/builder-guide/reference/auction-relayer) for message schemas and validation
+- **API Reference:** [Auction Relayer](/builder-guide/reference/auction-relayer) for message schemas and validation
 
 ### Where Conditions Show Up
 
@@ -102,9 +102,7 @@ Spot Markets enable continuous trading of single outcomes through onchain order 
 **Spot Markets** are ideal when you want to express a view on a single outcome without combining conditions. Prices directly reflect market-implied probabilities.
 
 - **YES price ↔ probability:** Prices live in [0,1]. A YES price of 0.72 suggests roughly 72% implied probability.
-
 `p_implied ≈ YES price`
-
 - **Payout:** If the market resolves Yes, YES holders receive the full notional; if No, YES settles to zero.
 
 ### How Spot Markets Work
@@ -175,7 +173,7 @@ Conditional tokens are a powerful primitive, but they introduce UX and capital-e
 
 - **Liquidity fragmentation** – Splitting collateral into multiple outcome tokens spreads liquidity thin and creates friction.
 - **Complex settlement and redemption** – Users face multi-step flows (split, merge, redeem) that add UX overhead.
-- **Workflow mismatch** – Conditional tokens are less natural for intent-driven, RFQ, or batch auction designs without significant abstraction.
+- **Workflow mismatch** – Conditional tokens are less natural for intent-driven, RFQ, or auction designs without significant abstraction.
 - **Collateral inefficiency** – In a binary market, $100 collateral becomes $100 "Yes" + $100 "No" tokens. If only one side trades, half the capital sits idle. This inefficiency compounds as outcomes multiply.
 
 ### Sapience Approach
@@ -188,7 +186,7 @@ Sapience builds on more efficient mechanisms:
 - **Unified collateral pool**  
   Collateral never fragments into idle Yes/No tokens. In binary markets this yields roughly **2× higher capital efficiency** versus conditional tokens. In multi-outcome or continuous markets, the gains are even greater.
 
-- **Batch Auctions for RFQ / Intents**  
+- **Auctions for RFQ / Intents**  
   Netting orders in discrete batches allows efficient clearing and fits naturally with intent-driven workflows, avoiding the split/merge overhead of conditional tokens.
 
 - **Unified APIs and Pluggable Settlement Adapters**  
@@ -199,8 +197,7 @@ Sapience builds on more efficient mechanisms:
 ## Related Pages
 
 - [Market Lifecycle](/user-guide/trading/market-lifecycle) — How markets are created, traded, and resolved
-- [Pricing & Order Types](/user-guide/trading/pricing-and-order-types) — Order types and pricing mechanics
+ 
 - [Resolution & Disputes](/user-guide/trading/resolution-and-disputes) — Oracle process and dispute resolution
-- [Fees & Incentives](/user-guide/fees-and-incentives) — Fee structures and trading incentives
 - [Glossary](/user-guide/other-resources/glossary) — Definitions of key terms
 
