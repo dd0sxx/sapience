@@ -187,7 +187,7 @@ const ProfilePageContent = () => {
   }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts]);
 
   return (
-    <div className="container max-w-6xl mx-auto py-24 lg:py-32 px-4">
+    <div className="mx-auto py-24 lg:py-32 px-3 md:px-6 lg:px-8 w-full">
       <ShareAfterRedirect address={address} />
       <div className="mb-5 lg:mb-10">
         <ProfileHeader address={address} />

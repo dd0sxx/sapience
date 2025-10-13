@@ -665,7 +665,7 @@ export default function UserParlaysTable({
                   : 'descending'
             }
           >
-            PnL
+            Profit/Loss
             {column.getIsSorted() === 'asc' ? (
               <ArrowUp className="ml-1 h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -680,7 +680,7 @@ export default function UserParlaysTable({
           const isClosed = row.original.status !== 'active';
           
           if (!isClosed) {
-            return <span className="text-muted-foreground">—</span>;
+            return <span className="text-muted-foreground">Pending</span>;
           }
 
           const pnlValue = Number(formatEther(BigInt(row.original.userPnL || '0')));
@@ -697,17 +697,17 @@ export default function UserParlaysTable({
 
           return (
             <div>
-              <div className="whitespace-nowrap">
-                {pnlValue >= 0 ? '+' : '-'}
-                <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
-              </div>
-              {viewerWager > 0 && (
-                <div className="text-sm text-muted-foreground mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
-                  <span className={pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}>
+              <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                <span>
+                  {pnlValue >= 0 ? '+' : '-'}
+                  <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
+                </span>
+                {viewerWager > 0 && (
+                  <span className={`text-xs ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     ({roi >= 0 ? '+' : ''}{roi.toFixed(2)}%)
                   </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         },
