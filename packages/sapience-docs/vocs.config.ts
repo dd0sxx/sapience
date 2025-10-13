@@ -97,7 +97,7 @@ export default defineConfig({
             text: "Oracles & Settlement",
             link: "/builder-guide/reference/oracles-and-settlement",
           },
-          { text: "UI components", link: "/builder-guide/storybook" },
+          { text: "UI Components", link: "/builder-guide/storybook" },
         ],
       },
       { text: "FAQ", link: "/builder-guide/faq" },
