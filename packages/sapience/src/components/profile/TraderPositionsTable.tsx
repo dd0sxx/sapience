@@ -731,10 +731,10 @@ export default function TraderPositionsTable({
         <Table className="table-auto">
           <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={`TableRow-${headerGroup.id}`}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
-                    key={header.id}
+                    key={`TableHead-${header.id}`}
                     className={
                       header.id === 'actions' ? 'text-right' : undefined
                     }
@@ -753,7 +753,7 @@ export default function TraderPositionsTable({
           <TableBody>
             {table.getRowModel().rows.map((row) => (
               <TableRow
-                key={row.id}
+                key={`TableRow-${row.index}`}
                 className="xl:table-row block border-b last:border-b-0 space-y-3 xl:space-y-0 px-4 py-4 xl:px-0 xl:py-0"
               >
                 {row.getVisibleCells().map((cell) => {
@@ -775,7 +775,7 @@ export default function TraderPositionsTable({
                   if (isRowClosed && colId === 'wager') {
                     return (
                       <TableCell
-                        key={cell.id}
+                        key={`TableCell-${cell.id}`}
                         colSpan={2}
                         className={
                           'block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 text-center'
@@ -792,7 +792,7 @@ export default function TraderPositionsTable({
                   }
                   return (
                     <TableCell
-                      key={cell.id}
+                      key={`TableCell-${cell.id}`}
                       className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 ${
                         colId === 'position' ? 'max-w-[360px]' : ''
                       }`}

@@ -28,7 +28,7 @@ import { useTheme } from 'next-themes';
 import { Moon, Sun, Monitor, Key, Share2, Bot } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy, useWallets, useSessionSigners } from '@privy-io/react-auth';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
 import { useSettings } from '~/lib/context/SettingsContext';
@@ -200,6 +200,7 @@ const SettingsPageContent = () => {
   >('preferences');
   const { ready, exportWallet, login } = usePrivy();
   const { wallets } = useWallets();
+  const { addSessionSigners } = useSessionSigners();
   const activeWallet = (
     wallets && wallets.length > 0 ? (wallets[0] as any) : undefined
   ) as (typeof wallets extends Array<infer T> ? T : any) | undefined;
@@ -336,6 +337,7 @@ const SettingsPageContent = () => {
   const enableSession = async (durationMs: number) => {
     if (!activeAddress) return;
     try {
+      // Create session policies first
       const res = await fetch('/api/session/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -348,7 +350,19 @@ const SettingsPageContent = () => {
         }),
       });
       if (!res.ok) return;
-      const data = (await res.json()) as { policyId: string; expiry: number };
+      const data = (await res.json()) as { policyIds: string[]; expiry: number };
+      
+      // Add session signers with the created policy IDs
+      if (process.env.NEXT_PUBLIC_PRIVY_SESSIONS_QUORUM_ID) {
+        await addSessionSigners({
+          address: activeAddress,
+          signers: [{
+            signerId: process.env.NEXT_PUBLIC_PRIVY_SESSIONS_QUORUM_ID,
+            policyIds: data.policyIds
+          }]
+        });
+      }
+      
       setSessionMode('session');
       setSessionExpiry(data.expiry);
       setSessionDurationMs(durationMs);
@@ -362,8 +376,8 @@ const SettingsPageContent = () => {
         '[session] enabled until',
         new Date(data.expiry).toISOString()
       );
-    } catch {
-      /* noop */
+    } catch (error) {
+      console.error('[session] failed to enable session:', error);
     }
   };
 
