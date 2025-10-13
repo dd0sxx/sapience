@@ -545,7 +545,7 @@ const Header = () => {
             </Button>
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
-                href="https://twitter.com/sapiencexyz"
+                href="https://x.com/sapiencehq"
                 target="_blank"
                 rel="noopener noreferrer"
               >
