@@ -223,12 +223,11 @@ const PnLLeaderboard = () => {
               address && rows.length > 0
                 ? rows.find((r) => {
                     const owner =
-                      r.getValue('owner') ||
+                      r.getValue('owner') ??
                       (r as unknown as { original?: { owner?: string } })
                         ?.original?.owner;
                     return (
-                      !!owner &&
-                      !!address &&
+                      typeof owner === 'string' &&
                       owner.toLowerCase() === address.toLowerCase()
                     );
                   })
@@ -404,12 +403,11 @@ const AccuracyLeaderboard = () => {
               address && rows.length > 0
                 ? rows.find((r) => {
                     const attester =
-                      r.getValue('attester') ||
+                      r.getValue('attester') ??
                       (r as unknown as { original?: { attester?: string } })
                         ?.original?.attester;
                     return (
-                      !!attester &&
-                      !!address &&
+                      typeof attester === 'string' &&
                       attester.toLowerCase() === address.toLowerCase()
                     );
                   })
