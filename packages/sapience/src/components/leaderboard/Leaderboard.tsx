@@ -34,6 +34,7 @@ import {
 import { Info, BarChart2, Target } from 'lucide-react';
 import ProfitCell from './ProfitCell';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 import type { AggregatedLeaderboardEntry } from '~/hooks/graphql/useLeaderboard';
 import { useLeaderboard } from '~/hooks/graphql/useLeaderboard';
 import {
@@ -88,7 +89,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="container max-w-[480px] mx-auto py-32">
+    <div className="container max-w-[560px] mx-auto py-32">
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6">
         Leaderboard
       </h1>
@@ -251,9 +252,15 @@ const PnLLeaderboard = () => {
   );
 };
 
-const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
-  <AddressDisplay address={cell.getValue() as string} />
-);
+const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
+  const address = cell.getValue() as string;
+  return (
+    <div className="flex items-center gap-2.5">
+      <EnsAvatar address={address} width={22} height={22} />
+      <AddressDisplay address={address} />
+    </div>
+  );
+};
 
 export default Leaderboard;
 
@@ -267,9 +274,7 @@ const AccuracyLeaderboard = () => {
         id: 'attester',
         header: () => 'Ethereum Account Address',
         accessorKey: 'attester',
-        cell: ({ cell }) => (
-          <AddressDisplay address={cell.getValue() as string} />
-        ),
+        cell: OwnerCell,
       },
       {
         id: 'accuracyScore',
