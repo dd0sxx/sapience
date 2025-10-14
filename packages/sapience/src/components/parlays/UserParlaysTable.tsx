@@ -678,12 +678,14 @@ export default function UserParlaysTable({
         cell: ({ row }) => {
           const symbol = 'USDe';
           const isClosed = row.original.status !== 'active';
-          
+
           if (!isClosed) {
             return <span className="text-muted-foreground">Pending</span>;
           }
 
-          const pnlValue = Number(formatEther(BigInt(row.original.userPnL || '0')));
+          const pnlValue = Number(
+            formatEther(BigInt(row.original.userPnL || '0'))
+          );
           const viewerWagerWei =
             row.original.addressRole === 'maker'
               ? (row.original.makerCollateralWei ?? 0n)
@@ -703,8 +705,11 @@ export default function UserParlaysTable({
                   <NumberDisplay value={Math.abs(pnlValue)} /> {symbol}
                 </span>
                 {viewerWager > 0 && (
-                  <span className={`text-xs ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ({roi >= 0 ? '+' : ''}{roi.toFixed(2)}%)
+                  <span
+                    className={`text-xs ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    ({roi >= 0 ? '+' : ''}
+                    {roi.toFixed(2)}%)
                   </span>
                 )}
               </div>
