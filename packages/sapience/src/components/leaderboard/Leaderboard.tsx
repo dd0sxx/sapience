@@ -32,6 +32,7 @@ import {
   TooltipTrigger,
 } from '@sapience/sdk/ui/components/ui/tooltip';
 import { Info, BarChart2, Target } from 'lucide-react';
+import { useAccount } from 'wagmi';
 import ProfitCell from './ProfitCell';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
@@ -144,6 +145,7 @@ const Leaderboard = () => {
 
 const PnLLeaderboard = () => {
   const { leaderboardData, isLoading } = useLeaderboard();
+  const { address } = useAccount();
 
   const columns = useMemo<ColumnDef<AggregatedLeaderboardEntry>[]>(
     () => [
@@ -215,37 +217,85 @@ const PnLLeaderboard = () => {
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.length > 0 ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                className="hover:bg-muted/50 border-b last:border-b-0"
-              >
-                {row.getVisibleCells().map((cell) => (
+          {(() => {
+            const rows = table.getRowModel().rows;
+            const pinnedRow =
+              address && rows.length > 0
+                ? rows.find((r) => {
+                    const owner =
+                      r.getValue('owner') ||
+                      (r as unknown as { original?: { owner?: string } })
+                        ?.original?.owner;
+                    return (
+                      !!owner &&
+                      !!address &&
+                      owner.toLowerCase() === address.toLowerCase()
+                    );
+                  })
+                : undefined;
+            if (rows.length === 0) {
+              return (
+                <TableRow>
                   <TableCell
-                    key={cell.id}
-                    className={cn('p-3 text-sm md:text-base', {
-                      'text-right font-normal': cell.column.id === 'rank',
-                      'w-14 md:w-16': cell.column.id === 'rank',
-                      'text-right whitespace-nowrap':
-                        cell.column.id === 'totalPnL',
-                    })}
+                    colSpan={columns.length}
+                    className="h-24 text-center text-muted-foreground text-sm md:text-base"
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    Results pending
                   </TableCell>
+                </TableRow>
+              );
+            }
+            return (
+              <>
+                {pinnedRow ? (
+                  <TableRow
+                    key={`pinned-${pinnedRow.id}`}
+                    className="bg-muted/40 border-b"
+                  >
+                    {pinnedRow.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn('p-3 text-sm md:text-base', {
+                          'text-right font-normal': cell.column.id === 'rank',
+                          'w-14 md:w-16': cell.column.id === 'rank',
+                          'text-right whitespace-nowrap':
+                            cell.column.id === 'totalPnL',
+                        })}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ) : null}
+                {rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className="hover:bg-muted/50 border-b last:border-b-0"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn('p-3 text-sm md:text-base', {
+                          'text-right font-normal': cell.column.id === 'rank',
+                          'w-14 md:w-16': cell.column.id === 'rank',
+                          'text-right whitespace-nowrap':
+                            cell.column.id === 'totalPnL',
+                        })}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
                 ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                className="h-24 text-center text-muted-foreground text-sm md:text-base"
-              >
-                Results pending
-              </TableCell>
-            </TableRow>
-          )}
+              </>
+            );
+          })()}
         </TableBody>
       </Table>
     </div>
@@ -266,6 +316,7 @@ export default Leaderboard;
 
 const AccuracyLeaderboard = () => {
   const { data, isLoading } = useAccuracyLeaderboard(100);
+  const { address } = useAccount();
 
   const columns = useMemo<ColumnDef<ForecasterScore>[]>(
     () => [
@@ -347,36 +398,83 @@ const AccuracyLeaderboard = () => {
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.length > 0 ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                className="hover:bg-muted/50 border-b last:border-b-0"
-              >
-                {row.getVisibleCells().map((cell) => (
+          {(() => {
+            const rows = table.getRowModel().rows;
+            const pinnedRow =
+              address && rows.length > 0
+                ? rows.find((r) => {
+                    const attester =
+                      r.getValue('attester') ||
+                      (r as unknown as { original?: { attester?: string } })
+                        ?.original?.attester;
+                    return (
+                      !!attester &&
+                      !!address &&
+                      attester.toLowerCase() === address.toLowerCase()
+                    );
+                  })
+                : undefined;
+            if (rows.length === 0) {
+              return (
+                <TableRow>
                   <TableCell
-                    key={cell.id}
-                    className={cn('p-3 text-sm md:text-base', {
-                      'text-right font-normal': cell.column.id === 'rank',
-                      'w-14 md:w-16': cell.column.id === 'rank',
-                      'text-right': cell.column.id === 'accuracyScore',
-                    })}
+                    colSpan={columns.length}
+                    className="h-24 text-center text-muted-foreground text-sm md:text-base"
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    No results found for this period
                   </TableCell>
+                </TableRow>
+              );
+            }
+            return (
+              <>
+                {pinnedRow ? (
+                  <TableRow
+                    key={`pinned-${pinnedRow.id}`}
+                    className="bg-muted/40 border-b"
+                  >
+                    {pinnedRow.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn('p-3 text-sm md:text-base', {
+                          'text-right font-normal': cell.column.id === 'rank',
+                          'w-14 md:w-16': cell.column.id === 'rank',
+                          'text-right': cell.column.id === 'accuracyScore',
+                        })}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ) : null}
+                {rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className="hover:bg-muted/50 border-b last:border-b-0"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn('p-3 text-sm md:text-base', {
+                          'text-right font-normal': cell.column.id === 'rank',
+                          'w-14 md:w-16': cell.column.id === 'rank',
+                          'text-right': cell.column.id === 'accuracyScore',
+                        })}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
                 ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                className="h-24 text-center text-muted-foreground text-sm md:text-base"
-              >
-                No results found for this period
-              </TableCell>
-            </TableRow>
-          )}
+              </>
+            );
+          })()}
         </TableBody>
       </Table>
     </div>
