@@ -28,6 +28,7 @@ import { useReadContracts, useAccount } from 'wagmi';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { formatDistanceToNow } from 'date-fns';
 // Minimal ABI for PredictionMarketUmaResolver.resolvePrediction(bytes)
 const UMA_RESOLVER_MIN_ABI = [
   {
@@ -49,7 +50,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/sdk/ui/components/ui/tooltip';
-import ParlayLegsList from '~/components/shared/ParlayLegsList';
+import { Dialog, DialogTrigger } from '@sapience/sdk/ui/components/ui/dialog';
+import ConditionDialog from '~/components/markets/ConditionDialog';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
 import { useUserParlays } from '~/hooks/graphql/useUserParlays';
@@ -57,6 +59,7 @@ import NumberDisplay from '~/components/shared/NumberDisplay';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import AwaitingSettlementBadge from '~/components/shared/AwaitingSettlementBadge';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 
 function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
   const [nowMs, setNowMs] = React.useState(() => Date.now());
@@ -110,7 +113,13 @@ export default function UserParlaysTable({
         .catch(() => {});
     },
   });
-  type UILeg = { question: string; choice: 'Yes' | 'No' };
+  type UILeg = {
+    question: string;
+    choice: 'Yes' | 'No';
+    conditionId?: string;
+    endTime?: number | null;
+    description?: string | null;
+  };
   type UIParlay = {
     uniqueRowKey: string;
     positionId: number;
@@ -144,6 +153,9 @@ export default function UserParlaysTable({
         question:
           o?.condition?.shortName || o?.condition?.question || o.conditionId,
         choice: o.prediction ? 'Yes' : 'No',
+        conditionId: o?.conditionId,
+        endTime: o?.condition?.endTime ?? null,
+        description: o?.condition?.description ?? null,
       }));
       const endsAtSec =
         p.endsAt ||
@@ -541,38 +553,142 @@ export default function UserParlaysTable({
           </Button>
         ),
         cell: ({ row }) => {
-          const created = new Date(row.original.createdAt).toLocaleDateString(
-            'en-US',
-            {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              timeZoneName: 'short',
-            }
-          );
+          const createdDate = new Date(row.original.createdAt);
+          const createdDisplay = formatDistanceToNow(createdDate, {
+            addSuffix: true,
+          });
+          const exactLocalDisplay = createdDate.toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZoneName: 'short',
+          });
           return (
             <div>
               <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] mb-0.5">
                 Position #{row.original.positionId}
               </h2>
               <div className="text-sm text-muted-foreground flex items-center gap-2">
-                <span>created at {created}</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help">
+                        created {createdDisplay}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div>{exactLocalDisplay}</div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-              {row.original.counterpartyAddress && (
-                <div className="text-sm text-muted-foreground flex items-baseline gap-1.5 mt-0.5">
-                  <span>with</span>
-                  <AddressDisplay
-                    address={row.original.counterpartyAddress}
-                    compact
-                  />
-                </div>
-              )}
             </div>
           );
         },
       },
+      {
+        id: 'conditions',
+        accessorFn: (row) => row.legs.length,
+        enableSorting: false,
+        size: 400,
+        minSize: 300,
+        header: () => <span>Predictions</span>,
+        cell: ({ row }) => (
+          <div className="space-y-1">
+            {row.original.addressRole === 'taker' && (
+              <div className="mb-1">
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline">Anti-Parlay</Badge>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Anti-Parlay details"
+                          className="inline-flex items-center justify-center h-5 w-5 text-muted-foreground hover:text-foreground"
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          This position is that one or more of these conditions
+                          will not be met.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+            )}
+            <div className="space-y-1">
+              {row.original.legs.map((l, idx) => (
+                <div key={idx} className="text-sm flex items-center gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="font-medium underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors hover:decoration-foreground/60 truncate max-w-[520px] text-left cursor-default"
+                        title={String(l.question)}
+                      >
+                        {l.question}
+                      </button>
+                    </DialogTrigger>
+                    <ConditionDialog
+                      conditionId={l.conditionId}
+                      title={l.question}
+                      endTime={l.endTime}
+                      description={l.description}
+                    />
+                  </Dialog>
+                  <Badge
+                    variant="outline"
+                    className={
+                      l.choice === 'Yes'
+                        ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0'
+                        : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'
+                    }
+                  >
+                    {l.choice}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        ),
+      },
+
+      {
+        id: 'counterparty',
+        accessorFn: (row) => row.counterpartyAddress ?? null,
+        enableSorting: false,
+        size: 220,
+        minSize: 160,
+        header: () => <span>Counterparty</span>,
+        cell: ({ row }) =>
+          row.original.counterpartyAddress ? (
+            <div className="whitespace-nowrap text-[15px]">
+              <div className="flex items-center gap-2">
+                <EnsAvatar
+                  address={row.original.counterpartyAddress}
+                  className="w-5 h-5 rounded-sm ring-1 ring-border/50"
+                  width={20}
+                  height={20}
+                />
+                <AddressDisplay
+                  address={row.original.counterpartyAddress}
+                  className="text-[15px]"
+                />
+              </div>
+            </div>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+      },
+
       {
         id: 'wager',
         accessorFn: (row) => {
@@ -716,54 +832,6 @@ export default function UserParlaysTable({
             </div>
           );
         },
-      },
-      {
-        id: 'conditions',
-        accessorFn: (row) => row.legs.length,
-        enableSorting: false,
-        size: 400,
-        minSize: 300,
-        header: () => null,
-        cell: ({ row }) => (
-          <div className="space-y-1">
-            {row.original.addressRole === 'taker' && (
-              <div className="mb-1">
-                <div className="flex items-center gap-1">
-                  <Badge variant="outline">Anti-Parlay</Badge>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label="Anti-Parlay details"
-                          className="inline-flex items-center justify-center h-5 w-5 text-muted-foreground hover:text-foreground"
-                        >
-                          <HelpCircle className="h-4 w-4" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          This position is that one or more of these conditions
-                          will not be met.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            )}
-            <ParlayLegsList
-              legs={row.original.legs.map((l) => ({
-                shortName: l.question,
-                question: l.question,
-                conditionId: /^0x[0-9a-fA-F]{64}$/.test(String(l.question))
-                  ? l.question
-                  : undefined,
-                choice: l.choice,
-              }))}
-            />
-          </div>
-        ),
       },
 
       {

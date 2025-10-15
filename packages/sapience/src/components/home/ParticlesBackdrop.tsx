@@ -55,8 +55,8 @@ export default function ParticlesBackdrop() {
 
     let palette = (() => {
       const hsls = readCategoryHslVars();
-      if (hsls.length === 0) return ['rgba(255,255,255,0.35)'];
-      return hsls.map((hsl) => hslToHsla(hsl, 0.35));
+      if (hsls.length === 0) return ['rgba(255,255,255,0.25)'];
+      return hsls.map((hsl) => hslToHsla(hsl, 0.25));
     })();
 
     const reduceMotion = window.matchMedia(
@@ -78,7 +78,7 @@ export default function ParticlesBackdrop() {
       const count = Math.max(25, Math.min(140, Math.floor(area * density)));
       // Refresh palette (dark/light mode, or CSS var updates)
       const hsls = readCategoryHslVars();
-      if (hsls.length > 0) palette = hsls.map((hsl) => hslToHsla(hsl, 0.35));
+      if (hsls.length > 0) palette = hsls.map((hsl) => hslToHsla(hsl, 0.3));
       state.particles = new Array(count)
         .fill(0)
         .map(() => newParticle(width / dpr, height / dpr));
