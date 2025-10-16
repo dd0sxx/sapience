@@ -2,18 +2,11 @@
 
 import * as React from 'react';
 import { motion } from 'framer-motion';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@sapience/sdk/ui/components/ui/dialog';
+import { Dialog, DialogTrigger } from '@sapience/sdk/ui/components/ui/dialog';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
-import SafeMarkdown from '~/components/shared/SafeMarkdown';
-import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
+import ConditionDialog from '~/components/markets/ConditionDialog';
 
 export interface ParlayConditionCardProps {
   condition: {
@@ -122,26 +115,12 @@ const ParlayConditionCard: React.FC<ParlayConditionCardProps> = ({
                           </span>
                         </button>
                       </DialogTrigger>
-                      <DialogContent className="w-[92vw] max-w-3xl break-words overflow-x-hidden">
-                        <DialogHeader>
-                          <DialogTitle className="break-words whitespace-normal text-2xl font-medium">
-                            {displayQ}
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div>
-                          <div className="flex items-center mb-4">
-                            <EndTimeDisplay endTime={endTime} size="large" />
-                          </div>
-                          {description ? (
-                            <div className="text-sm leading-relaxed break-words [&_a]:break-all">
-                              <SafeMarkdown
-                                content={description}
-                                className="break-words [&_a]:break-all"
-                              />
-                            </div>
-                          ) : null}
-                        </div>
-                      </DialogContent>
+                      <ConditionDialog
+                        conditionId={id}
+                        title={displayQ}
+                        endTime={endTime}
+                        description={description}
+                      />
                     </Dialog>
                   </h3>
                 </div>

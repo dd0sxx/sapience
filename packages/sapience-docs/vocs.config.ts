@@ -6,15 +6,6 @@ export default defineConfig({
     light: "/sapience.svg",
     dark: "/sapience-dark.svg",
   },
-  topNav: [],
-  banner: {
-    dismissable: "false" as unknown as boolean,
-    backgroundColor: "#0588f0",
-    textColor: "white",
-    height: "40px",
-    content:
-      "Docs are heavily under construction. Some information is incorrect. Share feedback in [Discord](https://discord.gg/sapience).",
-  },
   head: [
     ["link", { rel: "stylesheet", href: "/styles.css" }],
   ] as any,
@@ -128,7 +119,6 @@ export default defineConfig({
         text: "Trading Prediction Markets",
         items: [
           { text: "Overview", link: "/user-guide/trading/overview" },
-          { text: "Deposits & Withdrawals", link: "/user-guide/deposits-and-withdrawals" },
           { text: "Auction Markets", link: "/user-guide/trading/auction-markets" },
           { text: "Spot Markets", link: "/user-guide/trading/spot-markets" },
           { text: "Verification & Settlement", link: "/user-guide/trading/resolution-and-disputes" },

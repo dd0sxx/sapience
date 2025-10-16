@@ -1,8 +1,15 @@
 ---
 title: Sapience Documentation
 ---
+import { useEffect } from "react";
 
-Welcome to the Sapience docs.
-
-- [What is Sapience?](/user-guide/introduction/what-is-sapience)
-- [Get Started](/builder-guide/getting-started/get-started)
+export default function RedirectToWhatIsSapience() {
+  useEffect(() => {
+    window.location.replace("/user-guide/introduction/what-is-sapience");
+  }, []);
+  return (
+    <p>
+      Redirecting to <a href="/user-guide/introduction/what-is-sapience">What is Sapience?</a>...
+    </p>
+  );
+}

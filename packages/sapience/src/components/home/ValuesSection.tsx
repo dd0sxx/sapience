@@ -9,7 +9,7 @@ export default function ValuesSection() {
       <div className="max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 lg:gap-14">
           <div className="rounded-lg border-[1.5px] border-ethena/25 bg-card p-5 md:p-6 shadow-[0_0_10px_rgba(136,180,245,0.25)]">
-            <h3 className="text-xl font-medium mb-1.5 flex items-center gap-2">
+            <h3 className="text-xl font-medium mb-2 flex items-center gap-2">
               <Users className="h-5 w-5" aria-hidden="true" />
               <span>Community First</span>
             </h3>
@@ -29,7 +29,7 @@ export default function ValuesSection() {
             </p>
           </div>
           <div className="rounded-lg border-[1.5px] border-ethena/25 bg-card p-5 md:p-6 shadow-[0_0_10px_rgba(136,180,245,0.25)]">
-            <h3 className="text-xl font-medium mb-1.5 flex items-center gap-2">
+            <h3 className="text-xl font-medium mb-2 flex items-center gap-2">
               <Code2 className="h-5 w-5" aria-hidden="true" />
               <span>Open Source</span>
             </h3>
@@ -47,7 +47,7 @@ export default function ValuesSection() {
             </p>
           </div>
           <div className="rounded-lg border-[1.5px] border-ethena/25 bg-card p-5 md:p-6 shadow-[0_0_10px_rgba(136,180,245,0.25)]">
-            <h3 className="text-xl font-medium mb-1.5 flex items-center gap-2">
+            <h3 className="text-xl font-medium mb-2 flex items-center gap-2">
               <ShieldCheck className="h-5 w-5" aria-hidden="true" />
               <span>Trustless by Design</span>
             </h3>

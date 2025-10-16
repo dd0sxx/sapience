@@ -343,7 +343,7 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Cooldown + Deposit Button Group */}
-        <div className="mt-4 space-y-2">
+        <div className="mt-6 space-y-2">
           {isInteractionDelayActive && (
             <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
               This vault implements a cooldown period. Please wait{' '}
@@ -372,7 +372,7 @@ const VaultsPageContent = () => {
             }}
           >
             {!isConnected
-              ? 'Connect Wallet'
+              ? 'Log in'
               : isVaultPending && pendingAction === 'deposit'
                 ? 'Processing...'
                 : vaultData?.paused
@@ -438,7 +438,7 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Cooldown + Withdraw Button Group */}
-        <div className="mt-4 space-y-2">
+        <div className="mt-6 space-y-2">
           {isInteractionDelayActive && (
             <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
               This vault implements a cooldown period. Please wait{' '}
@@ -465,7 +465,7 @@ const VaultsPageContent = () => {
             }}
           >
             {!isConnected
-              ? 'Connect Wallet'
+              ? 'Log in'
               : isVaultPending && pendingAction === 'withdraw'
                 ? 'Processing...'
                 : vaultData?.paused
@@ -528,7 +528,7 @@ const VaultsPageContent = () => {
             {vaultsFeatureEnabled &&
             process.env.NEXT_PUBLIC_ENABLE_VAULTS === '1' ? (
               /* Active Vault Interface */
-              <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
+              <Card className="relative isolate overflow-hidden bg-card border border-border rounded-xl shadow-sm">
                 <CardContent className="p-6">
                   <div className="space-y-6">
                     {/* Vault Header */}
@@ -639,7 +639,7 @@ const VaultsPageContent = () => {
               </Card>
             ) : (
               /* Coming Soon State - Normal Interface with Overlay */
-              <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
+              <Card className="relative isolate overflow-hidden bg-card border border-border rounded-xl shadow-sm">
                 <CardContent
                   className={`relative z-10 p-6 ${!vaultsFeatureEnabled ? 'pointer-events-none select-none filter blur-sm' : ''}`}
                 >
